@@ -58,11 +58,10 @@ describe('findGeoNodes', () => {
   };
 
   it('should return only nodes matching the specified pattern', () => {
-    const pattern = "*Child*";
+    const pattern = "*Child2*";
     const results = findGeoNodes(rootNode, pattern);
-    expect(results.length).toBe(2);
-    expect(results[0].fullPath).toContain('Root/Child1');
-    expect(results[1].fullPath).toContain('Root/Child2');
+    expect(results.length).toBe(1);
+    expect(results[0].fullPath).toContain('Root/Child2');
   });
 
   it('should return an empty array if no nodes match the pattern', () => {

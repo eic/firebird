@@ -47,8 +47,8 @@ export class GeometryService {
       "Default/SweeperMag*",
       "Default/AnalyzerMag*",
       "*ZDC*",
-      "*AstroPix_Module_*",
-      "Default/Ecal*/fiber_grid*",
+      //"*AstroPix_Module_*",
+      //"Default/Ecal*/fiber_grid*",
     ];
 
     this.fineTuneRules = [
@@ -132,13 +132,13 @@ export class GeometryService {
     //
     analyzeGeoNodes(geoManager, 1);
     console.time('Prune nodes coarse');
-    // editGeoNodes(geoManager, this.totalRules, 1)
+    editGeoNodes(geoManager, this.totalRules, 1)
     console.timeEnd('Prune nodes coarse');
 
     // >oO analyzeGeoNodes(geoManager, 1);
 
     console.time('Prune nodes fine');
-    editGeoNodes(geoManager, this.totalRules, 15)
+    // editGeoNodes(geoManager, this.totalRules, 15)
     console.timeEnd('Prune nodes fine');
 
     //analyzeGeoNodes(geoManager, 1);
