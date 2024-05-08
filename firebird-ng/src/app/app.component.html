@@ -8,9 +8,10 @@
       <li class="nav-item active">
 <!--        <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>-->
         <a [routerLink]="['/']" [queryParams]="{ geo: 'centralDetector' }" class="nav-link">Central detector</a>
-        <a [routerLink]="['/']" [queryParams]="{ geo: 'DIRK' }" class="nav-link">DIRK</a>
-        <a [routerLink]="['/']" [queryParams]="{ geo: 'trackingOnly' }" class="nav-link">Tracking</a>
       </li>
+      <li class="nav-item"><a [routerLink]="['/']" [queryParams]="{ geo: 'DIRK' }" class="nav-link">DIRK</a></li>
+      <li class="nav-item"><a [routerLink]="['/']" [queryParams]="{ geo: 'trackingOnly' }" class="nav-link">Tracking</a></li>
+
 <!--      <li class="nav-item">-->
 <!--        <a class="nav-link" href="#">Features</a>-->
 <!--      </li>-->

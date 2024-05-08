@@ -43,7 +43,9 @@ export class GeometryService {
       "Default/Forward*",
       "Default/Backward*",
       "Default/Vacuum*",
-      "Default/DRICH*",
+      //"Default/DRICH*",
+      "Default/SweeperMag*",
+      "Default/AnalyzerMag*",
       "*ZDC*",
       "*AstroPix_Module_*",
       "Default/Ecal*/fiber_grid*",
@@ -130,20 +132,20 @@ export class GeometryService {
     //
     analyzeGeoNodes(geoManager, 1);
     console.time('Prune nodes coarse');
-    editGeoNodes(geoManager, this.totalRules, 1)
+    // editGeoNodes(geoManager, this.totalRules, 1)
     console.timeEnd('Prune nodes coarse');
 
     // >oO analyzeGeoNodes(geoManager, 1);
 
-    // console.time('Prune nodes fine');
-    // editGeoNodes(geoManager, this.totalRules, 15)
-    // console.timeEnd('Prune nodes fine');
+    console.time('Prune nodes fine');
+    editGeoNodes(geoManager, this.totalRules, 15)
+    console.timeEnd('Prune nodes fine');
 
-    analyzeGeoNodes(geoManager, 1);
+    //analyzeGeoNodes(geoManager, 1);
 
     //
     console.time('Build geometry');
-    let geo = build(geoManager, { numfaces: 500000000, numnodes: 5000000, dflt_colors: false, vislevel: 3, doubleside:true, transparency:false});
+    let geo = build(geoManager, { numfaces: 500000000, numnodes: 50000000, dflt_colors: false, vislevel: 4, doubleside:true, transparency:false});
     console.timeEnd('Build geometry');
     // >oO console.log(geo);
 
