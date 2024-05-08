@@ -48,14 +48,13 @@ jobs:
         run: npm install
 
       - name: Build
-        working-directory: ./firebird-ng
         run: npm run build
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: built-site
-          path: ./firebird-ng/dist/
+          path: ./dist/
 
   deploy:
     if: github.ref == 'refs/heads/master' || endsWith(github.ref, '-ci')
@@ -68,13 +67,19 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: built-site
-          path: ./dist/firebird-ng
+          path: ./dist/
+      - name: Introspect
+        run: |
+          echo "--- ls ./dist/"
+          ls -latrh ./dist
+          echo "--- ls ./dist/firebird"
+          ls -latrh ./dist/firebird
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist/firebird-ng
+          publish_dir: ./dist/firebird
