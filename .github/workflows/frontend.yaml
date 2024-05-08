@@ -73,6 +73,7 @@ jobs:
           path: ./dist/
       - name: Introspect
         run: |
+          ls
           echo "--- ls ./dist/"
           ls -latrh ./dist
           echo "--- ls ./dist/firebird"
