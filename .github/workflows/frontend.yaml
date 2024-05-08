@@ -11,6 +11,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./firebird-ng
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -18,14 +21,11 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-        working-directory: ./firebird-ng
 
       - name: Install Dependencies
-        working-directory: ./firebird-ng
         run: npm install
 
       - name: Run Tests
-        working-directory: ./firebird-ng
         run: npm run test:headless
 
   build:
