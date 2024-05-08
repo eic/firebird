@@ -16,13 +16,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'  # LTS active till Fall 2024
+          node-version: '20'
+          cache: 'npm'
+
       - name: Install Dependencies
         working-directory: ./firebird-ng
         run: npm install
+
       - name: Run Tests
         working-directory: ./firebird-ng
-        run: npm run test-headless
+        run: npm run test:headless
 
   build:
     needs: test
@@ -32,13 +35,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'  # Same Node version as the test job
-      - name: Install Dependencies
-        working-directory: ./firebird-ng
-        run: npm install
+          node-version: '20'
+          cache: 'npm'
+
       - name: Build
         working-directory: ./firebird-ng
-        run: ng build --prod
+        run: npm run build
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: built-site
+          path: ./firebird-ng/dist/
 
   deploy:
     if: github.ref == 'refs/heads/master' || endsWith(github.ref, '-ci')
@@ -46,6 +54,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: built-site
+          path: ./dist/firebird-ng
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
