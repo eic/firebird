@@ -22,7 +22,7 @@ jobs:
         run: npm install
       - name: Run Tests
         working-directory: ./firebird-ng
-        run: ng test --watch=false --browsers=ChromeHeadlessCI
+        run: npm run test-headless
 
   build:
     needs: test
