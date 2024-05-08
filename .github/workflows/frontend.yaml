@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: built-site
-          path: ./dist/
+          path: ./firebird-ng/dist/
 
   deploy:
     if: github.ref == 'refs/heads/master' || endsWith(github.ref, '-ci')
