@@ -1,0 +1,49 @@
+name: Angular CI/CD Workflow
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'  # LTS active till Fall 2024
+      - name: Install Dependencies
+        run: npm install
+      - name: Run Tests
+        run: ng test --watch=false --browsers=ChromeHeadlessCI
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'  # Same Node version as the test job
+      - name: Install Dependencies
+        run: npm install
+      - name: Build
+        run: ng build --prod
+
+  deploy:
+    if: github.ref == 'refs/heads/master' || endsWith(github.ref, '-ci')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist/firebird-ng
