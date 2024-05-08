@@ -18,8 +18,10 @@ jobs:
         with:
           node-version: '20'  # LTS active till Fall 2024
       - name: Install Dependencies
+        working-directory: ./firebird-ng
         run: npm install
       - name: Run Tests
+        working-directory: ./firebird-ng
         run: ng test --watch=false --browsers=ChromeHeadlessCI
 
   build:
@@ -32,8 +34,10 @@ jobs:
         with:
           node-version: '20'  # Same Node version as the test job
       - name: Install Dependencies
+        working-directory: ./firebird-ng
         run: npm install
       - name: Build
+        working-directory: ./firebird-ng
         run: ng build --prod
 
   deploy:
