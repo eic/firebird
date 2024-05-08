@@ -123,8 +123,10 @@ dist
 .vscode-test
 
 # yarn v2
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
+.yarn/*
 .pnp.*
+
+# JetBrains IDEs: IntelliJ, PyCharm, WebStorm and others
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+.idea/*
+
