@@ -1,1 +1,0 @@
-(self.webpackChunkfirebird=self.webpackChunkfirebird||[]).push([[979],{2979:()=>{}}]);
