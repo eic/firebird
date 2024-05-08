@@ -32,6 +32,9 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./firebird-ng
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -39,9 +42,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: ./firebird-ng/package-lock.json
 
       - name: Build
-        working-directory: ./firebird-ng
         run: npm run build
 
       - name: Upload Artifacts
@@ -54,6 +57,9 @@ jobs:
     if: github.ref == 'refs/heads/master' || endsWith(github.ref, '-ci')
     needs: build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./firebird-ng
     steps:
       - uses: actions/checkout@v4
 
