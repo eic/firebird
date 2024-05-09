@@ -53,7 +53,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: built-site
+          name: github-pages
           path: ./firebird-ng/dist/
 
   deploy:
@@ -69,7 +69,7 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: built-site
+          name: github-pages
           path: ./dist/
       - name: Introspect
         run: |
@@ -78,9 +78,14 @@ jobs:
           ls -latrh ./dist
           echo "--- ls ./dist/firebird"
           ls -latrh ./dist/firebird
-
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist/firebird
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+
+
+#      - name: Deploy to GitHub Pages
+#        uses: peaceiris/actions-gh-pages@v4
+#        with:
+#          github_token: ${{ secrets.GITHUB_TOKEN }}
+#          publish_dir: ./dist/firebird
