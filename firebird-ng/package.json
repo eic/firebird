@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build --configuration=production",
+    "build:ghpages": "ng build --configuration=production --baseHref='/firebird/'",
     "build:watch": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
