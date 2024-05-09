@@ -59,6 +59,13 @@ jobs:
   deploy:
     if: github.ref == 'refs/heads/master' || endsWith(github.ref, '-ci')
     needs: build
+    permissions:
+      pages: write
+      id-token: write
+      pull-requests: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -81,6 +88,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+
 
 
 
