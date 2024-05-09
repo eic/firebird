@@ -80,17 +80,16 @@ jobs:
           path: ./dist/
       - name: Introspect
         run: |
+          echo "--- pwd"
+          pwd
+          echo "--- ls"
           ls
           echo "--- ls ./dist/"
           ls -latrh ./dist
           echo "--- ls ./dist/firebird"
           ls -latrh ./dist/firebird
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-#      - name: Deploy to GitHub Pages
-#        uses: peaceiris/actions-gh-pages@v4
-#        with:
-#          github_token: ${{ secrets.GITHUB_TOKEN }}
-#          publish_dir: ./dist/firebird
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist/firebird
