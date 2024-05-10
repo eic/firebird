@@ -71,6 +71,9 @@ jobs:
 
       - name: Introspect
         run: |
+          echo "--- pwd"
+          pwd
+          echo "--- ls"
           ls
           echo "--- ls ./dist/"
           ls -latrh ./dist
