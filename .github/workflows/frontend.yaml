@@ -57,19 +57,9 @@ jobs:
           path: ./firebird-ng/dist/
 
   deploy:
-    if: github.ref == 'refs/heads/master' || endsWith(github.ref, '-ci')
+    if: github.ref == 'refs/heads/main'
     needs: build
-    permissions:
-      pages: write
-      id-token: write
-      pull-requests: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./
     steps:
       - uses: actions/checkout@v4
 
@@ -78,6 +68,7 @@ jobs:
         with:
           name: github-pages
           path: ./dist/
+
       - name: Introspect
         run: |
           echo "--- pwd"
@@ -88,6 +79,7 @@ jobs:
           ls -latrh ./dist
           echo "--- ls ./dist/firebird"
           ls -latrh ./dist/firebird
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
