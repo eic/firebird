@@ -1,11 +1,35 @@
 import { Component, OnInit } from '@angular/core';
 import { EventDisplayService } from 'phoenix-ui-components';
 import { Configuration, PhoenixLoader, PresetView, ClippingSetting, PhoenixMenuNode } from 'phoenix-event-display';
-
+import { Color, DoubleSide, Mesh, LineSegments, LineBasicMaterial, MeshPhongMaterial, Material, ObjectLoader, FrontSide, Vector3, Matrix4, REVISION, } from "three";
 import { PhoenixUIModule } from 'phoenix-ui-components';
 import { GeometryService} from '../geometry.service';
 import { Edm4hepRootEventLoader } from '../edm4hep-root-event-loader';
 import { ActivatedRoute } from '@angular/router';
+import {color} from "three/examples/jsm/nodes/shadernode/ShaderNode";
+import {getGeoNodesByLevel} from "../utils/cern-root.utils";
+
+interface Colorable {
+  color: Color;
+}
+
+function isColorable(material: any): material is Colorable {
+  return 'color' in material;
+}
+
+function getColorOrDefault(material:any, defaultColor: Color): Color {
+  if (isColorable(material)) {
+    return material.color;
+  } else {
+    return defaultColor;
+  }
+
+}
+
+function ensureColor(material: any) {
+
+}
+
 
 @Component({
   selector: 'app-test-experiment',
@@ -25,11 +49,114 @@ export class MainDisplayComponent implements OnInit {
   /** loading progress */
   loadingProgress: number = 0;
 
+  /** The Default color of elements if not set */
+  defaultColor: Color = new Color(0x2fd691);
+
   constructor(
     private geomService: GeometryService,
     private eventDisplay: EventDisplayService,
     private route: ActivatedRoute) { }
 
+  async loadGeometry(initiallyVisible=true, scale=10) {
+
+    let {rootGeoManager, rootObject3d} = await this.geomService.loadEicGeometry();
+    let threeManager = this.eventDisplay.getThreeManager();
+    let uiManager = this.eventDisplay.getUIManager();
+    let openThreeManager: any = threeManager;
+    let importManager = openThreeManager.importManager;
+    const doubleSided = true;
+
+    const sceneGeometry = threeManager.getSceneManager().getGeometries();
+
+    if (scale) {
+      rootObject3d.scale.setScalar(scale);
+    }
+    sceneGeometry.add(rootObject3d);
+    //rootGeometry.visible = initiallyVisible;
+
+    //sceneGeometry.add(rootGeometry);
+    let topLevelRootItems = getGeoNodesByLevel(rootGeoManager);
+    let topLevelObj3dNodes = rootObject3d.children[0].children;
+
+    if(topLevelRootItems.length != topLevelObj3dNodes.length) {
+      console.warn(`topLevelRootItems.length != topLevelObj3dNodes.length`);
+      console.log("Can't create Menu Items");
+    }
+    else {
+      for(let i=0; i < topLevelRootItems.length; i++) {
+        let rootGeoNode = topLevelRootItems[i].geoNode;
+        let obj3dNode = topLevelObj3dNodes[i];
+        obj3dNode.name = obj3dNode.userData["name"] = rootGeoNode.name;
+
+        // Add geometry
+        uiManager.addGeometry(obj3dNode, obj3dNode.name);
+      }
+    }
+
+    // Now we want to change the materials
+    sceneGeometry.traverse( (child: any) => {
+
+      if(child.type!=="Mesh") {
+        return;
+      }
+
+      if(!child?.material?.isMaterial) {
+        return;
+      }
+
+      // Assuming `getObjectSize` is correctly typed and available
+      child.userData["size"] = importManager.getObjectSize(child);
+
+      // Handle the material of the child
+
+      const color = getColorOrDefault(child.material, this.defaultColor);
+      const side = doubleSided ? DoubleSide : child.material.side;
+
+      child.material.dispose(); // Dispose the old material if it's a heavy object
+
+      let opacity = rootObject3d.userData.opacity ?? 1;
+      let transparent = opacity < 1;
+
+      child.material = new MeshPhongMaterial({
+        color: color,
+        shininess: 0,
+        side: side,
+        transparent: transparent,
+        opacity: opacity,
+        clippingPlanes: openThreeManager.clipPlanes,
+        clipIntersection: true,
+        clipShadows: false
+      });
+
+    //   if (!(child instanceof Mesh)) {
+    //     return;
+    //   }
+    //   child.userData["size"] = importManager.getObjectSize(child);
+    //   if (!(child.material instanceof Material)) {
+    //     return;
+    //   }
+    //   const color = child.material['color']
+    //     ? child.material['color']
+    //     : 0x2fd691;
+    //   const side = doubleSided ? DoubleSide : child.material['side'];
+    //   child.material.dispose();
+    //   let isTransparent = false;
+    //   if (rootGeometry.userData.opacity) {
+    //     isTransparent = true;
+    //   }
+    //   child.material = new MeshPhongMaterial({
+    //     color,
+    //     shininess: 0,
+    //     side: side,
+    //     transparent: isTransparent,
+    //     opacity: (_a = rootGeometry.userData.opacity) !== null && _a !== void 0 ? _a : 1,
+    //   });
+    //   child.material.clippingPlanes = openThreeManager.clipPlanes;
+    //   child.material.clipIntersection = true;
+    //   child.material.clipShadows = false;
+    });
+
+  }
 
   ngOnInit() {
 
@@ -71,16 +198,8 @@ export class MainDisplayComponent implements OnInit {
     console.log(`geometry query: ${geometryAddress}`);
 
     let jsonGeometry;
-    this.geomService.loadEicGeometry().then(jsonGeom => {
-      this.eventDisplay.loadJSONGeometry(jsonGeom, 'Name', 'Menu node name', 10, false)
-        .then(x =>{
-          console.log(this.eventDisplay.getThreeManager().getObjectByName('Name'));
-        })
-        .catch(err => {
-          console.log("Error loading geometry");
-          console.log(err);
-        }
-      );
+    this.loadGeometry().then(jsonGeom => {
+
     });
 
     this.eventDisplay
