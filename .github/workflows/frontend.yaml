@@ -1,4 +1,4 @@
-name: Angular CI/CD Workflow
+name: Frontend CI/CD Workflow
 
 on:
   push:
