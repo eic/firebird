@@ -12,21 +12,39 @@ import {
 import {build} from 'jsrootdi/geom';
 
 
-
-
 export class DetectorGeometryFineTuning {
-  public namePattern: string;
-  public editRules: GeoNodeEditRule[];
-
-  constructor(
-    namePattern: string,
-    editRules:GeoNodeEditRule[] = []
-  )
-  {
-    this.namePattern = namePattern;
-    this.editRules = editRules;
-  }
+  namePattern: string = "";
+  editRules: GeoNodeEditRule[] = [];
 }
+
+
+function pruneTopLevelDetectors(geoManager: any, removeNames: string[]): any {
+  const volume = geoManager.fMasterVolume === undefined ? geoManager.fVolume : geoManager.fMasterVolume;
+  const nodes: any[] = volume?.fNodes?.arr ?? [];
+  let removedNodes: any[] = [];
+
+  // Don't have nodes? Have problems?
+  if(!nodes.length) {
+    return {nodes, removedNodes};
+  }
+
+  // Collect nodes to remove
+  for(let node of nodes) {
+    let isRemoving = removeNames.some(substr => node.fName.startsWith(substr))
+    if(isRemoving) {
+      removedNodes.push(node);
+    }
+  }
+
+  // Now remove nodes
+  for(let node of removedNodes) {
+    removeGeoNode(node);
+  }
+
+  return {nodes, removedNodes}
+}
+
+
 
 @Injectable({
   providedIn: 'root'
@@ -34,85 +52,75 @@ export class DetectorGeometryFineTuning {
 export class GeometryService {
 
   /**
-   * Simple to fill list of patterns of elements to drop
-   * @typedef {Array.<string>} FullGeometryPruneList
+   * Detectors (top level TGeo nodes) to be removed.
+   * (!) startsWith function is used for filtering (aka: detector.fName.startsWith(removeDetectorNames[i]) ... )
    */
-  removeDetectorsStartsWith: string[];
+  removeDetectorNames: string[] = [
+    "Lumi",
+    "Magnet",
+    "B0",
+    "B1",
+    "B2",
+    "Q0",
+    "Q1",
+    "Q2",
+    "BeamPipe",
+    "Pipe",
+    "ForwardOffM",
+    "Forward",
+    "Backward",
+    "Vacuum",
+    "SweeperMag",
+    "AnalyzerMag",
+    "ZDC",
+    "LFHCAL",
+    "HcalFarForward"
+  ];
 
-  detectorTopNodes=[];
-
-  /// This inted to become users rule
-  fineTuneRules: GeoNodeEditRule[] = [];
-  totalRules: GeoNodeEditRule[] = [];
-
-  subDetectors: DetectorGeometryFineTuning[] = [
+  subDetectorsRules: DetectorGeometryFineTuning[] = [
     {
       namePattern: "*/EcalBarrelScFi*",
       editRules: [
-        {pattern: "*/fiber_grid*", prune:PruneRuleActions.Remove, pruneSubLevel:0},
+        {pattern: "*/fiber_grid*", prune:PruneRuleActions.Remove},
       ]
     },
     {
       namePattern: "*/EcalBarrelImaging*",
       editRules: [
-        {pattern: "*/stav*", prune:PruneRuleActions.RemoveChildren, pruneSubLevel:0},
+        {pattern: "*/stav*", prune:PruneRuleActions.RemoveChildren},
       ]
     },
     {
       namePattern: "*/DRICH*",
       editRules: [
-        {pattern: "*/DRICH_cooling*", prune:PruneRuleActions.RemoveSiblings, pruneSubLevel:0},
+        {pattern: "*/DRICH_cooling*", prune:PruneRuleActions.RemoveSiblings},
       ]
     },
     {
       namePattern: "*/EcalEndcapN*",
       editRules: [
-        {pattern: "*/crystal*", prune:PruneRuleActions.RemoveSiblings, pruneSubLevel:0},
+        {pattern: "*/crystal*", prune:PruneRuleActions.RemoveSiblings},
+      ]
+    },
+    {
+      namePattern: "*/HcalBarrel*",
+      editRules: [
+        {pattern: "*/Tile*", prune:PruneRuleActions.Remove},
+        {pattern: "*/ChimneyTile*", prune:PruneRuleActions.Remove},
+      ]
+    },
+    {
+      namePattern: "*/EndcapTOF*",
+      editRules: [
+        {pattern: "*/suppbar*", prune:PruneRuleActions.Remove},
+        {pattern: "*/component*3", prune:PruneRuleActions.RemoveSiblings},
       ]
     }
+
   ]
 
-
   constructor() {
-    this.removeDetectorsStartsWith = [
-      "Lumi",
-      "Magnet",
-      "B0",
-      "B1",
-      "B2",
-      "Q0",
-      "Q1",
-      "Q2",
-      "BeamPipe",
-      "Pipe",
-      "ForwardOffM",
-      "Forward",
-      "Backward",
-      "Vacuum",
-      "SweeperMag*",
-      "AnalyzerMag*",
-      "ZDC"
-      //"LFHCAL"
-    ];
-
-    this.fineTuneRules = [
-        {pattern: "Default/EcalBarrel*/sector*", prune: PruneRuleActions.RemoveChildren, pruneSubLevel: 0}
-    ]
-
-    // Fill rules with prune
-    for(let pattern of this.removeDetectorsStartsWith) {
-      this.totalRules.push(new GeoNodeEditRule(pattern, PruneRuleActions.Remove ));
-    }
-
-    // Copy users rules
-    for(let rule of this.fineTuneRules) {
-      this.totalRules.push(rule);
-    }
-
-
   }
-
-
 
 
   async loadEicGeometry() {
@@ -135,38 +143,13 @@ export class GeometryService {
     console.timeEnd('Reading geometry from file');
 
     // Getting main detector nodes
-
-    const nodeName = rootGeoManager.fName;
-    const volume = rootGeoManager.fMasterVolume === undefined ? rootGeoManager.fVolume : rootGeoManager.fMasterVolume;
-    const allTopNodes = volume?.fNodes?.arr ?? null;
-    if(!allTopNodes) {
-      console.log("No top level detector nodes found. Wrong geometry? ")
-      return {rootGeoManager: null, rootObject3d: null};
-    }
-
-    for(let topNode of allTopNodes) {
-      let isRemoving = this.removeDetectorsStartsWith.some(substr => topNode.fName.startsWith(substr))
-
-      console.log(`NODE ${topNode.fName}: ${topNode} isRemoving: ${isRemoving}`);
-
-      if(isRemoving) {
-        removeGeoNode(topNode);
-      } else {
-        printAllGeoBitsStatus(topNode);
-        console.log(`VOLUME: ${topNode.fVolume.fName}: ${topNode.fVolume}`);
-        printAllGeoBitsStatus(topNode.fVolume);
-      }
-    }
-
-    // >oO debug: analyzeGeoNodes(rootGeoManager, 1);
-    console.time('Prune nodes coarse');
-    editGeoNodes(rootGeoManager, this.totalRules, 1)
-    console.timeEnd('Prune nodes coarse');
-
-    // >oO
+    let result = pruneTopLevelDetectors(rootGeoManager, this.removeDetectorNames);
+    console.log("Filtered top level detectors: ", result);
 
 
-    for(let detector of this.subDetectors) {
+    // >oO analyzeGeoNodes(rootGeoManager, 1);
+    // Now we go with the fine tuning each detector
+    for(let detector of this.subDetectorsRules) {
       let topDetNode = findSingleGeoNode(rootGeoManager, detector.namePattern, 1);
       console.log(`Processing ${topDetNode}`);
       if(!topDetNode) {
@@ -180,12 +163,14 @@ export class GeometryService {
       console.timeEnd(`Process sub-detector: ${detector.namePattern}`);
     }
 
-    console.log(`Done processing ${this.subDetectors.length} detectors`);
+    console.log(`Done processing ${this.subDetectorsRules.length} detectors`);
 
+    console.log(`---- DETECTOR ANALYSIS ----`);
     analyzeGeoNodes(rootGeoManager, 1);
+    console.log(`---- END DETECTOR ANALYSIS ----`);
 
     //analyzeGeoNodes(geoManager, 1);
-    return {rootGeoManager: null, rootObject3d: null};
+    // return {rootGeoManager: null, rootObject3d: null};
 
     //
     console.time('Build geometry');
