@@ -76,18 +76,9 @@ export enum PruneRuleActions {
  * Defines editing rules for geographic nodes based on a pattern.
  */
 export class GeoNodeEditRule {
-  /**
-   * Constructs an instance of GeoNodeEditRule.
-   * @param pattern Matching pattern for node selection. Default is an empty string.
-   * @param prune Type of pruning action to take. Default is PruneRuleActions.Nothing.
-   * @param pruneSubLevel How many sublevels to prune. Defaults to Infinity.
-   * Effective only if prune rule is `RemoveBySubLevel`.
-   */
-  constructor(
-    public pattern: string = '',
-    public prune: PruneRuleActions = PruneRuleActions.Nothing,
-    public pruneSubLevel: number = Infinity
-  ) { }
+  public pattern: string = '';
+  public prune: PruneRuleActions = PruneRuleActions.Nothing;
+  public pruneSubLevel?: number = Infinity
 }
 
 /**
@@ -177,11 +168,17 @@ export function analyzeGeoNodes(node: any, level:number=2) {
 
   let highLevelNodes = getGeoNodesByLevel(node, 1);
 
+  let totalNodes = 0;
+
+  console.log(`--- Detector subcomponents analysis --- Detectors: ${highLevelNodes.length}`);
   for(let item of highLevelNodes) {
     // Now run walkNodes for each of high level node to get number of subnodes
     let numSubNodes = walkGeoNodes(item.geoNode, null, Infinity);
+    totalNodes += numSubNodes;
     console.log(`${numSubNodes}: ${item.fullPath}`);
   }
+  console.log(`--- End of analysis --- Total elements: ${totalNodes}`);
+
 }
 
 export function getGeoNodesByLevel(topNode: any, selectLevel:number=1) {
