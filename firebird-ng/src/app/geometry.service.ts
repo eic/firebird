@@ -5,9 +5,9 @@ import {openFile} from 'jsrootdi';
 import {
   analyzeGeoNodes,
   editGeoNodes,
-  findGeoManager, findGeoNodes, findSingleGeoNode,
-  GeoNodeEditRule,
-  PruneRuleActions, removeGeoNode
+  findGeoManager, findGeoNodes, findSingleGeoNode, geoBITS,
+  GeoNodeEditRule, printAllGeoBitsStatus,
+  PruneRuleActions, removeGeoNode, testGeoBit
 } from './utils/cern-root.utils';
 import {build} from 'jsrootdi/geom';
 
@@ -91,8 +91,8 @@ export class GeometryService {
       "Vacuum",
       "SweeperMag*",
       "AnalyzerMag*",
-      "ZDC",
-      "LFHCAL"
+      "ZDC"
+      //"LFHCAL"
     ];
 
     this.fineTuneRules = [
@@ -111,6 +111,8 @@ export class GeometryService {
 
 
   }
+
+
 
 
   async loadEicGeometry() {
@@ -144,8 +146,16 @@ export class GeometryService {
 
     for(let topNode of allTopNodes) {
       let isRemoving = this.removeDetectorsStartsWith.some(substr => topNode.fName.startsWith(substr))
-      console.log(`${topNode.fName}: ${topNode} isRemoving: ${isRemoving}`);
-      removeGeoNode(topNode);
+
+      console.log(`NODE ${topNode.fName}: ${topNode} isRemoving: ${isRemoving}`);
+
+      if(isRemoving) {
+        removeGeoNode(topNode);
+      } else {
+        printAllGeoBitsStatus(topNode);
+        console.log(`VOLUME: ${topNode.fVolume.fName}: ${topNode.fVolume}`);
+        printAllGeoBitsStatus(topNode.fVolume);
+      }
     }
 
     // >oO debug: analyzeGeoNodes(rootGeoManager, 1);
@@ -175,6 +185,7 @@ export class GeometryService {
     analyzeGeoNodes(rootGeoManager, 1);
 
     //analyzeGeoNodes(geoManager, 1);
+    return {rootGeoManager: null, rootObject3d: null};
 
     //
     console.time('Build geometry');

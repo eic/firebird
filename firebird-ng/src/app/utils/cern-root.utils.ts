@@ -237,3 +237,81 @@ export async function findGeoManager(file: any){
   }
   return null;
 }
+
+//
+// /** @summary Test fGeoAtt bits
+//  * @private */
+// function testGeoBit(volume:any , f) {
+//   const att = volume.fGeoAtt;
+//   return att === undefined ? false : ((att & f) !== 0);
+// }
+/** @summary Generate mask for given bit
+ * @param {number} n bit number
+ * @return {Number} produced mask
+ * @private */
+function BIT(n:number) { return 1 << n; }
+
+/** @summary TGeo-related bits
+ * @private */
+export enum geoBITS {
+  kVisOverride = BIT(0),  // volume's vis. attributes are overwritten
+  kVisNone= BIT(1),  // the volume/node is invisible, as well as daughters
+  kVisThis= BIT(2),  // this volume/node is visible
+  kVisDaughters= BIT(3),  // all leaves are visible
+  kVisOneLevel= BIT(4),  // first level daughters are visible (not used)
+  kVisStreamed= BIT(5),  // true if attributes have been streamed
+  kVisTouched= BIT(6),  // true if attributes are changed after closing geom
+  kVisOnScreen= BIT(7),  // true if volume is visible on screen
+  kVisContainers= BIT(12), // all containers visible
+  kVisOnly= BIT(13), // just this visible
+  kVisBranch= BIT(14), // only a given branch visible
+  kVisRaytrace= BIT(15)  // raytracing flag
+}
+
+/** @summary Test fGeoAtt bits
+ * @private */
+export function testGeoBit(volume:any , f: geoBITS) {
+  const att = volume.fGeoAtt;
+  return att === undefined ? false : ((att & f) !== 0);
+}
+
+
+/** @summary Set fGeoAtt bit
+ * @private */
+export function setGeoBit(volume:any, f: geoBITS, value: number) {
+  if (volume.fGeoAtt === undefined) return;
+  volume.fGeoAtt = value ? (volume.fGeoAtt | f) : (volume.fGeoAtt & ~f);
+}
+
+/** @summary Toggle fGeoAttBit
+ * @private */
+export function toggleGeoBit(volume:any, f: geoBITS) {
+  if (volume.fGeoAtt !== undefined)
+    volume.fGeoAtt = volume.fGeoAtt ^ (f & 0xffffff);
+}
+
+/** @summary Prints the status of all geoBITS flags for a given volume
+ * @param {Object} volume - The volume object to check
+ * @private */
+export function printAllGeoBitsStatus(volume:any) {
+  const bitDescriptions = [
+    { name: 'kVisOverride  ', bit: geoBITS.kVisOverride },
+    { name: 'kVisNone      ', bit: geoBITS.kVisNone },
+    { name: 'kVisThis      ', bit: geoBITS.kVisThis },
+    { name: 'kVisDaughters ', bit: geoBITS.kVisDaughters },
+    { name: 'kVisOneLevel  ', bit: geoBITS.kVisOneLevel },
+    { name: 'kVisStreamed  ', bit: geoBITS.kVisStreamed },
+    { name: 'kVisTouched   ', bit: geoBITS.kVisTouched },
+    { name: 'kVisOnScreen  ', bit: geoBITS.kVisOnScreen },
+    { name: 'kVisContainers', bit: geoBITS.kVisContainers },
+    { name: 'kVisOnly      ', bit: geoBITS.kVisOnly },
+    { name: 'kVisBranch    ', bit: geoBITS.kVisBranch },
+    { name: 'kVisRaytrace  ', bit: geoBITS.kVisRaytrace }
+  ];
+
+  console.log(`fGeoAttr for ${volume._typename}: ${volume.fName}`);
+  bitDescriptions.forEach(desc => {
+    const isSet = testGeoBit(volume, desc.bit);
+    console.log(`  ${desc.name}: ${isSet ? 'Yes' : 'No'}`);
+  });
+}
