@@ -222,11 +222,13 @@ export class MainDisplayComponent implements OnInit {
         // simple preset views, looking at point 0,0,0 and with no clipping
         new PresetView('Left View', [0, 0, -12000], [0, 0, 0], 'left-cube'),
         new PresetView('Center View', [-500, 12000, 0], [0, 0, 0], 'top-cube'),
+        new PresetView('Perspective + clip', [-8000, 8000, -3000], [0, 0, 0], 'top-cube', ClippingSetting.On, 45, 120),
         // more fancy view, looking at point 0,0,5000 and with some clipping
-        new PresetView('Right View', [0, 0, 12000], [0, 0, 5000], 'right-cube', ClippingSetting.On, 90, 90)
+        new PresetView('Perspective2 + clip', [-4500, 8000, -6000], [0, 0, -5000], 'right-cube', ClippingSetting.On, 90, 90)
       ],
       // default view with x, y, z of the camera and then x, y, z of the point it looks at
-      defaultView: [4000, 0, 4000, 0, 0 ,0],
+      defaultView: [-4500, 12000, 0, 0, 0 ,0],
+
       phoenixMenuRoot: this.phoenixMenuRoot,
       // Event data to load by default
       defaultEventFile: {
@@ -239,15 +241,19 @@ export class MainDisplayComponent implements OnInit {
 
     // Initialize the event display
     this.eventDisplay.init(configuration);
+    this.eventDisplay.getUIManager().setClipping(true);
+    this.eventDisplay.getUIManager().rotateOpeningAngleClipping(120);
+    this.eventDisplay.getUIManager().rotateStartAngleClipping(45);
+
 
     //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
     //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
-    const events_url = "assets/events/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
-    let loader = new Edm4hepRootEventLoader();
-    loader.openFile(events_url).then(value => {
-        console.log('Opened root file');
-      }
-    );
+    // const events_url = "assets/events/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
+    // let loader = new Edm4hepRootEventLoader();
+    // loader.openFile(events_url).then(value => {
+    //     console.log('Opened root file');
+    //   }
+    // );
 
     const geometryAddress = this.route.snapshot.queryParams['geo'];
     console.log(`geometry query: ${geometryAddress}`);
