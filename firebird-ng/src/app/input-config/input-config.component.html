@@ -41,34 +41,15 @@
     </div>
 
     <div class="mt-4">
-      <h5>Geometry optimization</h5>
-      <div class="form-check">
-        <input class="form-check-input" type="checkbox" id="geoOptEnabled" formControlName="geoOptEnabled">
-        <label class="form-check-label" for="geoOptEnabled">Enabled</label>
-      </div>
-      <select class="form-control mt-2" formControlName="selectedGeoCutoff" [disabled]="!geoForm.get('geoOptEnabled')?.value ?? true">
+      <h5>Selected events</h5>
+      <select class="form-control mt-2" formControlName="selectedEvent">
         <option value="Central detector">Central detector</option>
         <option value="Far forward">Far forward</option>
-        <--
-
-        !-->
       </select>
     </div>
 
-    <div class="mt-4">
-      <h5>Geometry postprocessing</h5>
-      <div class="form-check">
-        <input class="form-check-input" type="checkbox" id="geoPostEnabled" formControlName="geoPostEnabled">
-        <label class="form-check-label" for="geoPostEnabled">Enabled</label>
-      </div>
-    </div>
-
     <div class="mt-4 text-center">
       <button type="button" class="btn btn-lg btn-primary" [routerLink]="['/display']">DISPLAY</button>
     </div>
-    <div class="mt-4 text-center">
-      <button type="button" class="btn btn-lg btn-primary" [routerLink]="['/display']">DISPLAY</button>
-    </div>
-
   </form>
 </div>

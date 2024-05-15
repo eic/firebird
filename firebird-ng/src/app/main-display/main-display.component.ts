@@ -123,7 +123,6 @@ export class MainDisplayComponent implements OnInit {
     });
 
 
-
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
 
@@ -234,7 +233,7 @@ export class MainDisplayComponent implements OnInit {
       defaultEventFile: {
         // (Assuming the file exists in the `src/assets` directory of the app)
         //eventFile: 'assets/herwig_18x275_5evt.json',
-        eventFile: 'assets/herwig_5x41_5evt_showers.json',
+        eventFile: 'assets/events/herwig_5x41_5evt_showers.json',
         eventType: 'json'   // or zip
       },
     }

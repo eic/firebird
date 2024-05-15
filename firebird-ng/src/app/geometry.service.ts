@@ -103,6 +103,12 @@ export class GeometryService {
       ]
     },
     {
+      namePattern: "*/HcalEndcapPInsert_23*",
+      editRules: [
+        {pattern: "*/*layer*slice1_*", prune:PruneRuleActions.RemoveSiblings},
+      ]
+    },
+    {
       namePattern: "*/HcalBarrel*",
       editRules: [
         {pattern: "*/Tile*", prune:PruneRuleActions.Remove},
@@ -174,7 +180,7 @@ export class GeometryService {
 
     //
     console.time('Build geometry');
-    let rootObject3d = build(rootGeoManager, { numfaces: 500000000, numnodes: 50000000, instancing:1, dflt_colors: false, vislevel: 100, doubleside:false, transparency:true});
+    let rootObject3d = build(rootGeoManager, { numfaces: 500000000, numnodes: 50000000, instancing:1, dflt_colors: false, vislevel: 100, doubleside:true, transparency:true});
     console.timeEnd('Build geometry');
     // >oO console.log(geo);
 
