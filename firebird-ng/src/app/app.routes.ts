@@ -4,7 +4,7 @@ import {FileBrowserComponent} from "./file-browser/file-browser.component";
 import {InputConfigComponent} from "./input-config/input-config.component";
 
 export const routes: Routes = [
-  // { path: '', redirectTo: '/display', pathMatch: 'full' },
+  { path: '', redirectTo: '/config', pathMatch: 'full' },
   { path: 'config', component: InputConfigComponent },
 
   {
@@ -12,7 +12,7 @@ export const routes: Routes = [
     loadComponent: () => import('./file-browser/file-browser.component').then(m => m.FileBrowserComponent)
   },
   {
-    path: '',
+    path: 'display',
     loadComponent: () => import('./main-display/main-display.component').then(m => m.MainDisplayComponent)
   },
 ];
