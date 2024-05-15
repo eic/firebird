@@ -174,7 +174,7 @@ export class GeometryService {
 
     //
     console.time('Build geometry');
-    let rootObject3d = build(rootGeoManager, { numfaces: 500000000, numnodes: 50000000, dflt_colors: false, vislevel: 100, doubleside:true, transparency:false});
+    let rootObject3d = build(rootGeoManager, { numfaces: 500000000, numnodes: 50000000, instancing:1, dflt_colors: false, vislevel: 100, doubleside:false, transparency:true});
     console.timeEnd('Build geometry');
     // >oO console.log(geo);
 
