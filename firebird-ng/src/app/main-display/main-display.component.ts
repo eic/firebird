@@ -1,13 +1,29 @@
 import { Component, OnInit } from '@angular/core';
 import { EventDisplayService } from 'phoenix-ui-components';
 import { Configuration, PhoenixLoader, PresetView, ClippingSetting, PhoenixMenuNode } from 'phoenix-event-display';
-import { Color, DoubleSide, Mesh, LineSegments, LineBasicMaterial, MeshPhongMaterial, Material, ObjectLoader, FrontSide, Vector3, Matrix4, REVISION, } from "three";
+import {
+  Color,
+  DoubleSide,
+  Mesh,
+  LineSegments,
+  LineBasicMaterial,
+  MeshPhongMaterial,
+  Material,
+  ObjectLoader,
+  FrontSide,
+  Vector3,
+  Matrix4,
+  REVISION,
+  MeshPhysicalMaterial,
+} from "three";
 import { PhoenixUIModule } from 'phoenix-ui-components';
 import { GeometryService} from '../geometry.service';
 import { Edm4hepRootEventLoader } from '../edm4hep-root-event-loader';
 import { ActivatedRoute } from '@angular/router';
 import {color} from "three/examples/jsm/nodes/shadernode/ShaderNode";
 import {getGeoNodesByLevel} from "../utils/cern-root.utils";
+import {produceRenderOrder} from "jsrootdi/geom";
+import {wildCardCheck} from "../utils/wildcard";
 
 interface Colorable {
   color: Color;
@@ -72,6 +88,7 @@ export class MainDisplayComponent implements OnInit {
       rootObject3d.scale.setScalar(scale);
     }
     sceneGeometry.add(rootObject3d);
+    console.log("CERN ROOT converted to Object3d: ", rootObject3d);
     //rootGeometry.visible = initiallyVisible;
 
     //sceneGeometry.add(rootGeometry);
@@ -92,6 +109,20 @@ export class MainDisplayComponent implements OnInit {
         uiManager.addGeometry(obj3dNode, obj3dNode.name);
       }
     }
+
+    let renderer  = openThreeManager.rendererManager;
+
+    const glassMaterial = new MeshPhysicalMaterial({
+      color: 0xffff00, // Yellow color
+      metalness: 0,
+      roughness: 0,
+      transmission: 0.7, // High transparency
+      opacity: 1,
+      transparent: true,
+      reflectivity: 0.5
+    });
+
+
 
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
@@ -128,6 +159,26 @@ export class MainDisplayComponent implements OnInit {
         clipShadows: false
       });
 
+      // Material
+      let name:string = child.name;
+
+
+      if(name.startsWith("bar_") || name.startsWith("prism_")) {
+        child.material = glassMaterial;
+      }
+
+      if(! child.material?.clippingPlanes !== undefined) {
+        child.material.clippingPlanes = openThreeManager.clipPlanes;
+      }
+
+      if(! child.material?.clipIntersection !== undefined) {
+        child.material.clipIntersection = true;
+      }
+
+      if(! child.material?.clipShadows !== undefined) {
+        child.material.clipShadows = false;
+      }
+
     //   if (!(child instanceof Mesh)) {
     //     return;
     //   }
@@ -155,6 +206,10 @@ export class MainDisplayComponent implements OnInit {
     //   child.material.clipIntersection = true;
     //   child.material.clipShadows = false;
     });
+
+    let scene = threeManager.getSceneManager().getScene();
+    let camera = openThreeManager.controlsManager.getMainCamera();
+    produceRenderOrder(scene, camera.position, 'dflt');
 
   }
 

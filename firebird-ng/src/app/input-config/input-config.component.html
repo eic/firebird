@@ -1,0 +1,74 @@
+<!-- event-display-source.component.html -->
+<div class="container mt-3">
+  <h3>Event display source control</h3>
+
+  <form [formGroup]="geoForm">
+    <div class="mt-4">
+      <h5>Geometry source</h5>
+      <select class="form-control" formControlName="selectedGeometry">
+        <option value="epic-central-optimized">EIC ePIC Central Detector optimized</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_bhcal.root">epic_bhcal.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_calorimeters.root">epic_calorimeters.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root">epic_craterlake.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_10x100.root">epic_craterlake_10x100.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_10x275.root">epic_craterlake_10x275.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_18x110_Au.root">epic_craterlake_18x110_Au.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_18x275.root">epic_craterlake_18x275.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_5x41.root">epic_craterlake_5x41.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_material_map.root">epic_craterlake_material_map.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_no_bhcal.root">epic_craterlake_no_bhcal.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root">epic_craterlake_tracking_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_dirc_only.root">epic_dirc_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_drich_only.root">epic_drich_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_forward_detectors.root">epic_forward_detectors.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_forward_detectors_with_inserts.root">epic_forward_detectors_with_inserts.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_full.root">epic_full.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_imaging_only.root">epic_imaging_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_inner_detector.root">epic_inner_detector.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_ip6.root">epic_ip6.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_ip6_extended.root">epic_ip6_extended.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_lfhcal_only.root">epic_lfhcal_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_lfhcal_with_insert.root">epic_lfhcal_with_insert.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_mrich_only.root">epic_mrich_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_pfrich_only.root">epic_pfrich_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_pid_only.root">epic_pid_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_tof_endcap_only.root">epic_tof_endcap_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_tof_only.root">epic_tof_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_vertex_only.root">epic_vertex_only.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_zdc_lyso_sipm.root">epic_zdc_lyso_sipm.root</option>
+        <option value="https://eic.github.io/epic/artifacts/tgeo/epic_zdc_sipm_on_tile_only.root">epic_zdc_sipm_on_tile_only.root</option>
+      </select>
+    </div>
+
+    <div class="mt-4">
+      <h5>Geometry optimization</h5>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="geoOptEnabled" formControlName="geoOptEnabled">
+        <label class="form-check-label" for="geoOptEnabled">Enabled</label>
+      </div>
+      <select class="form-control mt-2" formControlName="selectedGeoCutoff" [disabled]="!geoForm.get('geoOptEnabled')?.value ?? true">
+        <option value="Central detector">Central detector</option>
+        <option value="Far forward">Far forward</option>
+        <--
+
+        !-->
+      </select>
+    </div>
+
+    <div class="mt-4">
+      <h5>Geometry postprocessing</h5>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="geoPostEnabled" formControlName="geoPostEnabled">
+        <label class="form-check-label" for="geoPostEnabled">Enabled</label>
+      </div>
+    </div>
+
+    <div class="mt-4 text-center">
+      <button type="button" class="btn btn-lg btn-primary" [routerLink]="['/display']">DISPLAY</button>
+    </div>
+    <div class="mt-4 text-center">
+      <button type="button" class="btn btn-lg btn-primary" [routerLink]="['/display']">DISPLAY</button>
+    </div>
+
+  </form>
+</div>
