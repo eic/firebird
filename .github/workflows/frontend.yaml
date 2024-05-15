@@ -80,6 +80,12 @@ jobs:
           echo "--- ls ./dist/firebird"
           ls -latrh ./dist/firebird
 
+        # Make dynamic routing work after reload or going directly to page
+        # See issue #6 or https://angular.io/guide/deployment#deploy-to-github-pages
+      - name: Fix dynamic routing
+        run: |          
+          cp ./dist/firebird/index.html ./dist/firebird/404.html
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
