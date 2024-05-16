@@ -14,8 +14,8 @@ import {build} from 'jsrootdi/geom';
 import {BehaviorSubject} from "rxjs";
 import {RootGeometryProcessor} from "./root-geometry.processor";
 
-
-
+// constants.ts
+export const DEFAULT_GEOMETRY = 'epic-central-optimized';
 
 @Injectable({
   providedIn: 'root'
@@ -25,25 +25,36 @@ export class GeometryService {
   rootGeometryProcessor = new RootGeometryProcessor();
 
   constructor() {
-    this.load();
+    this.loadGeoConfig();
   }
 
-  private stateSubject = new BehaviorSubject<any>(this.load());
+  private stateSubject = new BehaviorSubject<any>(this.loadGeoConfig());
   state$ = this.stateSubject.asObservable();
 
-  save(state: any) {
+  saveGeoConfig(state: any) {
     localStorage.setItem('geometrySettings', JSON.stringify(state));
     this.stateSubject.next(state);
   }
 
-  load(): any {
+  loadGeoConfig(): any {
     const settings = localStorage.getItem('geometrySettings');
-    return settings ? JSON.parse(settings) : {
-      selectedGeometry: 'epic-central-optimized',
+
+    let config = settings ? JSON.parse(settings) : {
+      selectedGeometry: DEFAULT_GEOMETRY,
       geoOptEnabled: true,
-      selectedGeoCutoff: 'Central detector',
+      selectedEvent: 'Central detector',
       geoPostEnabled: true
     };
+
+    if(!config?.selectedGeometry) {
+      config.selectedGeometry = DEFAULT_GEOMETRY;
+    }
+
+    if(!config?.selectedEvent) {
+      config.selectedEvent = "Default events";
+    }
+
+    return config;
   }
 
   getState() {
@@ -51,11 +62,17 @@ export class GeometryService {
   }
 
 
-  async loadEicGeometry() {
+  async loadGeometry() {
     //let url: string = 'assets/epic_pid_only.root';
     //let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_dirc_only.root';
-    let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
+    // let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
     // >oO let objectName = 'default';
+
+    let settings = this.getState();
+
+    const url = settings.selectedGeometry !== DEFAULT_GEOMETRY?
+      settings.selectedGeometry:
+      'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
 
     console.time('[GeoSrv]: Total load geometry time');
     console.log(`[GeoSrv]: Loading file ${url}`)

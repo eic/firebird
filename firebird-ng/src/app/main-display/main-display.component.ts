@@ -24,6 +24,7 @@ import {color} from "three/examples/jsm/nodes/shadernode/ShaderNode";
 import {getGeoNodesByLevel} from "../utils/cern-root.utils";
 import {produceRenderOrder} from "jsrootdi/geom";
 import {wildCardCheck} from "../utils/wildcard";
+import {ThreeGeometryProcessor} from "../three-geometry.processor";
 
 interface Colorable {
   color: Color;
@@ -39,11 +40,6 @@ function getColorOrDefault(material:any, defaultColor: Color): Color {
   } else {
     return defaultColor;
   }
-
-}
-
-function ensureColor(material: any) {
-
 }
 
 
@@ -58,6 +54,8 @@ export class MainDisplayComponent implements OnInit {
 
   /** The root Phoenix menu node. */
   phoenixMenuRoot = new PhoenixMenuNode("Phoenix Menu");
+
+  threeGeometryProcessor = new ThreeGeometryProcessor();
 
   /** is geometry loaded */
   loaded: boolean = false;
@@ -75,7 +73,7 @@ export class MainDisplayComponent implements OnInit {
 
   async loadGeometry(initiallyVisible=true, scale=10) {
 
-    let {rootGeoManager, rootObject3d} = await this.geomService.loadEicGeometry();
+    let {rootGeoManager, rootObject3d} = await this.geomService.loadGeometry();
     let threeManager = this.eventDisplay.getThreeManager();
     let uiManager = this.eventDisplay.getUIManager();
     let openThreeManager: any = threeManager;
@@ -84,131 +82,104 @@ export class MainDisplayComponent implements OnInit {
 
     const sceneGeometry = threeManager.getSceneManager().getGeometries();
 
+    // Set geometry scale
     if (scale) {
       rootObject3d.scale.setScalar(scale);
     }
-    sceneGeometry.add(rootObject3d);
+
+    // Add root geometry to scene
     console.log("CERN ROOT converted to Object3d: ", rootObject3d);
-    //rootGeometry.visible = initiallyVisible;
+    sceneGeometry.add(rootObject3d);
 
-    //sceneGeometry.add(rootGeometry);
-    let topLevelRootItems = getGeoNodesByLevel(rootGeoManager);
+
+    // Add top nodes to menu
     let topLevelObj3dNodes = rootObject3d.children[0].children;
-
-    if(topLevelRootItems.length != topLevelObj3dNodes.length) {
-      console.warn(`topLevelRootItems.length != topLevelObj3dNodes.length`);
-      console.log("Can't create Menu Items");
-    }
-    else {
-      for(let i=0; i < topLevelRootItems.length; i++) {
-        let rootGeoNode = topLevelRootItems[i].geoNode;
-        let obj3dNode = topLevelObj3dNodes[i];
-        obj3dNode.name = obj3dNode.userData["name"] = rootGeoNode.name;
+    for(let obj3dNode of topLevelObj3dNodes){
+      obj3dNode.name = obj3dNode.userData["name"] = obj3dNode.name;
 
         // Add geometry
-        uiManager.addGeometry(obj3dNode, obj3dNode.name);
-      }
+      uiManager.addGeometry(obj3dNode, obj3dNode.name);
     }
 
-    let renderer  = openThreeManager.rendererManager;
 
-    const glassMaterial = new MeshPhysicalMaterial({
-      color: 0xffff00, // Yellow color
-      metalness: 0,
-      roughness: 0,
-      transmission: 0.7, // High transparency
-      opacity: 1,
-      transparent: true,
-      reflectivity: 0.5
-    });
+    let renderer  = openThreeManager.rendererManager;
 
 
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
 
-      if(child.type!=="Mesh") {
+        if(child.type!=="Mesh" || !child?.material?.isMaterial) {
+          return;
+        }
+
+        // Assuming `getObjectSize` is correctly typed and available
+        child.userData["size"] = importManager.getObjectSize(child);
+
+        // Handle the material of the child
+
+        const color = getColorOrDefault(child.material, this.defaultColor);
+        const side = doubleSided ? DoubleSide : child.material.side;
+
+        child.material.dispose(); // Dispose the old material if it's a heavy object
+
+        let opacity = rootObject3d.userData.opacity ?? 1;
+        let transparent = opacity < 1;
+
+        child.material = new MeshPhongMaterial({
+          color: color,
+          shininess: 0,
+          side: side,
+          transparent: transparent,
+          opacity: opacity,
+          clippingPlanes: openThreeManager.clipPlanes,
+          clipIntersection: true,
+          clipShadows: false
+        });
+
+        // Material
+        let name:string = child.name;
+
+        if(! child.material?.clippingPlanes !== undefined) {
+          child.material.clippingPlanes = openThreeManager.clipPlanes;
+        }
+
+        if(! child.material?.clipIntersection !== undefined) {
+          child.material.clipIntersection = true;
+        }
+
+        if(! child.material?.clipShadows !== undefined) {
+          child.material.clipShadows = false;
+        }
+    });
+
+    // HERE WE DO POSTPROCESSING STEP
+    this.threeGeometryProcessor.process(rootObject3d);
+
+    // Now we want to change the materials
+    sceneGeometry.traverse( (child: any) => {
+
+      if(child.type!=="Mesh" || !child?.material?.isMaterial) {
         return;
       }
 
-      if(!child?.material?.isMaterial) {
-        return;
-      }
-
-      // Assuming `getObjectSize` is correctly typed and available
-      child.userData["size"] = importManager.getObjectSize(child);
-
-      // Handle the material of the child
-
-      const color = getColorOrDefault(child.material, this.defaultColor);
-      const side = doubleSided ? DoubleSide : child.material.side;
-
-      child.material.dispose(); // Dispose the old material if it's a heavy object
-
-      let opacity = rootObject3d.userData.opacity ?? 1;
-      let transparent = opacity < 1;
-
-      child.material = new MeshPhongMaterial({
-        color: color,
-        shininess: 0,
-        side: side,
-        transparent: transparent,
-        opacity: opacity,
-        clippingPlanes: openThreeManager.clipPlanes,
-        clipIntersection: true,
-        clipShadows: false
-      });
-
-      // Material
-      let name:string = child.name;
-
-
-      if(name.startsWith("bar_") || name.startsWith("prism_")) {
-        child.material = glassMaterial;
-      }
-
-      if(! child.material?.clippingPlanes !== undefined) {
+      if(child.material?.clippingPlanes !== undefined) {
         child.material.clippingPlanes = openThreeManager.clipPlanes;
       }
 
-      if(! child.material?.clipIntersection !== undefined) {
+      if(child.material?.clipIntersection !== undefined) {
         child.material.clipIntersection = true;
       }
 
-      if(! child.material?.clipShadows !== undefined) {
+      if(child.material?.clipShadows !== undefined) {
         child.material.clipShadows = false;
       }
-
-    //   if (!(child instanceof Mesh)) {
-    //     return;
-    //   }
-    //   child.userData["size"] = importManager.getObjectSize(child);
-    //   if (!(child.material instanceof Material)) {
-    //     return;
-    //   }
-    //   const color = child.material['color']
-    //     ? child.material['color']
-    //     : 0x2fd691;
-    //   const side = doubleSided ? DoubleSide : child.material['side'];
-    //   child.material.dispose();
-    //   let isTransparent = false;
-    //   if (rootGeometry.userData.opacity) {
-    //     isTransparent = true;
-    //   }
-    //   child.material = new MeshPhongMaterial({
-    //     color,
-    //     shininess: 0,
-    //     side: side,
-    //     transparent: isTransparent,
-    //     opacity: (_a = rootGeometry.userData.opacity) !== null && _a !== void 0 ? _a : 1,
-    //   });
-    //   child.material.clippingPlanes = openThreeManager.clipPlanes;
-    //   child.material.clipIntersection = true;
-    //   child.material.clipShadows = false;
     });
 
+    // Set render priority
     let scene = threeManager.getSceneManager().getScene();
     let camera = openThreeManager.controlsManager.getMainCamera();
     produceRenderOrder(scene, camera.position, 'dflt');
+
 
   }
 
@@ -240,9 +211,22 @@ export class MainDisplayComponent implements OnInit {
 
     // Initialize the event display
     this.eventDisplay.init(configuration);
+
+
+    // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);
     this.eventDisplay.getUIManager().rotateOpeningAngleClipping(120);
     this.eventDisplay.getUIManager().rotateStartAngleClipping(45);
+
+    // Display event loader
+    this.eventDisplay.getLoadingManager().addLoadListenerWithCheck(() => {
+      console.log('Loading default configuration.');
+      this.loaded = true;
+    });
+
+    this.eventDisplay
+      .getLoadingManager()
+      .addProgressListener((progress) => (this.loadingProgress = progress));
 
 
     //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
@@ -259,12 +243,10 @@ export class MainDisplayComponent implements OnInit {
 
     let jsonGeometry;
     this.loadGeometry().then(jsonGeom => {
-
+      jsonGeometry = jsonGeom;
     });
 
-    this.eventDisplay
-      .getLoadingManager()
-      .addProgressListener((progress) => (this.loadingProgress = progress));
+
 
     document.addEventListener('keydown', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') {
@@ -279,12 +261,7 @@ export class MainDisplayComponent implements OnInit {
       console.log((e as KeyboardEvent).key);
     });
 
-    // Load the default configuration
-    this.eventDisplay.getLoadingManager().addLoadListenerWithCheck(() => {
-      console.log('Loading default configuration.');
-      this.loaded = true;
 
-    });
 
   }
 

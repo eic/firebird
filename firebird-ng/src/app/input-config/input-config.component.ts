@@ -20,12 +20,12 @@ export class InputConfigComponent implements OnInit {
     this.geoForm = this.fb.group({
       selectedGeometry: ['eic geometry'],
       geoOptEnabled: [false],
-      selectedGeoCutoff: ['Central detector'],
+      selectedEvent: ['Central detector'],
       geoPostEnabled: [false]
     });
 
     this.geoForm.valueChanges.subscribe(value => {
-      //this.geometryService.save(value);
+      this.geometryService.saveGeoConfig(value);
       console.log(value);
     });
   }
