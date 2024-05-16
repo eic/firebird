@@ -31,10 +31,14 @@ export class InputConfigComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // const savedSettings = this.geometryService.load();
-    // if (savedSettings) {
-    //   this.geoForm.setValue(savedSettings);
-    // }
+    const savedSettings = this.geometryService.getState();
+    if (savedSettings) {
+      this.geoForm.setValue(savedSettings);
+    }
+
+    this.geometryService.state$.subscribe(state => {
+      this.geoForm.setValue(state, { emitEvent: false });
+    });
   }
 
 }
