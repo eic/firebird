@@ -158,7 +158,7 @@ export class MainDisplayComponent implements OnInit {
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
 
-      if(child.type!=="Mesh" || !child?.material?.isMaterial) {
+      if(!child?.material?.isMaterial) {
         return;
       }
 
