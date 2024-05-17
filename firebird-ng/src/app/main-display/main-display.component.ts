@@ -178,7 +178,7 @@ export class MainDisplayComponent implements OnInit {
     // Set render priority
     let scene = threeManager.getSceneManager().getScene();
     let camera = openThreeManager.controlsManager.getMainCamera();
-    produceRenderOrder(scene, camera.position, 'dflt');
+    // produceRenderOrder(scene, camera.position, 'dflt');
 
 
   }
