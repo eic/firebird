@@ -49,7 +49,7 @@ function getColorOrDefault(material:any, defaultColor: Color): Color {
  * @param parentNode The parent node of the branch to merge.
  * @returns void
  */
-function mergeBranchGeometries(parentNode: THREE.Object3D): void {
+function mergeBranchGeometries(parentNode: THREE.Object3D, name: string): void {
   const geometries: THREE.BufferGeometry[] = [];
   let material: THREE.Material | undefined;
   const childrenToRemove: THREE.Object3D[] = [];
@@ -94,9 +94,13 @@ function mergeBranchGeometries(parentNode: THREE.Object3D): void {
   childrenToRemove.forEach((child: any) => {
     child.geometry.dispose();
     child?.parent?.remove(child);
+    // Remove empty parents
+    if( (child?.parent?.children?.length ?? 1) === 0 ) {
+      child?.parent?.parent?.remove(child.parent);
+    }
   });
 
-
+  mergedMesh.name = name;
 
   parentNode.add(mergedMesh);
 }
@@ -160,7 +164,7 @@ export class MainDisplayComponent implements OnInit {
         // Add geometry
       uiManager.addGeometry(obj3dNode, obj3dNode.name);
 
-      mergeBranchGeometries(obj3dNode);
+      mergeBranchGeometries(obj3dNode, obj3dNode.name + "_merged");
 
     }
 
@@ -241,7 +245,8 @@ export class MainDisplayComponent implements OnInit {
     // Set render priority
     let scene = threeManager.getSceneManager().getScene();
     let camera = openThreeManager.controlsManager.getMainCamera();
-    // produceRenderOrder(scene, camera.position, 'dflt');
+    camera.far = 5000;
+    //produceRenderOrder(scene, camera.position, 'dflt');
 
 
   }

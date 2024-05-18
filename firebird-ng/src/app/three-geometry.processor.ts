@@ -70,21 +70,21 @@ export class ThreeGeometryProcessor {
   `;
   fragmentShader = `
 		//#extension GL_OES_standard_derivatives : enable
-    
+
     varying vec2 vUv;
     uniform float thickness;
-   	
+
     float edgeFactor(vec2 p){
     	vec2 grid = abs(fract(p - 0.5) - 0.5) / fwidth(p) / thickness;
   		return min(grid.x, grid.y);
     }
-    
+
     void main() {
-			
+
       float a = edgeFactor(vUv);
-      
+
       vec3 c = mix(vec3(1), vec3(0), a);
-      
+
       gl_FragColor = vec4(c, 1.0);
     }
   `;
@@ -96,7 +96,7 @@ export class ThreeGeometryProcessor {
   } );
 
 
-  
+
   // new MeshPhysicalMaterial({
   //   color: 0xffff00, // Yellow color
   //   metalness: 0,
@@ -138,21 +138,24 @@ export class ThreeGeometryProcessor {
       // Material
       let name:string = child.name;
 
-      if(name.startsWith("bar_") || name.startsWith("prism_")) {
-        child.material = this.alphaMaterial;
+      //if(name.startsWith("bar_") || name.startsWith("prism_")) {
+        //child.material = this.alphaMaterial;
         const edges = new EdgesGeometry(child.geometry);
         const lineMaterial = new LineBasicMaterial({
-          color: 0xffffff,
+          color: 0x555555,
+          fog: false,
           // Copy clipping planes from parent, using type assertion for TypeScript
-          clippingPlanes: child.material.clippingPlanes ? child.material.clippingPlanes : undefined,
-          clipIntersection: (child.material as Material).clipIntersection,
-          clipShadows: (child.material as Material).clipShadows
-        });
-        const edgesLine = new LineSegments(edges, lineMaterial);
-        
-        child.add(edgesLine);
+          clippingPlanes: child.material.clippingPlanes ? child.material.clippingPlanes : [],
+          clipIntersection: true,
+          clipShadows: true
 
-      }
+        });
+        // lineMaterial.clipping = true;
+        const edgesLine = new LineSegments(edges, lineMaterial);
+
+        child.parent.add(edgesLine);
+
+      //}
     });
   }
 }
