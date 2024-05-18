@@ -25,6 +25,8 @@ import {getGeoNodesByLevel} from "../utils/cern-root.utils";
 import {produceRenderOrder} from "jsrootdi/geom";
 import {wildCardCheck} from "../utils/wildcard";
 import {ThreeGeometryProcessor} from "../three-geometry.processor";
+import * as THREE from 'three';
+import { mergeGeometries  } from 'three/examples/jsm/utils/BufferGeometryUtils';
 
 interface Colorable {
   color: Color;
@@ -41,6 +43,64 @@ function getColorOrDefault(material:any, defaultColor: Color): Color {
     return defaultColor;
   }
 }
+
+/**
+ * Merges all geometries in a branch of the scene graph into a single geometry.
+ * @param parentNode The parent node of the branch to merge.
+ * @returns void
+ */
+function mergeBranchGeometries(parentNode: THREE.Object3D): void {
+  const geometries: THREE.BufferGeometry[] = [];
+  let material: THREE.Material | undefined;
+  const childrenToRemove: THREE.Object3D[] = [];
+
+  // Recursively collect geometries from the branch
+  const collectGeometries = (node: THREE.Object3D): void => {
+    node.traverse((child: any) => {
+
+      let isBufferGeometry = child?.geometry?.isBufferGeometry ?? false;
+      console.log(isBufferGeometry);
+      if (isBufferGeometry) {
+        child.updateMatrixWorld(true);
+        const clonedGeometry = child.geometry.clone();
+        clonedGeometry.applyMatrix4(child.matrixWorld);
+        geometries.push(clonedGeometry);
+        material = material || child.material;
+        childrenToRemove.push(child);
+      }
+    });
+  };
+
+  collectGeometries(parentNode);
+
+  if (geometries.length === 0 || !material) {
+    console.warn('No geometries found or material missing.');
+    return;
+  }
+
+  // Merge all collected geometries
+  const mergedGeometry = mergeGeometries(geometries, false);
+
+
+  // Transform the merged geometry to the local space of the parent node
+  const parentInverseMatrix = new THREE.Matrix4().copy(parentNode.matrixWorld).invert();
+  mergedGeometry.applyMatrix4(parentInverseMatrix);
+
+  // Create a new mesh with the merged geometry and the collected material
+  const mergedMesh = new THREE.Mesh(mergedGeometry, material);
+
+  // Remove the original children that are meshes and add the new merged mesh
+  // Remove and dispose the original children
+  childrenToRemove.forEach((child: any) => {
+    child.geometry.dispose();
+    child?.parent?.remove(child);
+  });
+
+
+
+  parentNode.add(mergedMesh);
+}
+
 
 
 @Component({
@@ -99,6 +159,9 @@ export class MainDisplayComponent implements OnInit {
 
         // Add geometry
       uiManager.addGeometry(obj3dNode, obj3dNode.name);
+
+      mergeBranchGeometries(obj3dNode);
+
     }
 
 
@@ -129,8 +192,8 @@ export class MainDisplayComponent implements OnInit {
           color: color,
           shininess: 0,
           side: side,
-          transparent: transparent,
-          opacity: opacity,
+          transparent: true,
+          opacity: 0.5,
           clippingPlanes: openThreeManager.clipPlanes,
           clipIntersection: true,
           clipShadows: false
