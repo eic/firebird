@@ -53,25 +53,63 @@ export function walkObject3DNodes(node: any, callback: NodeWalkCallback|null, op
   return processedNodes;
 }
 
-
-
-export function findObject3DNodes(parentNode: any, pattern: string, matchType="", maxLevel:number=Infinity): any[] {
-  let matchingNodes: {node: any, fullPath: string}[] = [];
-
-  // Define a callback using the GeoNodeWalkCallback type
-  const collectNodes: NodeWalkCallback = (node, fullPath, level) => {
-
-    if(!matchType || matchType === node.type) {
-      matchingNodes.push({node: node, fullPath: fullPath});
-    }
-    return true; // go through children
-  };
-
-  // Use walkGeoNodes with the collecting callback and the pattern
-  walkObject3DNodes(parentNode, collectNodes, {maxLevel, pattern});
-  return matchingNodes;
+/**
+ * Represents the results of a node searching operation within a THREE.Object3D hierarchy.
+ *
+ * @interface FindResults
+ * @property {any[]} nodes - An array of nodes that matched the search criteria. These nodes are part of the THREE.Object3D hierarchy.
+ * @property {string[]} fullPaths - An array of strings, each representing the full path to a corresponding node in the `nodes` array. The full path is constructed by concatenating parent node names, providing a clear hierarchical structure.
+  * @property {number} deepestLevel - The deepest level reached in the hierarchy during the search. This value helps understand the depth of the search and which level had the last matched node.
+ * @property {number} totalWalked - The total number of nodes visited during the search process. This count includes all nodes checked, regardless of whether they matched the criteria.
+ */
+export interface FindResults {
+  nodes: any[];
+  fullPaths: string[];
+  deepestLevel: number;
+  totalWalked: number;
 }
 
+/**
+ * Searches for and collects nodes in a THREE.Object3D hierarchy based on a given pattern and type.
+ *
+ * @param parentNode The root node of the hierarchy to search within.
+ * @param pattern A string pattern to match node names against.
+ * @param matchType Optional filter to restrict results to nodes of a specific type.
+ * @param maxLevel Maximum depth to search within the node hierarchy.
+ * @returns FindResults Object containing the results of the search:
+ *                      - nodes: Array of nodes that match the criteria.
+ *                      - fullPaths: Array of full path strings corresponding to each matched node.
+ *                      - matches: Total number of nodes that matched the search criteria.
+ *                      - deepestLevel: The deepest level reached in the hierarchy during the search.
+ *                      - totalWalked: Total number of nodes visited during the search.
+ */
+export function findObject3DNodes(parentNode: any, pattern: string, matchType: string = "", maxLevel: number = Infinity): FindResults {
+  let nodes: any[] = [];
+  let fullPaths: string[] = [];
+  let deepestLevel = 0;
+
+  // Define a callback using the NodeWalkCallback type
+  const collectNodes: NodeWalkCallback = (node, fullPath, level) => {
+    if (!matchType || matchType === node.type) {
+      nodes.push(node);
+      fullPaths.push(fullPath);
+      if (level > deepestLevel) {
+        deepestLevel = level;
+      }
+    }
+    return true; // Continue traversal
+  };
+
+  // Use walkObject3DNodes with the collecting callback and the pattern
+  let totalWalked = walkObject3DNodes(parentNode, collectNodes, { maxLevel, pattern });
+
+  return {
+    nodes,
+    fullPaths,
+    deepestLevel,
+    totalWalked
+  };
+}
 
 
 export interface Colorable {
@@ -103,116 +141,109 @@ export function getColorOrDefault(material:any, defaultColor: THREE.Color): THRE
   }
 }
 
+
+/** Throws an error if the mesh/object does not contain geometry. */
+class NoGeometryError extends Error {
+  mesh = undefined;
+  constructor(mesh: any, message: string = "Mesh (or whatever is provided) does not contain geometry.") {
+    super(message);
+    this.name = "InvalidMeshError";
+    this.mesh = mesh;
+  }
+}
+
 /**
- * Merges all geometries in a branch of the scene graph into a single geometry.
- * @param parentNode The parent node of the branch to merge.
- * @returns void
+ * Applies an outline mesh from lines to a mesh and adds the outline to the mesh's parent.
+ * @param mesh A THREE.Object3D (expected to be a Mesh) to process.
+ * @param material Optional material provided by the user. If not provided, a default material is created.
  */
-export function mergeBranchGeometries(parentNode: THREE.Object3D, name: string): void {
-  const geometries: THREE.BufferGeometry[] = [];
-  let material: THREE.Material | undefined;
-  const childrenToRemove: THREE.Object3D[] = [];
+function createOutline(mesh: any, material?: THREE.Material): void {
+  if (!mesh?.geometry) {
+    throw new NoGeometryError(mesh);
+  }
 
-  // Recursively collect geometries from the branch
-  const collectGeometries = (node: THREE.Object3D): void => {
-    node.traverse((child: any) => {
+  let edges = new THREE.EdgesGeometry(mesh.geometry, 30);
+  let lineMaterial = material as THREE.LineBasicMaterial;
 
-      let isBufferGeometry = child?.geometry?.isBufferGeometry ?? false;
-      //console.log(isBufferGeometry);
-      if (isBufferGeometry) {
-        child.updateMatrixWorld(true);
-        const clonedGeometry = child.geometry.clone();
-        clonedGeometry.applyMatrix4(child.matrixWorld);
-        geometries.push(clonedGeometry);
-        material = material || child.material;
-        childrenToRemove.push(child);
-      }
+  if (!lineMaterial) {
+    lineMaterial = new THREE.LineBasicMaterial({
+      color: 0x555555,
+      fog: false,
+      clippingPlanes: mesh.material?.clippingPlanes ? mesh.material.clippingPlanes : [],
+      clipIntersection: false,
+      clipShadows: true,
+      transparent: true
     });
-  };
-
-  collectGeometries(parentNode);
-
-  if (geometries.length === 0 || !material) {
-    console.warn('No geometries found or material missing.');
-    return;
   }
 
-  // Merge all collected geometries
-  const mergedGeometry = mergeGeometries(geometries, false);
-
-  // Transform the merged geometry to the local space of the parent node
-  const parentInverseMatrix = new THREE.Matrix4().copy(parentNode.matrixWorld).invert();
-  mergedGeometry.applyMatrix4(parentInverseMatrix);
-
-  // Create a new mesh with the merged geometry and the collected material
-  const mergedMesh = new THREE.Mesh(mergedGeometry, material);
-
-  // Remove the original children that are meshes and add the new merged mesh
-  // Remove and dispose the original children
-  childrenToRemove.forEach((child: any) => {
-    child.geometry.dispose();
-    child?.parent?.remove(child);
-    // Remove empty parents
-    if( (child?.parent?.children?.length ?? 1) === 0 ) {
-      child?.parent?.parent?.remove(child.parent);
-    }
-  });
-
-  mergedMesh.name = name;
-
-  parentNode.add(mergedMesh);
+  const edgesLine = new THREE.LineSegments(edges, lineMaterial);
+  mesh.updateMatrixWorld(true);
+  mesh.parent?.add(edgesLine);
 }
 
 
+type ExtendedMaterialProperties = {
+  map?: THREE.Texture | null,
+  lightMap?: THREE.Texture | null,
+  bumpMap?: THREE.Texture | null,
+  normalMap?: THREE.Texture | null,
+  specularMap?: THREE.Texture | null,
+  envMap?: THREE.Texture | null,
+  alphaMap?: THREE.Texture | null,
+  aoMap?: THREE.Texture | null,
+  displacementMap?: THREE.Texture | null,
+  emissiveMap?: THREE.Texture | null,
+  gradientMap?: THREE.Texture | null,
+  metalnessMap?: THREE.Texture | null,
+  roughnessMap?: THREE.Texture | null,
+};
 
+function disposeMaterial(material: any): void {
+  const extMaterial = material as THREE.Material & ExtendedMaterialProperties;
 
-/**
- * Merges all geometries from a list of meshes into a single geometry and attaches it to a new parent node.
- * @param meshes An array of THREE.Mesh objects whose geometries are to be merged.
- * @param parentNode The new parent node to which the merged mesh will be added.
- * @param name The name to assign to the merged mesh.
- * @returns void
- */
-export function mergeMeshList(meshes: THREE.Mesh[], parentNode: THREE.Object3D, name: string): void {
-  const geometries: THREE.BufferGeometry[] = [];
-  let material: THREE.Material | undefined;
+  if (material?.map)               material.map.dispose ();
+  if (material?.lightMap)          material.lightMap.dispose ();
+  if (material?.bumpMap)           material.bumpMap.dispose ();
+  if (material?.normalMap)         material.normalMap.dispose ();
+  if (material?.specularMap)       material.specularMap.dispose ();
+  if (material?.envMap)            material.envMap.dispose ();
+  if (material?.alphaMap)          material.alphaMap.dispose();
+  if (material?.aoMap)             material.aoMap.dispose();
+  if (material?.displacementMap)   material.displacementMap.dispose();
+  if (material?.emissiveMap)       material.emissiveMap.dispose();
+  if (material?.gradientMap)       material.gradientMap.dispose();
+  if (material?.metalnessMap)      material.metalnessMap.dispose();
+  if (material?.roughnessMap)      material.roughnessMap.dispose();
 
-  // Collect geometries and materials from the provided meshes
-  meshes.forEach(mesh => {
-    if (mesh.geometry?.isBufferGeometry) {
-      mesh.updateMatrixWorld(true);
-      const clonedGeometry = mesh.geometry.clone();
-      clonedGeometry.applyMatrix4(mesh.matrixWorld);
-      geometries.push(clonedGeometry);
-      // Check if mesh.material is an array and handle it
-      if (!material) { // Only set if material has not been set yet
-        if (Array.isArray(mesh.material)) {
-          material = mesh.material[0]; // Use the first material if it's an array
-        } else {
-          material = mesh.material; // Use the material directly if it's not an array
-        }
+  if ('dispose' in material) {
+    material.dispose(); // Dispose the material itself
+  }
+}
+
+export function disposeNode(node: any): void {
+    // Dispose geometry
+    if (node?.geometry) {
+      node.geometry.dispose();
+    }
+
+    // Dispose materials
+    if (node?.material) {
+      if (Array.isArray(node.material)) {
+        node.material.forEach(disposeMaterial);
+      } else {
+        disposeMaterial(node.material);
       }
     }
-  });
 
-  if (geometries.length === 0 || !material) {
-    console.warn('No geometries found or material missing.');
-    return;
-  }
-
-  // Merge all collected geometries
-  const mergedGeometry = mergeGeometries(geometries, false);
-
-  // Transform the merged geometry to the local space of the parent node
-  const parentInverseMatrix = new THREE.Matrix4().copy(parentNode.matrixWorld).invert();
-  mergedGeometry.applyMatrix4(parentInverseMatrix);
-
-  // Create a new mesh with the merged geometry and the collected material
-  const mergedMesh = new THREE.Mesh(mergedGeometry, material);
-  mergedMesh.name = name;
-  parentNode.add(mergedMesh);
-
-  // Optionally, dispose of the original geometries to free up resources
-  geometries.forEach(geo => geo.dispose());
+  node.removeFromParent();
 }
+
+export function disposeHierarchy(node: THREE.Object3D): void {
+  node.children.slice().reverse().forEach(child => {
+    disposeHierarchy(child);
+  });
+  disposeNode(node);
+
+}
+
 

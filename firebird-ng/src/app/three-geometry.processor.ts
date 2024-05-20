@@ -28,22 +28,6 @@ import {getGeoNodesByLevel} from "./utils/cern-root.utils";
 import {produceRenderOrder} from "jsrootdi/geom";
 import {wildCardCheck} from "./utils/wildcard";
 
-interface Colorable {
-  color: Color;
-}
-
-function isColorable(material: any): material is Colorable {
-  return 'color' in material;
-}
-
-function getColorOrDefault(material:any, defaultColor: Color): Color {
-  if (isColorable(material)) {
-    return material.color;
-  } else {
-    return defaultColor;
-  }
-
-}
 
 export class ThreeGeometryProcessor {
 
@@ -131,6 +115,9 @@ export class ThreeGeometryProcessor {
         return;
       }
 
+      child = child as Mesh;
+
+
       if(!child?.material?.isMaterial) {
         return;
       }
@@ -150,7 +137,7 @@ export class ThreeGeometryProcessor {
           clippingPlanes: child.material.clippingPlanes ? child.material.clippingPlanes : [],
           clipIntersection: false,
           clipShadows: true,
-          // transparent: true
+          transparent: false
 
         });
 
@@ -158,7 +145,7 @@ export class ThreeGeometryProcessor {
         const edgesLine = new LineSegments(edges, lineMaterial);
         //const edgesLine = new Mesh(edges, lineMaterial);
 
-        child.parent.add(edgesLine);
+        child.add(edgesLine);
 
       //}
     });
