@@ -24,6 +24,7 @@
     "@types/picomatch": "^2.3.3",
     "jsdom": "^24.0.0",
     "jsrootdi": "^7.6.101",
+    "outmatch": "^1.0.0",
     "phoenix-event-display": "^2.16.0",
     "phoenix-ui-components": "^2.16.0",
     "picomatch": "^4.0.2",

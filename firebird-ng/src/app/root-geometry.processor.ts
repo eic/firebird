@@ -1,16 +1,13 @@
-import {Injectable} from '@angular/core';
 //import { openFile } from '../../../jsroot/core.mjs';
 //import * as ROOT from '../../../jsroot/build;
-import {openFile} from 'jsrootdi';
 import {
-  analyzeGeoNodes,
+  EditActions,
   editGeoNodes,
-  findGeoManager, findGeoNodes, findSingleGeoNode, geoBITS,
-  GeoNodeEditRule, printAllGeoBitsStatus,
-  PruneRuleActions, removeGeoNode, testGeoBit
+  findSingleGeoNode,
+  GeoAttBits,
+  GeoNodeEditRule,
+  removeGeoNode
 } from './utils/cern-root.utils';
-import {build} from 'jsrootdi/geom';
-import {BehaviorSubject} from "rxjs";
 
 
 export class DetectorGeometryFineTuning {
@@ -76,45 +73,52 @@ export class RootGeometryProcessor {
     {
       namePattern: "*/EcalBarrelScFi*",
       editRules: [
-        {pattern: "*/fiber_grid*", prune: PruneRuleActions.Remove},
+        {pattern: "*/fiber_grid*", action: EditActions.Remove},
       ]
     },
     {
       namePattern: "*/EcalBarrelImaging*",
       editRules: [
-        {pattern: "*/stav*", prune: PruneRuleActions.RemoveChildren},
+        {pattern: "*/stav*", action: EditActions.RemoveChildren},
       ]
     },
     {
       namePattern: "*/DRICH*",
       editRules: [
-        {pattern: "*/DRICH_cooling*", prune: PruneRuleActions.RemoveSiblings},
+        {pattern: "*/DRICH_cooling*", action: EditActions.RemoveSiblings},
       ]
     },
     {
       namePattern: "*/EcalEndcapN*",
       editRules: [
-        {pattern: "*/crystal*", prune: PruneRuleActions.RemoveSiblings},
+        {pattern: "*/crystal*", action: EditActions.RemoveSiblings},
+      ]
+    },
+    {
+      namePattern: "*/EcalEndcapP_*",
+      editRules: [
+        {pattern: "*/EcalEndcapP_layer1_0*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+        {pattern: "*/EcalEndcapP_layer1_0*", action: EditActions.RemoveChildren},
       ]
     },
     {
       namePattern: "*/HcalEndcapPInsert_23*",
       editRules: [
-        {pattern: "*/*layer*slice1_*", prune: PruneRuleActions.RemoveSiblings},
+        {pattern: "*/*layer*slice1_*", action: EditActions.RemoveSiblings},
       ]
     },
     {
       namePattern: "*/HcalBarrel*",
       editRules: [
-        {pattern: "*/Tile*", prune: PruneRuleActions.Remove},
-        {pattern: "*/ChimneyTile*", prune: PruneRuleActions.Remove},
+        {pattern: "*/Tile*", action: EditActions.Remove},
+        {pattern: "*/ChimneyTile*", action: EditActions.Remove},
       ]
     },
     {
       namePattern: "*/EndcapTOF*",
       editRules: [
-        {pattern: "*/suppbar*", prune: PruneRuleActions.Remove},
-        {pattern: "*/component*3", prune: PruneRuleActions.RemoveSiblings},
+        {pattern: "*/suppbar*", action: EditActions.Remove},
+        {pattern: "*/component*3", action: EditActions.RemoveSiblings},
       ]
     }
   ]

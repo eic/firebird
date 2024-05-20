@@ -6,9 +6,9 @@ import {openFile} from 'jsrootdi';
 import {
   analyzeGeoNodes,
   editGeoNodes,
-  findGeoManager, findGeoNodes, findSingleGeoNode, geoBITS,
+  findGeoManager, findGeoNodes, findSingleGeoNode, GeoAttBits,
   GeoNodeEditRule, printAllGeoBitsStatus,
-  PruneRuleActions, removeGeoNode, testGeoBit
+  EditActions, removeGeoNode, testGeoBit
 } from './utils/cern-root.utils';
 import {build} from 'jsrootdi/geom';
 import {BehaviorSubject} from "rxjs";

@@ -1,110 +1,15 @@
-import { Component, OnInit } from '@angular/core';
-import { EventDisplayService } from 'phoenix-ui-components';
-import { Configuration, PhoenixLoader, PresetView, ClippingSetting, PhoenixMenuNode } from 'phoenix-event-display';
-import {
-  Color,
-  DoubleSide,
-  Mesh,
-  LineSegments,
-  LineBasicMaterial,
-  MeshPhongMaterial,
-  Material,
-  ObjectLoader,
-  FrontSide,
-  Vector3,
-  Matrix4,
-  REVISION,
-  MeshPhysicalMaterial,
-} from "three";
-import { PhoenixUIModule } from 'phoenix-ui-components';
-import { GeometryService} from '../geometry.service';
-import { Edm4hepRootEventLoader } from '../edm4hep-root-event-loader';
-import { ActivatedRoute } from '@angular/router';
-import {color} from "three/examples/jsm/nodes/shadernode/ShaderNode";
-import {getGeoNodesByLevel} from "../utils/cern-root.utils";
-import {produceRenderOrder} from "jsrootdi/geom";
-import {wildCardCheck} from "../utils/wildcard";
-import {ThreeGeometryProcessor} from "../three-geometry.processor";
+import {Component, OnInit} from '@angular/core';
+import {EventDisplayService, PhoenixUIModule} from 'phoenix-ui-components';
+import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
-import { mergeGeometries  } from 'three/examples/jsm/utils/BufferGeometryUtils';
+import {Color, DoubleSide, MeshPhongMaterial,} from "three";
+import {GeometryService} from '../geometry.service';
+import {ActivatedRoute} from '@angular/router';
+import {ThreeGeometryProcessor} from "../three-geometry.processor";
 
-interface Colorable {
-  color: Color;
-}
-
-function isColorable(material: any): material is Colorable {
-  return 'color' in material;
-}
-
-function getColorOrDefault(material:any, defaultColor: Color): Color {
-  if (isColorable(material)) {
-    return material.color;
-  } else {
-    return defaultColor;
-  }
-}
-
-/**
- * Merges all geometries in a branch of the scene graph into a single geometry.
- * @param parentNode The parent node of the branch to merge.
- * @returns void
- */
-function mergeBranchGeometries(parentNode: THREE.Object3D, name: string): void {
-  const geometries: THREE.BufferGeometry[] = [];
-  let material: THREE.Material | undefined;
-  const childrenToRemove: THREE.Object3D[] = [];
-
-  // Recursively collect geometries from the branch
-  const collectGeometries = (node: THREE.Object3D): void => {
-    node.traverse((child: any) => {
-
-      let isBufferGeometry = child?.geometry?.isBufferGeometry ?? false;
-      console.log(isBufferGeometry);
-      if (isBufferGeometry) {
-        child.updateMatrixWorld(true);
-        const clonedGeometry = child.geometry.clone();
-        clonedGeometry.applyMatrix4(child.matrixWorld);
-        geometries.push(clonedGeometry);
-        material = material || child.material;
-        childrenToRemove.push(child);
-      }
-    });
-  };
-
-  collectGeometries(parentNode);
-
-  if (geometries.length === 0 || !material) {
-    console.warn('No geometries found or material missing.');
-    return;
-  }
-
-  // Merge all collected geometries
-  const mergedGeometry = mergeGeometries(geometries, false);
-
-
-  // Transform the merged geometry to the local space of the parent node
-  const parentInverseMatrix = new THREE.Matrix4().copy(parentNode.matrixWorld).invert();
-  mergedGeometry.applyMatrix4(parentInverseMatrix);
-
-  // Create a new mesh with the merged geometry and the collected material
-  const mergedMesh = new THREE.Mesh(mergedGeometry, material);
-
-  // Remove the original children that are meshes and add the new merged mesh
-  // Remove and dispose the original children
-  childrenToRemove.forEach((child: any) => {
-    child.geometry.dispose();
-    child?.parent?.remove(child);
-    // Remove empty parents
-    if( (child?.parent?.children?.length ?? 1) === 0 ) {
-      child?.parent?.parent?.remove(child.parent);
-    }
-  });
-
-  mergedMesh.name = name;
-
-  parentNode.add(mergedMesh);
-}
-
+import GUI from "lil-gui";
+import {produceRenderOrder} from "jsrootdi/geom";
+import {getColorOrDefault, mergeBranchGeometries} from "../utils/three.utils";
 
 
 @Component({
@@ -129,6 +34,9 @@ export class MainDisplayComponent implements OnInit {
 
   /** The Default color of elements if not set */
   defaultColor: Color = new Color(0x2fd691);
+  private renderer: THREE.Renderer|null = null;
+  private camera: THREE.Camera|null = null;
+  private scene: THREE.Scene|null = null;
 
   constructor(
     private geomService: GeometryService,
@@ -244,11 +152,25 @@ export class MainDisplayComponent implements OnInit {
 
     // Set render priority
     let scene = threeManager.getSceneManager().getScene();
+    scene.background = new THREE.Color( 0x3F3F3F );
+    renderer.getMainRenderer().sortObjects = false;
+
     let camera = openThreeManager.controlsManager.getMainCamera();
     camera.far = 5000;
-    //produceRenderOrder(scene, camera.position, 'dflt');
+    produceRenderOrder(scene, camera.position, 'ray');
+
+    var planeA = new THREE.Plane();
+
+    planeA.set(new THREE.Vector3(0,-1,0), 0);
 
 
+    // renderer.getMainRenderer().clippingPlanes = [planeA];
+  }
+
+  produceRenderOrder() {
+
+    console.log("produceRenderOrder. scene: ", this.scene, " camera ", this.camera);
+    produceRenderOrder(this.scene, this.camera?.position, 'ray');
   }
 
   ngOnInit() {
@@ -265,7 +187,7 @@ export class MainDisplayComponent implements OnInit {
         new PresetView('Perspective2 + clip', [-4500, 8000, -6000], [0, 0, -5000], 'right-cube', ClippingSetting.On, 90, 90)
       ],
       // default view with x, y, z of the camera and then x, y, z of the point it looks at
-      defaultView: [-4500, 12000, 0, 0, 0 ,0],
+      defaultView: [-2500, 0, -8000, 0, 0 ,0],
 
       phoenixMenuRoot: this.phoenixMenuRoot,
       // Event data to load by default
@@ -280,11 +202,30 @@ export class MainDisplayComponent implements OnInit {
     // Initialize the event display
     this.eventDisplay.init(configuration);
 
+    // let uiManager = this.eventDisplay.getUIManager();
+    let openThreeManager: any = this.eventDisplay.getThreeManager();
+    let threeManager = this.eventDisplay.getThreeManager();
+
+    this.renderer  = openThreeManager.rendererManager.getMainRenderer();
+    this.scene = threeManager.getSceneManager().getScene() as THREE.Scene;
+    this.camera = openThreeManager.controlsManager.getMainCamera() as THREE.Camera;
+
+
+    // GUI
+    const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
+
+    const gui = new GUI({
+      container: document.getElementById("lil-gui-place") ?? undefined,
+
+    });
+    gui.add(this, "produceRenderOrder");
+
+
 
     // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);
-    this.eventDisplay.getUIManager().rotateOpeningAngleClipping(120);
-    this.eventDisplay.getUIManager().rotateStartAngleClipping(45);
+    this.eventDisplay.getUIManager().rotateOpeningAngleClipping(180);
+    this.eventDisplay.getUIManager().rotateStartAngleClipping(90);
 
     // Display event loader
     this.eventDisplay.getLoadingManager().addLoadListenerWithCheck(() => {
@@ -328,9 +269,5 @@ export class MainDisplayComponent implements OnInit {
       }
       console.log((e as KeyboardEvent).key);
     });
-
-
-
   }
-
 }

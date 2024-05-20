@@ -17,7 +17,7 @@ import {
   MeshPhysicalMaterial,
   MeshStandardMaterial,
   ShaderMaterial,
-  EdgesGeometry,
+  EdgesGeometry, MeshLambertMaterial,
 } from "three";
 import { PhoenixUIModule } from 'phoenix-ui-components';
 import { GeometryService} from './geometry.service';
@@ -137,21 +137,26 @@ export class ThreeGeometryProcessor {
 
       // Material
       let name:string = child.name;
+      child.updateMatrixWorld(true);
 
       //if(name.startsWith("bar_") || name.startsWith("prism_")) {
         //child.material = this.alphaMaterial;
-        const edges = new EdgesGeometry(child.geometry);
-        const lineMaterial = new LineBasicMaterial({
+        const edges = new EdgesGeometry(child.geometry, 30);
+        //const lineMaterial = new MeshLambertMaterial({
+      const lineMaterial = new LineBasicMaterial({
           color: 0x555555,
           fog: false,
           // Copy clipping planes from parent, using type assertion for TypeScript
           clippingPlanes: child.material.clippingPlanes ? child.material.clippingPlanes : [],
-          clipIntersection: true,
-          clipShadows: true
+          clipIntersection: false,
+          clipShadows: true,
+          // transparent: true
 
         });
+
         // lineMaterial.clipping = true;
         const edgesLine = new LineSegments(edges, lineMaterial);
+        //const edgesLine = new Mesh(edges, lineMaterial);
 
         child.parent.add(edgesLine);
 
