@@ -1,4 +1,4 @@
-import { walkObject3dNodes, NodeWalkCallback } from './three.utils';
+import { walkObject3DNodes, NodeWalkCallback } from './three.utils';
 import * as THREE from 'three';
 import { isColorable, getColorOrDefault } from './three.utils';
 
@@ -24,7 +24,7 @@ describe('walkObject3dNodes', () => {
   });
 
   it('should invoke callback for each node when no pattern is given', () => {
-    walkObject3dNodes(root, callback);
+    walkObject3DNodes(root, callback);
     expect(callback.calls.count()).toBe(3);
     expect(callback.calls.argsFor(0)).toEqual([root, 'root', 0]);
     expect(callback.calls.argsFor(1)).toEqual([root.children[0], 'root/child', 1]);
@@ -32,24 +32,24 @@ describe('walkObject3dNodes', () => {
   });
 
   it('should respect the maxLevel parameter', () => {
-    walkObject3dNodes(root, callback, {maxLevel:1});
+    walkObject3DNodes(root, callback, {maxLevel:1});
     expect(callback.calls.count()).toBe(2);
   });
 
   it('should correctly match nodes when a pattern is given', () => {
     const pattern = 'root/child';
-    walkObject3dNodes(root, callback, {pattern: pattern});
+    walkObject3DNodes(root, callback, {pattern: pattern});
     expect(callback).toHaveBeenCalledWith(jasmine.objectContaining({ name: 'child' }), 'root/child', 1);
   });
 
   it('should return the correct number of processed nodes', () => {
-    const processed = walkObject3dNodes(root, callback);
+    const processed = walkObject3DNodes(root, callback);
     expect(processed).toBe(3);  // Including root, child, grandchild
   });
 
   it('should not invoke callback for non-matching pattern', () => {
     const pattern = 'nonexistent';
-    walkObject3dNodes(root, callback, {pattern: pattern});
+    walkObject3DNodes(root, callback, {pattern: pattern});
     expect(callback).not.toHaveBeenCalled();
   });
 });

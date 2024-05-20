@@ -2,6 +2,7 @@ import outmatch from 'outmatch';
 
 import * as THREE from "three";
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils';
+import {GeoNodeWalkCallback, walkGeoNodes} from "./cern-root.utils";
 
 export type NodeWalkCallback = (node: any, nodeFullPath: string, level: number) => boolean;
 
@@ -12,7 +13,7 @@ interface NodeWalkOptions {
   pattern?: any;
 }
 
-export function walkObject3dNodes(node: any, callback: NodeWalkCallback|null, options: NodeWalkOptions={}):number {
+export function walkObject3DNodes(node: any, callback: NodeWalkCallback|null, options: NodeWalkOptions={}):number {
 
   // Dereference options
   let { maxLevel = Infinity, level = 0, parentPath = "", pattern=null } = options;
@@ -44,7 +45,7 @@ export function walkObject3dNodes(node: any, callback: NodeWalkCallback|null, op
     for (let i = node.children.length-1; i >= 0; i--) {
       let child = node.children[i];
       if (child) {
-        processedNodes += walkObject3dNodes(child, callback, {maxLevel, level: level + 1, parentPath: fullPath, pattern});
+        processedNodes += walkObject3DNodes(child, callback, {maxLevel, level: level + 1, parentPath: fullPath, pattern});
       }
     }
   }
@@ -52,6 +53,24 @@ export function walkObject3dNodes(node: any, callback: NodeWalkCallback|null, op
   return processedNodes;
 }
 
+
+
+export function findObject3DNodes(parentNode: any, pattern: string, matchType="", maxLevel:number=Infinity): any[] {
+  let matchingNodes: {node: any, fullPath: string}[] = [];
+
+  // Define a callback using the GeoNodeWalkCallback type
+  const collectNodes: NodeWalkCallback = (node, fullPath, level) => {
+
+    if(!matchType || matchType === node.type) {
+      matchingNodes.push({node: node, fullPath: fullPath});
+    }
+    return true; // go through children
+  };
+
+  // Use walkGeoNodes with the collecting callback and the pattern
+  walkObject3DNodes(parentNode, collectNodes, {maxLevel, pattern});
+  return matchingNodes;
+}
 
 
 
@@ -142,5 +161,58 @@ export function mergeBranchGeometries(parentNode: THREE.Object3D, name: string):
   mergedMesh.name = name;
 
   parentNode.add(mergedMesh);
+}
+
+
+
+
+/**
+ * Merges all geometries from a list of meshes into a single geometry and attaches it to a new parent node.
+ * @param meshes An array of THREE.Mesh objects whose geometries are to be merged.
+ * @param parentNode The new parent node to which the merged mesh will be added.
+ * @param name The name to assign to the merged mesh.
+ * @returns void
+ */
+export function mergeMeshList(meshes: THREE.Mesh[], parentNode: THREE.Object3D, name: string): void {
+  const geometries: THREE.BufferGeometry[] = [];
+  let material: THREE.Material | undefined;
+
+  // Collect geometries and materials from the provided meshes
+  meshes.forEach(mesh => {
+    if (mesh.geometry?.isBufferGeometry) {
+      mesh.updateMatrixWorld(true);
+      const clonedGeometry = mesh.geometry.clone();
+      clonedGeometry.applyMatrix4(mesh.matrixWorld);
+      geometries.push(clonedGeometry);
+      // Check if mesh.material is an array and handle it
+      if (!material) { // Only set if material has not been set yet
+        if (Array.isArray(mesh.material)) {
+          material = mesh.material[0]; // Use the first material if it's an array
+        } else {
+          material = mesh.material; // Use the material directly if it's not an array
+        }
+      }
+    }
+  });
+
+  if (geometries.length === 0 || !material) {
+    console.warn('No geometries found or material missing.');
+    return;
+  }
+
+  // Merge all collected geometries
+  const mergedGeometry = mergeGeometries(geometries, false);
+
+  // Transform the merged geometry to the local space of the parent node
+  const parentInverseMatrix = new THREE.Matrix4().copy(parentNode.matrixWorld).invert();
+  mergedGeometry.applyMatrix4(parentInverseMatrix);
+
+  // Create a new mesh with the merged geometry and the collected material
+  const mergedMesh = new THREE.Mesh(mergedGeometry, material);
+  mergedMesh.name = name;
+  parentNode.add(mergedMesh);
+
+  // Optionally, dispose of the original geometries to free up resources
+  geometries.forEach(geo => geo.dispose());
 }
 

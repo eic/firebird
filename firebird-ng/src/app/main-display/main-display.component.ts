@@ -9,7 +9,7 @@ import {ThreeGeometryProcessor} from "../three-geometry.processor";
 
 import GUI from "lil-gui";
 import {produceRenderOrder} from "jsrootdi/geom";
-import {getColorOrDefault, mergeBranchGeometries} from "../utils/three.utils";
+import {findObject3DNodes, getColorOrDefault, mergeBranchGeometries, mergeMeshList} from "../utils/three.utils";
 
 
 @Component({
@@ -66,19 +66,26 @@ export class MainDisplayComponent implements OnInit {
 
     // Add top nodes to menu
     let topLevelObj3dNodes = rootObject3d.children[0].children;
+
+
     for(let obj3dNode of topLevelObj3dNodes){
       obj3dNode.name = obj3dNode.userData["name"] = obj3dNode.name;
-
-        // Add geometry
+      // Add geometry
       uiManager.addGeometry(obj3dNode, obj3dNode.name);
 
-      mergeBranchGeometries(obj3dNode, obj3dNode.name + "_merged");
+      if(obj3dNode.name == "EcalEndcapN_21") {
+        let crystals = findObject3DNodes(obj3dNode, "**/crystal_vol_0", "Mesh").map(p=>p.node);
+        //console.log(crystals);
+        mergeMeshList(crystals, obj3dNode, "crystals");
 
+      } else {
+        obj3dNode.visible=false;
+        //mergeBranchGeometries(obj3dNode, obj3dNode.name + "_merged");
+
+      }
     }
 
-
     let renderer  = openThreeManager.rendererManager;
-
 
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
