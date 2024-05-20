@@ -121,7 +121,7 @@ describe('findObject3DNodes', () => {
   });
 
   it('should match nodes based on a pattern', () => {
-    const results = findObject3DNodes(root, 'match');
+    const results = findObject3DNodes(root, '**/match');
     expect(results.nodes.length).toBe(1);
     expect(results.nodes[0]).toBe(subchild2);
     expect(results.fullPaths[0]).toBe('root/child2/match');
