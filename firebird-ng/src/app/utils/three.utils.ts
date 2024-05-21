@@ -3,6 +3,7 @@ import outmatch from 'outmatch';
 import * as THREE from "three";
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils';
 import {GeoNodeWalkCallback, walkGeoNodes} from "./cern-root.utils";
+import {MergeResult} from "./three-geometry-merge";
 
 export type NodeWalkCallback = (node: any, nodeFullPath: string, level: number) => boolean;
 
@@ -152,12 +153,14 @@ class NoGeometryError extends Error {
   }
 }
 
+
 /**
  * Applies an outline mesh from lines to a mesh and adds the outline to the mesh's parent.
  * @param mesh A THREE.Object3D (expected to be a Mesh) to process.
  * @param material Optional material provided by the user. If not provided, a default material is created.
+ * @param color Color of material
  */
-function createOutline(mesh: any, material?: THREE.Material): void {
+export function createOutline(mesh: any, color?: THREE.ColorRepresentation, material?: THREE.Material): void {
   if (!mesh?.geometry) {
     throw new NoGeometryError(mesh);
   }
@@ -167,7 +170,7 @@ function createOutline(mesh: any, material?: THREE.Material): void {
 
   if (!lineMaterial) {
     lineMaterial = new THREE.LineBasicMaterial({
-      color: 0x555555,
+      color: color ?? new THREE.Color(0x555555),
       fog: false,
       clippingPlanes: mesh.material?.clippingPlanes ? mesh.material.clippingPlanes : [],
       clipIntersection: false,
@@ -176,9 +179,14 @@ function createOutline(mesh: any, material?: THREE.Material): void {
     });
   }
 
+  // Create a mesh with the outline
   const edgesLine = new THREE.LineSegments(edges, lineMaterial);
+  edgesLine.name = (mesh.name ?? "") + "_outline";
+  edgesLine.userData = {};
+
+  // Add to parent
   mesh.updateMatrixWorld(true);
-  mesh.parent?.add(edgesLine);
+  mesh?.parent?.add(edgesLine);
 }
 
 
@@ -238,6 +246,14 @@ export function disposeNode(node: any): void {
   node.removeFromParent();
 }
 
+export function disposeOriginalMeshesAfterMerge(mergeResult: MergeResult) {
+  // Remove initial nodes
+  for (let i=mergeResult.childrenToRemove.length-1; i>=0; i-- ) {
+    disposeNode(mergeResult.childrenToRemove[i]);
+    mergeResult.childrenToRemove[i].removeFromParent();
+  }
+}
+
 export function disposeHierarchy(node: THREE.Object3D): void {
   node.children.slice().reverse().forEach(child => {
     disposeHierarchy(child);
@@ -249,6 +265,9 @@ export function disposeHierarchy(node: THREE.Object3D): void {
  * Recursively removes empty branches from a THREE.Object3D tree.
  * An empty branch is a node without geometry and without any non-empty children.
  * @param node - The starting node to prune empty branches from.
+ *
+ * Removing useless nodes that were left without geometries speeds up overall rendering
+ *
  */
 export function pruneEmptyNodes(node: THREE.Object3D): void {
   // Traverse children from last to first to avoid index shifting issues after removal

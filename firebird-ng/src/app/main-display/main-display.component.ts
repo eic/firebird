@@ -75,58 +75,7 @@ export class MainDisplayComponent implements OnInit {
     // console.log("CERN ROOT converted to Object3d: ", rootObject3d);
     sceneGeometry.add(rootObject3d);
 
-    // Add top nodes to menu
-    let topLevelObj3dNodes = rootObject3d.children[0].children;
 
-    // for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--) {
-    //   console.log(`${i} : ${topLevelObj3dNodes[i].name}`);
-    // }
-
-    console.log("DISPOSING");
-    for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--){
-      let obj3dNode = topLevelObj3dNodes[i];
-      console.log(`${i} : ${topLevelObj3dNodes[i].name}`);
-      obj3dNode.name = obj3dNode.userData["name"] = obj3dNode.name;
-      // Add geometry
-      // uiManager.addGeometry(obj3dNode, obj3dNode.name);
-
-      if(obj3dNode.name == "EcalEndcapN_21") {
-        let crystals = findObject3DNodes(obj3dNode, "**/crystal_vol_0", "Mesh").nodes;
-        //console.log(crystals);
-
-        let mergeResult: MergeResult = mergeMeshList(crystals, obj3dNode, "crystals");
-
-        // Remove initial nodes
-        for (let i=mergeResult.childrenToRemove.length-1; i>=0; i-- ) {
-          disposeNode(mergeResult.childrenToRemove[i]);
-          mergeResult.childrenToRemove[i].removeFromParent();
-        }
-
-        pruneEmptyNodes(obj3dNode);
-
-      } else {
-
-        try {
-          obj3dNode.removeFromParent();
-        }
-        catch (e) {
-          console.error(e);
-        }
-
-
-        try {
-          console.log("disposeHierarchy: ", obj3dNode.name,  obj3dNode);
-          disposeHierarchy(obj3dNode);
-        } catch (e) {
-          console.error(e);
-        }
-
-
-        //mergeBranchGeometries(obj3dNode, obj3dNode.name + "_merged");
-      }
-    }
-
-    let renderer  = openThreeManager.rendererManager;
 
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
@@ -197,7 +146,7 @@ export class MainDisplayComponent implements OnInit {
         child.material.clipShadows = false;
       }
     });
-    renderer  = openThreeManager.rendererManager;
+    let renderer  = openThreeManager.rendererManager;
     // Set render priority
     let scene = threeManager.getSceneManager().getScene();
     scene.background = new THREE.Color( 0x3F3F3F );

@@ -1,24 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { EventDisplayService } from 'phoenix-ui-components';
 import { Configuration, PhoenixLoader, PresetView, ClippingSetting, PhoenixMenuNode } from 'phoenix-event-display';
-import {
-  Color,
-  DoubleSide,
-  Mesh,
-  LineSegments,
-  LineBasicMaterial,
-  MeshPhongMaterial,
-  Material,
-  ObjectLoader,
-  FrontSide,
-  Vector3,
-  Matrix4,
-  REVISION,
-  MeshPhysicalMaterial,
-  MeshStandardMaterial,
-  ShaderMaterial,
-  EdgesGeometry, MeshLambertMaterial,
-} from "three";
+import * as THREE from "three";
 import { PhoenixUIModule } from 'phoenix-ui-components';
 import { GeometryService} from './geometry.service';
 import { Edm4hepRootEventLoader } from './edm4hep-root-event-loader';
@@ -27,11 +10,15 @@ import {color} from "three/examples/jsm/nodes/shadernode/ShaderNode";
 import {getGeoNodesByLevel} from "./utils/cern-root.utils";
 import {produceRenderOrder} from "jsrootdi/geom";
 import {wildCardCheck} from "./utils/wildcard";
+import {disposeHierarchy, findObject3DNodes} from "./utils/three.utils";
+import {CalorimetryGeometryPrettifier} from "./geometry-prettifiers/calorimetry.prettifier";
 
 
 export class ThreeGeometryProcessor {
 
-  glassMaterial = new LineBasicMaterial( {
+  calorimetry = new CalorimetryGeometryPrettifier();
+
+  glassMaterial = new THREE.LineBasicMaterial( {
     color: 0xf1f1f1,
     linewidth: 1,
     linecap: 'round', //ignored by WebGLRenderer
@@ -73,7 +60,9 @@ export class ThreeGeometryProcessor {
     }
   `;
 
-  alphaMaterial = new MeshStandardMaterial( {
+  shaderMaterial: THREE.ShaderMaterial;
+
+  alphaMaterial = new THREE.MeshStandardMaterial( {
     color: 0xffffff,
     alphaHash: this.params.alphaHash,
     opacity: this.params.alpha
@@ -92,12 +81,7 @@ export class ThreeGeometryProcessor {
   // });
 
   constructor() {
-
-  }
-
-  public process(geometry: any) {
-
-    let shaderMaterial = new ShaderMaterial({
+    this.shaderMaterial = new THREE.ShaderMaterial({
       uniforms: {
         thickness: {
           value: 1.5
@@ -107,47 +91,89 @@ export class ThreeGeometryProcessor {
       fragmentShader: this.fragmentShader
     });
 
+  }
+
+  public process(geometry: any) {
+
+    // Add top nodes to menu
+    let topDetectorNodes = geometry.children[0].children;
+
+    // for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--) {
+    //   console.log(`${i} : ${topLevelObj3dNodes[i].name}`);
+    // }
+
+    console.log("DISPOSING");
+    for(let i= topDetectorNodes.length - 1; i >= 0; i--){
+      let detNode = topDetectorNodes[i];
+      console.log(`${i} : ${topDetectorNodes[i].name}`);
+      detNode.name = detNode.userData["name"] = detNode.name;
+      // Add geometry
+      // uiManager.addGeometry(obj3dNode, obj3dNode.name);
+
+      if(detNode.name == "EcalEndcapN_21") {
+        this.calorimetry.doEndcapEcalN(detNode)
+      } else {
+
+        try {
+          detNode.removeFromParent();
+        }
+        catch (e) {
+          console.error(e);
+        }
+
+
+        try {
+          console.log("disposeHierarchy: ", detNode.name,  detNode);
+          disposeHierarchy(detNode);
+        } catch (e) {
+          console.error(e);
+        }
+
+
+        //mergeBranchGeometries(obj3dNode, obj3dNode.name + "_merged");
+      }
+    }
 
     // Now we want to change the materials
-    geometry.traverse( (child: any) => {
-
-      if(child.type!=="Mesh") {
-        return;
-      }
-
-      child = child as Mesh;
-
-
-      if(!child?.material?.isMaterial) {
-        return;
-      }
-
-      // Material
-      let name:string = child.name;
-      child.updateMatrixWorld(true);
-
-      //if(name.startsWith("bar_") || name.startsWith("prism_")) {
-        //child.material = this.alphaMaterial;
-        const edges = new EdgesGeometry(child.geometry, 30);
-        //const lineMaterial = new MeshLambertMaterial({
-      const lineMaterial = new LineBasicMaterial({
-          color: 0x555555,
-          fog: false,
-          // Copy clipping planes from parent, using type assertion for TypeScript
-          clippingPlanes: child.material.clippingPlanes ? child.material.clippingPlanes : [],
-          clipIntersection: false,
-          clipShadows: true,
-          transparent: false
-
-        });
-
-        // lineMaterial.clipping = true;
-        const edgesLine = new LineSegments(edges, lineMaterial);
-        //const edgesLine = new Mesh(edges, lineMaterial);
-
-        child.add(edgesLine);
-
-      //}
-    });
+    // geometry.traverse( (child: any) => {
+    //
+    //   if(child.type!=="Mesh") {
+    //     return;
+    //   }
+    //
+    //   child = child as THREE.Mesh;
+    //
+    //
+    //   if(!child?.material?.isMaterial) {
+    //     return;
+    //   }
+    //
+    //   // Material
+    //   let name:string = child.name;
+    //   child.updateMatrixWorld(true);
+    //
+    //   //if(name.startsWith("bar_") || name.startsWith("prism_")) {
+    //     //child.material = this.alphaMaterial;
+    //     const edges = new THREE.EdgesGeometry(child.geometry, 30);
+    //     //const lineMaterial = new MeshLambertMaterial({
+    //   const lineMaterial = new THREE.LineBasicMaterial({
+    //       color: 0x555555,
+    //       fog: false,
+    //       // Copy clipping planes from parent, using type assertion for TypeScript
+    //       clippingPlanes: child.material.clippingPlanes ? child.material.clippingPlanes : [],
+    //       clipIntersection: false,
+    //       clipShadows: true,
+    //       transparent: false
+    //
+    //     });
+    //
+    //     // lineMaterial.clipping = true;
+    //     const edgesLine = new THREE.LineSegments(edges, lineMaterial);
+    //     //const edgesLine = new Mesh(edges, lineMaterial);
+    //
+    //     child.add(edgesLine);
+    //
+    //   //}
+    // });
   }
 }

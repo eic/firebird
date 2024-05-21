@@ -3,6 +3,7 @@ import {mergeGeometries} from "three/examples/jsm/utils/BufferGeometryUtils";
 
 export interface MergeResult {
   mergedGeometry: THREE.BufferGeometry;
+  mergedMesh: THREE.Mesh;
   material: THREE.Material | undefined;
   childrenToRemove: THREE.Object3D[];
   parentNode: THREE.Object3D;
@@ -84,6 +85,7 @@ export function mergeBranchGeometries(parentNode: THREE.Object3D, name: string, 
   parentNode.add(mergedMesh);
   return {
     mergedGeometry,
+    mergedMesh,
     material,
     childrenToRemove,
     parentNode
@@ -100,11 +102,11 @@ export function mergeBranchGeometries(parentNode: THREE.Object3D, name: string, 
  * (!) This function doesn't delete original meshes Compared to @see mergeBranchGeometries.
  * Use MergeResult.childrenToRemove to delete meshes that were merged
  *
+ * @param material
  * @returns MergeResult The result of the merging process including the new parent node, merged geometry, material, and a list of original meshes.
  */
-export function mergeMeshList(meshes: THREE.Mesh[], parentNode: THREE.Object3D, name: string): MergeResult {
+export function mergeMeshList(meshes: THREE.Mesh[], parentNode: THREE.Object3D, name: string, material?: THREE.Material|undefined): MergeResult {
   const geometries: THREE.BufferGeometry[] = [];
-  let material: THREE.Material | undefined;
 
   // Collect geometries and materials from the provided meshes
   meshes.forEach(mesh => {
@@ -145,6 +147,7 @@ export function mergeMeshList(meshes: THREE.Mesh[], parentNode: THREE.Object3D, 
 
   return {
     mergedGeometry,
+    mergedMesh,
     material,
     childrenToRemove: meshes, // Here, we assume the original meshes are what would be removed if needed
     parentNode
