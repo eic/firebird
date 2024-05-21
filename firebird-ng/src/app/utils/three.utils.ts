@@ -243,7 +243,23 @@ export function disposeHierarchy(node: THREE.Object3D): void {
     disposeHierarchy(child);
   });
   disposeNode(node);
+}
 
+/**
+ * Recursively removes empty branches from a THREE.Object3D tree.
+ * An empty branch is a node without geometry and without any non-empty children.
+ * @param node - The starting node to prune empty branches from.
+ */
+export function pruneEmptyNodes(node: THREE.Object3D): void {
+  // Traverse children from last to first to avoid index shifting issues after removal
+  for (let i = node.children.length - 1; i >= 0; i--) {
+    pruneEmptyNodes(node.children[i]); // Recursively prune children first
+  }
+
+  // After pruning children, determine if the current node is now empty
+  if (node.children.length === 0 && !((node as any)?.geometry)) {
+    node.removeFromParent();
+  }
 }
 
 

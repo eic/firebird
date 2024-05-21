@@ -9,8 +9,15 @@ import {ThreeGeometryProcessor} from "../three-geometry.processor";
 
 import GUI from "lil-gui";
 import {produceRenderOrder} from "jsrootdi/geom";
-import {disposeHierarchy, findObject3DNodes, getColorOrDefault} from "../utils/three.utils";
+import {
+  disposeHierarchy,
+  disposeNode,
+  findObject3DNodes,
+  getColorOrDefault,
+  pruneEmptyNodes
+} from "../utils/three.utils";
 import {mergeMeshList, MergeResult} from "../utils/three-geometry-merge";
+import {PhoenixThreeFacade} from "../utils/phoenix-three-facade";
 
 
 @Component({
@@ -39,10 +46,14 @@ export class MainDisplayComponent implements OnInit {
   private camera: THREE.Camera|null = null;
   private scene: THREE.Scene|null = null;
 
+  private threeFacade: PhoenixThreeFacade;
+
   constructor(
     private geomService: GeometryService,
     private eventDisplay: EventDisplayService,
-    private route: ActivatedRoute) { }
+    private route: ActivatedRoute) {
+    this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
+  }
 
   async loadGeometry(initiallyVisible=true, scale=10) {
 
@@ -64,13 +75,12 @@ export class MainDisplayComponent implements OnInit {
     // console.log("CERN ROOT converted to Object3d: ", rootObject3d);
     sceneGeometry.add(rootObject3d);
 
-
     // Add top nodes to menu
     let topLevelObj3dNodes = rootObject3d.children[0].children;
 
-    for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--) {
-      console.log(`${i} : ${topLevelObj3dNodes[i].name}`);
-    }
+    // for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--) {
+    //   console.log(`${i} : ${topLevelObj3dNodes[i].name}`);
+    // }
 
     console.log("DISPOSING");
     for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--){
@@ -85,9 +95,14 @@ export class MainDisplayComponent implements OnInit {
         //console.log(crystals);
 
         let mergeResult: MergeResult = mergeMeshList(crystals, obj3dNode, "crystals");
-        for (let mesh of mergeResult.childrenToRemove) {
-          (mesh as THREE.Mesh).visible = false;
+
+        // Remove initial nodes
+        for (let i=mergeResult.childrenToRemove.length-1; i>=0; i-- ) {
+          disposeNode(mergeResult.childrenToRemove[i]);
+          mergeResult.childrenToRemove[i].removeFromParent();
         }
+
+        pruneEmptyNodes(obj3dNode);
 
       } else {
 
@@ -182,7 +197,7 @@ export class MainDisplayComponent implements OnInit {
         child.material.clipShadows = false;
       }
     });
-
+    renderer  = openThreeManager.rendererManager;
     // Set render priority
     let scene = threeManager.getSceneManager().getScene();
     scene.background = new THREE.Color( 0x3F3F3F );
@@ -205,6 +220,141 @@ export class MainDisplayComponent implements OnInit {
     console.log("produceRenderOrder. scene: ", this.scene, " camera ", this.camera);
     produceRenderOrder(this.scene, this.camera?.position, 'ray');
   }
+
+  logGamepadStates () {
+    const gamepads = navigator.getGamepads();
+
+    for (const gamepad of gamepads) {
+      if (gamepad) {
+        console.log(`Gamepad connected at index ${gamepad.index}: ${gamepad.id}.`);
+        console.log(`Timestamp: ${gamepad.timestamp}`);
+        console.log('Axes states:');
+        gamepad.axes.forEach((axis, index) => {
+          console.log(`Axis ${index}: ${axis.toFixed(4)}`);
+        });
+        console.log('Button states:');
+        gamepad.buttons.forEach((button, index) => {
+          console.log(`Button ${index}: ${button.pressed ? 'pressed' : 'released'}, value: ${button.value}`);
+        });
+      }
+    }
+  };
+
+  handleGamepadInput () {
+    const gamepads = navigator.getGamepads();
+    for (const gamepad of gamepads) {
+      if (gamepad) {
+        // Example: Using left joystick to control OrbitControls
+        // Axis 0: Left joystick horizontal (left/right)
+        // Axis 1: Left joystick vertical (up/down)
+        const xAxis = gamepad.axes[0];
+        const yAxis = gamepad.axes[1];
+
+        let controls = this.threeFacade.activeOrbitControls;
+        let camera = this.threeFacade.mainCamera;
+
+        if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
+          const offset = new THREE.Vector3(); // Offset of the camera from the target
+          const quat = new THREE.Quaternion().setFromUnitVectors(camera.up, new THREE.Vector3(0, 1, 0));
+          const quatInverse = quat.clone().invert();
+
+          const currentPosition = camera.position.clone().sub(controls.target);
+          currentPosition.applyQuaternion(quat); // Apply the quaternion
+
+          // Spherical coordinates
+          const spherical = new THREE.Spherical().setFromVector3(currentPosition);
+
+          // Adjusting spherical coordinates
+          spherical.theta -= xAxis * 0.05; // Azimuth angle change
+          spherical.phi += yAxis * 0.05; // Polar angle change, for rotating up/down
+
+          // Ensure phi is within bounds to avoid flipping
+          spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+
+          // Convert back to Cartesian coordinates
+          const newPostion = new THREE.Vector3().setFromSpherical(spherical);
+          newPostion.applyQuaternion(quatInverse);
+
+          camera.position.copy(newPostion.add(controls.target));
+          camera.lookAt(controls.target);
+          controls.update();
+        }
+        //
+        //
+        // if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
+        //   // Get the current radius and angles in spherical coordinates relative to the target
+        //   const radius = controls.target.distanceTo(camera.position);
+        //   const phi = Math.atan2(
+        //     Math.sqrt((camera.position.x - controls.target.x) ** 2 + (camera.position.z - controls.target.z) ** 2),
+        //     (camera.position.y - controls.target.y)
+        //   );
+        //   const theta = Math.atan2(camera.position.z - controls.target.z, camera.position.x - controls.target.x);
+        //
+        //   // Adjust theta (azimuthal angle) based on the x-axis of the joystick
+        //   const newTheta = theta - xAxis * 0.1;
+        //
+        //   // Adjust phi (polar angle) based on the y-axis of the joystick
+        //   const newPhi = phi - yAxis * 0.1;
+        //
+        //   // Ensure the phi is clamped to prevent the camera from flipping over
+        //   const clampedPhi = Math.max(0.1, Math.min(Math.PI - 0.1, newPhi));
+        //
+        //   // Convert updated spherical coordinates back to Cartesian coordinates
+        //   camera.position.x = controls.target.x + radius * Math.sin(clampedPhi) * Math.cos(newTheta);
+        //   camera.position.y = controls.target.y + radius * Math.cos(clampedPhi);
+        //   camera.position.z = controls.target.z + radius * Math.sin(clampedPhi) * Math.sin(newTheta);
+        //
+        //   camera.lookAt(controls.target);
+        //   controls.update();
+        // }
+
+        // Assume button indices 4 and 5 are the shoulder buttons
+        const zoomInButton = gamepad.buttons[0];
+        const zoomOutButton = gamepad.buttons[2];
+
+        if (zoomInButton.pressed) {
+          camera.zoom *= 1.05;
+          // Updating camera clipping planes dynamically
+          //camera.near = 0.1;   // Be cautious with making this too small, which can cause z-fighting
+          //camera.far = 100000;  // Large value to ensure distant objects are rendered
+
+          camera.updateProjectionMatrix();
+        }
+
+        if (zoomOutButton.pressed) {
+          camera.zoom /= 1.05;
+          // Updating camera clipping planes dynamically
+          //camera.near = 0.1;   // Be cautious with making this too small, which can cause z-fighting
+          //camera.far = 100000;  // Large value to ensure distant objects are rendered
+          camera.updateProjectionMatrix();
+        }
+
+        // Optionally: Map other axes/buttons to other camera controls like zoom or pan
+        if (gamepad.axes.length > 2) {
+          // Additional axes for more control, e.g., zoom with third axis
+          const zoomAxis = gamepad.axes[2]; // Typically the right stick vertical
+          camera.position.z += zoomAxis * 0.1; // Adjust zoom sensitivity
+        }
+
+        break; // Only use the first connected gamepad
+        //
+        // //console.log(`Using gamepad at index ${gamepad.index}: ${gamepad.id}`);
+        // gamepad.axes.forEach((axis, index) => {
+        //   if (axis !== 0) {
+        //     console.log(`Axis ${index}: ${axis.toFixed(4)}`);
+        //   }
+        // });
+        // gamepad.buttons.forEach((button, index) => {
+        //   if (button.pressed) {
+        //     console.log(`Button ${index} is pressed with value ${button.value}`);
+        //   }
+        // });
+        // // Stop after processing the first connected gamepad
+        // break;
+      }
+    }
+  };
+
 
   ngOnInit() {
 
@@ -251,7 +401,9 @@ export class MainDisplayComponent implements OnInit {
       container: document.getElementById("lil-gui-place") ?? undefined,
 
     });
+    gui.title("Debug");
     gui.add(this, "produceRenderOrder");
+    gui.add(this, "logGamepadStates").name( 'Log controls' );
 
     // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);
@@ -267,6 +419,10 @@ export class MainDisplayComponent implements OnInit {
     this.eventDisplay
       .getLoadingManager()
       .addProgressListener((progress) => (this.loadingProgress = progress));
+
+
+
+    // threeManager.setAnimationLoop(()=>{this.handleGamepadInput()});
 
 
     //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
