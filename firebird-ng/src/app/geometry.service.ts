@@ -85,7 +85,8 @@ export class GeometryService {
 
     console.time('[GeoSrv]: Reading geometry from file');
     const rootGeoManager = await findGeoManager(file) // await file.readObject(objectName);
-    // >oO console.log(geoManager);
+    // >oO
+    console.log(rootGeoManager);
     console.timeEnd('[GeoSrv]: Reading geometry from file');
 
 

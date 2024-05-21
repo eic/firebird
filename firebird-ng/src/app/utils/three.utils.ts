@@ -153,19 +153,25 @@ class NoGeometryError extends Error {
   }
 }
 
+export interface CreateOutlineOptions {
+  color?: THREE.ColorRepresentation;
+  material?: THREE.Material;
+  thresholdAngle?: number;
+}
 
 /**
  * Applies an outline mesh from lines to a mesh and adds the outline to the mesh's parent.
  * @param mesh A THREE.Object3D (expected to be a Mesh) to process.
- * @param material Optional material provided by the user. If not provided, a default material is created.
- * @param color Color of material
+ * @param options
  */
-export function createOutline(mesh: any, color?: THREE.ColorRepresentation, material?: THREE.Material): void {
+export function createOutline(mesh: any, options: CreateOutlineOptions = {}): void {
   if (!mesh?.geometry) {
     throw new NoGeometryError(mesh);
   }
 
-  let edges = new THREE.EdgesGeometry(mesh.geometry, 30);
+  let { color = 0x555555, material, thresholdAngle = 40 } = options || {};
+
+  let edges = new THREE.EdgesGeometry(mesh.geometry, thresholdAngle);
   let lineMaterial = material as THREE.LineBasicMaterial;
 
   if (!lineMaterial) {

@@ -10,8 +10,9 @@ import {color} from "three/examples/jsm/nodes/shadernode/ShaderNode";
 import {getGeoNodesByLevel} from "./utils/cern-root.utils";
 import {produceRenderOrder} from "jsrootdi/geom";
 import {wildCardCheck} from "./utils/wildcard";
-import {disposeHierarchy, findObject3DNodes} from "./utils/three.utils";
+import {createOutline, disposeHierarchy, findObject3DNodes, pruneEmptyNodes} from "./utils/three.utils";
 import {CalorimetryGeometryPrettifier} from "./geometry-prettifiers/calorimetry.prettifier";
+import {mergeBranchGeometries} from "./utils/three-geometry-merge";
 
 
 export class ThreeGeometryProcessor {
@@ -111,26 +112,30 @@ export class ThreeGeometryProcessor {
       // uiManager.addGeometry(obj3dNode, obj3dNode.name);
 
       if(detNode.name == "EcalEndcapN_21") {
-        this.calorimetry.doEndcapEcalN(detNode)
-      } else {
+        this.calorimetry.doEndcapEcalN(detNode);
+      } else if(detNode.name == "DRICH_16") {
+        this.calorimetry.doDRICH(detNode);
+      } else if(detNode.name.startsWith("DIRC")) {
+        this.calorimetry.doDIRC(detNode);
+      } else{
 
-        try {
-          detNode.removeFromParent();
-        }
-        catch (e) {
-          console.error(e);
-        }
+        // try {
+        //   detNode.removeFromParent();
+        // }
+        // catch (e) {
+        //   console.error(e);
+        // }
+        //
+        // try {
+        //   // console.log("disposeHierarchy: ", detNode.name,  detNode);
+        //   disposeHierarchy(detNode);
+        // } catch (e) {
+        //   console.error(e);
+        // }
 
-
-        try {
-          console.log("disposeHierarchy: ", detNode.name,  detNode);
-          disposeHierarchy(detNode);
-        } catch (e) {
-          console.error(e);
-        }
-
-
-        //mergeBranchGeometries(obj3dNode, obj3dNode.name + "_merged");
+        let result = mergeBranchGeometries(detNode, detNode.name + "_merged");
+        createOutline(result.mergedMesh);
+        pruneEmptyNodes(detNode);
       }
     }
 

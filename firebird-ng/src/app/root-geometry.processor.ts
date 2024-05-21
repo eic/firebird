@@ -49,15 +49,15 @@ export class RootGeometryProcessor {
    */
   removeDetectorNames: string[] = [
     "Lumi",
-    "Magnet",
-    "B0",
+    //"Magnet",
+    //"B0",
     "B1",
     "B2",
-    "Q0",
-    "Q1",
+    //"Q0",
+    //"Q1",
     "Q2",
-    "BeamPipe",
-    "Pipe",
+    //"BeamPipe",
+    //"Pipe",
     "ForwardOffM",
     "Forward",
     "Backward",
@@ -86,6 +86,16 @@ export class RootGeometryProcessor {
       namePattern: "*/DRICH*",
       editRules: [
         {pattern: "*/DRICH_cooling*", action: EditActions.RemoveSiblings},
+      ]
+    },
+    {
+      namePattern: "*/DIRC*",
+      editRules: [
+        {pattern: "*/Envelope_box*", action: EditActions.RemoveChildren},
+        {pattern: "*/Envelope_box*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+        {pattern: "*/Envelope_box*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
+        {pattern: "*/Envelope_box*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+        {pattern: "*/Envelope_lens_vol*", action: EditActions.Remove},
       ]
     },
     {

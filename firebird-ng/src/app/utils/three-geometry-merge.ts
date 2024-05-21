@@ -30,7 +30,7 @@ export class NoMaterialError extends Error {
  * @param material Material to assign to the merged geometry, if empty the first material found will be used
  * @returns MergeResult object containing the merged geometry, material, children to remove, and parent node
  */
-export function mergeBranchGeometries(parentNode: THREE.Object3D, name: string,  material: THREE.Material | undefined): MergeResult {
+export function mergeBranchGeometries(parentNode: THREE.Object3D, name: string,  material?: THREE.Material | undefined): MergeResult {
   const geometries: THREE.BufferGeometry[] = [];
   const childrenToRemove: THREE.Object3D[] = [];
 

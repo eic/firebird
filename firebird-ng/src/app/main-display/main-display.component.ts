@@ -103,6 +103,8 @@ export class MainDisplayComponent implements OnInit {
           side: side,
           transparent: true,
           opacity: 0.5,
+          depthTest: true,
+          depthWrite: true,
           clippingPlanes: openThreeManager.clipPlanes,
           clipIntersection: true,
           clipShadows: false
@@ -214,8 +216,8 @@ export class MainDisplayComponent implements OnInit {
           const spherical = new THREE.Spherical().setFromVector3(currentPosition);
 
           // Adjusting spherical coordinates
-          spherical.theta -= xAxis * 0.05; // Azimuth angle change
-          spherical.phi += yAxis * 0.05; // Polar angle change, for rotating up/down
+          spherical.theta -= xAxis * 0.01; // Azimuth angle change
+          spherical.phi += yAxis * 0.01; // Polar angle change, for rotating up/down
 
           // Ensure phi is within bounds to avoid flipping
           spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
@@ -228,6 +230,61 @@ export class MainDisplayComponent implements OnInit {
           camera.lookAt(controls.target);
           controls.update();
         }
+
+        // // Assume button indices 4 and 5 are the shoulder buttons
+        // const zoomInButton = gamepad.buttons[0];
+        // const zoomOutButton = gamepad.buttons[2];
+        //
+        // if (zoomInButton.pressed) {
+        //   camera.zoom *= 1.05;
+        //   console.log(camera);
+        //   // Updating camera clipping planes dynamically
+        //   //camera.near = 0.1;   // Be cautious with making this too small, which can cause z-fighting
+        //   //camera.far = 100000;  // Large value to ensure distant objects are rendered
+        //
+        //   camera.updateProjectionMatrix();
+        // }
+        //
+        // if (zoomOutButton.pressed) {
+        //   camera.zoom /= 1.05;
+        //   // Updating camera clipping planes dynamically
+        //   //camera.near = 0.1;   // Be cautious with making this too small, which can cause z-fighting
+        //   //camera.far = 100000;  // Large value to ensure distant objects are rendered
+        //   camera.updateProjectionMatrix();
+        //   console.log(camera);
+        // }
+        //
+        // // Optionally: Map other axes/buttons to other camera controls like zoom or pan
+        // if (gamepad.axes.length > 2) {
+        //   // Additional axes for more control, e.g., zoom with third axis
+        //   const zoomAxis = gamepad.axes[2]; // Typically the right stick vertical
+        //   camera.position.z += zoomAxis * 0.1; // Adjust zoom sensitivity
+        // }
+
+        // Zooming using buttons
+        const zoomInButton = gamepad.buttons[2];
+        const zoomOutButton = gamepad.buttons[0];
+
+        if (zoomInButton.pressed) {
+          controls.object.position.subVectors(camera.position, controls.target).multiplyScalar(0.99).add(controls.target);
+          controls.update();
+        }
+
+        if (zoomOutButton.pressed) {
+          controls.object.position.subVectors(camera.position, controls.target).multiplyScalar(1.01).add(controls.target);
+          controls.update();
+        }
+
+        // Zooming using the third axis of the gamepad
+        const zoomAxis = gamepad.axes[2]; // Typically the right stick vertical
+        if (Math.abs(zoomAxis) > 0.1) {
+          let zoomFactor = zoomAxis < 0 ? 0.95 : 1.05;
+          controls.object.position.subVectors(camera.position, controls.target).multiplyScalar(zoomFactor).add(controls.target);
+          controls.update();
+        }
+
+        break; // Only use the first connected gamepad
+
         //
         //
         // if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
@@ -257,35 +314,7 @@ export class MainDisplayComponent implements OnInit {
         //   controls.update();
         // }
 
-        // Assume button indices 4 and 5 are the shoulder buttons
-        const zoomInButton = gamepad.buttons[0];
-        const zoomOutButton = gamepad.buttons[2];
 
-        if (zoomInButton.pressed) {
-          camera.zoom *= 1.05;
-          // Updating camera clipping planes dynamically
-          //camera.near = 0.1;   // Be cautious with making this too small, which can cause z-fighting
-          //camera.far = 100000;  // Large value to ensure distant objects are rendered
-
-          camera.updateProjectionMatrix();
-        }
-
-        if (zoomOutButton.pressed) {
-          camera.zoom /= 1.05;
-          // Updating camera clipping planes dynamically
-          //camera.near = 0.1;   // Be cautious with making this too small, which can cause z-fighting
-          //camera.far = 100000;  // Large value to ensure distant objects are rendered
-          camera.updateProjectionMatrix();
-        }
-
-        // Optionally: Map other axes/buttons to other camera controls like zoom or pan
-        if (gamepad.axes.length > 2) {
-          // Additional axes for more control, e.g., zoom with third axis
-          const zoomAxis = gamepad.axes[2]; // Typically the right stick vertical
-          camera.position.z += zoomAxis * 0.1; // Adjust zoom sensitivity
-        }
-
-        break; // Only use the first connected gamepad
         //
         // //console.log(`Using gamepad at index ${gamepad.index}: ${gamepad.id}`);
         // gamepad.axes.forEach((axis, index) => {
@@ -371,7 +400,7 @@ export class MainDisplayComponent implements OnInit {
 
 
 
-    // threeManager.setAnimationLoop(()=>{this.handleGamepadInput()});
+    threeManager.setAnimationLoop(()=>{this.handleGamepadInput()});
 
 
     //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
