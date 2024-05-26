@@ -65,8 +65,9 @@ export class RootGeometryProcessor {
     "SweeperMag",
     "AnalyzerMag",
     "ZDC",
-    "LFHCAL",
-    "HcalFarForward"
+    //"LFHCAL",
+    "HcalFarForward",
+    "InnerTrackingSupport"
   ];
 
   subDetectorsRules: DetectorGeometryFineTuning[] = [
@@ -109,6 +110,14 @@ export class RootGeometryProcessor {
       editRules: [
         {pattern: "*/EcalEndcapP_layer1_0*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
         {pattern: "*/EcalEndcapP_layer1_0*", action: EditActions.RemoveChildren},
+      ]
+    },
+    {
+      namePattern: "*/LFHCAL_*",
+      editRules: [
+        {pattern: "*/LFHCAL_8M*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+        {pattern: "*/LFHCAL_8M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+        {pattern: "*/LFHCAL_8M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
       ]
     },
     {

@@ -2,10 +2,10 @@
 <div class="container mt-3">
   <h3>Event display source control</h3>
 
-  <form [formGroup]="geoForm">
+  <form >
     <div class="mt-4">
       <h5>Geometry source</h5>
-      <select class="form-control" formControlName="selectedGeometry">
+      <select class="form-control" [formControl]="selectedGeometry">
         <option value="epic-central-optimized">EIC ePIC Central Detector optimized</option>
         <option value="https://eic.github.io/epic/artifacts/tgeo/epic_bhcal.root">epic_bhcal.root</option>
         <option value="https://eic.github.io/epic/artifacts/tgeo/epic_calorimeters.root">epic_calorimeters.root</option>
@@ -42,7 +42,7 @@
 
     <div class="mt-4">
       <h5>Selected events</h5>
-      <select class="form-control mt-2" formControlName="selectedEvent">
+      <select class="form-control mt-2" REMformControlName="selectedEvent">
         <option value="Central detector">Central detector</option>
         <option value="Far forward">Far forward</option>
       </select>

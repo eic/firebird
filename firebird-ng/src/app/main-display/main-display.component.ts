@@ -18,6 +18,7 @@ import {
 } from "../utils/three.utils";
 import {mergeMeshList, MergeResult} from "../utils/three-geometry-merge";
 import {PhoenixThreeFacade} from "../utils/phoenix-three-facade";
+import {BehaviorSubject, Subject} from "rxjs";
 
 
 @Component({
@@ -42,9 +43,12 @@ export class MainDisplayComponent implements OnInit {
 
   /** The Default color of elements if not set */
   defaultColor: Color = new Color(0x2fd691);
+
+
   private renderer: THREE.Renderer|null = null;
   private camera: THREE.Camera|null = null;
   private scene: THREE.Scene|null = null;
+  private stats: any|null = null;         // Stats JS display from UI manager
 
   private threeFacade: PhoenixThreeFacade;
 
@@ -192,6 +196,12 @@ export class MainDisplayComponent implements OnInit {
   };
 
   handleGamepadInput () {
+
+    // Update stats display that showing FPS, etc.
+    if (this.stats) {
+      this.stats.update();
+    }
+
     const gamepads = navigator.getGamepads();
     for (const gamepad of gamepads) {
       if (gamepad) {
@@ -261,6 +271,8 @@ export class MainDisplayComponent implements OnInit {
         //   camera.position.z += zoomAxis * 0.1; // Adjust zoom sensitivity
         // }
 
+
+
         // Zooming using buttons
         const zoomInButton = gamepad.buttons[2];
         const zoomOutButton = gamepad.buttons[0];
@@ -284,51 +296,6 @@ export class MainDisplayComponent implements OnInit {
         }
 
         break; // Only use the first connected gamepad
-
-        //
-        //
-        // if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
-        //   // Get the current radius and angles in spherical coordinates relative to the target
-        //   const radius = controls.target.distanceTo(camera.position);
-        //   const phi = Math.atan2(
-        //     Math.sqrt((camera.position.x - controls.target.x) ** 2 + (camera.position.z - controls.target.z) ** 2),
-        //     (camera.position.y - controls.target.y)
-        //   );
-        //   const theta = Math.atan2(camera.position.z - controls.target.z, camera.position.x - controls.target.x);
-        //
-        //   // Adjust theta (azimuthal angle) based on the x-axis of the joystick
-        //   const newTheta = theta - xAxis * 0.1;
-        //
-        //   // Adjust phi (polar angle) based on the y-axis of the joystick
-        //   const newPhi = phi - yAxis * 0.1;
-        //
-        //   // Ensure the phi is clamped to prevent the camera from flipping over
-        //   const clampedPhi = Math.max(0.1, Math.min(Math.PI - 0.1, newPhi));
-        //
-        //   // Convert updated spherical coordinates back to Cartesian coordinates
-        //   camera.position.x = controls.target.x + radius * Math.sin(clampedPhi) * Math.cos(newTheta);
-        //   camera.position.y = controls.target.y + radius * Math.cos(clampedPhi);
-        //   camera.position.z = controls.target.z + radius * Math.sin(clampedPhi) * Math.sin(newTheta);
-        //
-        //   camera.lookAt(controls.target);
-        //   controls.update();
-        // }
-
-
-        //
-        // //console.log(`Using gamepad at index ${gamepad.index}: ${gamepad.id}`);
-        // gamepad.axes.forEach((axis, index) => {
-        //   if (axis !== 0) {
-        //     console.log(`Axis ${index}: ${axis.toFixed(4)}`);
-        //   }
-        // });
-        // gamepad.buttons.forEach((button, index) => {
-        //   if (button.pressed) {
-        //     console.log(`Button ${index} is pressed with value ${button.value}`);
-        //   }
-        // });
-        // // Stop after processing the first connected gamepad
-        // break;
       }
     }
   };
@@ -355,7 +322,7 @@ export class MainDisplayComponent implements OnInit {
       defaultEventFile: {
         // (Assuming the file exists in the `src/assets` directory of the app)
         //eventFile: 'assets/herwig_18x275_5evt.json',
-        eventFile: 'assets/events/herwig_5x41_5evt_showers.json',
+        eventFile: 'assets/events/pythia8.json',
         eventType: 'json'   // or zip
       },
     }
@@ -376,7 +343,7 @@ export class MainDisplayComponent implements OnInit {
     const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
 
     const gui = new GUI({
-      container: document.getElementById("lil-gui-place") ?? undefined,
+      // container: document.getElementById("lil-gui-place") ?? undefined,
 
     });
     gui.title("Debug");
@@ -398,9 +365,45 @@ export class MainDisplayComponent implements OnInit {
       .getLoadingManager()
       .addProgressListener((progress) => (this.loadingProgress = progress));
 
+    this.stats = (this.eventDisplay.getUIManager() as any).stats;
 
 
     threeManager.setAnimationLoop(()=>{this.handleGamepadInput()});
+
+
+    let beSubject = new BehaviorSubject('a');
+
+    beSubject.next('b');
+
+    beSubject.subscribe(value => {
+      console.log('BehaviorSubject: Subscription received the value ', value);
+
+      // Subscription received B. It would not happen
+      // for an Observable or Subject by default.
+    });
+
+    beSubject.next('c');
+// Subscription received C.
+
+    beSubject.next('d');
+// Subscription received D.
+
+    // Subject.
+
+    let subject = new Subject();
+
+    subject.next('b');
+
+    subject.subscribe(value => {
+      console.log('Subject: Subscription received the value ', value);
+
+      // Subscription won't receive anything at this point.
+    });
+
+    subject.next('c');
+// Subscription received C.
+
+    subject.next('d');
 
 
     //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
