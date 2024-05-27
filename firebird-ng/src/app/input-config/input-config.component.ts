@@ -15,10 +15,13 @@ import {ConfigProperty} from "../utils/config-property";
 })
 export class InputConfigComponent implements OnInit {
 
-  selectedGeometry: FormControl<string | null>;
+  selectedGeometry = new FormControl('');
+  onlyCentralDetector: FormControl<boolean | null> = new FormControl(true);
 
   constructor(private configService: UserConfigService) {
-    this.selectedGeometry = new FormControl();
+
+
+
     // this.selectedGeometry.valueChanges.subscribe(
     //   value => this.configService.selectedGeometry.value=value??""
     // );
@@ -74,6 +77,7 @@ export class InputConfigComponent implements OnInit {
   ngOnInit(): void {
     //this.selectedGeometry.setValue(this.configService.selectedGeometry.value, { emitEvent: false })
     this.bindConfigToControl(this.selectedGeometry, this.configService.selectedGeometry);
+    this.bindConfigToControl(this.onlyCentralDetector, this.configService.onlyCentralDetector);
   //   const savedSettings = this.geometryService.getState();
   //   if (savedSettings) {
   //     this.geoForm.setValue(savedSettings);

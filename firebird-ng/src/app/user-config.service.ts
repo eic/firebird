@@ -7,8 +7,10 @@ import {ConfigProperty} from "./utils/config-property";
 export class UserConfigService {
 
   public selectedGeometry: ConfigProperty<string>;
+  public onlyCentralDetector: ConfigProperty<boolean>;
 
   constructor() {
-    this.selectedGeometry = new ConfigProperty("selectedGeometry", "epic-central-optimized");
+    this.selectedGeometry = new ConfigProperty("geometry.selectedGeometry", "epic-central-optimized");
+    this.onlyCentralDetector = new ConfigProperty("geometry.onlyCentralDetector", true);
   }
 }
