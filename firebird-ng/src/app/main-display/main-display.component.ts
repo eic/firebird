@@ -2,7 +2,7 @@ import {Component, OnInit} from '@angular/core';
 import {EventDisplayService, PhoenixUIModule} from 'phoenix-ui-components';
 import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
-import {Color, DoubleSide, MeshPhongMaterial,} from "three";
+import {Color, DoubleSide, Line, MeshPhongMaterial,} from "three";
 import {GeometryService} from '../geometry.service';
 import {ActivatedRoute} from '@angular/router';
 import {ThreeGeometryProcessor} from "../three-geometry.processor";
@@ -19,6 +19,11 @@ import {
 import {mergeMeshList, MergeResult} from "../utils/three-geometry-merge";
 import {PhoenixThreeFacade} from "../utils/phoenix-three-facade";
 import {BehaviorSubject, Subject} from "rxjs";
+import {GameControllerService} from "../game-controller.service";
+import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
+import {Line2} from "three/examples/jsm/lines/Line2";
+import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
+// import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
 
 @Component({
@@ -55,6 +60,7 @@ export class MainDisplayComponent implements OnInit {
   constructor(
     private geomService: GeometryService,
     private eventDisplay: EventDisplayService,
+    private controller: GameControllerService,
     private route: ActivatedRoute) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
   }
@@ -195,7 +201,53 @@ export class MainDisplayComponent implements OnInit {
     }
   };
 
-  handleGamepadInput () {
+  rotateCamera(xAxisChange: number, yAxisChange: number) {
+    let orbitControls = this.threeFacade.activeOrbitControls;
+    let camera = this.threeFacade.mainCamera;
+
+    const offset = new THREE.Vector3(); // Offset of the camera from the target
+    const quat = new THREE.Quaternion().setFromUnitVectors(camera.up, new THREE.Vector3(0, 1, 0));
+    const quatInverse = quat.clone().invert();
+
+    const currentPosition = camera.position.clone().sub(orbitControls.target);
+    currentPosition.applyQuaternion(quat); // Apply the quaternion
+
+    // Spherical coordinates
+    const spherical = new THREE.Spherical().setFromVector3(currentPosition);
+
+    // Adjusting spherical coordinates
+    spherical.theta -= xAxisChange * 0.01; // Azimuth angle change
+    spherical.phi += yAxisChange * 0.01; // Polar angle change, for rotating up/down
+
+    // Ensure phi is within bounds to avoid flipping
+    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+
+    // Convert back to Cartesian coordinates
+    const newPostion = new THREE.Vector3().setFromSpherical(spherical);
+    newPostion.applyQuaternion(quatInverse);
+
+    camera.position.copy(newPostion.add(orbitControls.target));
+    camera.lookAt(orbitControls.target);
+    orbitControls.update();
+  }
+
+  zoom(factor: number) {
+    let orbitControls = this.threeFacade.activeOrbitControls;
+    let camera = this.threeFacade.mainCamera;
+    orbitControls.object.position.subVectors(camera.position, orbitControls.target).multiplyScalar(factor).add(orbitControls.target);
+    orbitControls.update();
+  }
+
+  handleGamepadInputV2 () {
+    this.controller.animationLoopHandler();
+  }
+
+  logCamera() {
+    console.log(this.threeFacade.mainCamera);
+  }
+
+
+  handleGamepadInputV1 () {
 
     // Update stats display that showing FPS, etc.
     if (this.stats) {
@@ -215,90 +267,31 @@ export class MainDisplayComponent implements OnInit {
         let camera = this.threeFacade.mainCamera;
 
         if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
-          const offset = new THREE.Vector3(); // Offset of the camera from the target
-          const quat = new THREE.Quaternion().setFromUnitVectors(camera.up, new THREE.Vector3(0, 1, 0));
-          const quatInverse = quat.clone().invert();
+          this.rotateCamera(xAxis, yAxis);
 
-          const currentPosition = camera.position.clone().sub(controls.target);
-          currentPosition.applyQuaternion(quat); // Apply the quaternion
-
-          // Spherical coordinates
-          const spherical = new THREE.Spherical().setFromVector3(currentPosition);
-
-          // Adjusting spherical coordinates
-          spherical.theta -= xAxis * 0.01; // Azimuth angle change
-          spherical.phi += yAxis * 0.01; // Polar angle change, for rotating up/down
-
-          // Ensure phi is within bounds to avoid flipping
-          spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
-
-          // Convert back to Cartesian coordinates
-          const newPostion = new THREE.Vector3().setFromSpherical(spherical);
-          newPostion.applyQuaternion(quatInverse);
-
-          camera.position.copy(newPostion.add(controls.target));
-          camera.lookAt(controls.target);
-          controls.update();
         }
-
-        // // Assume button indices 4 and 5 are the shoulder buttons
-        // const zoomInButton = gamepad.buttons[0];
-        // const zoomOutButton = gamepad.buttons[2];
-        //
-        // if (zoomInButton.pressed) {
-        //   camera.zoom *= 1.05;
-        //   console.log(camera);
-        //   // Updating camera clipping planes dynamically
-        //   //camera.near = 0.1;   // Be cautious with making this too small, which can cause z-fighting
-        //   //camera.far = 100000;  // Large value to ensure distant objects are rendered
-        //
-        //   camera.updateProjectionMatrix();
-        // }
-        //
-        // if (zoomOutButton.pressed) {
-        //   camera.zoom /= 1.05;
-        //   // Updating camera clipping planes dynamically
-        //   //camera.near = 0.1;   // Be cautious with making this too small, which can cause z-fighting
-        //   //camera.far = 100000;  // Large value to ensure distant objects are rendered
-        //   camera.updateProjectionMatrix();
-        //   console.log(camera);
-        // }
-        //
-        // // Optionally: Map other axes/buttons to other camera controls like zoom or pan
-        // if (gamepad.axes.length > 2) {
-        //   // Additional axes for more control, e.g., zoom with third axis
-        //   const zoomAxis = gamepad.axes[2]; // Typically the right stick vertical
-        //   camera.position.z += zoomAxis * 0.1; // Adjust zoom sensitivity
-        // }
-
-
 
         // Zooming using buttons
         const zoomInButton = gamepad.buttons[2];
         const zoomOutButton = gamepad.buttons[0];
 
         if (zoomInButton.pressed) {
-          controls.object.position.subVectors(camera.position, controls.target).multiplyScalar(0.99).add(controls.target);
-          controls.update();
+          this.zoom(0.99);
         }
 
         if (zoomOutButton.pressed) {
-          controls.object.position.subVectors(camera.position, controls.target).multiplyScalar(1.01).add(controls.target);
-          controls.update();
-        }
-
-        // Zooming using the third axis of the gamepad
-        const zoomAxis = gamepad.axes[2]; // Typically the right stick vertical
-        if (Math.abs(zoomAxis) > 0.1) {
-          let zoomFactor = zoomAxis < 0 ? 0.95 : 1.05;
-          controls.object.position.subVectors(camera.position, controls.target).multiplyScalar(zoomFactor).add(controls.target);
-          controls.update();
+          this.zoom(1.01);
         }
 
         break; // Only use the first connected gamepad
       }
     }
   };
+
+  updateProjectionMatrix() {
+    let camera = this.threeFacade.mainCamera;
+    camera.updateProjectionMatrix();
+  }
 
 
   ngOnInit() {
@@ -322,7 +315,7 @@ export class MainDisplayComponent implements OnInit {
       defaultEventFile: {
         // (Assuming the file exists in the `src/assets` directory of the app)
         //eventFile: 'assets/herwig_18x275_5evt.json',
-        eventFile: 'assets/events/pythia8.json',
+        eventFile: 'assets/events/py8_all_dis-cc_beam-18x275_minq2-1000_nevt-20.evt.json',
         eventType: 'json'   // or zip
       },
     }
@@ -346,9 +339,13 @@ export class MainDisplayComponent implements OnInit {
       // container: document.getElementById("lil-gui-place") ?? undefined,
 
     });
+
     gui.title("Debug");
     gui.add(this, "produceRenderOrder");
     gui.add(this, "logGamepadStates").name( 'Log controls' );
+    gui.add(this, "logCamera").name( 'Log camera' );
+    gui.add(this, "updateProjectionMatrix").name( 'Update Projection Matrix' );
+    gui.close();
 
     // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);
@@ -359,7 +356,78 @@ export class MainDisplayComponent implements OnInit {
     this.eventDisplay.getLoadingManager().addLoadListenerWithCheck(() => {
       console.log('Loading default configuration.');
       this.loaded = true;
+
+
+      console.log(threeManager.getSceneManager().getEventData());
+
+      let mcTracksGroup = threeManager.getSceneManager().getObjectByName("mc_tracks");
+      if(mcTracksGroup) {
+        for(let trackGroup of mcTracksGroup.children) {
+
+
+          for(let obj of trackGroup.children) {
+            if(obj.type == "Line") {
+
+
+
+              let material = new LineMaterial( {
+
+                color: 0xffff00,
+                linewidth: 50, // in world units with size attenuation, pixels otherwise
+                vertexColors: true,
+
+                //resolution:  // to be set by renderer, eventually
+                dashed: true,
+                alphaToCoverage: true,
+
+              } );
+              let positions = (obj.userData as any).pos;
+              let flat = [];
+              for(let position of positions) {
+
+                flat.push(position[0], position[1], position[2]);
+              }
+              const geometry = new LineGeometry();
+              geometry.setPositions( flat );
+              // geometry.setColors( colors );
+
+              let matLine = new LineMaterial( {
+
+                color: 0xffff00,
+                linewidth: 10, // in world units with size attenuation, pixels otherwise
+                //vertexColors: true,
+                worldUnits: true,
+                //needsUpdate=: true;
+                //resolution:  // to be set by renderer, eventually
+                dashed: true,
+                //dashScale: 100,
+                dashSize: 100,
+                gapSize: 100,
+                alphaToCoverage: true,
+
+              } );
+
+              let line = new Line2( geometry, matLine );
+
+              line.scale.set( 1, 1, 1 );
+              line.computeLineDistances();
+              line.visible = true;
+              trackGroup.add( line );
+              obj.visible = false;
+            }
+
+            if(obj.type == "Mesh") {
+              obj.visible = false;
+            }
+          }
+          console.log(trackGroup);
+
+        }
+
+      }
+
     });
+
 
     this.eventDisplay
       .getLoadingManager()
@@ -368,42 +436,8 @@ export class MainDisplayComponent implements OnInit {
     this.stats = (this.eventDisplay.getUIManager() as any).stats;
 
 
-    threeManager.setAnimationLoop(()=>{this.handleGamepadInput()});
+    threeManager.setAnimationLoop(()=>{this.handleGamepadInputV1()});
 
-
-    let beSubject = new BehaviorSubject('a');
-
-    beSubject.next('b');
-
-    beSubject.subscribe(value => {
-      console.log('BehaviorSubject: Subscription received the value ', value);
-
-      // Subscription received B. It would not happen
-      // for an Observable or Subject by default.
-    });
-
-    beSubject.next('c');
-// Subscription received C.
-
-    beSubject.next('d');
-// Subscription received D.
-
-    // Subject.
-
-    let subject = new Subject();
-
-    subject.next('b');
-
-    subject.subscribe(value => {
-      console.log('Subject: Subscription received the value ', value);
-
-      // Subscription won't receive anything at this point.
-    });
-
-    subject.next('c');
-// Subscription received C.
-
-    subject.next('d');
 
 
     //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
@@ -419,9 +453,9 @@ export class MainDisplayComponent implements OnInit {
     console.log(`geometry query: ${geometryAddress}`);
 
     let jsonGeometry;
-    this.loadGeometry().then(jsonGeom => {
-      jsonGeometry = jsonGeom;
-    });
+    // this.loadGeometry().then(jsonGeom => {
+    //   jsonGeometry = jsonGeom;
+    // });
 
 
 
