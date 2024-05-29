@@ -1,5 +1,10 @@
-import {Component, OnInit} from '@angular/core';
-import {EventDisplayService, PhoenixUIModule} from 'phoenix-ui-components';
+import {Component, Input, OnInit} from '@angular/core';
+import {
+  EventDataFormat,
+  EventDataImportOption,
+  EventDisplayService,
+  PhoenixUIModule
+} from 'phoenix-ui-components';
 import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
 import {Color, DoubleSide, Line, MeshPhongMaterial,} from "three";
@@ -23,17 +28,21 @@ import {GameControllerService} from "../game-controller.service";
 import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
 import {Line2} from "three/examples/jsm/lines/Line2";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
+import {IoOptionsComponent} from "./io-options/io-options.component";
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
 
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule],
+  imports: [PhoenixUIModule, IoOptionsComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
 export class MainDisplayComponent implements OnInit {
+
+  @Input()
+  eventDataImportOptions: EventDataImportOption[] = Object.values(EventDataFormat);
 
   /** The root Phoenix menu node. */
   phoenixMenuRoot = new PhoenixMenuNode("Phoenix Menu");
@@ -165,7 +174,7 @@ export class MainDisplayComponent implements OnInit {
     renderer.getMainRenderer().sortObjects = false;
 
     let camera = openThreeManager.controlsManager.getMainCamera();
-    camera.far = 5000;
+    // camera.far = 5000;
     produceRenderOrder(scene, camera.position, 'ray');
 
     var planeA = new THREE.Plane();
@@ -315,8 +324,9 @@ export class MainDisplayComponent implements OnInit {
       defaultEventFile: {
         // (Assuming the file exists in the `src/assets` directory of the app)
         //eventFile: 'assets/herwig_18x275_5evt.json',
-        eventFile: 'assets/events/py8_all_dis-cc_beam-18x275_minq2-1000_nevt-20.evt.json',
-        eventType: 'json'   // or zip
+        //eventFile: 'assets/events/py8_all_dis-cc_beam-18x275_minq2-1000_nevt-20.evt.json',
+        eventFile: 'assets/events/py8_dis-cc_mixed.json.zip',
+        eventType: 'zip'   // or zip
       },
     }
 
@@ -428,6 +438,9 @@ export class MainDisplayComponent implements OnInit {
 
     });
 
+    this.eventDisplay
+      .getLoadingManager().toLoad.push("MyGeometry");
+
 
     this.eventDisplay
       .getLoadingManager()
@@ -453,9 +466,11 @@ export class MainDisplayComponent implements OnInit {
     console.log(`geometry query: ${geometryAddress}`);
 
     let jsonGeometry;
-    // this.loadGeometry().then(jsonGeom => {
-    //   jsonGeometry = jsonGeom;
-    // });
+    this.loadGeometry().then(jsonGeom => {
+      jsonGeometry = jsonGeom;
+      this.eventDisplay
+        .getLoadingManager().itemLoaded("MyGeometry");
+    });
 
 
 
