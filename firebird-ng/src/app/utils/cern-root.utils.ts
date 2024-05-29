@@ -2,6 +2,7 @@
 
 import { wildCardCheck } from './wildcard';
 
+
 export type GeoNodeWalkCallback = (node: any, nodeFullPath: string, level: number) => boolean;
 
 export function walkGeoNodes(node: any, callback: GeoNodeWalkCallback|null, maxLevel = 0, level = 0, path = "", pattern?: string) {
@@ -64,12 +65,15 @@ export function findSingleGeoNode(topNode: any, pattern:string, maxLevel:number=
   return result[0].geoNode;
 }
 
-export enum PruneRuleActions {
-  Nothing,          /// Do not remove this or other nodes
-  Remove,           /// Removes this node
-  RemoveSiblings,   /// Remove all sibling nodes and leave only this node
-  RemoveChildren,  /// Remove all doughter nodes
-  RemoveBySubLevel  /// Remove all nodes below N levels
+export enum EditActions {
+  Nothing,          /** Do not remove this or other nodes */
+  Remove,           /** Removes this node from parent */
+  RemoveSiblings,   /** Remove all sibling nodes and leave only this node */
+  RemoveChildren,   /** Remove all child nodes */
+  RemoveBySubLevel, /** Remove all nodes below N levels */
+  SetGeoBit,        /** Set certain Root GeoAtt bit */
+  UnsetGeoBit,      /** Unset certain ROOT GeoAtt bit */
+  ToggleGeoBit      /** Toggle certain ROOT GeoAtt bit */
 }
 
 /**
@@ -77,8 +81,11 @@ export enum PruneRuleActions {
  */
 export class GeoNodeEditRule {
   public pattern: string = '';
-  public prune: PruneRuleActions = PruneRuleActions.Nothing;
-  public pruneSubLevel?: number = Infinity
+  public action: EditActions = EditActions.Nothing;
+  public pruneSubLevel?: number = Infinity;
+
+  /** Used only if action is one of SetGeoBit, UnsetGeoBit or ToggleGeoBit */
+  public geoBit?:GeoAttBits;
 }
 
 /**
@@ -111,19 +118,39 @@ export function editGeoNodes(topNode: any, rules: GeoNodeEditRule[], maxLevel:nu
       if(wildCardCheck(nodeFullPath, rule.pattern)) {
 
         // Remove this geo node
-        if(rule.prune == PruneRuleActions.Remove) {
+        if(rule.action === EditActions.Remove) {
           removeGeoNode(node);
           return false;  // Don't go through children
         }
 
         // Remove all daughters
-        if(rule.prune == PruneRuleActions.RemoveChildren) {
+        if(rule.action === EditActions.RemoveChildren) {
           removeChildren(node);
-          return false;
+          return false;          // don't process children
         }
 
-        // Add a node to matches
-        postponedProcessing.push({ node: node, fullPath: nodeFullPath, rule: rule });
+        // (!) All next actions may need to process children
+
+        if(rule.action === EditActions.RemoveSiblings) {
+          // Add a node to matches to process them after
+          postponedProcessing.push({ node: node, fullPath: nodeFullPath, rule: rule });
+        }
+
+        if(rule.action === EditActions.SetGeoBit){
+          if(rule.geoBit !== undefined) {
+            setGeoBit(node.fVolume, rule.geoBit, 1);
+          }
+        }
+        if(rule.action === EditActions.UnsetGeoBit){
+          if(rule.geoBit !== undefined) {
+            setGeoBit(node.fVolume, rule.geoBit, 0);
+          }
+        }
+        if(rule.action === EditActions.ToggleGeoBit){
+          if(rule.geoBit !== undefined) {
+            toggleGeoBit(node.fVolume, rule.geoBit);
+          }
+        }
       }
     }
     return true;  // Just continue
@@ -141,7 +168,7 @@ export function editGeoNodes(topNode: any, rules: GeoNodeEditRule[], maxLevel:nu
     let siblings = motherVolume?.fNodes?.arr
 
     // Remove siblings but keep this one
-    if(rule.prune == PruneRuleActions.RemoveSiblings) {
+    if(rule.action == EditActions.RemoveSiblings) {
       if (siblings) {
         motherVolume.fNodes.arr = [node]
       }
@@ -152,7 +179,7 @@ export function editGeoNodes(topNode: any, rules: GeoNodeEditRule[], maxLevel:nu
     }
 
     // Remove daughters by sublevels
-    if(rule.prune == PruneRuleActions.RemoveBySubLevel) {
+    if(rule.action == EditActions.RemoveBySubLevel) {
       let pruneSubNodes = getGeoNodesByLevel(node, rule.pruneSubLevel);
       for (const pruneSubNodeItem of pruneSubNodes) {
         removeGeoNode(pruneSubNodeItem.geoNode);
@@ -250,7 +277,7 @@ function BIT(n:number) { return 1 << n; }
 
 /** @summary TGeo-related bits
  * @private */
-export enum geoBITS {
+export enum GeoAttBits {
   kVisOverride = BIT(0),  // volume's vis. attributes are overwritten
   kVisNone= BIT(1),  // the volume/node is invisible, as well as daughters
   kVisThis= BIT(2),  // this volume/node is visible
@@ -267,7 +294,7 @@ export enum geoBITS {
 
 /** @summary Test fGeoAtt bits
  * @private */
-export function testGeoBit(volume:any , f: geoBITS) {
+export function testGeoBit(volume:any , f: GeoAttBits) {
   const att = volume.fGeoAtt;
   return att === undefined ? false : ((att & f) !== 0);
 }
@@ -275,14 +302,14 @@ export function testGeoBit(volume:any , f: geoBITS) {
 
 /** @summary Set fGeoAtt bit
  * @private */
-export function setGeoBit(volume:any, f: geoBITS, value: number) {
+export function setGeoBit(volume:any, f: GeoAttBits, value: number) {
   if (volume.fGeoAtt === undefined) return;
   volume.fGeoAtt = value ? (volume.fGeoAtt | f) : (volume.fGeoAtt & ~f);
 }
 
 /** @summary Toggle fGeoAttBit
  * @private */
-export function toggleGeoBit(volume:any, f: geoBITS) {
+export function toggleGeoBit(volume:any, f: GeoAttBits) {
   if (volume.fGeoAtt !== undefined)
     volume.fGeoAtt = volume.fGeoAtt ^ (f & 0xffffff);
 }
@@ -292,18 +319,18 @@ export function toggleGeoBit(volume:any, f: geoBITS) {
  * @private */
 export function printAllGeoBitsStatus(volume:any) {
   const bitDescriptions = [
-    { name: 'kVisOverride  ', bit: geoBITS.kVisOverride },
-    { name: 'kVisNone      ', bit: geoBITS.kVisNone },
-    { name: 'kVisThis      ', bit: geoBITS.kVisThis },
-    { name: 'kVisDaughters ', bit: geoBITS.kVisDaughters },
-    { name: 'kVisOneLevel  ', bit: geoBITS.kVisOneLevel },
-    { name: 'kVisStreamed  ', bit: geoBITS.kVisStreamed },
-    { name: 'kVisTouched   ', bit: geoBITS.kVisTouched },
-    { name: 'kVisOnScreen  ', bit: geoBITS.kVisOnScreen },
-    { name: 'kVisContainers', bit: geoBITS.kVisContainers },
-    { name: 'kVisOnly      ', bit: geoBITS.kVisOnly },
-    { name: 'kVisBranch    ', bit: geoBITS.kVisBranch },
-    { name: 'kVisRaytrace  ', bit: geoBITS.kVisRaytrace }
+    { name: 'kVisOverride  ', bit: GeoAttBits.kVisOverride },
+    { name: 'kVisNone      ', bit: GeoAttBits.kVisNone },
+    { name: 'kVisThis      ', bit: GeoAttBits.kVisThis },
+    { name: 'kVisDaughters ', bit: GeoAttBits.kVisDaughters },
+    { name: 'kVisOneLevel  ', bit: GeoAttBits.kVisOneLevel },
+    { name: 'kVisStreamed  ', bit: GeoAttBits.kVisStreamed },
+    { name: 'kVisTouched   ', bit: GeoAttBits.kVisTouched },
+    { name: 'kVisOnScreen  ', bit: GeoAttBits.kVisOnScreen },
+    { name: 'kVisContainers', bit: GeoAttBits.kVisContainers },
+    { name: 'kVisOnly      ', bit: GeoAttBits.kVisOnly },
+    { name: 'kVisBranch    ', bit: GeoAttBits.kVisBranch },
+    { name: 'kVisRaytrace  ', bit: GeoAttBits.kVisRaytrace }
   ];
 
   console.log(`fGeoAttr for ${volume._typename}: ${volume.fName}`);

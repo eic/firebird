@@ -1,63 +1,56 @@
-import { Component, OnInit } from '@angular/core';
-import { EventDisplayService } from 'phoenix-ui-components';
-import { Configuration, PhoenixLoader, PresetView, ClippingSetting, PhoenixMenuNode } from 'phoenix-event-display';
+import {Component, Input, OnInit} from '@angular/core';
+import {HttpClient, HttpClientModule} from '@angular/common/http';
 import {
-  Color,
-  DoubleSide,
-  Mesh,
-  LineSegments,
-  LineBasicMaterial,
-  MeshPhongMaterial,
-  Material,
-  ObjectLoader,
-  FrontSide,
-  Vector3,
-  Matrix4,
-  REVISION,
-  MeshPhysicalMaterial,
-} from "three";
-import { PhoenixUIModule } from 'phoenix-ui-components';
-import { GeometryService} from '../geometry.service';
-import { Edm4hepRootEventLoader } from '../edm4hep-root-event-loader';
-import { ActivatedRoute } from '@angular/router';
-import {color} from "three/examples/jsm/nodes/shadernode/ShaderNode";
-import {getGeoNodesByLevel} from "../utils/cern-root.utils";
+  EventDataFormat,
+  EventDataImportOption,
+  EventDisplayService,
+  PhoenixUIModule
+} from 'phoenix-ui-components';
+import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
+import * as THREE from 'three';
+import {Color, DoubleSide, Line, MeshPhongMaterial,} from "three";
+import {GeometryService} from '../geometry.service';
+import {ActivatedRoute} from '@angular/router';
+import {ThreeGeometryProcessor} from "../three-geometry.processor";
+
+import GUI from "lil-gui";
 import {produceRenderOrder} from "jsrootdi/geom";
-import {wildCardCheck} from "../utils/wildcard";
-
-interface Colorable {
-  color: Color;
-}
-
-function isColorable(material: any): material is Colorable {
-  return 'color' in material;
-}
-
-function getColorOrDefault(material:any, defaultColor: Color): Color {
-  if (isColorable(material)) {
-    return material.color;
-  } else {
-    return defaultColor;
-  }
-
-}
-
-function ensureColor(material: any) {
-
-}
+import {
+  disposeHierarchy,
+  disposeNode,
+  findObject3DNodes,
+  getColorOrDefault,
+  pruneEmptyNodes
+} from "../utils/three.utils";
+import {mergeMeshList, MergeResult} from "../utils/three-geometry-merge";
+import {PhoenixThreeFacade} from "../utils/phoenix-three-facade";
+import {BehaviorSubject, Subject} from "rxjs";
+import {GameControllerService} from "../game-controller.service";
+import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
+import {Line2} from "three/examples/jsm/lines/Line2";
+import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
+import {IoOptionsComponent} from "./io-options/io-options.component";
+import {ThreeEventProcessor} from "../three-event.processor";
+// import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
 
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule],
+  imports: [PhoenixUIModule, IoOptionsComponent, HttpClientModule ],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
 export class MainDisplayComponent implements OnInit {
 
+  @Input()
+  eventDataImportOptions: EventDataImportOption[] = Object.values(EventDataFormat);
+
   /** The root Phoenix menu node. */
   phoenixMenuRoot = new PhoenixMenuNode("Phoenix Menu");
+
+  threeGeometryProcessor = new ThreeGeometryProcessor();
+  threeEventProcessor = new ThreeEventProcessor();
 
   /** is geometry loaded */
   loaded: boolean = false;
@@ -68,14 +61,27 @@ export class MainDisplayComponent implements OnInit {
   /** The Default color of elements if not set */
   defaultColor: Color = new Color(0x2fd691);
 
+
+  private renderer: THREE.Renderer|null = null;
+  private camera: THREE.Camera|null = null;
+  private scene: THREE.Scene|null = null;
+  private stats: any|null = null;         // Stats JS display from UI manager
+
+  private threeFacade: PhoenixThreeFacade;
+
+
   constructor(
     private geomService: GeometryService,
     private eventDisplay: EventDisplayService,
-    private route: ActivatedRoute) { }
+    private controller: GameControllerService,
+    private route: ActivatedRoute,
+    private http: HttpClient) {
+    this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
+  }
 
   async loadGeometry(initiallyVisible=true, scale=10) {
 
-    let {rootGeoManager, rootObject3d} = await this.geomService.loadEicGeometry();
+    let {rootGeoManager, rootObject3d} = await this.geomService.loadGeometry();
     let threeManager = this.eventDisplay.getThreeManager();
     let uiManager = this.eventDisplay.getUIManager();
     let openThreeManager: any = threeManager;
@@ -84,133 +90,234 @@ export class MainDisplayComponent implements OnInit {
 
     const sceneGeometry = threeManager.getSceneManager().getGeometries();
 
+    // Set geometry scale
     if (scale) {
       rootObject3d.scale.setScalar(scale);
     }
+
+    // Add root geometry to scene
+    // console.log("CERN ROOT converted to Object3d: ", rootObject3d);
     sceneGeometry.add(rootObject3d);
-    console.log("CERN ROOT converted to Object3d: ", rootObject3d);
-    //rootGeometry.visible = initiallyVisible;
 
-    //sceneGeometry.add(rootGeometry);
-    let topLevelRootItems = getGeoNodesByLevel(rootGeoManager);
-    let topLevelObj3dNodes = rootObject3d.children[0].children;
-
-    if(topLevelRootItems.length != topLevelObj3dNodes.length) {
-      console.warn(`topLevelRootItems.length != topLevelObj3dNodes.length`);
-      console.log("Can't create Menu Items");
-    }
-    else {
-      for(let i=0; i < topLevelRootItems.length; i++) {
-        let rootGeoNode = topLevelRootItems[i].geoNode;
-        let obj3dNode = topLevelObj3dNodes[i];
-        obj3dNode.name = obj3dNode.userData["name"] = rootGeoNode.name;
-
-        // Add geometry
-        uiManager.addGeometry(obj3dNode, obj3dNode.name);
-      }
-    }
-
-    let renderer  = openThreeManager.rendererManager;
-
-    const glassMaterial = new MeshPhysicalMaterial({
-      color: 0xffff00, // Yellow color
-      metalness: 0,
-      roughness: 0,
-      transmission: 0.7, // High transparency
-      opacity: 1,
-      transparent: true,
-      reflectivity: 0.5
-    });
 
 
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
 
-      if(child.type!=="Mesh") {
-        return;
-      }
+        if(child.type!=="Mesh" || !child?.material?.isMaterial) {
+          return;
+        }
+
+        // Assuming `getObjectSize` is correctly typed and available
+        child.userData["size"] = importManager.getObjectSize(child);
+
+        // Handle the material of the child
+
+        const color = getColorOrDefault(child.material, this.defaultColor);
+        const side = doubleSided ? DoubleSide : child.material.side;
+
+        child.material.dispose(); // Dispose the old material if it's a heavy object
+
+        let opacity = rootObject3d.userData.opacity ?? 1;
+        let transparent = opacity < 1;
+
+        child.material = new MeshPhongMaterial({
+          color: color,
+          shininess: 0,
+          side: side,
+          transparent: true,
+          opacity: 0.5,
+          depthTest: true,
+          depthWrite: true,
+          clippingPlanes: openThreeManager.clipPlanes,
+          clipIntersection: true,
+          clipShadows: false
+        });
+
+        // Material
+        let name:string = child.name;
+
+        if(! child.material?.clippingPlanes !== undefined) {
+          child.material.clippingPlanes = openThreeManager.clipPlanes;
+        }
+
+        if(! child.material?.clipIntersection !== undefined) {
+          child.material.clipIntersection = true;
+        }
+
+        if(! child.material?.clipShadows !== undefined) {
+          child.material.clipShadows = false;
+        }
+    });
+
+    // HERE WE DO POSTPROCESSING STEP
+    this.threeGeometryProcessor.process(rootObject3d);
+
+    // Now we want to change the materials
+    sceneGeometry.traverse( (child: any) => {
 
       if(!child?.material?.isMaterial) {
         return;
       }
 
-      // Assuming `getObjectSize` is correctly typed and available
-      child.userData["size"] = importManager.getObjectSize(child);
-
-      // Handle the material of the child
-
-      const color = getColorOrDefault(child.material, this.defaultColor);
-      const side = doubleSided ? DoubleSide : child.material.side;
-
-      child.material.dispose(); // Dispose the old material if it's a heavy object
-
-      let opacity = rootObject3d.userData.opacity ?? 1;
-      let transparent = opacity < 1;
-
-      child.material = new MeshPhongMaterial({
-        color: color,
-        shininess: 0,
-        side: side,
-        transparent: transparent,
-        opacity: opacity,
-        clippingPlanes: openThreeManager.clipPlanes,
-        clipIntersection: true,
-        clipShadows: false
-      });
-
-      // Material
-      let name:string = child.name;
-
-
-      if(name.startsWith("bar_") || name.startsWith("prism_")) {
-        child.material = glassMaterial;
-      }
-
-      if(! child.material?.clippingPlanes !== undefined) {
+      if(child.material?.clippingPlanes !== undefined) {
         child.material.clippingPlanes = openThreeManager.clipPlanes;
       }
 
-      if(! child.material?.clipIntersection !== undefined) {
+      if(child.material?.clipIntersection !== undefined) {
         child.material.clipIntersection = true;
       }
 
-      if(! child.material?.clipShadows !== undefined) {
+      if(child.material?.clipShadows !== undefined) {
         child.material.clipShadows = false;
       }
-
-    //   if (!(child instanceof Mesh)) {
-    //     return;
-    //   }
-    //   child.userData["size"] = importManager.getObjectSize(child);
-    //   if (!(child.material instanceof Material)) {
-    //     return;
-    //   }
-    //   const color = child.material['color']
-    //     ? child.material['color']
-    //     : 0x2fd691;
-    //   const side = doubleSided ? DoubleSide : child.material['side'];
-    //   child.material.dispose();
-    //   let isTransparent = false;
-    //   if (rootGeometry.userData.opacity) {
-    //     isTransparent = true;
-    //   }
-    //   child.material = new MeshPhongMaterial({
-    //     color,
-    //     shininess: 0,
-    //     side: side,
-    //     transparent: isTransparent,
-    //     opacity: (_a = rootGeometry.userData.opacity) !== null && _a !== void 0 ? _a : 1,
-    //   });
-    //   child.material.clippingPlanes = openThreeManager.clipPlanes;
-    //   child.material.clipIntersection = true;
-    //   child.material.clipShadows = false;
     });
-
+    let renderer  = openThreeManager.rendererManager;
+    // Set render priority
     let scene = threeManager.getSceneManager().getScene();
-    let camera = openThreeManager.controlsManager.getMainCamera();
-    produceRenderOrder(scene, camera.position, 'dflt');
+    scene.background = new THREE.Color( 0x3F3F3F );
+    renderer.getMainRenderer().sortObjects = false;
 
+    let camera = openThreeManager.controlsManager.getMainCamera();
+    // camera.far = 5000;
+    produceRenderOrder(scene, camera.position, 'ray');
+
+    var planeA = new THREE.Plane();
+
+    planeA.set(new THREE.Vector3(0,-1,0), 0);
+
+
+    // renderer.getMainRenderer().clippingPlanes = [planeA];
   }
+
+  produceRenderOrder() {
+
+    console.log("produceRenderOrder. scene: ", this.scene, " camera ", this.camera);
+    produceRenderOrder(this.scene, this.camera?.position, 'ray');
+  }
+
+  logGamepadStates () {
+    const gamepads = navigator.getGamepads();
+
+    for (const gamepad of gamepads) {
+      if (gamepad) {
+        console.log(`Gamepad connected at index ${gamepad.index}: ${gamepad.id}.`);
+        console.log(`Timestamp: ${gamepad.timestamp}`);
+        console.log('Axes states:');
+        gamepad.axes.forEach((axis, index) => {
+          console.log(`Axis ${index}: ${axis.toFixed(4)}`);
+        });
+        console.log('Button states:');
+        gamepad.buttons.forEach((button, index) => {
+          console.log(`Button ${index}: ${button.pressed ? 'pressed' : 'released'}, value: ${button.value}`);
+        });
+      }
+    }
+  };
+
+  rotateCamera(xAxisChange: number, yAxisChange: number) {
+    let orbitControls = this.threeFacade.activeOrbitControls;
+    let camera = this.threeFacade.mainCamera;
+
+    const offset = new THREE.Vector3(); // Offset of the camera from the target
+    const quat = new THREE.Quaternion().setFromUnitVectors(camera.up, new THREE.Vector3(0, 1, 0));
+    const quatInverse = quat.clone().invert();
+
+    const currentPosition = camera.position.clone().sub(orbitControls.target);
+    currentPosition.applyQuaternion(quat); // Apply the quaternion
+
+    // Spherical coordinates
+    const spherical = new THREE.Spherical().setFromVector3(currentPosition);
+
+    // Adjusting spherical coordinates
+    spherical.theta -= xAxisChange * 0.01; // Azimuth angle change
+    spherical.phi += yAxisChange * 0.01; // Polar angle change, for rotating up/down
+
+    // Ensure phi is within bounds to avoid flipping
+    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+
+    // Convert back to Cartesian coordinates
+    const newPostion = new THREE.Vector3().setFromSpherical(spherical);
+    newPostion.applyQuaternion(quatInverse);
+
+    camera.position.copy(newPostion.add(orbitControls.target));
+    camera.lookAt(orbitControls.target);
+    orbitControls.update();
+  }
+
+  zoom(factor: number) {
+    let orbitControls = this.threeFacade.activeOrbitControls;
+    let camera = this.threeFacade.mainCamera;
+    orbitControls.object.position.subVectors(camera.position, orbitControls.target).multiplyScalar(factor).add(orbitControls.target);
+    orbitControls.update();
+  }
+
+  handleGamepadInputV2 () {
+    this.controller.animationLoopHandler();
+  }
+
+  logCamera() {
+    console.log(this.threeFacade.mainCamera);
+  }
+
+
+  handleGamepadInputV1 () {
+
+    // Update stats display that showing FPS, etc.
+    if (this.stats) {
+      this.stats.update();
+    }
+
+    const gamepads = navigator.getGamepads();
+    for (const gamepad of gamepads) {
+      if (gamepad) {
+        // Example: Using left joystick to control OrbitControls
+        // Axis 0: Left joystick horizontal (left/right)
+        // Axis 1: Left joystick vertical (up/down)
+        const xAxis = gamepad.axes[0];
+        const yAxis = gamepad.axes[1];
+
+        let controls = this.threeFacade.activeOrbitControls;
+        let camera = this.threeFacade.mainCamera;
+
+        if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
+          this.rotateCamera(xAxis, yAxis);
+
+        }
+
+        // Zooming using buttons
+        const zoomInButton = gamepad.buttons[2];
+        const zoomOutButton = gamepad.buttons[0];
+
+        if (zoomInButton.pressed) {
+          this.zoom(0.99);
+        }
+
+        if (zoomOutButton.pressed) {
+          this.zoom(1.01);
+        }
+
+        break; // Only use the first connected gamepad
+      }
+    }
+  };
+
+  updateProjectionMatrix() {
+    let camera = this.threeFacade.mainCamera;
+    camera.updateProjectionMatrix();
+  }
+
+  downloadFile() {
+
+    this.http.get('https://firebird-eic.org/py9_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip', {
+      observe: 'response'
+    }).subscribe(response => {
+      console.log(response.headers); // Log response headers
+    }, error => {
+      console.log('CORS error:', error);
+    });
+  }
+
 
   ngOnInit() {
 
@@ -226,23 +333,80 @@ export class MainDisplayComponent implements OnInit {
         new PresetView('Perspective2 + clip', [-4500, 8000, -6000], [0, 0, -5000], 'right-cube', ClippingSetting.On, 90, 90)
       ],
       // default view with x, y, z of the camera and then x, y, z of the point it looks at
-      defaultView: [-4500, 12000, 0, 0, 0 ,0],
+      defaultView: [-2500, 0, -8000, 0, 0 ,0],
 
       phoenixMenuRoot: this.phoenixMenuRoot,
       // Event data to load by default
       defaultEventFile: {
         // (Assuming the file exists in the `src/assets` directory of the app)
         //eventFile: 'assets/herwig_18x275_5evt.json',
-        eventFile: 'assets/events/herwig_5x41_5evt_showers.json',
-        eventType: 'json'   // or zip
+        //eventFile: 'assets/events/py8_all_dis-cc_beam-18x275_minq2-1000_nevt-20.evt.json',
+        //eventFile: 'assets/events/py8_dis-cc_mixed.json.zip',
+        eventFile: 'https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip',
+        eventType: 'zip'   // or zip
       },
     }
 
     // Initialize the event display
     this.eventDisplay.init(configuration);
+
+    // let uiManager = this.eventDisplay.getUIManager();
+    let openThreeManager: any = this.eventDisplay.getThreeManager();
+    let threeManager = this.eventDisplay.getThreeManager();
+
+    this.renderer  = openThreeManager.rendererManager.getMainRenderer();
+    this.scene = threeManager.getSceneManager().getScene() as THREE.Scene;
+    this.camera = openThreeManager.controlsManager.getMainCamera() as THREE.Camera;
+
+
+    // GUI
+    const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
+
+    const gui = new GUI({
+      // container: document.getElementById("lil-gui-place") ?? undefined,
+
+    });
+
+    gui.title("Debug");
+    gui.add(this, "produceRenderOrder");
+    gui.add(this, "logGamepadStates").name( 'Log controls' );
+    gui.add(this, "logCamera").name( 'Log camera' );
+    gui.add(this, "downloadFile").name( 'downloadFile' );
+    gui.add(this, "updateProjectionMatrix").name( 'Update Projection Matrix' );
+    gui.close();
+
+    // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);
-    this.eventDisplay.getUIManager().rotateOpeningAngleClipping(120);
-    this.eventDisplay.getUIManager().rotateStartAngleClipping(45);
+    this.eventDisplay.getUIManager().rotateOpeningAngleClipping(180);
+    this.eventDisplay.getUIManager().rotateStartAngleClipping(90);
+
+    this.eventDisplay.listenToDisplayedEventChange(event => {
+      console.log("listenToDisplayedEventChange");
+      console.log(event);
+      let mcTracksGroup = threeManager.getSceneManager().getObjectByName("mc_tracks");
+      if(mcTracksGroup) {
+        this.threeEventProcessor.processMcTracks(mcTracksGroup);
+      }
+    })
+    // Display event loader
+    this.eventDisplay.getLoadingManager().addLoadListenerWithCheck(() => {
+      console.log('Loading default configuration.');
+      this.loaded = true;
+    });
+
+    this.eventDisplay
+      .getLoadingManager().toLoad.push("MyGeometry");
+
+
+    this.eventDisplay
+      .getLoadingManager()
+      .addProgressListener((progress) => (this.loadingProgress = progress));
+
+    this.stats = (this.eventDisplay.getUIManager() as any).stats;
+
+
+    threeManager.setAnimationLoop(()=>{this.handleGamepadInputV1()});
+
 
 
     //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
@@ -259,12 +423,12 @@ export class MainDisplayComponent implements OnInit {
 
     let jsonGeometry;
     this.loadGeometry().then(jsonGeom => {
-
+      jsonGeometry = jsonGeom;
+      this.eventDisplay
+        .getLoadingManager().itemLoaded("MyGeometry");
     });
 
-    this.eventDisplay
-      .getLoadingManager()
-      .addProgressListener((progress) => (this.loadingProgress = progress));
+
 
     document.addEventListener('keydown', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') {
@@ -278,14 +442,5 @@ export class MainDisplayComponent implements OnInit {
       }
       console.log((e as KeyboardEvent).key);
     });
-
-    // Load the default configuration
-    this.eventDisplay.getLoadingManager().addLoadListenerWithCheck(() => {
-      console.log('Loading default configuration.');
-      this.loaded = true;
-
-    });
-
   }
-
 }

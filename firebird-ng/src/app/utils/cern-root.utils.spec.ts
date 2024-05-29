@@ -1,4 +1,4 @@
-import { walkGeoNodes, GeoNodeWalkCallback, findGeoNodes, geoBITS, testGeoBit, setGeoBit, toggleGeoBit} from './cern-root.utils';
+import { walkGeoNodes, GeoNodeWalkCallback, findGeoNodes, GeoAttBits, testGeoBit, setGeoBit, toggleGeoBit} from './cern-root.utils';
 
 describe('walkGeoNodes', () => {
   let mockCallback: jasmine.Spy<GeoNodeWalkCallback>;
@@ -96,54 +96,54 @@ describe('GeoBits Functions', () => {
   describe('testGeoBit', () => {
     it('should return false if fGeoAtt is undefined', () => {
       volume.fGeoAtt = undefined;
-      expect(testGeoBit(volume, geoBITS.kVisThis)).toBeFalse();
+      expect(testGeoBit(volume, GeoAttBits.kVisThis)).toBeFalse();
     });
 
     it('should return false if the bit is not set', () => {
       volume.fGeoAtt = 0;
-      expect(testGeoBit(volume, geoBITS.kVisThis)).toBeFalse();
+      expect(testGeoBit(volume, GeoAttBits.kVisThis)).toBeFalse();
     });
 
     it('should return true if the bit is set', () => {
-      volume.fGeoAtt = geoBITS.kVisThis;
-      expect(testGeoBit(volume, geoBITS.kVisThis)).toBeTrue();
+      volume.fGeoAtt = GeoAttBits.kVisThis;
+      expect(testGeoBit(volume, GeoAttBits.kVisThis)).toBeTrue();
     });
   });
 
   describe('setGeoBit', () => {
     it('should set the bit if value is 1', () => {
-      setGeoBit(volume, geoBITS.kVisThis, 1);
-      expect(testGeoBit(volume, geoBITS.kVisThis)).toBeTrue();
+      setGeoBit(volume, GeoAttBits.kVisThis, 1);
+      expect(testGeoBit(volume, GeoAttBits.kVisThis)).toBeTrue();
     });
 
     it('should clear the bit if value is 0', () => {
-      volume.fGeoAtt = geoBITS.kVisThis;
-      setGeoBit(volume, geoBITS.kVisThis, 0);
-      expect(testGeoBit(volume, geoBITS.kVisThis)).toBeFalse();
+      volume.fGeoAtt = GeoAttBits.kVisThis;
+      setGeoBit(volume, GeoAttBits.kVisThis, 0);
+      expect(testGeoBit(volume, GeoAttBits.kVisThis)).toBeFalse();
     });
 
     it('should not modify fGeoAtt if it is undefined', () => {
       volume.fGeoAtt = undefined;
-      setGeoBit(volume, geoBITS.kVisThis, 1);
+      setGeoBit(volume, GeoAttBits.kVisThis, 1);
       expect(volume.fGeoAtt).toBeUndefined();
     });
   });
 
   describe('toggleGeoBit', () => {
     it('should toggle the bit from 0 to 1', () => {
-      toggleGeoBit(volume, geoBITS.kVisThis);
-      expect(testGeoBit(volume, geoBITS.kVisThis)).toBeTrue();
+      toggleGeoBit(volume, GeoAttBits.kVisThis);
+      expect(testGeoBit(volume, GeoAttBits.kVisThis)).toBeTrue();
     });
 
     it('should toggle the bit from 1 to 0', () => {
-      volume.fGeoAtt = geoBITS.kVisThis;
-      toggleGeoBit(volume, geoBITS.kVisThis);
-      expect(testGeoBit(volume, geoBITS.kVisThis)).toBeFalse();
+      volume.fGeoAtt = GeoAttBits.kVisThis;
+      toggleGeoBit(volume, GeoAttBits.kVisThis);
+      expect(testGeoBit(volume, GeoAttBits.kVisThis)).toBeFalse();
     });
 
     it('should not modify fGeoAtt if it is undefined', () => {
       volume.fGeoAtt = undefined;
-      toggleGeoBit(volume, geoBITS.kVisThis);
+      toggleGeoBit(volume, GeoAttBits.kVisThis);
       expect(volume.fGeoAtt).toBeUndefined();
     });
   });

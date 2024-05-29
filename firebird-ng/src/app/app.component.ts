@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterOutlet, RouterModule, Router} from '@angular/router';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import {BehaviorSubject, Subject} from "rxjs";
 @Component({
   selector: 'app-root',
   standalone: true,
