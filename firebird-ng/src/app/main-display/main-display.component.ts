@@ -1,4 +1,5 @@
 import {Component, Input, OnInit} from '@angular/core';
+import {HttpClient, HttpClientModule} from '@angular/common/http';
 import {
   EventDataFormat,
   EventDataImportOption,
@@ -29,13 +30,14 @@ import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
 import {Line2} from "three/examples/jsm/lines/Line2";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
 import {IoOptionsComponent} from "./io-options/io-options.component";
+import {ThreeEventProcessor} from "../three-event.processor";
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
 
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, HttpClientModule ],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -48,6 +50,7 @@ export class MainDisplayComponent implements OnInit {
   phoenixMenuRoot = new PhoenixMenuNode("Phoenix Menu");
 
   threeGeometryProcessor = new ThreeGeometryProcessor();
+  threeEventProcessor = new ThreeEventProcessor();
 
   /** is geometry loaded */
   loaded: boolean = false;
@@ -66,11 +69,13 @@ export class MainDisplayComponent implements OnInit {
 
   private threeFacade: PhoenixThreeFacade;
 
+
   constructor(
     private geomService: GeometryService,
     private eventDisplay: EventDisplayService,
     private controller: GameControllerService,
-    private route: ActivatedRoute) {
+    private route: ActivatedRoute,
+    private http: HttpClient) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
   }
 
@@ -302,6 +307,17 @@ export class MainDisplayComponent implements OnInit {
     camera.updateProjectionMatrix();
   }
 
+  downloadFile() {
+
+    this.http.get('https://firebird-eic.org/py9_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip', {
+      observe: 'response'
+    }).subscribe(response => {
+      console.log(response.headers); // Log response headers
+    }, error => {
+      console.log('CORS error:', error);
+    });
+  }
+
 
   ngOnInit() {
 
@@ -325,7 +341,8 @@ export class MainDisplayComponent implements OnInit {
         // (Assuming the file exists in the `src/assets` directory of the app)
         //eventFile: 'assets/herwig_18x275_5evt.json',
         //eventFile: 'assets/events/py8_all_dis-cc_beam-18x275_minq2-1000_nevt-20.evt.json',
-        eventFile: 'assets/events/py8_dis-cc_mixed.json.zip',
+        //eventFile: 'assets/events/py8_dis-cc_mixed.json.zip',
+        eventFile: 'https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip',
         eventType: 'zip'   // or zip
       },
     }
@@ -354,6 +371,7 @@ export class MainDisplayComponent implements OnInit {
     gui.add(this, "produceRenderOrder");
     gui.add(this, "logGamepadStates").name( 'Log controls' );
     gui.add(this, "logCamera").name( 'Log camera' );
+    gui.add(this, "downloadFile").name( 'downloadFile' );
     gui.add(this, "updateProjectionMatrix").name( 'Update Projection Matrix' );
     gui.close();
 
@@ -362,80 +380,18 @@ export class MainDisplayComponent implements OnInit {
     this.eventDisplay.getUIManager().rotateOpeningAngleClipping(180);
     this.eventDisplay.getUIManager().rotateStartAngleClipping(90);
 
+    this.eventDisplay.listenToDisplayedEventChange(event => {
+      console.log("listenToDisplayedEventChange");
+      console.log(event);
+      let mcTracksGroup = threeManager.getSceneManager().getObjectByName("mc_tracks");
+      if(mcTracksGroup) {
+        this.threeEventProcessor.processMcTracks(mcTracksGroup);
+      }
+    })
     // Display event loader
     this.eventDisplay.getLoadingManager().addLoadListenerWithCheck(() => {
       console.log('Loading default configuration.');
       this.loaded = true;
-
-
-      console.log(threeManager.getSceneManager().getEventData());
-
-      let mcTracksGroup = threeManager.getSceneManager().getObjectByName("mc_tracks");
-      if(mcTracksGroup) {
-        for(let trackGroup of mcTracksGroup.children) {
-
-
-          for(let obj of trackGroup.children) {
-            if(obj.type == "Line") {
-
-
-
-              let material = new LineMaterial( {
-
-                color: 0xffff00,
-                linewidth: 50, // in world units with size attenuation, pixels otherwise
-                vertexColors: true,
-
-                //resolution:  // to be set by renderer, eventually
-                dashed: true,
-                alphaToCoverage: true,
-
-              } );
-              let positions = (obj.userData as any).pos;
-              let flat = [];
-              for(let position of positions) {
-
-                flat.push(position[0], position[1], position[2]);
-              }
-              const geometry = new LineGeometry();
-              geometry.setPositions( flat );
-              // geometry.setColors( colors );
-
-              let matLine = new LineMaterial( {
-
-                color: 0xffff00,
-                linewidth: 10, // in world units with size attenuation, pixels otherwise
-                //vertexColors: true,
-                worldUnits: true,
-                //needsUpdate=: true;
-                //resolution:  // to be set by renderer, eventually
-                dashed: true,
-                //dashScale: 100,
-                dashSize: 100,
-                gapSize: 100,
-                alphaToCoverage: true,
-
-              } );
-
-              let line = new Line2( geometry, matLine );
-
-              line.scale.set( 1, 1, 1 );
-              line.computeLineDistances();
-              line.visible = true;
-              trackGroup.add( line );
-              obj.visible = false;
-            }
-
-            if(obj.type == "Mesh") {
-              obj.visible = false;
-            }
-          }
-          console.log(trackGroup);
-
-        }
-
-      }
-
     });
 
     this.eventDisplay

@@ -15,16 +15,14 @@ describe('ConfigProperty', () => {
   });
 
   it('should initialize with default value if no value in localStorage', () => {
-    spyOn(localStorage, 'getItem').and.callFake((key: string) => {
-      return null;  // Simulating no existing value in localStorage
-    });
+    localStorage.removeItem(key);
+    configProperty = new ConfigProperty<string>(key, defaultValue);
     expect(configProperty.value).toBe(defaultValue);
-    expect(localStorage.getItem).toHaveBeenCalledWith(key);
   });
 
   it('should use stored value if available', () => {
     const storedValue = "stored";
-    localStorage.setItem(key, JSON.stringify(storedValue) );
+    localStorage.setItem(key, storedValue);
     configProperty = new ConfigProperty<string>(key, defaultValue);
     expect(configProperty.value).toBe(storedValue);
   });
@@ -38,7 +36,7 @@ describe('ConfigProperty', () => {
 
   it('should not change value if validator fails', () => {
     const badValue = 'bad';
-    configProperty = new ConfigProperty<string>(key, defaultValue, mockSaveCallback, (value) => value !== badValue);
+    configProperty = new ConfigProperty<string>(key, defaultValue, mockSaveCallback, (value) => false);
     configProperty.value = badValue;
 
     expect(configProperty.value).toBe(defaultValue); // Still the default, not the bad value

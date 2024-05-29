@@ -44,6 +44,17 @@
           <option value="https://eic.github.io/epic/artifacts/tgeo/epic_zdc_sipm_on_tile_only.root">epic_zdc_sipm_on_tile_only.root</option>
         </select>
       </div>
+
+      <h5 class="card-title">Events Source</h5>
+      <div class="form-group">
+        <select class="form-control" [formControl]="selectedEventSource">
+          <option value="epic-central-optimized">No events (may upload later)</option>
+          <option value="epic-central-optimized">Open house events</option>
+          <option value="https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip">Pyth8 All(300MeV+) DIC-CC 5x41 minQ2-100 5 events</option>
+        </select>
+      </div>
+
+
     </div>
   </div>
 

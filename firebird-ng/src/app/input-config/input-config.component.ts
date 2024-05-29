@@ -16,6 +16,7 @@ import {ConfigProperty} from "../utils/config-property";
 export class InputConfigComponent implements OnInit {
 
   selectedGeometry = new FormControl('');
+  selectedEventSource = new FormControl('');
   onlyCentralDetector: FormControl<boolean | null> = new FormControl(true);
 
   constructor(private configService: UserConfigService) {

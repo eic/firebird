@@ -4,7 +4,8 @@
 <!--<app-ui-menu></app-ui-menu>-->
 <app-experiment-info experiment="ePIC" experimentTagline="EPIC experiment at EIC"></app-experiment-info>
 <!-- Phoenix menu at the top right -->
-<!--<app-phoenix-menu [rootNode]="phoenixMenuRoot"></app-phoenix-menu>-->
+<app-phoenix-menu [rootNode]="phoenixMenuRoot"></app-phoenix-menu>
+
 <app-ui-menu-wrapper>
   <!-- Event selector -->
   <app-event-selector></app-event-selector>
@@ -31,9 +32,6 @@
   <!-- Toggle for selected object panel -->
   <app-object-selection></app-object-selection>
 
-  <!-- Info panel -->
-  <app-info-panel></app-info-panel>
-
   <!-- Toggle for animating the event data -->
   <app-animate-event></app-animate-event>
 
@@ -46,17 +44,14 @@
   <!-- Toggle for performance -->
   <app-performance-toggle></app-performance-toggle>
 
-  <!-- Toggle for screenshot mode -->
-  <app-ss-mode></app-ss-mode>
-
-  <!-- Make pictures from scene -->
-  <app-make-picture></app-make-picture>
-
   <!-- Toggle for loading geometries modal-->
   <eic-io-options></eic-io-options>
 
   <!-- Toggle for shareable link constructor modal-->
   <app-share-link></app-share-link>
+
+  <!-- Info panel -->
+  <app-info-panel></app-info-panel>
 
   <!-- Extra options -->
   <ng-content></ng-content>

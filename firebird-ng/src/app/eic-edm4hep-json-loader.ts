@@ -183,14 +183,14 @@ export class EicEdm4hepJsonLoader extends PhoenixLoader {
       rawVertices.forEach((rawVertex: any) => {
         const position: any[] = [];
         if ('position' in rawVertex) {
-          position.push(rawVertex['position']['x'] * 0.1);
-          position.push(rawVertex['position']['y'] * 0.1);
-          position.push(rawVertex['position']['z'] * 0.1);
+          position.push(rawVertex['position']['x']);
+          position.push(rawVertex['position']['y']);
+          position.push(rawVertex['position']['z']);
         }
 
         const vertex = {
           pos: position,
-          size: 0.2,
+          size: 3,
           color: '#' + vertexColor,
         };
         vertices.push(vertex);
@@ -244,9 +244,9 @@ export class EicEdm4hepJsonLoader extends PhoenixLoader {
             );
             const trackerHit = trackerHits[trackerHitRef['index']];
             positions.push([
-              trackerHit['position']['x'] * 0.1,
-              trackerHit['position']['y'] * 0.1,
-              trackerHit['position']['z'] * 0.1,
+              trackerHit['position']['x'],
+              trackerHit['position']['y'],
+              trackerHit['position']['z'],
             ]);
           });
         }
@@ -255,9 +255,9 @@ export class EicEdm4hepJsonLoader extends PhoenixLoader {
           trackStates.forEach((trackState: any) => {
             if ('referencePoint' in trackState) {
               positions.push([
-                trackState['referencePoint']['x'] * 0.1,
-                trackState['referencePoint']['y'] * 0.1,
-                trackState['referencePoint']['z'] * 0.1,
+                trackState['referencePoint']['x'],
+                trackState['referencePoint']['y'],
+                trackState['referencePoint']['z'],
               ]);
             }
           });
@@ -337,16 +337,16 @@ export class EicEdm4hepJsonLoader extends PhoenixLoader {
       rawHits.forEach((rawHit: any) => {
         const position: any[] = [];
         if ('position' in rawHit) {
-          position.push(rawHit['position']['x'] * 0.1);
-          position.push(rawHit['position']['y'] * 0.1);
-          position.push(rawHit['position']['z'] * 0.1);
+          position.push(rawHit['position']['x']);
+          position.push(rawHit['position']['y']);
+          position.push(rawHit['position']['z']);
         }
 
         const hit = {
           type: 'CircularPoint',
           pos: position,
           color: '#' + hitColor,
-          size: 2,
+          size: 20,
         };
         hits.push(hit);
       });
@@ -419,9 +419,9 @@ export class EicEdm4hepJsonLoader extends PhoenixLoader {
       const cellsHue = Math.floor(Math.random() * 358);
 
       rawCells.forEach((rawCell: any) => {
-        const x = rawCell.position.x * 0.1;
-        const y = rawCell.position.y * 0.1;
-        const z = rawCell.position.z * 0.1;
+        const x = rawCell.position.x;
+        const y = rawCell.position.y;
+        const z = rawCell.position.z;
 
         const r = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2));
         const rho = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
@@ -476,9 +476,9 @@ export class EicEdm4hepJsonLoader extends PhoenixLoader {
       const clusters: any[] = [];
 
       rawClusters.forEach((rawCluster: any) => {
-        const x = rawCluster.position.x * 0.1;
-        const y = rawCluster.position.y * 0.1;
-        const z = rawCluster.position.z * 0.1;
+        const x = rawCluster.position.x;
+        const y = rawCluster.position.y;
+        const z = rawCluster.position.z;
 
         const r = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2));
         const rho = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
@@ -490,7 +490,7 @@ export class EicEdm4hepJsonLoader extends PhoenixLoader {
           phi: phi,
           energy: rawCluster.energy * 100,
           radius: r,
-          side: 4,
+          side: 40,
         };
         clusters.push(cluster);
       });
@@ -612,8 +612,8 @@ export class EicEdm4hepJsonLoader extends PhoenixLoader {
         const ety = (rawMET['energy'] * py) / p;
 
         const MET = {
-          etx: etx * 10,
-          ety: ety * 10,
+          etx: etx * 100,
+          ety: ety * 100,
           color: '#ff69b4',
         };
         METs.push(MET);
@@ -662,12 +662,12 @@ export class EicEdm4hepJsonLoader extends PhoenixLoader {
 
   /** Return a opacity value from the passed number and range */
   private valToOpacity(v: number, min: number, max: number): number {
-    let opacity = 0.2 + ((v - min) * 0.65) / (max - min);
-    if (opacity < 0.2) {
-      opacity = 0.2;
+    let opacity = 0.5 + ((v - min) * 0.65) / (max - min);
+    if (opacity < 0.5) {
+      opacity = 0.5;
     }
-    if (opacity > 0.8) {
-      opacity = 0.8;
+    if (opacity > 1) {
+      opacity = 1;
     }
 
     return opacity;
