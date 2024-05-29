@@ -31,13 +31,14 @@ import {Line2} from "three/examples/jsm/lines/Line2";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
 import {IoOptionsComponent} from "./io-options/io-options.component";
 import {ThreeEventProcessor} from "../three-event.processor";
+import {UserConfigService} from "../user-config.service";
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
 
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, HttpClientModule ],
+  imports: [PhoenixUIModule, IoOptionsComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -75,7 +76,7 @@ export class MainDisplayComponent implements OnInit {
     private eventDisplay: EventDisplayService,
     private controller: GameControllerService,
     private route: ActivatedRoute,
-    private http: HttpClient) {
+    private settings: UserConfigService) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
   }
 
@@ -307,19 +308,17 @@ export class MainDisplayComponent implements OnInit {
     camera.updateProjectionMatrix();
   }
 
-  downloadFile() {
-
-    this.http.get('https://firebird-eic.org/py9_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip', {
-      observe: 'response'
-    }).subscribe(response => {
-      console.log(response.headers); // Log response headers
-    }, error => {
-      console.log('CORS error:', error);
-    });
-  }
-
 
   ngOnInit() {
+
+
+    let eventSource = this.settings.eventSource.value;
+    let eventConfig = {eventFile: "https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip", eventType: "zip"};
+    if( eventSource != "no-events" && !eventSource.endsWith("edm4hep.json")) {
+      let eventType = eventSource.endsWith("zip") ? "zip" : "json";
+      let eventFile = eventSource;
+      eventConfig = {eventFile, eventType};
+    }
 
     // Create the event display configuration
     const configuration: Configuration = {
@@ -337,14 +336,15 @@ export class MainDisplayComponent implements OnInit {
 
       phoenixMenuRoot: this.phoenixMenuRoot,
       // Event data to load by default
-      defaultEventFile: {
-        // (Assuming the file exists in the `src/assets` directory of the app)
-        //eventFile: 'assets/herwig_18x275_5evt.json',
-        //eventFile: 'assets/events/py8_all_dis-cc_beam-18x275_minq2-1000_nevt-20.evt.json',
-        //eventFile: 'assets/events/py8_dis-cc_mixed.json.zip',
-        eventFile: 'https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip',
-        eventType: 'zip'   // or zip
-      },
+      defaultEventFile: eventConfig
+      // defaultEventFile: {
+      //   // (Assuming the file exists in the `src/assets` directory of the app)
+      //   //eventFile: 'assets/herwig_18x275_5evt.json',
+      //   //eventFile: 'assets/events/py8_all_dis-cc_beam-18x275_minq2-1000_nevt-20.evt.json',
+      //   //eventFile: 'assets/events/py8_dis-cc_mixed.json.zip',
+      //   eventFile: 'https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip',
+      //   eventType: 'zip'   // or zip
+      // },
     }
 
     // Initialize the event display
@@ -371,8 +371,7 @@ export class MainDisplayComponent implements OnInit {
     gui.add(this, "produceRenderOrder");
     gui.add(this, "logGamepadStates").name( 'Log controls' );
     gui.add(this, "logCamera").name( 'Log camera' );
-    gui.add(this, "downloadFile").name( 'downloadFile' );
-    gui.add(this, "updateProjectionMatrix").name( 'Update Projection Matrix' );
+    gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
     gui.close();
 
     // Set default clipping

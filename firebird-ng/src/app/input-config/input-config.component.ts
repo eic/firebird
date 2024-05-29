@@ -20,44 +20,8 @@ export class InputConfigComponent implements OnInit {
   onlyCentralDetector: FormControl<boolean | null> = new FormControl(true);
 
   constructor(private configService: UserConfigService) {
-
-
-
-    // this.selectedGeometry.valueChanges.subscribe(
-    //   value => this.configService.selectedGeometry.value=value??""
-    // );
-    // this.configService.selectedGeometry.changes$.subscribe(
-    //   value => this.selectedGeometry.setValue(value, { emitEvent: false })
-    // );
-    // this.geoForm = this.fb.group(this.stateFromConfig());
-    //
-    // this.geoForm.valueChanges.subscribe(value => {
-    //   this.geometryService.saveGeoConfig(value);
-    //   console.log(value);
-    // });
   }
 
-  //geoForm: FormGroup;
-
-  //
-  // constructor(private fb: FormBuilder, private configService: UserConfigService) {
-  //   this.geoForm = this.fb.group(this.stateFromConfig());
-  //
-  //   this.geoForm.valueChanges.subscribe(value => {
-  //     this.geometryService.saveGeoConfig(value);
-  //     console.log(value);
-  //   });
-  // }
-  //
-  // stateFromConfig(): any {
-  //   return {
-  //     selectedGeometry: this.configService.selectedGeometry,
-  //     geoOptEnabled: [false],
-  //     selectedEvent: ['Central detector'],
-  //     geoPostEnabled: [false]
-  //   }
-  // }
-  //
 
   bindConfigToControl<Type>(control: FormControl<Type | null>, config: ConfigProperty<Type> ) {
     control.setValue(config.value, { emitEvent: false })
@@ -78,15 +42,7 @@ export class InputConfigComponent implements OnInit {
   ngOnInit(): void {
     //this.selectedGeometry.setValue(this.configService.selectedGeometry.value, { emitEvent: false })
     this.bindConfigToControl(this.selectedGeometry, this.configService.selectedGeometry);
+    this.bindConfigToControl(this.selectedEventSource, this.configService.eventSource);
     this.bindConfigToControl(this.onlyCentralDetector, this.configService.onlyCentralDetector);
-  //   const savedSettings = this.geometryService.getState();
-  //   if (savedSettings) {
-  //     this.geoForm.setValue(savedSettings);
-  //   }
-  //
-  //   this.geometryService.state$.subscribe(state => {
-  //     this.geoForm.setValue(state, { emitEvent: false });
-  //   });
   }
-
 }

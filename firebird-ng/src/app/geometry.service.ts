@@ -13,6 +13,7 @@ import {
 import {build} from 'jsrootdi/geom';
 import {BehaviorSubject} from "rxjs";
 import {RootGeometryProcessor} from "./root-geometry.processor";
+import {UserConfigService} from "./user-config.service";
 
 // constants.ts
 export const DEFAULT_GEOMETRY = 'epic-central-optimized';
@@ -24,41 +25,8 @@ export class GeometryService {
 
   rootGeometryProcessor = new RootGeometryProcessor();
 
-  constructor() {
-    this.loadGeoConfig();
-  }
+  constructor(private settings: UserConfigService) {
 
-  private stateSubject = new BehaviorSubject<any>(this.loadGeoConfig());
-  state$ = this.stateSubject.asObservable();
-
-  saveGeoConfig(state: any) {
-    localStorage.setItem('geometrySettings', JSON.stringify(state));
-    this.stateSubject.next(state);
-  }
-
-  loadGeoConfig(): any {
-    const settings = localStorage.getItem('geometrySettings');
-
-    let config = settings ? JSON.parse(settings) : {
-      selectedGeometry: DEFAULT_GEOMETRY,
-      geoOptEnabled: true,
-      selectedEvent: 'Central detector',
-      geoPostEnabled: true
-    };
-
-    if(!config?.selectedGeometry) {
-      config.selectedGeometry = DEFAULT_GEOMETRY;
-    }
-
-    if(!config?.selectedEvent) {
-      config.selectedEvent = "Default events";
-    }
-
-    return config;
-  }
-
-  getState() {
-    return this.stateSubject.value;
   }
 
 
@@ -68,10 +36,8 @@ export class GeometryService {
     // let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
     // >oO let objectName = 'default';
 
-    let settings = this.getState();
-
-    const url = settings.selectedGeometry !== DEFAULT_GEOMETRY?
-      settings.selectedGeometry:
+    const url = this.settings.selectedGeometry.value !== DEFAULT_GEOMETRY?
+      this.settings.selectedGeometry.value:
       'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
 
     console.time('[GeoSrv]: Total load geometry time');
