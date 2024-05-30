@@ -14,4 +14,8 @@ export const routes: Routes = [
     path: 'display',
     loadComponent: () => import('./main-display/main-display.component').then(m => m.MainDisplayComponent)
   },
+  {
+    path: 'playground',
+    loadComponent: () => import('./playground/playground.component').then(m => m.PlaygroundComponent)
+  },
 ];
