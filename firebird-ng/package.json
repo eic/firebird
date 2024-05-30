@@ -21,9 +21,11 @@
     "@angular/platform-browser": "^17.3.0",
     "@angular/platform-browser-dynamic": "^17.3.0",
     "@angular/router": "^17.3.0",
+    "@tweenjs/tween.js": "^23.1.2",
     "@types/picomatch": "^2.3.3",
     "jsdom": "^24.0.0",
     "jsrootdi": "^7.6.101",
+    "lil-gui": "^0.19.2",
     "outmatch": "^1.0.0",
     "phoenix-event-display": "^2.16.0",
     "phoenix-ui-components": "^2.16.0",
@@ -32,8 +34,7 @@
     "three": "^0.164.1",
     "tslib": "^2.3.0",
     "vm": "^0.1.0",
-    "zone.js": "~0.14.3",
-    "lil-gui": "^0.19.2"
+    "zone.js": "~0.14.3"
   },
   "devDependencies": {
     "@angular-builders/custom-webpack": "^17.0.2",

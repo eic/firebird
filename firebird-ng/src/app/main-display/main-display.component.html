@@ -1,5 +1,12 @@
+<div id="controls">
+  <input type="range" id="timeSlider" min="0" [max]="maxTime" step="1" [value]="currentTime" (input)="changeCurrentTime($event)" />
+  <div>{{currentTime}} {{message}}</div>
+  <button (click)="timeStep($event)">  step </button>
+  <button (click)="animateTime()">  play </button>
+  <button (click)="stopAnimation()">stop</button>
+</div>
 <app-loader [loaded]="loaded" [progress]="loadingProgress"></app-loader>
-<app-nav></app-nav>
+<!--<app-nav></app-nav>-->
 <!-- UI menu at the bottom -->
 <!--<app-ui-menu></app-ui-menu>-->
 <app-experiment-info experiment="ePIC" experimentTagline="EPIC experiment at EIC"></app-experiment-info>

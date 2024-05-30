@@ -8,11 +8,11 @@ import {
 } from 'phoenix-ui-components';
 import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
-import {Color, DoubleSide, Line, MeshPhongMaterial,} from "three";
+import {Color, DoubleSide, InstancedBufferGeometry, Line, MeshPhongMaterial,} from "three";
 import {GeometryService} from '../geometry.service';
 import {ActivatedRoute} from '@angular/router';
 import {ThreeGeometryProcessor} from "../three-geometry.processor";
-
+import * as TWEEN from '@tweenjs/tween.js';
 import GUI from "lil-gui";
 import {produceRenderOrder} from "jsrootdi/geom";
 import {
@@ -30,8 +30,10 @@ import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
 import {Line2} from "three/examples/jsm/lines/Line2";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
 import {IoOptionsComponent} from "./io-options/io-options.component";
-import {ThreeEventProcessor} from "../three-event.processor";
+import {ProcessTrackInfo, ThreeEventProcessor} from "../three-event.processor";
 import {UserConfigService} from "../user-config.service";
+import {EicAnimationsManager} from "../eic-animation-manager";
+
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
 
@@ -46,6 +48,10 @@ export class MainDisplayComponent implements OnInit {
 
   @Input()
   eventDataImportOptions: EventDataImportOption[] = Object.values(EventDataFormat);
+
+  currentTime = 0;
+  maxTime = 200;
+  message = "";
 
   /** The root Phoenix menu node. */
   phoenixMenuRoot = new PhoenixMenuNode("Phoenix Menu");
@@ -69,6 +75,10 @@ export class MainDisplayComponent implements OnInit {
   private stats: any|null = null;         // Stats JS display from UI manager
 
   private threeFacade: PhoenixThreeFacade;
+  private trackInfos: ProcessTrackInfo[] | null = null;
+  private tween: TWEEN.Tween<any> | null = null;
+
+
 
 
   constructor(
@@ -350,9 +360,21 @@ export class MainDisplayComponent implements OnInit {
     // Initialize the event display
     this.eventDisplay.init(configuration);
 
+
+
     // let uiManager = this.eventDisplay.getUIManager();
     let openThreeManager: any = this.eventDisplay.getThreeManager();
     let threeManager = this.eventDisplay.getThreeManager();
+
+    // Replace animation manager with EIC animation manager:
+
+    // Animations manager (!) DANGER ZONE (!) But we have to, right?
+    // Deadline approaches and meteor will erase the humanity if we are not in time...
+    openThreeManager.animationsManager = new EicAnimationsManager(
+      openThreeManager.sceneManager.getScene(),
+      openThreeManager.controlsManager.getActiveCamera(),
+      openThreeManager.rendererManager,
+    );
 
     this.renderer  = openThreeManager.rendererManager.getMainRenderer();
     this.scene = threeManager.getSceneManager().getScene() as THREE.Scene;
@@ -382,9 +404,20 @@ export class MainDisplayComponent implements OnInit {
     this.eventDisplay.listenToDisplayedEventChange(event => {
       console.log("listenToDisplayedEventChange");
       console.log(event);
+      this.trackInfos = null;
       let mcTracksGroup = threeManager.getSceneManager().getObjectByName("mc_tracks");
       if(mcTracksGroup) {
-        this.threeEventProcessor.processMcTracks(mcTracksGroup);
+        this.trackInfos = this.threeEventProcessor.processMcTracks(mcTracksGroup);
+        let minTime = Infinity;
+        let maxTime = 0;
+        for(let trackInfo of this.trackInfos) {
+          if(trackInfo.startTime < minTime) minTime = trackInfo.startTime;
+          if(trackInfo.endTime > maxTime) maxTime = trackInfo.endTime;
+        }
+
+        this.maxTime = maxTime;
+
+        this.message = `Tracks: ${this.trackInfos.length} time min: ${minTime} max: ${maxTime}`;
       }
     })
     // Display event loader
@@ -441,5 +474,90 @@ export class MainDisplayComponent implements OnInit {
       }
       console.log((e as KeyboardEvent).key);
     });
+  }
+
+  changeCurrentTime(event: Event) {
+    if(!event) return;
+    const input = event.target as HTMLInputElement;
+    const value = parseInt(input.value, 10);
+    this.currentTime = value;
+
+    this.processCurrentTimeChange();
+
+    //this.updateParticlePosition(value);
+  }
+
+  timeStep($event: MouseEvent) {
+    if(this.currentTime < this.maxTime) this.currentTime++;
+    if(this.currentTime > this.maxTime) this.currentTime = this.maxTime;
+    this.processCurrentTimeChange();
+  }
+
+  private processCurrentTimeChange() {
+    let partialTracks: ProcessTrackInfo[] = [];
+    if(this.trackInfos) {
+      for (let trackInfo of this.trackInfos) {
+        if(trackInfo.startTime > this.currentTime) {
+          trackInfo.trackNode.visible = false;
+        }
+        else
+        {
+          trackInfo.trackNode.visible = true;
+          trackInfo.newLine.geometry.instanceCount=trackInfo.positions.length;
+
+          if(trackInfo.endTime > this.currentTime) {
+            partialTracks.push(trackInfo)
+          }
+          else {
+            // track should be visible fully
+            trackInfo.newLine.geometry.instanceCount=Infinity;
+          }
+        }
+      }
+    }
+
+
+    if(partialTracks.length > 0) {
+      for(let trackInfo of partialTracks) {
+        let geometryPosCount = trackInfo.positions.length;
+
+        //if (!geometryPosCount || geometryPosCount < 10) continue;
+
+        let trackProgress = (this.currentTime - trackInfo.startTime)/(trackInfo.endTime-trackInfo.startTime);
+        let roundedProgress = Math.round(geometryPosCount*trackProgress*2)/2;      // *2/2 to stick to 0.5 rounding
+
+        //(trackInfo.newLine.geometry as InstancedBufferGeometry). = drawCount;(0, roundedProgress);
+        trackInfo.newLine.geometry.instanceCount=roundedProgress;
+      }
+    }
+  }
+
+  animateCurrentTime(targetTime: number, duration: number): void {
+    if(this.tween) {
+      this.stopAnimation();
+    }
+    this.tween = new TWEEN.Tween({ currentTime: this.currentTime })
+      .to({ currentTime: targetTime }, duration)
+      .onUpdate((obj) => {
+        this.currentTime = obj.currentTime;
+        this.processCurrentTimeChange(); // Assuming this method updates your display
+      })
+      .easing(TWEEN.Easing.Quadratic.Out) // This can be changed to other easing functions
+      .start();
+
+    //this.animate();
+  }
+
+
+  animateTime() {
+    this.animateCurrentTime(this.maxTime, (this.maxTime-this.currentTime)*200 )
+
+  }
+
+  stopAnimation(): void {
+    if (this.tween) {
+      this.tween.stop(); // Stops the tween if it is running
+      this.tween = null; // Remove reference
+    }
   }
 }
