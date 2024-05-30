@@ -1,10 +1,160 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <title>Particle Trajectory Animation with Multiple Tracks</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #controls { position: absolute; top: 10px; left: 10px; z-index: 100; }
+    </style>
 </head>
 <body>
-$END$
+<div id="controls">
+    <input type="range" id="timeSlider" min="0" max="9000" step="10" value="0" />
+</div>
+<script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.141.0/build/three.module.js';
+    import { TWEEN } from 'https://unpkg.com/@tweenjs/tween.js@18.6.4/dist/tween.esm.js';
+
+    // Set up the scene, camera, and renderer
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Create spheres to represent the particles
+    const geometry = new THREE.SphereGeometry(0.1, 32, 32);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const particle1 = new THREE.Mesh(geometry, material);
+    const particle2 = new THREE.Mesh(geometry, material);
+    particle1.visible = false; // Initially invisible
+    particle2.visible = false; // Initially invisible
+    scene.add(particle1);
+    scene.add(particle2);
+
+    // Position the camera
+    camera.position.z = 5;
+
+    // Define the trajectories with points and timestamps
+    const trajectories = [
+        [
+            { x: 0, y: 0, z: 0, time: 1000 },
+            { x: 1, y: 1, z: 0, time: 2000 },
+            { x: 2, y: 0, z: 1, time: 3000 },
+            { x: 3, y: -1, z: 0, time: 4000 },
+            { x: 4, y: 0, z: -1, time: 5000 }
+        ],
+        [
+            { x: 4, y: 0, z: -1, time: 5000 },
+            { x: 5, y: 1, z: -1, time: 6000 },
+            { x: 6, y: 2, z: 0, time: 7000 },
+            { x: 7, y: 1, z: 1, time: 8000 },
+            { x: 8, y: 0, z: 1, time: 9000 }
+        ],
+        [
+            { x: 8, y: 0, z: 1, time: 5000 },
+            { x: 9, y: -1, z: 1, time: 6000 },
+            { x: 10, y: -2, z: 0, time: 7000 },
+            { x: 11, y: -1, z: -1, time: 8000 },
+            { x: 12, y: 0, z: -1, time: 9000 }
+        ]
+    ];
+
+    // Create splines for each trajectory
+    const curves = trajectories.map(points => {
+        return new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, p.y, p.z)));
+    });
+
+    // Create full line geometries for each trajectory
+    const lines = curves.map(curve => {
+        const linePoints = curve.getPoints(100);
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        line.visible = false; // Initially invisible
+        scene.add(line);
+        return line;
+    });
+
+    // Get the time slider element
+    const timeSlider = document.getElementById('timeSlider');
+
+    // Function to update the particles' positions and line visibility based on the current time
+    function updateParticlePosition(currentTime) {
+        const delay = 1000; // Delay before the particles appear
+        if (currentTime < delay) {
+            particle1.visible = false;
+            particle2.visible = false;
+            lines.forEach(line => line.visible = false);
+            return;
+        }
+
+        particle1.visible = true;
+        particle2.visible = currentTime >= 5000;
+
+        let adjustedTime = currentTime - delay;
+
+        // Track 1
+        if (adjustedTime <= 4000) {
+            lines[0].visible = true;
+            const t1 = adjustedTime / 4000;
+            const position1 = curves[0].getPoint(t1);
+            particle1.position.copy(position1);
+            const visiblePoints1 = curves[0].getPoints(Math.floor(t1 * 100) + 1);
+            lines[0].geometry.setFromPoints(visiblePoints1);
+        }
+
+        // Track 2
+        if (adjustedTime >= 4000 && adjustedTime <= 8000) {
+            lines[1].visible = true;
+            const t2 = (adjustedTime - 4000) / 4000;
+            const position2 = curves[1].getPoint(t2);
+            particle1.position.copy(position2);
+            const visiblePoints2 = curves[1].getPoints(Math.floor(t2 * 100) + 1);
+            lines[1].geometry.setFromPoints(visiblePoints2);
+        }
+
+        // Track 3 (second particle)
+        if (adjustedTime >= 4000 && adjustedTime <= 8000) {
+            lines[2].visible = true;
+            const t3 = (adjustedTime - 4000) / 4000;
+            const position3 = curves[2].getPoint(t3);
+            particle2.position.copy(position3);
+            const visiblePoints3 = curves[2].getPoints(Math.floor(t3 * 100) + 1);
+            lines[2].geometry.setFromPoints(visiblePoints3);
+        }
+    }
+
+    // Event listener for the time slider
+    timeSlider.addEventListener('input', (event) => {
+        const currentTime = parseInt(event.target.value, 10);
+        updateParticlePosition(currentTime);
+    });
+
+    // Function to control the tweens and set the state at a specific time t0
+    function setAnimationTime(t0) {
+        timeSlider.value = t0;
+        updateParticlePosition(t0);
+    }
+
+    // Add event listener to the slider for manual control
+    timeSlider.addEventListener('change', (event) => {
+        const currentTime = parseInt(event.target.value, 10);
+        setAnimationTime(currentTime);
+    });
+
+    // Initial update
+    updateParticlePosition(timeSlider.value);
+
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        TWEEN.update();
+        renderer.render(scene, camera);
+    }
+
+    animate();
+</script>
 </body>
 </html>
