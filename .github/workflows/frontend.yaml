@@ -53,7 +53,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: github-pages
+          name: firebird-ng-build
           path: ./firebird-ng/dist/
 
   deploy:
@@ -66,7 +66,7 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: github-pages
+          name: firebird-ng-build
           path: ./dist/
 
       - name: Introspect
