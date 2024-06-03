@@ -16,11 +16,13 @@ export interface EditThreeNodeRule {
   merge?: boolean;
   newName?:string;
   deleteOrigins?:boolean;
+  cleanupNodes?:boolean;
   outline?:boolean;
   outlineThresholdAngle?:number;  /** [degrees] */
   outlineColor?:ColorRepresentation;
   material?: Material;
   color?: ColorRepresentation;
+
 }
 
 function mergeWhatever(node: Object3D, rule: EditThreeNodeRule): MergeResult| undefined {
@@ -54,7 +56,7 @@ function mergeWhatever(node: Object3D, rule: EditThreeNodeRule): MergeResult| un
 
 export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
 
-  let {patterns, deleteOrigins = true, outline = true, outlineThresholdAngle = 40, outlineColor, material, color, merge=true, newName=""} = rule;
+  let {patterns, deleteOrigins = true, cleanupNodes=true, outline = true, outlineThresholdAngle = 40, outlineColor, material, color, merge=true, newName=""} = rule;
 
   let targetMesh: Mesh;
 
@@ -81,7 +83,7 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
     createOutline(targetMesh, {color: outlineColor, thresholdAngle: outlineThresholdAngle});
   }
 
-  if(targetMesh) {
-    pruneEmptyNodes(targetMesh);
+  if(targetMesh && cleanupNodes) {
+    pruneEmptyNodes(node);
   }
 }

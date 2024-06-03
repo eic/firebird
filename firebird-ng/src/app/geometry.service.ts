@@ -87,8 +87,8 @@ export class GeometryService {
     console.time('[GeometryService]: Build geometry');
     this.geometry = build(this.rootGeometry,
       {
-        numfaces: 500000000,
-        numnodes: 500000000,
+        numfaces: 5000000000,
+        numnodes: 5000000000,
         instancing:-1,
         dflt_colors: false,
         vislevel: 200,

@@ -21,22 +21,75 @@ export interface DetectorThreeRuleSet {
   names?: string[];
   name?: string;
   rules: EditThreeNodeRule[];
-
-
 }
 
+/**
+ * Matches which set of rules should be applied to which detectors
+ *
+ * - Detectors are matched based on their `sourceGeometryName` against the names specified in the rulesets.
+ * - Rule lists are matched to detectors in the order they appear in the rulesets
+ * - Once a rule is applied to a detector, that detector is excluded from further rule matching, ensuring each detector is processed only once.
+ * - If both `names` and `name` are provided in a ruleset, the function treats it as a user error in JSON rule editing but processes both without raising an exception.
+ * - If a ruleset contains a wildcard name (`"*"`), it will apply its rules to any detectors not already matched by previous rulesets. So it should be placed in
+ *
+ * @param {Subdetector[]} detectors - The list of detectors to which the rules will be applied.
+ * @param {DetectorThreeRuleSet[]} ruleSets - The set of rules to be applied, processed sequentially.
+ * @return {Map<Subdetector, EditThreeNodeRule[]>} - A map associating each detector with an array of the rules applied to it.
+ */
+export function matchRulesToDetectors(ruleSets: DetectorThreeRuleSet[], detectors: Subdetector[]): Map<Subdetector, EditThreeNodeRule[]> {
+  const unassignedDetectors = new Set(detectors);
+  const detectorRulesMap = new Map<Subdetector, EditThreeNodeRule[]>();
+
+  ruleSets.forEach(ruleSet => {
+    const targets = new Set<Subdetector>();
+    let names = new Set<string>(ruleSet.names || []);
+
+    // Handle possible user error where both 'name' and 'names' are provided.
+    if (ruleSet.name) {
+      names.add(ruleSet.name);
+    }
+
+    names.forEach(name => {
+      unassignedDetectors.forEach(det => {
+        if (wildCardCheck(det.sourceGeometryName, name)) {
+          targets.add(det);
+          unassignedDetectors.delete(det);  // Move deletion here to optimize
+        }
+      });
+    });
+
+    // Apply the rules to the targeted detectors
+    targets.forEach(target => {
+      detectorRulesMap.set(target, ruleSet.rules || []);
+    });
+  });
+
+  return detectorRulesMap;
+}
 
 export class ThreeGeometryProcessor {
 
   rules: DetectorThreeRuleSet[] = [
     {
       names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_28"],
-      rules: []
+      rules: [
+        {
+          color: 0xf1f1f1
+        }
+      ]
     },
-
     {
       name: "VertexBarrelSubAssembly_3",
       rules: []
+    },
+    {
+      name: "*",
+      rules: [
+        {
+          merge: true,
+          outline: true
+        }
+      ]
     }
 
   ]
@@ -123,14 +176,17 @@ export class ThreeGeometryProcessor {
 
   public process(detectors: Subdetector[]) {
 
-    // Add top nodes to menu
-    //let topDetectorNodes = geometry.children[0].children;
+    this.processRuleSets(this.rules, detectors);
 
-    // for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--) {
-    //   console.log(`${i} : ${topLevelObj3dNodes[i].name}`);
-    // }
-
-
+    //
+    // // Add top nodes to menu
+    // let topDetectorNodes = detectors.map(det=>det.geometry as THREE.Mesh);
+    //
+    // // for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--) {
+    // //   console.log(`${i} : ${topLevelObj3dNodes[i].name}`);
+    // // }
+    //
+    //
     // console.log("DISPOSING");
     // for(let i= topDetectorNodes.length - 1; i >= 0; i--){
     //   let detNode = topDetectorNodes[i];
@@ -180,27 +236,11 @@ export class ThreeGeometryProcessor {
     // }
   }
 
-  public processRuleSets(ruleSets: DetectorThreeRuleSet[], allDetectors: Subdetector[]) {
-    for(let ruleSet of ruleSets) {
-      this.processRuleSet(ruleSet, allDetectors);
-    }
-  }
-
-  public processRuleSet(ruleSet: DetectorThreeRuleSet, allDetectors: Subdetector[]) {
-    let names: Set<string> = new Set<string>(ruleSet.names? ruleSet.names: []);
-
-    // User provided names and name... this is probably a mistake, but we will just process all
-    // Such mistake happens when JSON rules are edited by users and they don't deserve an exception raise
-    if(ruleSet.name && !names.has(ruleSet.name)) {
-      names.add(ruleSet.name);
-    }
-
-    for(const name of names) {
-      let detector = allDetectors.find(det => det.sourceGeometryName === name);
-      if (detector) {
-        for (let rule of ruleSet.rules) {
-          editThreeNodeContent(detector.geometry, rule);
-        }
+  public processRuleSets(ruleSets: DetectorThreeRuleSet[], detectors: Subdetector[]) {
+    let detRulesMap = matchRulesToDetectors(ruleSets, detectors);
+    for (let [detector, ruleSet] of detRulesMap) {
+      for(let rule of ruleSet) {
+        editThreeNodeContent(detector.geometry, rule);
       }
     }
   }
