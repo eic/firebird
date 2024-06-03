@@ -105,7 +105,7 @@ export function mergeBranchGeometries(parentNode: THREE.Object3D, name: string, 
  * @param material
  * @returns MergeResult The result of the merging process including the new parent node, merged geometry, material, and a list of original meshes.
  */
-export function mergeMeshList(meshes: THREE.Mesh[], parentNode: THREE.Object3D, name: string, material?: THREE.Material|undefined): MergeResult {
+export function mergeMeshList(meshes: THREE.Mesh[], parentNode: THREE.Object3D, name: string, material?: THREE.Material|undefined): MergeResult|undefined {
   const geometries: THREE.BufferGeometry[] = [];
 
   // Collect geometries and materials from the provided meshes
@@ -127,10 +127,12 @@ export function mergeMeshList(meshes: THREE.Mesh[], parentNode: THREE.Object3D, 
   });
 
   if (geometries.length === 0) {
-    throw new NoGeometriesFoundError();
+    return undefined;
+    //throw new NoGeometriesFoundError();
   }
   if (!material) {
-    throw new NoMaterialError();
+    return undefined;
+    //throw new NoMaterialError();
   }
 
   // Merge all collected geometries

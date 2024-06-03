@@ -17,7 +17,14 @@ export class CalorimetryGeometryPrettifier {
     //console.log(crystals);
 
     // Merge crystals together
-    let mergeResult: MergeResult = mergeMeshList(crystals, node, "crystals");
+
+
+    let mergeResult = mergeMeshList(crystals, node, "crystals");
+
+    if(!mergeResult) {
+      console.warn("didn't find crystals")
+      return;
+    }
     disposeOriginalMeshesAfterMerge(mergeResult)
 
     // outline crystals
@@ -36,6 +43,10 @@ export class CalorimetryGeometryPrettifier {
     });
 
     mergeResult = mergeMeshList([innerSupport, ring], node, "support", supportMaterial);
+    if(!mergeResult) {
+      console.warn("didn't find crystals")
+      return;
+    }
     disposeOriginalMeshesAfterMerge(mergeResult);
 
 
@@ -54,6 +65,10 @@ export class CalorimetryGeometryPrettifier {
     let aeroGel = findObject3DNodes(node, "**/*aerogel*", "Mesh").nodes[0];
     sensors.push(aeroGel);
     let mergeResult = mergeMeshList(sensors, node, "sensors");
+    if(!mergeResult) {
+      console.warn("didn't find aerogel & cooling")
+      return;
+    }
     disposeOriginalMeshesAfterMerge(mergeResult)
 
     let filter = findObject3DNodes(node, "**/*filter*", "Mesh").nodes[0];
@@ -79,6 +94,10 @@ export class CalorimetryGeometryPrettifier {
 
     // Merge crystals together
     mergeResult = mergeMeshList(mirrors, node, "mirrors", mirrorsMaterial);
+    if(!mergeResult) {
+      console.warn("didn't find mirrors")
+      return;
+    }
     disposeOriginalMeshesAfterMerge(mergeResult)
 
     // Cleanup. Removing useless nodes that were left without geometries speeds up overall rendering
@@ -113,6 +132,10 @@ export class CalorimetryGeometryPrettifier {
 
 
     let mergeResult = mergeMeshList(barsPrisms, node, "barsPrisms", barMat);
+    if(!mergeResult) {
+      console.warn("didn't find barPrisms")
+      return;
+    }
     disposeOriginalMeshesAfterMerge(mergeResult);
 
     createOutline(mergeResult.mergedMesh);
@@ -120,12 +143,20 @@ export class CalorimetryGeometryPrettifier {
     // Rails
     let rails = findObject3DNodes(node, "**/*rail*", "Mesh").nodes;
     mergeResult = mergeMeshList(rails, node, "rails");
+    if(!mergeResult) {
+      console.warn("didn't find rails")
+      return;
+    }
     disposeOriginalMeshesAfterMerge(mergeResult);
     createOutline(mergeResult.mergedMesh);
 
     // MCPs
     let mcps = findObject3DNodes(node, "**/*mcp*", "Mesh").nodes;
     mergeResult = mergeMeshList(mcps, node, "mcps");
+    if(!mergeResult) {
+      console.warn("didn't find mcps")
+      return;
+    }
     disposeOriginalMeshesAfterMerge(mergeResult);
 
     // Cleanup. Removing useless nodes that were left without geometries speeds up overall rendering

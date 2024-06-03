@@ -92,7 +92,11 @@ export class MainDisplayComponent implements OnInit {
 
   async loadGeometry(initiallyVisible=true, scale=10) {
 
-    let {rootGeoManager, rootObject3d} = await this.geomService.loadGeometry();
+
+    let {rootGeometry, threeGeometry} = await this.geomService.loadGeometry();
+    if(!threeGeometry) return;
+
+
     let threeManager = this.eventDisplay.getThreeManager();
     let uiManager = this.eventDisplay.getUIManager();
     let openThreeManager: any = threeManager;
@@ -103,12 +107,12 @@ export class MainDisplayComponent implements OnInit {
 
     // Set geometry scale
     if (scale) {
-      rootObject3d.scale.setScalar(scale);
+      threeGeometry.scale.setScalar(scale);
     }
 
     // Add root geometry to scene
     // console.log("CERN ROOT converted to Object3d: ", rootObject3d);
-    sceneGeometry.add(rootObject3d);
+    sceneGeometry.add(threeGeometry);
 
 
 
@@ -129,7 +133,7 @@ export class MainDisplayComponent implements OnInit {
 
         child.material.dispose(); // Dispose the old material if it's a heavy object
 
-        let opacity = rootObject3d.userData.opacity ?? 1;
+        let opacity = threeGeometry.userData["opacity"] ?? 1;
         let transparent = opacity < 1;
 
         child.material = new MeshPhongMaterial({
@@ -162,7 +166,7 @@ export class MainDisplayComponent implements OnInit {
     });
 
     // HERE WE DO POSTPROCESSING STEP
-    this.threeGeometryProcessor.process(rootObject3d);
+    this.threeGeometryProcessor.process(this.geomService.subdetectors);
 
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
@@ -458,6 +462,9 @@ export class MainDisplayComponent implements OnInit {
       jsonGeometry = jsonGeom;
       this.eventDisplay
         .getLoadingManager().itemLoaded("MyGeometry");
+    }).catch(reason=> {
+      console.error("ERROR LOADING GEOMETRY");
+      console.log(reason);
     });
 
 

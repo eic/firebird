@@ -8,12 +8,14 @@ import {
   editGeoNodes,
   findGeoManager, findGeoNodes, findSingleGeoNode, GeoAttBits,
   GeoNodeEditRule, printAllGeoBitsStatus,
-  EditActions, removeGeoNode, testGeoBit
+  EditActions, removeGeoNode, testGeoBit, getGeoNodesByLevel
 } from './utils/cern-root.utils';
 import {build} from 'jsrootdi/geom';
 import {BehaviorSubject} from "rxjs";
 import {RootGeometryProcessor} from "./root-geometry.processor";
 import {UserConfigService} from "./user-config.service";
+import {Subdetector} from "./model/subdetector";
+import {Object3D} from "three";
 
 // constants.ts
 export const DEFAULT_GEOMETRY = 'epic-central-optimized';
@@ -23,14 +25,32 @@ export const DEFAULT_GEOMETRY = 'epic-central-optimized';
 })
 export class GeometryService {
 
-  rootGeometryProcessor = new RootGeometryProcessor();
+  public rootGeometryProcessor = new RootGeometryProcessor();
+
+  /** Collection of subdetectors */
+  public subdetectors: Subdetector[] = [];
+
+  /** TGeoManager if available */
+  public rootGeometry: any|null = null;
+
+  /** Main/entry/root THREEJS geometry tree node with the whole geometry */
+  public geometry: Object3D|null = null;
+
+  public groupsByDetName: Map<string, string>;
+
+
 
   constructor(private settings: UserConfigService) {
+    this.groupsByDetName = new Map<string,string> ([
+      ["hello", "world"]
+    ])
 
   }
 
 
-  async loadGeometry() {
+  async loadGeometry(): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
+
+    this.subdetectors = [];
     //let url: string = 'assets/epic_pid_only.root';
     //let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_dirc_only.root';
     // let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
@@ -40,36 +60,87 @@ export class GeometryService {
       this.settings.selectedGeometry.value:
       'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
 
-    console.time('[GeoSrv]: Total load geometry time');
-    console.log(`[GeoSrv]: Loading file ${url}`)
+    console.time('[GeometryService]: Total load geometry time');
+    console.log(`[GeometryService]: Loading file ${url}`)
 
-    console.time('[GeoSrv]: Open root file');
+    console.time('[GeometryService]: Open root file');
     const file = await openFile(url);
     // >oO debug console.log(file);
-    console.timeEnd('[GeoSrv]: Open root file');
+    console.timeEnd('[GeometryService]: Open root file');
 
 
-    console.time('[GeoSrv]: Reading geometry from file');
-    const rootGeoManager = await findGeoManager(file) // await file.readObject(objectName);
+    console.time('[GeometryService]: Reading geometry from file');
+    this.rootGeometry = await findGeoManager(file) // await file.readObject(objectName);
     // >oO
-    console.log(rootGeoManager);
-    console.timeEnd('[GeoSrv]: Reading geometry from file');
+    console.log("Got TGeoManager. For inspection:")
+    console.log(this.rootGeometry);
+    console.timeEnd('[GeometryService]: Reading geometry from file');
 
 
-    console.time('[GeoSrv]: Root geometry pre-processing');
-    this.rootGeometryProcessor.process(rootGeoManager);
-    console.time('[GeoSrv]: Root geometry pre-processing');
+    console.time('[GeometryService]: Root geometry pre-processing');
+    this.rootGeometryProcessor.process(this.rootGeometry);
+    console.time('[GeometryService]: Root geometry pre-processing');
 
-    analyzeGeoNodes(rootGeoManager, 1);
+    analyzeGeoNodes(this.rootGeometry, 1);
 
     //
-    console.time('[GeoSrv]: Build geometry');
-    let rootObject3d = build(rootGeoManager, { numfaces: 500000000, numnodes: 50000000, instancing:-1, dflt_colors: false, vislevel: 100, doubleside:true, transparency:true});
-    console.timeEnd('[GeoSrv]: Build geometry');
-    // >oO console.log(geo);
+    console.time('[GeometryService]: Build geometry');
+    this.geometry = build(this.rootGeometry,
+      {
+        numfaces: 500000000,
+        numnodes: 500000000,
+        instancing:-1,
+        dflt_colors: false,
+        vislevel: 200,
+        doubleside:true,
+        transparency:true
+      });
+    console.timeEnd('[GeometryService]: Build geometry');
 
-    console.timeEnd('[GeoSrv]: Total load geometry time');
-    return {rootGeoManager, rootObject3d};
+    // Validate the geometry
+    if(!this.geometry) {
+      throw new Error("Geometry is null or undefined after TGeoPainter.build");
+    }
+
+    if(!this.geometry.children.length) {
+      throw new Error("Geometry is converted but empty. Anticipated 'world_volume' but got nothing");
+    }
+
+    if(!this.geometry.children[0].children.length) {
+      throw new Error("Geometry is converted but empty. Anticipated array of top level nodes (usually subdetectors) but got nothing");
+    }
+
+    // We now know it is not empty array
+    console.time('[GeometryService]: Map root geometry to threejs geometry');
+    let topDetectorNodes = this.geometry.children[0].children;
+    for(const topNode of topDetectorNodes) {
+
+      // Process name
+      const originalName = topNode.name;
+      const name = this.stripIdFromName(originalName);   // Remove id in the end EcalN_21 => Ecal
+
+      const rootGeoNodes = getGeoNodesByLevel(this.rootGeometry, 1).map(obj=>obj.geoNode);
+      const rootNode = rootGeoNodes.find(obj => obj.fName === originalName);
+
+      let subdetector: Subdetector = {
+        sourceGeometry: rootNode,
+        sourceGeometryName: rootNode?.fName ?? "",
+        geometry: topNode,
+        name: this.stripIdFromName(originalName),
+        groupName: this.groupsByDetName.get(name) || ""
+      }
+      console.log(subdetector.name, subdetector);
+      this.subdetectors.push(subdetector);
+    }
+    console.timeEnd('[GeometryService]: Map root geometry to threejs geometry');
+
+
+    console.timeEnd('[GeometryService]: Total load geometry time');
+    return {rootGeometry: this.rootGeometry, threeGeometry: this.geometry};
+  }
+
+  private stripIdFromName(name: string) {
+      return name.replace(/_\d+$/, '');
   }
 }
 

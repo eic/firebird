@@ -13,11 +13,37 @@ import {wildCardCheck} from "./utils/wildcard";
 import {createOutline, disposeHierarchy, findObject3DNodes, pruneEmptyNodes} from "./utils/three.utils";
 import {CalorimetryGeometryPrettifier} from "./geometry-prettifiers/calorimetry.prettifier";
 import {mergeBranchGeometries} from "./utils/three-geometry-merge";
+import {editThreeNodeContent, EditThreeNodeRule} from "./utils/three-geometry-editor";
+import {Subdetector} from "./model/subdetector";
+
+
+export interface DetectorThreeRuleSet {
+  names?: string[];
+  name?: string;
+  rules: EditThreeNodeRule[];
+
+
+}
 
 
 export class ThreeGeometryProcessor {
 
+  rules: DetectorThreeRuleSet[] = [
+    {
+      names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_28"],
+      rules: []
+    },
+
+    {
+      name: "VertexBarrelSubAssembly_3",
+      rules: []
+    }
+
+  ]
+
   calorimetry = new CalorimetryGeometryPrettifier();
+
+
 
   glassMaterial = new THREE.LineBasicMaterial( {
     color: 0xf1f1f1,
@@ -25,6 +51,8 @@ export class ThreeGeometryProcessor {
     linecap: 'round', //ignored by WebGLRenderer
     linejoin:  'round' //ignored by WebGLRenderer
   } );
+
+
 
   params = {
     alpha: 0.5,
@@ -91,94 +119,89 @@ export class ThreeGeometryProcessor {
       vertexShader: this.vertexShader,
       fragmentShader: this.fragmentShader
     });
-
   }
 
-  public process(geometry: any) {
+  public process(detectors: Subdetector[]) {
 
     // Add top nodes to menu
-    let topDetectorNodes = geometry.children[0].children;
+    //let topDetectorNodes = geometry.children[0].children;
 
     // for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--) {
     //   console.log(`${i} : ${topLevelObj3dNodes[i].name}`);
     // }
 
-    console.log("DISPOSING");
-    for(let i= topDetectorNodes.length - 1; i >= 0; i--){
-      let detNode = topDetectorNodes[i];
-      console.log(`${i} : ${topDetectorNodes[i].name}`);
-      detNode.name = detNode.userData["name"] = detNode.name;
-      // Add geometry
-      // uiManager.addGeometry(obj3dNode, obj3dNode.name);
 
-      if(detNode.name == "EcalEndcapN_21") {
-        this.calorimetry.doEndcapEcalN(detNode);
-      } else if(detNode.name == "DRICH_16") {
-        this.calorimetry.doDRICH(detNode);
-      } else if(detNode.name.startsWith("DIRC")) {
-        this.calorimetry.doDIRC(detNode);
-      } else{
+    // console.log("DISPOSING");
+    // for(let i= topDetectorNodes.length - 1; i >= 0; i--){
+    //   let detNode = topDetectorNodes[i];
+    //   console.log(`${i} : ${topDetectorNodes[i].name}`);
+    //   detNode.name = detNode.userData["name"] = detNode.name;
+    //   // Add geometry
+    //   // uiManager.addGeometry(obj3dNode, obj3dNode.name);
+    //
+    //   if(detNode.name == "EcalEndcapN_21") {
+    //     this.calorimetry.doEndcapEcalN(detNode);
+    //   } else if(detNode.name == "DRICH_16") {
+    //     this.calorimetry.doDRICH(detNode);
+    //   } else if(detNode.name.startsWith("DIRC")) {
+    //     this.calorimetry.doDIRC(detNode);
+    //   } else{
+    //
+    //     // try {
+    //     //   detNode.removeFromParent();
+    //     // }
+    //     // catch (e) {
+    //     //   console.error(e);
+    //     // }
+    //     //
+    //     // try {
+    //     //   // console.log("disposeHierarchy: ", detNode.name,  detNode);
+    //     //   disposeHierarchy(detNode);
+    //     // } catch (e) {
+    //     //   console.error(e);
+    //     // }
+    //
+    //     let result = mergeBranchGeometries(detNode, detNode.name + "_merged");
+    //     createOutline(result.mergedMesh);
+    //     (result.mergedMesh.material as any).onBeforeCompile = (shader: any) => {
+    //
+    //       shader.fragmentShader = shader.fragmentShader.replace(
+    //
+    //         '#include <output_fragment>',
+    //
+    //         `
+    //     vec3 backfaceColor = vec3( 0.4, 0.4, 0.4 );
+    //     gl_FragColor = ( gl_FrontFacing ) ? vec4( outgoingLight, diffuseColor.a ) : vec4( backfaceColor, opacity );
+    //     `
+    //       )
+    //     };
+    //     pruneEmptyNodes(detNode);
+    //   }
+    // }
+  }
 
-        // try {
-        //   detNode.removeFromParent();
-        // }
-        // catch (e) {
-        //   console.error(e);
-        // }
-        //
-        // try {
-        //   // console.log("disposeHierarchy: ", detNode.name,  detNode);
-        //   disposeHierarchy(detNode);
-        // } catch (e) {
-        //   console.error(e);
-        // }
+  public processRuleSets(ruleSets: DetectorThreeRuleSet[], allDetectors: Subdetector[]) {
+    for(let ruleSet of ruleSets) {
+      this.processRuleSet(ruleSet, allDetectors);
+    }
+  }
 
-        let result = mergeBranchGeometries(detNode, detNode.name + "_merged");
-        createOutline(result.mergedMesh);
-        pruneEmptyNodes(detNode);
-      }
+  public processRuleSet(ruleSet: DetectorThreeRuleSet, allDetectors: Subdetector[]) {
+    let names: Set<string> = new Set<string>(ruleSet.names? ruleSet.names: []);
+
+    // User provided names and name... this is probably a mistake, but we will just process all
+    // Such mistake happens when JSON rules are edited by users and they don't deserve an exception raise
+    if(ruleSet.name && !names.has(ruleSet.name)) {
+      names.add(ruleSet.name);
     }
 
-    // Now we want to change the materials
-    // geometry.traverse( (child: any) => {
-    //
-    //   if(child.type!=="Mesh") {
-    //     return;
-    //   }
-    //
-    //   child = child as THREE.Mesh;
-    //
-    //
-    //   if(!child?.material?.isMaterial) {
-    //     return;
-    //   }
-    //
-    //   // Material
-    //   let name:string = child.name;
-    //   child.updateMatrixWorld(true);
-    //
-    //   //if(name.startsWith("bar_") || name.startsWith("prism_")) {
-    //     //child.material = this.alphaMaterial;
-    //     const edges = new THREE.EdgesGeometry(child.geometry, 30);
-    //     //const lineMaterial = new MeshLambertMaterial({
-    //   const lineMaterial = new THREE.LineBasicMaterial({
-    //       color: 0x555555,
-    //       fog: false,
-    //       // Copy clipping planes from parent, using type assertion for TypeScript
-    //       clippingPlanes: child.material.clippingPlanes ? child.material.clippingPlanes : [],
-    //       clipIntersection: false,
-    //       clipShadows: true,
-    //       transparent: false
-    //
-    //     });
-    //
-    //     // lineMaterial.clipping = true;
-    //     const edgesLine = new THREE.LineSegments(edges, lineMaterial);
-    //     //const edgesLine = new Mesh(edges, lineMaterial);
-    //
-    //     child.add(edgesLine);
-    //
-    //   //}
-    // });
+    for(const name of names) {
+      let detector = allDetectors.find(det => det.sourceGeometryName === name);
+      if (detector) {
+        for (let rule of ruleSet.rules) {
+          editThreeNodeContent(detector.geometry, rule);
+        }
+      }
+    }
   }
 }
