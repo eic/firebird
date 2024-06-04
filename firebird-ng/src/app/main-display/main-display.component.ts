@@ -33,6 +33,11 @@ import {IoOptionsComponent} from "./io-options/io-options.component";
 import {ProcessTrackInfo, ThreeEventProcessor} from "../three-event.processor";
 import {UserConfigService} from "../user-config.service";
 import {EicAnimationsManager} from "../eic-animation-manager";
+import {MatSlider, MatSliderThumb} from "@angular/material/slider";
+import {MatIcon} from "@angular/material/icon";
+import {MatButton} from "@angular/material/button";
+import {DecimalPipe} from "@angular/common";
+import {MatTooltip} from "@angular/material/tooltip";
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
@@ -40,7 +45,7 @@ import {EicAnimationsManager} from "../eic-animation-manager";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -51,6 +56,7 @@ export class MainDisplayComponent implements OnInit {
 
   currentTime = 0;
   maxTime = 200;
+  minTime = 0;
   message = "";
 
   /** The root Phoenix menu node. */
@@ -77,6 +83,7 @@ export class MainDisplayComponent implements OnInit {
   private threeFacade: PhoenixThreeFacade;
   private trackInfos: ProcessTrackInfo[] | null = null;
   private tween: TWEEN.Tween<any> | null = null;
+
 
 
 
@@ -420,8 +427,9 @@ export class MainDisplayComponent implements OnInit {
         }
 
         this.maxTime = maxTime;
+        this.minTime = minTime;
 
-        this.message = `Tracks: ${this.trackInfos.length} time min: ${minTime} max: ${maxTime}`;
+        this.message = `Time ${minTime}:${maxTime} [ns], Tracks: ${this.trackInfos.length}`;
       }
     })
     // Display event loader
@@ -500,6 +508,10 @@ export class MainDisplayComponent implements OnInit {
     this.processCurrentTimeChange();
   }
 
+  public formatCurrentTime (value: number): string {
+    return value.toFixed(1);
+  }
+
   private processCurrentTimeChange() {
     let partialTracks: ProcessTrackInfo[] = [];
     if(this.trackInfos) {
@@ -566,5 +578,19 @@ export class MainDisplayComponent implements OnInit {
       this.tween.stop(); // Stops the tween if it is running
       this.tween = null; // Remove reference
     }
+  }
+
+  exitTimedDisplay() {
+    this.stopAnimation();
+    if(this.trackInfos) {
+      for (let trackInfo of this.trackInfos) {
+        trackInfo.trackNode.visible = true;
+        trackInfo.newLine.geometry.instanceCount=Infinity;
+      }
+    }
+  }
+
+  rewindTime() {
+    this.currentTime = 0;
   }
 }

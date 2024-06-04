@@ -74,7 +74,8 @@ export class ThreeGeometryProcessor {
       names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_28"],
       rules: [
         {
-          color: 0xf1f1f1
+          color: 0x000000,
+
         }
       ]
     },
