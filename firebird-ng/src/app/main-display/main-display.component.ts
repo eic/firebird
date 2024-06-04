@@ -9,7 +9,7 @@ import {
 import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
 import {Color, DoubleSide, InstancedBufferGeometry, Line, MeshPhongMaterial,} from "three";
-import {GeometryService} from '../geometry.service';
+import {ALL_GROUPS, GeometryService} from '../geometry.service';
 import {ActivatedRoute} from '@angular/router';
 import {ThreeGeometryProcessor} from "../three-geometry.processor";
 import * as TWEEN from '@tweenjs/tween.js';
@@ -74,6 +74,8 @@ export class MainDisplayComponent implements OnInit {
   /** The Default color of elements if not set */
   defaultColor: Color = new Color(0x2fd691);
 
+  private geometryGroupSwitchingIndex = ALL_GROUPS.length;
+
 
   private renderer: THREE.Renderer|null = null;
   private camera: THREE.Camera|null = null;
@@ -83,10 +85,8 @@ export class MainDisplayComponent implements OnInit {
   private threeFacade: PhoenixThreeFacade;
   private trackInfos: ProcessTrackInfo[] | null = null;
   private tween: TWEEN.Tween<any> | null = null;
-
-
-
-
+  private animationManager: EicAnimationsManager| null = null;
+  currentGeometry: string = "All";
 
   constructor(
     private geomService: GeometryService,
@@ -290,6 +290,8 @@ export class MainDisplayComponent implements OnInit {
       this.stats.update();
     }
 
+    this.controller.animationLoopHandler();
+
     const gamepads = navigator.getGamepads();
     for (const gamepad of gamepads) {
       if (gamepad) {
@@ -299,12 +301,8 @@ export class MainDisplayComponent implements OnInit {
         const xAxis = gamepad.axes[0];
         const yAxis = gamepad.axes[1];
 
-        let controls = this.threeFacade.activeOrbitControls;
-        let camera = this.threeFacade.mainCamera;
-
         if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
           this.rotateCamera(xAxis, yAxis);
-
         }
 
         // Zooming using buttons
@@ -371,7 +369,9 @@ export class MainDisplayComponent implements OnInit {
     // Initialize the event display
     this.eventDisplay.init(configuration);
 
-
+    this.controller.buttonB.onPress.subscribe(value => {
+      this.onControllerBPressed(value);
+    });
 
     // let uiManager = this.eventDisplay.getUIManager();
     let openThreeManager: any = this.eventDisplay.getThreeManager();
@@ -381,31 +381,32 @@ export class MainDisplayComponent implements OnInit {
 
     // Animations manager (!) DANGER ZONE (!) But we have to, right?
     // Deadline approaches and meteor will erase the humanity if we are not in time...
-    openThreeManager.animationsManager = new EicAnimationsManager(
+    openThreeManager.animationsManager = this.animationManager = new EicAnimationsManager(
       openThreeManager.sceneManager.getScene(),
       openThreeManager.controlsManager.getActiveCamera(),
       openThreeManager.rendererManager,
     );
+
 
     this.renderer  = openThreeManager.rendererManager.getMainRenderer();
     this.scene = threeManager.getSceneManager().getScene() as THREE.Scene;
     this.camera = openThreeManager.controlsManager.getMainCamera() as THREE.Camera;
 
 
-    // GUI
-    const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
-
-    const gui = new GUI({
-      // container: document.getElementById("lil-gui-place") ?? undefined,
-
-    });
-
-    gui.title("Debug");
-    gui.add(this, "produceRenderOrder");
-    gui.add(this, "logGamepadStates").name( 'Log controls' );
-    gui.add(this, "logCamera").name( 'Log camera' );
-    gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
-    gui.close();
+    // // GUI
+    // const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
+    //
+    // const gui = new GUI({
+    //   // container: document.getElementById("lil-gui-place") ?? undefined,
+    //
+    // });
+    //
+    // gui.title("Debug");
+    // gui.add(this, "produceRenderOrder");
+    // gui.add(this, "logGamepadStates").name( 'Log controls' );
+    // gui.add(this, "logCamera").name( 'Log camera' );
+    // gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
+    // gui.close();
 
     // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);
@@ -429,7 +430,7 @@ export class MainDisplayComponent implements OnInit {
         this.maxTime = maxTime;
         this.minTime = minTime;
 
-        this.message = `Time ${minTime}:${maxTime} [ns], Tracks: ${this.trackInfos.length}`;
+        this.message = `Tracks: ${this.trackInfos.length}`;
       }
     })
     // Display event loader
@@ -489,6 +490,12 @@ export class MainDisplayComponent implements OnInit {
       }
       console.log((e as KeyboardEvent).key);
     });
+  }
+
+  private onControllerBPressed(value: boolean) {
+    if(value) {
+      this.animateWithCollision();
+    }
   }
 
   changeCurrentTime(event: Event) {
@@ -582,6 +589,7 @@ export class MainDisplayComponent implements OnInit {
 
   exitTimedDisplay() {
     this.stopAnimation();
+    this.rewindTime();
     if(this.trackInfos) {
       for (let trackInfo of this.trackInfos) {
         trackInfo.trackNode.visible = true;
@@ -592,5 +600,54 @@ export class MainDisplayComponent implements OnInit {
 
   rewindTime() {
     this.currentTime = 0;
+  }
+
+  animateWithCollision() {
+    this.stopAnimation();
+    this.rewindTime();
+    if(this.trackInfos) {
+      for (let trackInfo of this.trackInfos) {
+        trackInfo.trackNode.visible = false;
+      }
+    }
+    this.animationManager?.collideParticles(800, 30, 5000, new Color(0xAAAAAA),
+      () => {
+        this.animateTime();
+    });
+  }
+
+  showGeometryGroup(groupName: string) {
+    if(!this.geomService.subdetectors) return;
+    for(let detector of this.geomService.subdetectors) {
+      if(detector.groupName === groupName) {
+        detector.geometry.visible = true;
+      } else {
+        detector.geometry.visible = false;
+      }
+    }
+
+  }
+
+  showAllGeometries() {
+    this.geometryGroupSwitchingIndex = ALL_GROUPS.length
+    if(!this.geomService.subdetectors) return;
+    for(let detector of this.geomService.subdetectors) {
+      detector.geometry.visible = true;
+    }
+  }
+
+  cycleGeometry() {
+    this.geometryGroupSwitchingIndex ++;
+    if(this.geometryGroupSwitchingIndex > ALL_GROUPS.length) {
+      this.geometryGroupSwitchingIndex = 0;
+    }
+
+    if(this.geometryGroupSwitchingIndex === ALL_GROUPS.length) {
+      this.showAllGeometries();
+      this.currentGeometry = "All";
+    } else {
+      this.currentGeometry = ALL_GROUPS[this.geometryGroupSwitchingIndex];
+      this.showGeometryGroup(this.currentGeometry);
+    }
   }
 }

@@ -3,7 +3,7 @@ import * as THREE from "three";
 import {BehaviorSubject, Observable, Subject} from "rxjs";
 
 
-export enum ControllerButtonIndexes {
+export enum GamepadButtonIndexes {
   ButtonA = 0,
   ButtonB = 1,
   ButtonX = 2,
@@ -16,6 +16,27 @@ export enum ControllerButtonIndexes {
   Start = 9,
 }
 
+export class GamepadObservableButton {
+  private onPressSubject = new Subject<boolean>();
+  public onPress = this.onPressSubject.asObservable();
+  public state: GamepadButton = {pressed: false, touched: false, value: 0};
+
+  constructor(public index: GamepadButtonIndexes) {
+  }
+
+  updateState(newState: GamepadButton) {
+    if(this.onPressSubject.observed) {
+      if(newState.pressed != this.state.pressed) {
+        this.onPressSubject.next(newState.pressed);
+      }
+    }
+    this.state = newState;
+  }
+
+  updateFromGamepadState(gamepad: Gamepad) {
+    this.updateState(gamepad.buttons[this.index]);
+  }
+}
 
 @Injectable({
   providedIn: 'root'
@@ -32,36 +53,17 @@ export class GameControllerService {
   public buttons: GamepadButton[] = [];
   public prevButtons: GamepadButton[] = [];
 
-  private buttonASubject = new Subject<boolean>();
-  public buttonAPressed = this.buttonASubject.asObservable();
-  public buttonA: GamepadButton = {pressed: false, touched: false, value: 0};
-  private buttonBSubject = new Subject<boolean>();
-  public buttonBPressed = this.buttonBSubject.asObservable();
-  public buttonB: GamepadButton = {pressed: false, touched: false, value: 0};
-  private buttonXSubject = new Subject<boolean>();
-  public buttonXPressed = this.buttonXSubject.asObservable();
-  public buttonX: GamepadButton = {pressed: false, touched: false, value: 0};
-  private buttonYSubject = new Subject<boolean>();
-  public buttonYPressed = this.buttonYSubject.asObservable();
-  public buttonY: GamepadButton = {pressed: false, touched: false, value: 0};
-  private buttonLBSubject = new Subject<boolean>();
-  public buttonLBPressed = this.buttonLBSubject.asObservable();
-  public buttonLB: GamepadButton = {pressed: false, touched: false, value: 0};
-  private buttonRBSubject = new Subject<boolean>();
-  public buttonRBPressed = this.buttonRBSubject.asObservable();
-  public buttonRB: GamepadButton = {pressed: false, touched: false, value: 0};
-  private buttonLTSubject = new Subject<boolean>();
-  public buttonLTPressed = this.buttonLTSubject.asObservable();
-  public buttonLT: GamepadButton = {pressed: false, touched: false, value: 0};
-  private buttonRTSubject = new Subject<boolean>();
-  public buttonRTPressed = this.buttonRTSubject.asObservable();
-  public buttonRT: GamepadButton = {pressed: false, touched: false, value: 0};
-  private buttonSelectSubject = new Subject<boolean>();
-  public buttonSelectPressed = this.buttonSelectSubject.asObservable();
-  public buttonSelect: GamepadButton = {pressed: false, touched: false, value: 0};
-  private buttonStartSubject = new Subject<boolean>();
-  public buttonStartPressed = this.buttonStartSubject.asObservable();
-  public buttonStart: GamepadButton = {pressed: false, touched: false, value: 0};
+
+  public buttonA: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.ButtonA);
+  public buttonB: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.ButtonB);
+  public buttonX: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.ButtonX);
+  public buttonY: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.ButtonY);
+  public buttonLB: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.ButtonLB);
+  public buttonRB: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.ButtonRB);
+  public buttonLT: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.ButtonLT);
+  public buttonRT: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.ButtonRT);
+  public buttonStart: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.Start);
+  public buttonSelect: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.Select);
 
   public activeGamepad: Gamepad|null = null;
 
@@ -87,27 +89,18 @@ export class GameControllerService {
           this.yAxisSubject.next(this.yAxis);
         }
 
-        this.buttonA = gamepad.buttons[ControllerButtonIndexes.ButtonA];
-        this.buttonB = gamepad.buttons[ControllerButtonIndexes.ButtonB];
-        this.buttonX = gamepad.buttons[ControllerButtonIndexes.ButtonX];
-        this.buttonY = gamepad.buttons[ControllerButtonIndexes.ButtonY];
-        this.buttonLB = gamepad.buttons[ControllerButtonIndexes.ButtonLB];
-        this.buttonRB = gamepad.buttons[ControllerButtonIndexes.ButtonRB];
-        this.buttonLT = gamepad.buttons[ControllerButtonIndexes.ButtonLT];
-        this.buttonRT = gamepad.buttons[ControllerButtonIndexes.ButtonRT];
-        this.buttonSelect = gamepad.buttons[ControllerButtonIndexes.Select];
-        this.buttonStart = gamepad.buttons[ControllerButtonIndexes.Start];
+        this.buttonSelect.updateFromGamepadState(gamepad);
+        this.buttonStart.updateFromGamepadState(gamepad);
 
-        if (this.buttonA.pressed      !== this.buttonASubject.observed)      this.buttonASubject.next(this.buttonA.pressed);
-        if (this.buttonB.pressed      !== this.buttonBSubject.observed)      this.buttonASubject.next(this.buttonB.pressed);
-        if (this.buttonX.pressed      !== this.buttonXSubject.observed)      this.buttonASubject.next(this.buttonX.pressed);
-        if (this.buttonY.pressed      !== this.buttonYSubject.observed)      this.buttonASubject.next(this.buttonY.pressed);
-        if (this.buttonLB.pressed     !== this.buttonLBSubject.observed)     this.buttonASubject.next(this.buttonLB.pressed);
-        if (this.buttonRB.pressed     !== this.buttonRBSubject.observed)     this.buttonASubject.next(this.buttonRB.pressed);
-        if (this.buttonLT.pressed     !== this.buttonLTSubject.observed)     this.buttonASubject.next(this.buttonLT.pressed);
-        if (this.buttonRT.pressed     !== this.buttonRTSubject.observed)     this.buttonASubject.next(this.buttonRT.pressed);
-        if (this.buttonSelect.pressed !== this.buttonSelectSubject.observed) this.buttonASubject.next(this.buttonSelect.pressed);
-        if (this.buttonStart.pressed  !== this.buttonStartSubject.observed)  this.buttonASubject.next(this.buttonStart.pressed);
+        this.buttonA.updateFromGamepadState(gamepad);
+        this.buttonB.updateFromGamepadState(gamepad);
+        this.buttonY.updateFromGamepadState(gamepad);
+        this.buttonX.updateFromGamepadState(gamepad);
+
+        this.buttonLB.updateFromGamepadState(gamepad);
+        this.buttonRB.updateFromGamepadState(gamepad);
+        this.buttonLT.updateFromGamepadState(gamepad);
+        this.buttonRT.updateFromGamepadState(gamepad);
 
         break; // Only use the first connected gamepad
       }

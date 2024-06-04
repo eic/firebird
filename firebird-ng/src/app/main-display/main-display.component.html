@@ -70,10 +70,13 @@
   <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)">
     <input matSliderThumb [value]="currentTime">
   </mat-slider>
-  <div>{{maxTime | number:'1.0'}}</div>
+  <div>{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>
 
   <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="rewindTime()">
     <mat-icon>first_page</mat-icon>
+  </button>
+  <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="animateWithCollision()">
+    <mat-icon>close_fullscreen</mat-icon>
   </button>
   <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="animateTime()">
     <mat-icon>play_arrow</mat-icon>
@@ -87,8 +90,21 @@
   <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >
     <mat-icon>stop</mat-icon>
   </button>
+  <div>{{currentTime | number:'1.1-1'}} {{message}}</div>
+  &nbsp;&nbsp;
 
-  <div>{{currentTime | number:'1.1'}} {{message}}</div>
+  <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="cycleGeometry()" >
+    <mat-icon>view_in_ar</mat-icon>
+  </button>
+
+  <div>{{currentGeometry}}</div>
+
+
+
+
+
+
+
 </div>
 
 <div id="eventDisplay"></div>

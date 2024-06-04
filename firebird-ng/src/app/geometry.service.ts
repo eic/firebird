@@ -17,6 +17,19 @@ import {UserConfigService} from "./user-config.service";
 import {Subdetector} from "./model/subdetector";
 import {Object3D} from "three";
 
+export const GROUP_CALORIMETRY = "Calorimeters";
+export const GROUP_TRACKING = "Tracking";
+export const GROUP_PID = "PID";
+export const GROUP_MAGNETS = "Magnets";
+export const GROUP_SUPPORT = "Beam pipe and support";
+export const ALL_GROUPS = [
+  GROUP_CALORIMETRY,
+  GROUP_TRACKING,
+  GROUP_PID,
+  GROUP_MAGNETS,
+  GROUP_SUPPORT,
+]
+
 // constants.ts
 export const DEFAULT_GEOMETRY = 'epic-central-optimized';
 
@@ -38,11 +51,55 @@ export class GeometryService {
 
   public groupsByDetName: Map<string, string>;
 
-
-
   constructor(private settings: UserConfigService) {
     this.groupsByDetName = new Map<string,string> ([
-      ["hello", "world"]
+      ["SolenoidBarrel_assembly_0", GROUP_MAGNETS],
+      ["SolenoidEndcapP_1", GROUP_MAGNETS],
+      ["SolenoidEndcapN_2", GROUP_MAGNETS],
+      ["VertexBarrelSubAssembly_3", GROUP_TRACKING],
+      ["InnerSiTrackerSubAssembly_4", GROUP_TRACKING],
+      ["MiddleSiTrackerSubAssembly_5", GROUP_TRACKING],
+      ["OuterSiTrackerSubAssembly_6", GROUP_TRACKING],
+      ["EndcapMPGDSubAssembly_7", GROUP_TRACKING],
+      ["InnerMPGDBarrelSubAssembly_8", GROUP_TRACKING],
+      ["EndcapTOFSubAssembly_9", GROUP_PID],
+      ["BarrelTOFSubAssembly_10", GROUP_PID],
+      ["OuterBarrelMPGDSubAssembly_11", GROUP_TRACKING],
+      ["B0TrackerSubAssembly_12", GROUP_TRACKING],
+      ["InnerTrackerSupport_assembly_13", GROUP_SUPPORT],
+      ["DIRC_14", GROUP_PID],
+      ["RICHEndcapN_Vol_15", GROUP_PID],
+      ["DRICH_16", GROUP_PID],
+      ["EcalEndcapP_17", GROUP_CALORIMETRY],
+      ["EcalEndcapPInsert_18", GROUP_CALORIMETRY],
+      ["EcalBarrelImaging_19", GROUP_CALORIMETRY],
+      ["EcalBarrelScFi_20", GROUP_CALORIMETRY],
+      ["EcalEndcapN_21", GROUP_CALORIMETRY],
+      ["LFHCAL_env_22", GROUP_CALORIMETRY],
+      ["HcalEndcapPInsert_23", GROUP_CALORIMETRY],
+      ["HcalBarrel_24", GROUP_CALORIMETRY],
+      ["FluxBarrel_env_25", GROUP_SUPPORT],
+      ["FluxEndcapP_26", GROUP_SUPPORT],
+      ["HcalEndcapN_27", GROUP_CALORIMETRY],
+      ["FluxEndcapN_28", GROUP_SUPPORT],
+      ["BeamPipe_assembly_29", GROUP_SUPPORT],
+      ["B0PF_BeamlineMagnet_assembly_30", GROUP_MAGNETS],
+      ["B0APF_BeamlineMagnet_assembly_31", GROUP_MAGNETS],
+      ["Q1APF_BeamlineMagnet_assembly_32", GROUP_MAGNETS],
+      ["Q1BPF_BeamlineMagnet_assembly_33", GROUP_MAGNETS],
+      ["BeamPipeB0_assembly_38", GROUP_SUPPORT],
+      ["Pipe_cen_to_pos_assembly_39", GROUP_SUPPORT],
+      ["Q0EF_assembly_40", GROUP_MAGNETS],
+      ["Q0EF_vac_41", GROUP_MAGNETS],
+      ["Q1EF_assembly_42", GROUP_MAGNETS],
+      ["Q1EF_vac_43", GROUP_MAGNETS],
+      ["B0ECal_44", GROUP_CALORIMETRY],
+      ["Pipe_Q1eR_to_B2BeR_assembly_54", GROUP_SUPPORT],
+      ["Magnet_Q1eR_assembly_55", GROUP_MAGNETS],
+      ["Magnet_Q2eR_assembly_56", GROUP_MAGNETS],
+      ["Magnet_B2AeR_assembly_57", GROUP_MAGNETS],
+      ["Magnet_B2BeR_assembly_58", GROUP_MAGNETS],
+      ["Magnets_Q3eR_assembly_59", GROUP_MAGNETS],
     ])
 
   }
@@ -127,9 +184,9 @@ export class GeometryService {
         sourceGeometryName: rootNode?.fName ?? "",
         geometry: topNode,
         name: this.stripIdFromName(originalName),
-        groupName: this.groupsByDetName.get(name) || ""
+        groupName: this.groupsByDetName.get(originalName) || ""
       }
-      console.log(subdetector.name, subdetector);
+      console.log(subdetector.sourceGeometryName);
       this.subdetectors.push(subdetector);
     }
     console.timeEnd('[GeometryService]: Map root geometry to threejs geometry');
