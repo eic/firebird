@@ -38,6 +38,7 @@ import {MatIcon} from "@angular/material/icon";
 import {MatButton} from "@angular/material/button";
 import {DecimalPipe} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
+import {MatSnackBar} from "@angular/material/snack-bar"
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
@@ -87,13 +88,15 @@ export class MainDisplayComponent implements OnInit {
   private tween: TWEEN.Tween<any> | null = null;
   private animationManager: EicAnimationsManager| null = null;
   currentGeometry: string = "All";
+  private animateEventAfterLoad: boolean = false;
 
   constructor(
     private geomService: GeometryService,
     private eventDisplay: EventDisplayService,
     private controller: GameControllerService,
     private route: ActivatedRoute,
-    private settings: UserConfigService) {
+    private settings: UserConfigService,
+    private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
   }
 
@@ -417,9 +420,12 @@ export class MainDisplayComponent implements OnInit {
       console.log("listenToDisplayedEventChange");
       console.log(event);
       this.trackInfos = null;
+
       let mcTracksGroup = threeManager.getSceneManager().getObjectByName("mc_tracks");
       if(mcTracksGroup) {
+        console.time("Process tracks on event load");
         this.trackInfos = this.threeEventProcessor.processMcTracks(mcTracksGroup);
+        console.timeEnd("Process tracks on event load");
         let minTime = Infinity;
         let maxTime = 0;
         for(let trackInfo of this.trackInfos) {
@@ -431,6 +437,15 @@ export class MainDisplayComponent implements OnInit {
         this.minTime = minTime;
 
         this.message = `Tracks: ${this.trackInfos.length}`;
+        if(this.trackInfos) {
+          for (let trackInfo of this.trackInfos) {
+            trackInfo.trackNode.visible = false;
+          }
+        }
+
+      }
+      if(this.animateEventAfterLoad) {
+        this.animateWithCollision();
       }
     })
     // Display event loader
@@ -483,12 +498,30 @@ export class MainDisplayComponent implements OnInit {
         // do something..
       }
       if ((e as KeyboardEvent).key === 'q') {
-        const name = `event_5x41_${Math.floor(Math.random() * 20)}`
+        const name = `event_18x275_minq2_100_${Math.floor(Math.random() * 10)}`
         console.log(name); // This will log a random index from 0 to 3
-        this.eventDisplay.loadEvent(name);
-        this.eventDisplay.animateEventWithCollision(1500);
+
+        this.stopAnimation();
+        if(this.trackInfos) {
+          for (let trackInfo of this.trackInfos) {
+            trackInfo.trackNode.visible = false;
+          }
+        }
+
+        this._snackBar.open(" Charing!!! " + name, 'Dismiss', {
+          duration: 1000,  // Duration in milliseconds after which the snack-bar will auto dismiss
+          horizontalPosition: 'right',  // 'start' | 'center' | 'end' | 'left' | 'right'
+          verticalPosition: 'top',    // 'top' | 'bottom'
+        });
+
+        this.animateEventAfterLoad = true;
+
+        let promise = new Promise<string>((resolve, reject) => {
+          this.eventDisplay.loadEvent(name);
+        });
       }
       console.log((e as KeyboardEvent).key);
+
     });
   }
 
@@ -610,7 +643,7 @@ export class MainDisplayComponent implements OnInit {
         trackInfo.trackNode.visible = false;
       }
     }
-    this.animationManager?.collideParticles(800, 30, 5000, new Color(0xAAAAAA),
+    this.animationManager?.collideParticles(1000, 30, 5000, new Color(0xAAAAAA),
       () => {
         this.animateTime();
     });

@@ -66,7 +66,7 @@
 
 <div class="time-controls" style="background-color: #424242; padding: 2px; display: flex; gap: 3px; align-items: center; position: absolute; top:0px; left: 300px;">
 
-  <div>{{minTime | number:'1.0'}}</div>
+  <div>{{currentTime | number:'1.1-1'}}</div>
   <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)">
     <input matSliderThumb [value]="currentTime">
   </mat-slider>
@@ -90,7 +90,7 @@
   <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >
     <mat-icon>stop</mat-icon>
   </button>
-  <div>{{currentTime | number:'1.1-1'}} {{message}}</div>
+  <div>{{message}}</div>
   &nbsp;&nbsp;
 
   <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="cycleGeometry()" >
@@ -98,13 +98,6 @@
   </button>
 
   <div>{{currentGeometry}}</div>
-
-
-
-
-
-
-
 </div>
 
 <div id="eventDisplay"></div>
