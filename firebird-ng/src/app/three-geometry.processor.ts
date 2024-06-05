@@ -40,7 +40,7 @@ export function matchRulesToDetectors(ruleSets: DetectorThreeRuleSet[], detector
   const unassignedDetectors = new Set(detectors);
   const detectorRulesMap = new Map<Subdetector, EditThreeNodeRule[]>();
 
-  ruleSets.forEach(ruleSet => {
+  for(let ruleSet of ruleSets) {
     const targets = new Set<Subdetector>();
     let names = new Set<string>(ruleSet.names || []);
 
@@ -49,20 +49,16 @@ export function matchRulesToDetectors(ruleSets: DetectorThreeRuleSet[], detector
       names.add(ruleSet.name);
     }
 
-    names.forEach(name => {
-      unassignedDetectors.forEach(det => {
+    for(let name of names) {
+      for(let det of unassignedDetectors) {
         if (wildCardCheck(det.sourceGeometryName, name)) {
           targets.add(det);
+          detectorRulesMap.set(det, ruleSet.rules || []);
           unassignedDetectors.delete(det);  // Move deletion here to optimize
         }
-      });
-    });
-
-    // Apply the rules to the targeted detectors
-    targets.forEach(target => {
-      detectorRulesMap.set(target, ruleSet.rules || []);
-    });
-  });
+      }
+    }
+  }
 
   return detectorRulesMap;
 }
@@ -74,14 +70,58 @@ export class ThreeGeometryProcessor {
       names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_28"],
       rules: [
         {
-          color: 0x000000,
+          color: 0xFFFFFF,
+        }
+      ]
+    },
+    {
+      name: "EndcapEcalN*",
+      rules: [
+        {
+          patterns: ["**/crystal_vol_0"],
+          color: 0xffef8b,
+        },
+        {
+          patterns: ["**/inner_support*", "**/ring*"],
+          material: new THREE.MeshStandardMaterial({
+            color: 0x19a5f5,
+            roughness: 0.7,
+            metalness: 0.869,
+            transparent: true,
+            opacity: 1,
+            side: THREE.DoubleSide
+          })
+        }
+
+      ]
+    },
+    {
+      name: "InnerTrackerSupport_assembly_13",
+      rules: [
+        {
+          material: new THREE.MeshStandardMaterial({
+            color: 0xEEEEEE,
+            roughness: 0.7,
+            metalness: 0.3,
+            transparent: true,
+            opacity: 0.4,
+            premultipliedAlpha: true,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            side: THREE.DoubleSide
+          }),
+          outline: true,
+          outlineColor: 0xFF0000,
+          merge: true
 
         }
       ]
     },
     {
       name: "VertexBarrelSubAssembly_3",
-      rules: []
+      rules: [
+
+      ]
     },
     {
       name: "*",
