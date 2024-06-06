@@ -50,48 +50,19 @@
         <select class="form-control" [formControl]="selectedEventSource">
           <option value="no-events">No events (may upload later)</option>
           <option value="https://firebird-eic.org/dirc_event.json.zip">DIRC optical (load DIRC only geometry)</option>
-
-          <option value="https://firebird-eic.org/py8_all_dis-cc_beam-18x275_minq2-1000_nevt-5.evt.zip"> py8 (50MeV+) dis-CC_beam-18x275_minq2-1000_nevt-5</option>
-          <option value="https://firebird-eic.org/py8_all_dis-cc_beam-18x275_minq2-100_nevt-5.evt.zip"> py8 (50MeV+) dis-CC_beam-18x275_minq2-100_nevt-5</option>
-          <option value="https://firebird-eic.org/py8_all_dis-cc_beam-10x100_minq2-1000_nevt-5.evt.zip"> py8 (50MeV+) dis-CC_beam-10x100_minq2-1000_nevt-5</option>
-          <option value="https://firebird-eic.org/py8_all_dis-cc_beam-10x100_minq2-100_nevt-5.evt.zip"> py8 (50MeV+) dis-CC_beam-10x100_minq2-100_nevt-5</option>
-          <option value="https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.zip"> py8 (50MeV+) dis-CC_beam-5x41_minq2-100_nevt-5</option>
-
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-18x275_minq2-1000_nevt-5.evt.zip"> py8 (50MeV+) dis-nc_beam-18x275_minq2-1000_nevt-5</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-18x275_minq2-100_nevt-5.evt.zip"> py8 (50MeV+) dis-nc_beam-18x275_minq2-100_nevt-5</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-18x275_minq2-1_nevt-5.evt.zip"> py8 (50MeV+) dis-nc_beam-18x275_minq2-1_nevt-5</option>
-
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-10x100_minq2-1000_nevt-5.evt.zip"> py8 (50MeV+) dis-nc_beam-10x100_minq2-1000_nevt-5</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-10x100_minq2-100_nevt-5.evt.zip"> py8 (50MeV+) dis-nc_beam-10x100_minq2-100_nevt-5</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-10x100_minq2-1_nevt-5.evt.zip"> py8 (50MeV+) dis-nc_beam-10x100_minq2-1_nevt-5</option>
-
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-5x41_minq2-100_nevt-5.evt.zip"> py8 (50MeV+) dis-nc_beam-5x41_minq2-100_nevt-5</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-5x41_minq2-1_nevt-5.evt.zip"> py8 (50MeV+) dis-nc_beam-5x41_minq2-1_nevt-5</option>
-
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-10x100_minq2-1000_nevt-10.evt.zip"> py8 (300MeV+) dis-nc_beam-10x100_minq2-1000_nevt-10</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-10x100_minq2-100_nevt-10.evt.zip"> py8 (300MeV+) dis-nc_beam-10x100_minq2-100_nevt-10</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-10x100_minq2-1_nevt-10.evt.zip"> py8 (300MeV+) dis-nc_beam-10x100_minq2-1_nevt-10</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-18x275_minq2-1_nevt-10.evt.zip"> py8 (300MeV+) dis-nc_beam-18x275_minq2-1_nevt-10</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-5x41_minq2-100_nevt-10.evt.zip"> py8 (300MeV+) dis-nc_beam-5x41_minq2-100_nevt-10</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-5x41_minq2-1_nevt-10.evt.zip"> py8 (300MeV+) dis-nc_beam-5x41_minq2-1_nevt-10</option>
-
-          <option value="https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip">Pyth8 All(300MeV+) DIC-CC 5x41 minQ2-100 5 events</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-18x275_minq2-1000_nevt-5.evt.zip">Pyth8 All(200MeV+) DIC-NC 18x275 minQ2-1000 5 events</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-18x275_minq2-100_nevt-5.evt.zip">Pyth8 All(200MeV+) DIC-NC 18x275 minQ2-100 5 events</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-18x275_minq2-1_nevt-5.evt.zip">Pyth8 All(200MeV+) DIC-NC 18x275 minQ2-1 5 events</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-10x100_minq2-1000_nevt-5.evt.zip">Pyth8 All(200MeV+) DIC-NC 10x100 minQ2-1000 5 events</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-10x100_minq2-100_nevt-5.evt.zip">Pyth8 All(200MeV+) DIC-NC 10x100 minQ2-100 5 events</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-10x100_minq2-1_nevt-5.evt.zip">Pyth8 All(200MeV+) DIC-NC 10x100 minQ2-1 5 events</option>
-          <option value="https://firebird-eic.org/py8_all_dis-nc_beam-5x41_minq2-100_nevt-5.evt.zip">Pyth8 All(200MeV+) DIC-NC 5x41 minQ2-100 5 events</option>
-          <option value="assets/events/py8_dis-cc_beam-10x100_minq2-100_p-50mev_vtxcut-5m_nevt-10.evt.json"> (local) assets/events/py8_dis-cc_beam-10x100_minq2-100_p-50mev_vtxcut-5m_nevt-10.evt.json</option>
-
-          <option value="assets/events/py8_dis-cc_18x275_minq2-1000_minp-200mev_vtxcut-5m_nevt-10.evt.json">assets/events/py8_dis-cc_18x275_minq2-1000_minp-200mev_vtxcut-5m_nevt-10.evt.json</option>
-          <option value="assets/events/py8_dis-cc_all_minq2-100_minp-200mev_vtxcut-5m_nevt-40.evt.json">assets/events/py8_dis-cc_all_minq2-100_minp-200mev_vtxcut-5m_nevt-40.evt.json</option>
-          <option value="assets/events/py8_dis-cc_5x41_minq2-100_minp-200mev_vtxcut-5m_nevt-10.evt.json">assets/events/py8_dis-cc_5x41_minq2-100_minp-200mev_vtxcut-5m_nevt-10.evt.json</option>
-          <option value="assets/events/py8_dis-cc_10x100_minq2-100_minp-200mev_vtxcut-5m_nevt-10.evt.json">assets/events/py8_dis-cc_10x100_minq2-100_minp-200mev_vtxcut-5m_nevt-10.evt.json</option>
-          <option value="assets/events/py8_dis-cc_10x100_minq2-1000_minp-200mev_vtxcut-5m_nevt-10.evt.json">assets/events/py8_dis-cc_10x100_minq2-1000_minp-200mev_vtxcut-5m_nevt-10.evt.json</option>
-          <option value="assets/events/py8_dis-cc_18x275_minq2-100_minp-200mev_vtxcut-5m_nevt-10.evt.json">assets/events/py8_dis-cc_18x275_minq2-100_minp-200mev_vtxcut-5m_nevt-10.evt.json</option>
-
+          <option value="py8_dis-cc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-cc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-cc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-cc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-cc_all_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_all_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-nc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-nc_10x100_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_10x100_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-nc_10x100_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_10x100_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-nc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-nc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-nc_18x275_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_18x275_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-nc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
+          <option value="py8_dis-nc_all_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_all_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
         </select>
       </div>
     </div>

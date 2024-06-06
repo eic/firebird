@@ -513,27 +513,7 @@ export class MainDisplayComponent implements OnInit {
         // do something..
       }
       if ((e as KeyboardEvent).key === 'q') {
-        const name = `event_18x275_minq2_100_${Math.floor(Math.random() * 10)}`
-        console.log(name); // This will log a random index from 0 to 3
-
-        this.stopAnimation();
-        if(this.trackInfos) {
-          for (let trackInfo of this.trackInfos) {
-            trackInfo.trackNode.visible = false;
-          }
-        }
-
-        this._snackBar.open(" Charing!!! " + name, 'Dismiss', {
-          duration: 1000,  // Duration in milliseconds after which the snack-bar will auto dismiss
-          horizontalPosition: 'right',  // 'start' | 'center' | 'end' | 'left' | 'right'
-          verticalPosition: 'top',    // 'top' | 'bottom'
-        });
-
-        this.animateEventAfterLoad = true;
-
-        let promise = new Promise<string>((resolve, reject) => {
-          this.eventDisplay.loadEvent(name);
-        });
+        this.nextRandomEvent();
       }
       console.log((e as KeyboardEvent).key);
 
@@ -697,5 +677,29 @@ export class MainDisplayComponent implements OnInit {
       this.currentGeometry = ALL_GROUPS[this.geometryGroupSwitchingIndex];
       this.showGeometryGroup(this.currentGeometry);
     }
+  }
+
+  private nextRandomEvent() {
+    const name = `event_18x275_minq2_100_${Math.floor(Math.random() * 10)}`
+    console.log(name); // This will log a random index from 0 to 3
+
+    this.stopAnimation();
+    if(this.trackInfos) {
+      for (let trackInfo of this.trackInfos) {
+        trackInfo.trackNode.visible = false;
+      }
+    }
+
+    this._snackBar.open(" Charing!!! " + name, 'Dismiss', {
+      duration: 1000,  // Duration in milliseconds after which the snack-bar will auto dismiss
+      horizontalPosition: 'right',  // 'start' | 'center' | 'end' | 'left' | 'right'
+      verticalPosition: 'top',    // 'top' | 'bottom'
+    });
+
+    this.animateEventAfterLoad = true;
+
+    let promise = new Promise<string>((resolve, reject) => {
+      this.eventDisplay.loadEvent(name);
+    });
   }
 }
