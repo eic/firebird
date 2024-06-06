@@ -73,7 +73,7 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
     targetMesh = node as Mesh;
   }
 
-  if(color !== "undefined") {
+  if(color !== undefined && color !== null) {
     if(targetMesh.material) {
       (targetMesh.material as any).color =  new Color(color);
     }

@@ -205,6 +205,7 @@ export class ThreeEventProcessor {
             let geomCount = (line.geometry as any).count;
 
             let posLen = positions.length;
+            //oldLine.removeFromParent();
 
             // console.log(`id: ${id} pdg: ${pdgName} tstart: ${timeStart.toFixed(2)} tend: ${timeEnd.toFixed(2)} instCount: ${ic?.data?.array?.length} count: ${geomCount} posLen: ${posLen} length: ${endPoint.distanceTo(startPoint)}`);
             // console.log(ic);
@@ -213,6 +214,7 @@ export class ThreeEventProcessor {
           if(obj.type == "Mesh") {
             obj.visible = false;
             trackMesh = obj;
+            // obj.removeFromParent();
           }
         }
 
@@ -232,9 +234,5 @@ export class ThreeEventProcessor {
 
       console.log(`Total processed tracks: ${processedTrackGroups.length}`);
       return processedTrackGroups;
-
     }
-
-
-
 }

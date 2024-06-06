@@ -70,31 +70,40 @@ export class ThreeGeometryProcessor {
       names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_28"],
       rules: [
         {
-          color: 0xFFFFFF,
-        }
-      ]
-    },
-    {
-      name: "EndcapEcalN*",
-      rules: [
-        {
-          patterns: ["**/crystal_vol_0"],
-          color: 0xffef8b,
-        },
-        {
-          patterns: ["**/inner_support*", "**/ring*"],
-          material: new THREE.MeshStandardMaterial({
-            color: 0x19a5f5,
-            roughness: 0.7,
-            metalness: 0.869,
-            transparent: true,
-            opacity: 1,
-            side: THREE.DoubleSide
-          })
-        }
+          color: 0x999999,
 
+        }
       ]
     },
+    // {
+    //   name: "EcalEndcapN*",
+    //   rules: [
+    //     {
+    //       patterns: ["**/crystal_vol_0"],
+    //       color: 0xffef8b,
+    //       material: new THREE.MeshStandardMaterial({
+    //         color: 0xffef8b,
+    //         roughness: 0.7,
+    //         metalness: 0.869,
+    //         transparent: true,
+    //         opacity: 0.8,
+    //         side: THREE.DoubleSide
+    //       })
+    //     },
+    //     {
+    //       patterns: ["**/inner_support*", "**/ring*"],
+    //       material: new THREE.MeshStandardMaterial({
+    //         color: 0x19a5f5,
+    //         roughness: 0.7,
+    //         metalness: 0.869,
+    //         transparent: true,
+    //         opacity: 0.8,
+    //         side: THREE.DoubleSide
+    //       })
+    //     }
+    //
+    //   ]
+    // },
     {
       name: "InnerTrackerSupport_assembly_13",
       rules: [
@@ -104,18 +113,53 @@ export class ThreeGeometryProcessor {
             roughness: 0.7,
             metalness: 0.3,
             transparent: true,
-            opacity: 0.4,
-            premultipliedAlpha: true,
+            opacity: 0.8,
+            blending: THREE.NormalBlending,
+            // premultipliedAlpha: true,
+            depthWrite: false, // Ensures correct blending
             polygonOffset: true,
             polygonOffsetFactor: 1,
             side: THREE.DoubleSide
           }),
           outline: true,
-          outlineColor: 0xFF0000,
-          merge: true
-
+          outlineColor: 0x666666,
+          merge: true,
+          newName: "InnerTrackerSupport"
         }
       ]
+    },
+    {
+      name: "DIRC_14",
+      rules: [
+        {
+          patterns:     ["**/*box*", "**/*prism*"],
+          material: new THREE.MeshPhysicalMaterial({
+            color: 0xe5ba5d,
+            metalness: .9,
+            roughness: .05,
+            envMapIntensity: 0.9,
+            clearcoat: 1,
+            transparent: true,
+            //transmission: .60,
+            opacity: .6,
+            reflectivity: 0.2,
+            //refr: 0.985,
+            ior: 0.9,
+            side: THREE.DoubleSide,
+          }),
+          newName: "DIRC_barAndPrisms"
+        },
+        {
+          patterns: ["**/*rail*"],
+          newName: "DIRC_rails",
+          color: 0xAAAACC
+        },
+        {
+          patterns: ["**/*mcp*"],
+          newName: "DIRC_mcps"
+        }
+      ]
+
     },
     {
       name: "VertexBarrelSubAssembly_3",

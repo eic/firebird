@@ -1,5 +1,6 @@
 import {Component, Input, OnInit} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
+
 import {
   EventDataFormat,
   EventDataImportOption,
@@ -152,6 +153,7 @@ export class MainDisplayComponent implements OnInit {
           side: side,
           transparent: true,
           opacity: 0.5,
+          blending: THREE.NormalBlending,
           depthTest: true,
           depthWrite: true,
           clippingPlanes: openThreeManager.clipPlanes,
@@ -342,6 +344,19 @@ export class MainDisplayComponent implements OnInit {
       eventConfig = {eventFile, eventType};
     }
 
+    if (typeof Worker !== 'undefined') {
+      // Create a new
+      const worker = new Worker(new URL('../event-loader.worker.ts', import.meta.url));
+      worker.onmessage = ({ data }) => {
+        console.log(`page got message: ${data}`);
+        console.log(data);
+      };
+      worker.postMessage(eventConfig.eventFile);
+    } else {
+      // Web workers are not supported in this environment.
+      // You should add a fallback so that your program still executes correctly.
+    }
+
     // Create the event display configuration
     const configuration: Configuration = {
       eventDataLoader: new PhoenixLoader(),
@@ -437,7 +452,7 @@ export class MainDisplayComponent implements OnInit {
         this.minTime = minTime;
 
         this.message = `Tracks: ${this.trackInfos.length}`;
-        if(this.trackInfos) {
+        if(this.trackInfos && this.animateEventAfterLoad) {
           for (let trackInfo of this.trackInfos) {
             trackInfo.trackNode.visible = false;
           }
