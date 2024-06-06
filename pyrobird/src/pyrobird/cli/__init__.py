@@ -7,7 +7,7 @@ import click
 
 from pyrobird.__about__ import __version__
 from . geo import geo as geo_group
-
+from . serve import serve as serve_group
 
 def setup_logging(is_verbose):
     """
@@ -51,3 +51,4 @@ def cli_app(ctx, verbose):
 
 # noinspection PyTypeChecker
 cli_app.add_command(geo_group)
+cli_app.add_command(serve_group)

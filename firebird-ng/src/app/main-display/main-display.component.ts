@@ -1,5 +1,6 @@
 import {Component, Input, OnInit} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
+
 import {
   EventDataFormat,
   EventDataImportOption,
@@ -9,7 +10,7 @@ import {
 import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
 import {Color, DoubleSide, InstancedBufferGeometry, Line, MeshPhongMaterial,} from "three";
-import {GeometryService} from '../geometry.service';
+import {ALL_GROUPS, GeometryService} from '../geometry.service';
 import {ActivatedRoute} from '@angular/router';
 import {ThreeGeometryProcessor} from "../three-geometry.processor";
 import * as TWEEN from '@tweenjs/tween.js';
@@ -33,6 +34,12 @@ import {IoOptionsComponent} from "./io-options/io-options.component";
 import {ProcessTrackInfo, ThreeEventProcessor} from "../three-event.processor";
 import {UserConfigService} from "../user-config.service";
 import {EicAnimationsManager} from "../eic-animation-manager";
+import {MatSlider, MatSliderThumb} from "@angular/material/slider";
+import {MatIcon} from "@angular/material/icon";
+import {MatButton} from "@angular/material/button";
+import {DecimalPipe} from "@angular/common";
+import {MatTooltip} from "@angular/material/tooltip";
+import {MatSnackBar} from "@angular/material/snack-bar"
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
@@ -40,7 +47,7 @@ import {EicAnimationsManager} from "../eic-animation-manager";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -51,6 +58,7 @@ export class MainDisplayComponent implements OnInit {
 
   currentTime = 0;
   maxTime = 200;
+  minTime = 0;
   message = "";
 
   /** The root Phoenix menu node. */
@@ -68,6 +76,8 @@ export class MainDisplayComponent implements OnInit {
   /** The Default color of elements if not set */
   defaultColor: Color = new Color(0x2fd691);
 
+  private geometryGroupSwitchingIndex = ALL_GROUPS.length;
+
 
   private renderer: THREE.Renderer|null = null;
   private camera: THREE.Camera|null = null;
@@ -77,22 +87,27 @@ export class MainDisplayComponent implements OnInit {
   private threeFacade: PhoenixThreeFacade;
   private trackInfos: ProcessTrackInfo[] | null = null;
   private tween: TWEEN.Tween<any> | null = null;
-
-
-
+  private animationManager: EicAnimationsManager| null = null;
+  currentGeometry: string = "All";
+  private animateEventAfterLoad: boolean = false;
 
   constructor(
     private geomService: GeometryService,
     private eventDisplay: EventDisplayService,
     private controller: GameControllerService,
     private route: ActivatedRoute,
-    private settings: UserConfigService) {
+    private settings: UserConfigService,
+    private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
   }
 
   async loadGeometry(initiallyVisible=true, scale=10) {
 
-    let {rootGeoManager, rootObject3d} = await this.geomService.loadGeometry();
+
+    let {rootGeometry, threeGeometry} = await this.geomService.loadGeometry();
+    if(!threeGeometry) return;
+
+
     let threeManager = this.eventDisplay.getThreeManager();
     let uiManager = this.eventDisplay.getUIManager();
     let openThreeManager: any = threeManager;
@@ -103,12 +118,12 @@ export class MainDisplayComponent implements OnInit {
 
     // Set geometry scale
     if (scale) {
-      rootObject3d.scale.setScalar(scale);
+      threeGeometry.scale.setScalar(scale);
     }
 
     // Add root geometry to scene
     // console.log("CERN ROOT converted to Object3d: ", rootObject3d);
-    sceneGeometry.add(rootObject3d);
+    sceneGeometry.add(threeGeometry);
 
 
 
@@ -129,7 +144,7 @@ export class MainDisplayComponent implements OnInit {
 
         child.material.dispose(); // Dispose the old material if it's a heavy object
 
-        let opacity = rootObject3d.userData.opacity ?? 1;
+        let opacity = threeGeometry.userData["opacity"] ?? 1;
         let transparent = opacity < 1;
 
         child.material = new MeshPhongMaterial({
@@ -138,6 +153,7 @@ export class MainDisplayComponent implements OnInit {
           side: side,
           transparent: true,
           opacity: 0.5,
+          blending: THREE.NormalBlending,
           depthTest: true,
           depthWrite: true,
           clippingPlanes: openThreeManager.clipPlanes,
@@ -162,7 +178,7 @@ export class MainDisplayComponent implements OnInit {
     });
 
     // HERE WE DO POSTPROCESSING STEP
-    this.threeGeometryProcessor.process(rootObject3d);
+    this.threeGeometryProcessor.process(this.geomService.subdetectors);
 
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
@@ -279,6 +295,8 @@ export class MainDisplayComponent implements OnInit {
       this.stats.update();
     }
 
+    this.controller.animationLoopHandler();
+
     const gamepads = navigator.getGamepads();
     for (const gamepad of gamepads) {
       if (gamepad) {
@@ -288,12 +306,8 @@ export class MainDisplayComponent implements OnInit {
         const xAxis = gamepad.axes[0];
         const yAxis = gamepad.axes[1];
 
-        let controls = this.threeFacade.activeOrbitControls;
-        let camera = this.threeFacade.mainCamera;
-
         if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
           this.rotateCamera(xAxis, yAxis);
-
         }
 
         // Zooming using buttons
@@ -330,6 +344,19 @@ export class MainDisplayComponent implements OnInit {
       eventConfig = {eventFile, eventType};
     }
 
+    if (typeof Worker !== 'undefined') {
+      // Create a new
+      const worker = new Worker(new URL('../event-loader.worker.ts', import.meta.url));
+      worker.onmessage = ({ data }) => {
+        console.log(`page got message: ${data}`);
+        console.log(data);
+      };
+      worker.postMessage(eventConfig.eventFile);
+    } else {
+      // Web workers are not supported in this environment.
+      // You should add a fallback so that your program still executes correctly.
+    }
+
     // Create the event display configuration
     const configuration: Configuration = {
       eventDataLoader: new PhoenixLoader(),
@@ -360,7 +387,9 @@ export class MainDisplayComponent implements OnInit {
     // Initialize the event display
     this.eventDisplay.init(configuration);
 
-
+    this.controller.buttonB.onPress.subscribe(value => {
+      this.onControllerBPressed(value);
+    });
 
     // let uiManager = this.eventDisplay.getUIManager();
     let openThreeManager: any = this.eventDisplay.getThreeManager();
@@ -370,31 +399,32 @@ export class MainDisplayComponent implements OnInit {
 
     // Animations manager (!) DANGER ZONE (!) But we have to, right?
     // Deadline approaches and meteor will erase the humanity if we are not in time...
-    openThreeManager.animationsManager = new EicAnimationsManager(
+    openThreeManager.animationsManager = this.animationManager = new EicAnimationsManager(
       openThreeManager.sceneManager.getScene(),
       openThreeManager.controlsManager.getActiveCamera(),
       openThreeManager.rendererManager,
     );
+
 
     this.renderer  = openThreeManager.rendererManager.getMainRenderer();
     this.scene = threeManager.getSceneManager().getScene() as THREE.Scene;
     this.camera = openThreeManager.controlsManager.getMainCamera() as THREE.Camera;
 
 
-    // GUI
-    const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
-
-    const gui = new GUI({
-      // container: document.getElementById("lil-gui-place") ?? undefined,
-
-    });
-
-    gui.title("Debug");
-    gui.add(this, "produceRenderOrder");
-    gui.add(this, "logGamepadStates").name( 'Log controls' );
-    gui.add(this, "logCamera").name( 'Log camera' );
-    gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
-    gui.close();
+    // // GUI
+    // const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
+    //
+    // const gui = new GUI({
+    //   // container: document.getElementById("lil-gui-place") ?? undefined,
+    //
+    // });
+    //
+    // gui.title("Debug");
+    // gui.add(this, "produceRenderOrder");
+    // gui.add(this, "logGamepadStates").name( 'Log controls' );
+    // gui.add(this, "logCamera").name( 'Log camera' );
+    // gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
+    // gui.close();
 
     // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);
@@ -405,9 +435,12 @@ export class MainDisplayComponent implements OnInit {
       console.log("listenToDisplayedEventChange");
       console.log(event);
       this.trackInfos = null;
+
       let mcTracksGroup = threeManager.getSceneManager().getObjectByName("mc_tracks");
       if(mcTracksGroup) {
+        console.time("Process tracks on event load");
         this.trackInfos = this.threeEventProcessor.processMcTracks(mcTracksGroup);
+        console.timeEnd("Process tracks on event load");
         let minTime = Infinity;
         let maxTime = 0;
         for(let trackInfo of this.trackInfos) {
@@ -416,8 +449,18 @@ export class MainDisplayComponent implements OnInit {
         }
 
         this.maxTime = maxTime;
+        this.minTime = minTime;
 
-        this.message = `Tracks: ${this.trackInfos.length} time min: ${minTime} max: ${maxTime}`;
+        this.message = `Tracks: ${this.trackInfos.length}`;
+        if(this.trackInfos && this.animateEventAfterLoad) {
+          for (let trackInfo of this.trackInfos) {
+            trackInfo.trackNode.visible = false;
+          }
+        }
+
+      }
+      if(this.animateEventAfterLoad) {
+        this.animateWithCollision();
       }
     })
     // Display event loader
@@ -458,6 +501,9 @@ export class MainDisplayComponent implements OnInit {
       jsonGeometry = jsonGeom;
       this.eventDisplay
         .getLoadingManager().itemLoaded("MyGeometry");
+    }).catch(reason=> {
+      console.error("ERROR LOADING GEOMETRY");
+      console.log(reason);
     });
 
 
@@ -467,13 +513,37 @@ export class MainDisplayComponent implements OnInit {
         // do something..
       }
       if ((e as KeyboardEvent).key === 'q') {
-        const name = `event_5x41_${Math.floor(Math.random() * 20)}`
+        const name = `event_18x275_minq2_100_${Math.floor(Math.random() * 10)}`
         console.log(name); // This will log a random index from 0 to 3
-        this.eventDisplay.loadEvent(name);
-        this.eventDisplay.animateEventWithCollision(1500);
+
+        this.stopAnimation();
+        if(this.trackInfos) {
+          for (let trackInfo of this.trackInfos) {
+            trackInfo.trackNode.visible = false;
+          }
+        }
+
+        this._snackBar.open(" Charing!!! " + name, 'Dismiss', {
+          duration: 1000,  // Duration in milliseconds after which the snack-bar will auto dismiss
+          horizontalPosition: 'right',  // 'start' | 'center' | 'end' | 'left' | 'right'
+          verticalPosition: 'top',    // 'top' | 'bottom'
+        });
+
+        this.animateEventAfterLoad = true;
+
+        let promise = new Promise<string>((resolve, reject) => {
+          this.eventDisplay.loadEvent(name);
+        });
       }
       console.log((e as KeyboardEvent).key);
+
     });
+  }
+
+  private onControllerBPressed(value: boolean) {
+    if(value) {
+      this.animateWithCollision();
+    }
   }
 
   changeCurrentTime(event: Event) {
@@ -491,6 +561,10 @@ export class MainDisplayComponent implements OnInit {
     if(this.currentTime < this.maxTime) this.currentTime++;
     if(this.currentTime > this.maxTime) this.currentTime = this.maxTime;
     this.processCurrentTimeChange();
+  }
+
+  public formatCurrentTime (value: number): string {
+    return value.toFixed(1);
   }
 
   private processCurrentTimeChange() {
@@ -558,6 +632,70 @@ export class MainDisplayComponent implements OnInit {
     if (this.tween) {
       this.tween.stop(); // Stops the tween if it is running
       this.tween = null; // Remove reference
+    }
+  }
+
+  exitTimedDisplay() {
+    this.stopAnimation();
+    this.rewindTime();
+    if(this.trackInfos) {
+      for (let trackInfo of this.trackInfos) {
+        trackInfo.trackNode.visible = true;
+        trackInfo.newLine.geometry.instanceCount=Infinity;
+      }
+    }
+  }
+
+  rewindTime() {
+    this.currentTime = 0;
+  }
+
+  animateWithCollision() {
+    this.stopAnimation();
+    this.rewindTime();
+    if(this.trackInfos) {
+      for (let trackInfo of this.trackInfos) {
+        trackInfo.trackNode.visible = false;
+      }
+    }
+    this.animationManager?.collideParticles(1000, 30, 5000, new Color(0xAAAAAA),
+      () => {
+        this.animateTime();
+    });
+  }
+
+  showGeometryGroup(groupName: string) {
+    if(!this.geomService.subdetectors) return;
+    for(let detector of this.geomService.subdetectors) {
+      if(detector.groupName === groupName) {
+        detector.geometry.visible = true;
+      } else {
+        detector.geometry.visible = false;
+      }
+    }
+
+  }
+
+  showAllGeometries() {
+    this.geometryGroupSwitchingIndex = ALL_GROUPS.length
+    if(!this.geomService.subdetectors) return;
+    for(let detector of this.geomService.subdetectors) {
+      detector.geometry.visible = true;
+    }
+  }
+
+  cycleGeometry() {
+    this.geometryGroupSwitchingIndex ++;
+    if(this.geometryGroupSwitchingIndex > ALL_GROUPS.length) {
+      this.geometryGroupSwitchingIndex = 0;
+    }
+
+    if(this.geometryGroupSwitchingIndex === ALL_GROUPS.length) {
+      this.showAllGeometries();
+      this.currentGeometry = "All";
+    } else {
+      this.currentGeometry = ALL_GROUPS[this.geometryGroupSwitchingIndex];
+      this.showGeometryGroup(this.currentGeometry);
     }
   }
 }

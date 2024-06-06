@@ -75,12 +75,17 @@ export class RootGeometryProcessor {
       namePattern: "*/EcalBarrelScFi*",
       editRules: [
         {pattern: "*/fiber_grid*", action: EditActions.Remove},
+        {pattern: "*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+        {pattern: "*/*layer*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+        {pattern: "*/*layer*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
+        {pattern: "*/*layer*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
       ]
     },
     {
       namePattern: "*/EcalBarrelImaging*",
       editRules: [
         {pattern: "*/stav*", action: EditActions.RemoveChildren},
+        {pattern: "*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisDaughters},
       ]
     },
     {
@@ -115,9 +120,10 @@ export class RootGeometryProcessor {
     {
       namePattern: "*/LFHCAL_*",
       editRules: [
+        {pattern: "*/LFHCAL_8M*", action: EditActions.RemoveChildren},
         {pattern: "*/LFHCAL_8M*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
-        {pattern: "*/LFHCAL_8M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
         {pattern: "*/LFHCAL_8M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
+        {pattern: "*/LFHCAL_8M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
       ]
     },
     {
@@ -139,7 +145,8 @@ export class RootGeometryProcessor {
         {pattern: "*/suppbar*", action: EditActions.Remove},
         {pattern: "*/component*3", action: EditActions.RemoveSiblings},
       ]
-    }
+    },
+
   ]
 
   public process(rootGeoManager:any):any {
