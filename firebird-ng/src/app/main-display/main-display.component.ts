@@ -95,6 +95,7 @@ export class MainDisplayComponent implements OnInit {
   protected eventsByName = new Map<string, any>();
   private eventsArray: any[] = [];
   selectedEventKey: string|undefined;
+  private beamAnimationTime: number = 1000;
 
 
   constructor(
@@ -287,8 +288,8 @@ export class MainDisplayComponent implements OnInit {
     const spherical = new THREE.Spherical().setFromVector3(currentPosition);
 
     // Adjusting spherical coordinates
-    spherical.theta -= xAxisChange * 0.01; // Azimuth angle change
-    spherical.phi += yAxisChange * 0.01; // Polar angle change, for rotating up/down
+    spherical.theta -= xAxisChange * 0.023; // Azimuth angle change
+    spherical.phi += yAxisChange * 0.023; // Polar angle change, for rotating up/down
 
     // Ensure phi is within bounds to avoid flipping
     spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
@@ -466,6 +467,18 @@ export class MainDisplayComponent implements OnInit {
       this.onControllerBPressed(value);
     });
 
+    this.controller.buttonRT.onPress.subscribe(value => {
+      this.onControllerRTPressed(value);
+    });
+
+    this.controller.buttonLT.onPress.subscribe(value => {
+      this.onControllerLTPressed(value);
+    });
+
+    this.controller.buttonY.onPress.subscribe(value => {
+      this.onControllerYPressed(value);
+    });
+
     // let uiManager = this.eventDisplay.getUIManager();
     let openThreeManager: any = this.eventDisplay.getThreeManager();
     let threeManager = this.eventDisplay.getThreeManager();
@@ -601,8 +614,29 @@ export class MainDisplayComponent implements OnInit {
 
   private onControllerBPressed(value: boolean) {
     if(value) {
-      this.animateWithCollision();
+      this.beamAnimationTime = 1800;
+      this.nextRandomEvent("5x41");
     }
+  }
+
+  private onControllerRTPressed(value: boolean) {
+
+    if(value) {
+      this.beamAnimationTime = 1200;
+      this.nextRandomEvent("10x100");
+    }
+  }
+
+  private onControllerLTPressed(value: boolean) {
+    if(value) {
+      this.beamAnimationTime = 700;
+      this.nextRandomEvent("18x275");
+    }
+
+  }
+
+  private onControllerYPressed(value: boolean) {
+    if(value) this.cycleGeometry();
   }
 
   changeCurrentTime(event: Event) {
@@ -718,7 +752,7 @@ export class MainDisplayComponent implements OnInit {
         trackInfo.trackNode.visible = false;
       }
     }
-    this.animationManager?.collideParticles(1000, 30, 5000, new Color(0xAAAAAA),
+    this.animationManager?.collideParticles(this.beamAnimationTime, 30, 5000, new Color(0xAAAAAA),
       () => {
         this.animateTime();
     });
@@ -791,7 +825,7 @@ export class MainDisplayComponent implements OnInit {
       }   }
 
     this._snackBar.open(`Showing event: ${eventName}`, 'Dismiss', {
-      duration: 1000,  // Duration in milliseconds after which the snack-bar will auto dismiss
+      duration: 2000,  // Duration in milliseconds after which the snack-bar will auto dismiss
       horizontalPosition: 'right',  // 'start' | 'center' | 'end' | 'left' | 'right'
       verticalPosition: 'top',    // 'top' | 'bottom'
     });
@@ -822,4 +856,7 @@ export class MainDisplayComponent implements OnInit {
     console.log(`User selected event ${this.selectedEventKey} `);
     this.buildEventDataFromJSON(event);
   }
+
+
+
 }

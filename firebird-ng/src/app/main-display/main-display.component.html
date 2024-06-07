@@ -102,15 +102,15 @@
   <div>{{message}}</div>
   &nbsp;&nbsp;
 
-  <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="nextRandomEvent()">
+  <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">
     <mat-icon>last_page</mat-icon>
   </button>
 
-  <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="cycleGeometry()" >
+  <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >
     <mat-icon>view_in_ar</mat-icon>
   </button>
 
-  <div>{{currentGeometry}}</div>
+  <div style="color: darkgray">{{currentGeometry}}</div>
 </div>
 
 <div id="eventDisplay"></div>
