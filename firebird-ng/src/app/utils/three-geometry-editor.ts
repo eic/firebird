@@ -48,7 +48,8 @@ function mergeWhatever(node: Object3D, rule: EditThreeNodeRule): MergeResult| un
   }
 
   let result = mergeMeshList(mergeSubjects, node, newName, rule.material);
-  if(result && rule.deleteOrigins) {
+  const deleteOrigins = rule?.deleteOrigins ?? true;
+  if(result && deleteOrigins) {
     disposeOriginalMeshesAfterMerge(result);
   }
   return result;
