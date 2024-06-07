@@ -66,6 +66,15 @@
 
 <div class="time-controls" style="background-color: #424242; padding: 2px; display: flex; gap: 3px; align-items: center; position: absolute; top:0px; left: 300px;">
 
+
+
+<!--      <mat-select [(value)]="selectedEventKey" (selectionChange)="onUserSelectedEvent()">-->
+<!--        <mat-option *ngFor="let key of eventsByName.keys()" [value]="key">-->
+<!--          {{ key }}-->
+<!--        </mat-option>-->
+<!--      </mat-select>-->
+
+
   <div>{{currentTime | number:'1.1-1'}}</div>
   <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)">
     <input matSliderThumb [value]="currentTime">
@@ -93,11 +102,15 @@
   <div>{{message}}</div>
   &nbsp;&nbsp;
 
-  <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="cycleGeometry()" >
+  <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">
+    <mat-icon>last_page</mat-icon>
+  </button>
+
+  <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >
     <mat-icon>view_in_ar</mat-icon>
   </button>
 
-  <div>{{currentGeometry}}</div>
+  <div style="color: darkgray">{{currentGeometry}}</div>
 </div>
 
 <div id="eventDisplay"></div>

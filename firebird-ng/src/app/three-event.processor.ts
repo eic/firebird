@@ -42,7 +42,7 @@ export class ThreeEventProcessor {
   /** This is primer, all other DASHED line materials take this and clone and change color */
   dashedLineMaterial = new LineMaterial( {
     color: 0xffff00,
-    linewidth: 10, // in world units with size attenuation, pixels otherwise
+    linewidth: 20, // in world units with size attenuation, pixels otherwise
     worldUnits: true,
     dashed: true,
     //dashScale: 100,     // ???? Need this? What is it?
@@ -54,7 +54,7 @@ export class ThreeEventProcessor {
   /** This is primer, all other SOLID line materials take this and clone and change color */
   solidLineMaterial = new LineMaterial( {
     color: 0xffff00,
-    linewidth: 10, // in world units with size attenuation, pixels otherwise
+    linewidth: 20, // in world units with size attenuation, pixels otherwise
     worldUnits: true,
     dashed: false,
     //dashScale: 100,     // ???? Need this? What is it?

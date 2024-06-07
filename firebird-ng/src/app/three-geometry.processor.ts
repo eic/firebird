@@ -70,40 +70,40 @@ export class ThreeGeometryProcessor {
       names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_28"],
       rules: [
         {
-          color: 0x999999,
+          color: 0x373766,
 
         }
       ]
     },
-    // {
-    //   name: "EcalEndcapN*",
-    //   rules: [
-    //     {
-    //       patterns: ["**/crystal_vol_0"],
-    //       color: 0xffef8b,
-    //       material: new THREE.MeshStandardMaterial({
-    //         color: 0xffef8b,
-    //         roughness: 0.7,
-    //         metalness: 0.869,
-    //         transparent: true,
-    //         opacity: 0.8,
-    //         side: THREE.DoubleSide
-    //       })
-    //     },
-    //     {
-    //       patterns: ["**/inner_support*", "**/ring*"],
-    //       material: new THREE.MeshStandardMaterial({
-    //         color: 0x19a5f5,
-    //         roughness: 0.7,
-    //         metalness: 0.869,
-    //         transparent: true,
-    //         opacity: 0.8,
-    //         side: THREE.DoubleSide
-    //       })
-    //     }
-    //
-    //   ]
-    // },
+    {
+      name: "EcalEndcapN*",
+      rules: [
+        {
+          patterns: ["**/crystal_vol_0"],
+          color: 0xffef8b,
+          material: new THREE.MeshStandardMaterial({
+            color: 0xffef8b,
+            roughness: 0.7,
+            metalness: 0.869,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+          })
+        },
+        {
+          patterns: ["**/inner_support*", "**/ring*"],
+          material: new THREE.MeshStandardMaterial({
+            color: 0x19a5f5,
+            roughness: 0.7,
+            metalness: 0.869,
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+          })
+        }
+
+      ]
+    },
     {
       name: "InnerTrackerSupport_assembly_13",
       rules: [

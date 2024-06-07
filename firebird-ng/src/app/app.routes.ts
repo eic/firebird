@@ -18,4 +18,8 @@ export const routes: Routes = [
     path: 'playground',
     loadComponent: () => import('./playground/playground.component').then(m => m.PlaygroundComponent)
   },
+  {
+    path: 'geometry',
+    loadComponent: () => import('./geometry-tree/geometry-tree.component').then(m => m.GeometryTreeComponent)
+  },
 ];

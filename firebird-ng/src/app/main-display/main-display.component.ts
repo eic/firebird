@@ -9,7 +9,7 @@ import {
 } from 'phoenix-ui-components';
 import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
-import {Color, DoubleSide, InstancedBufferGeometry, Line, MeshPhongMaterial,} from "three";
+import {Color, DoubleSide, InstancedBufferGeometry, Line, MeshLambertMaterial, MeshPhongMaterial,} from "three";
 import {ALL_GROUPS, GeometryService} from '../geometry.service';
 import {ActivatedRoute} from '@angular/router';
 import {ThreeGeometryProcessor} from "../three-geometry.processor";
@@ -37,9 +37,11 @@ import {EicAnimationsManager} from "../eic-animation-manager";
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 import {MatIcon} from "@angular/material/icon";
 import {MatButton} from "@angular/material/button";
-import {DecimalPipe} from "@angular/common";
+import {DecimalPipe, NgForOf} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
 import {MatSnackBar} from "@angular/material/snack-bar"
+import {MatFormField} from "@angular/material/form-field";
+import {MatOption, MatSelect} from "@angular/material/select";
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
@@ -47,7 +49,7 @@ import {MatSnackBar} from "@angular/material/snack-bar"
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -90,6 +92,11 @@ export class MainDisplayComponent implements OnInit {
   private animationManager: EicAnimationsManager| null = null;
   currentGeometry: string = "All";
   private animateEventAfterLoad: boolean = false;
+  protected eventsByName = new Map<string, any>();
+  private eventsArray: any[] = [];
+  selectedEventKey: string|undefined;
+  private beamAnimationTime: number = 1000;
+
 
   constructor(
     private geomService: GeometryService,
@@ -99,6 +106,19 @@ export class MainDisplayComponent implements OnInit {
     private settings: UserConfigService,
     private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
+
+  }
+
+  logRendererInfo() {
+    let renderer = this.threeFacade.mainRenderer;
+    console.log('Draw calls:', renderer.info.render.calls);
+    console.log('Triangles:', renderer.info.render.triangles);
+    console.log('Points:', renderer.info.render.points);
+    console.log('Lines:', renderer.info.render.lines);
+    console.log('Geometries in memory:', renderer.info.memory.geometries);
+    console.log('Textures in memory:', renderer.info.memory.textures);
+    console.log('Programs:', renderer.info?.programs?.length);
+    console.log(renderer.info?.programs);
   }
 
   async loadGeometry(initiallyVisible=true, scale=10) {
@@ -125,8 +145,6 @@ export class MainDisplayComponent implements OnInit {
     // console.log("CERN ROOT converted to Object3d: ", rootObject3d);
     sceneGeometry.add(threeGeometry);
 
-
-
     // Now we want to change the materials
     sceneGeometry.traverse( (child: any) => {
 
@@ -147,12 +165,25 @@ export class MainDisplayComponent implements OnInit {
         let opacity = threeGeometry.userData["opacity"] ?? 1;
         let transparent = opacity < 1;
 
-        child.material = new MeshPhongMaterial({
+        // child.material = new MeshPhongMaterial({
+        //   color: color,
+        //   shininess: 0,
+        //   side: side,
+        //   transparent: true,
+        //   opacity: 0.7,
+        //   blending: THREE.NormalBlending,
+        //   depthTest: true,
+        //   depthWrite: true,
+        //   clippingPlanes: openThreeManager.clipPlanes,
+        //   clipIntersection: true,
+        //   clipShadows: false
+        // });
+
+        child.material = new MeshLambertMaterial({
           color: color,
-          shininess: 0,
           side: side,
           transparent: true,
-          opacity: 0.5,
+          opacity: 0.7,
           blending: THREE.NormalBlending,
           depthTest: true,
           depthWrite: true,
@@ -257,8 +288,8 @@ export class MainDisplayComponent implements OnInit {
     const spherical = new THREE.Spherical().setFromVector3(currentPosition);
 
     // Adjusting spherical coordinates
-    spherical.theta -= xAxisChange * 0.01; // Azimuth angle change
-    spherical.phi += yAxisChange * 0.01; // Polar angle change, for rotating up/down
+    spherical.theta -= xAxisChange * 0.023; // Azimuth angle change
+    spherical.phi += yAxisChange * 0.023; // Polar angle change, for rotating up/down
 
     // Ensure phi is within bounds to avoid flipping
     spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
@@ -332,6 +363,42 @@ export class MainDisplayComponent implements OnInit {
     camera.updateProjectionMatrix();
   }
 
+  /**
+   * Receives an object containing one event and builds the different collections
+   * of physics objects.
+   * @param eventData Object containing the event data.
+   */
+  public buildEventDataFromJSON(eventData: any) {
+
+    console.time("[buildEventDataFromJSON] BUILD EVENT");
+    let openEventDisplay = (this.eventDisplay as any);
+
+    // Reset labels
+    openEventDisplay.resetLabels();
+    // Creating UI folder
+    openEventDisplay.ui.addEventDataFolder();
+    openEventDisplay.ui.addLabelsFolder();
+    // Clearing existing event data
+    openEventDisplay.graphicsLibrary.clearEventData();
+    // Build data and add to scene
+    openEventDisplay.configuration.eventDataLoader.buildEventData(
+      eventData,
+      openEventDisplay.graphicsLibrary,
+      openEventDisplay.ui,
+      openEventDisplay.infoLogger,
+    );
+    console.timeEnd("[buildEventDataFromJSON] BUILD EVENT");
+    console.time("[buildEventDataFromJSON] onDisplayedEventChange");
+    openEventDisplay.onDisplayedEventChange.forEach((callback:any) => {
+      return callback(eventData);
+    });
+    console.timeEnd("[buildEventDataFromJSON] onDisplayedEventChange");
+
+
+    // Reload the event data state in Phoenix menu
+    // openEventDisplay.ui.loadEventFolderPhoenixMenuState();
+  }
+
 
   ngOnInit() {
 
@@ -348,8 +415,17 @@ export class MainDisplayComponent implements OnInit {
       // Create a new
       const worker = new Worker(new URL('../event-loader.worker.ts', import.meta.url));
       worker.onmessage = ({ data }) => {
-        console.log(`page got message: ${data}`);
+        console.log(`Result from worker: ${data}`);
         console.log(data);
+
+        for(let key in data) {
+          this.eventsByName.set(key, data[key]);
+          this.eventsArray.push(data[key]);
+        }
+        //this.buildEventDataFromJSON(this.eventsArray[0]);
+        this.eventDisplay.parsePhoenixEvents(data);
+        console.log(this);
+        console.log(`Loading event: ${data}`);
       };
       worker.postMessage(eventConfig.eventFile);
     } else {
@@ -373,7 +449,7 @@ export class MainDisplayComponent implements OnInit {
 
       phoenixMenuRoot: this.phoenixMenuRoot,
       // Event data to load by default
-      defaultEventFile: eventConfig
+      // defaultEventFile: eventConfig
       // defaultEventFile: {
       //   // (Assuming the file exists in the `src/assets` directory of the app)
       //   //eventFile: 'assets/herwig_18x275_5evt.json',
@@ -389,6 +465,18 @@ export class MainDisplayComponent implements OnInit {
 
     this.controller.buttonB.onPress.subscribe(value => {
       this.onControllerBPressed(value);
+    });
+
+    this.controller.buttonRT.onPress.subscribe(value => {
+      this.onControllerRTPressed(value);
+    });
+
+    this.controller.buttonLT.onPress.subscribe(value => {
+      this.onControllerLTPressed(value);
+    });
+
+    this.controller.buttonY.onPress.subscribe(value => {
+      this.onControllerYPressed(value);
     });
 
     // let uiManager = this.eventDisplay.getUIManager();
@@ -440,7 +528,7 @@ export class MainDisplayComponent implements OnInit {
       if(mcTracksGroup) {
         console.time("Process tracks on event load");
         this.trackInfos = this.threeEventProcessor.processMcTracks(mcTracksGroup);
-        console.timeEnd("Process tracks on event load");
+
         let minTime = Infinity;
         let maxTime = 0;
         for(let trackInfo of this.trackInfos) {
@@ -457,6 +545,7 @@ export class MainDisplayComponent implements OnInit {
             trackInfo.trackNode.visible = false;
           }
         }
+        console.timeEnd("Process tracks on event load");
 
       }
       if(this.animateEventAfterLoad) {
@@ -513,27 +602,10 @@ export class MainDisplayComponent implements OnInit {
         // do something..
       }
       if ((e as KeyboardEvent).key === 'q') {
-        const name = `event_18x275_minq2_100_${Math.floor(Math.random() * 10)}`
-        console.log(name); // This will log a random index from 0 to 3
-
-        this.stopAnimation();
-        if(this.trackInfos) {
-          for (let trackInfo of this.trackInfos) {
-            trackInfo.trackNode.visible = false;
-          }
-        }
-
-        this._snackBar.open(" Charing!!! " + name, 'Dismiss', {
-          duration: 1000,  // Duration in milliseconds after which the snack-bar will auto dismiss
-          horizontalPosition: 'right',  // 'start' | 'center' | 'end' | 'left' | 'right'
-          verticalPosition: 'top',    // 'top' | 'bottom'
-        });
-
-        this.animateEventAfterLoad = true;
-
-        let promise = new Promise<string>((resolve, reject) => {
-          this.eventDisplay.loadEvent(name);
-        });
+        this.nextRandomEvent();
+      }
+      if ((e as KeyboardEvent).key === 'r') {
+        this.logRendererInfo();
       }
       console.log((e as KeyboardEvent).key);
 
@@ -542,8 +614,29 @@ export class MainDisplayComponent implements OnInit {
 
   private onControllerBPressed(value: boolean) {
     if(value) {
-      this.animateWithCollision();
+      this.beamAnimationTime = 1800;
+      this.nextRandomEvent("5x41");
     }
+  }
+
+  private onControllerRTPressed(value: boolean) {
+
+    if(value) {
+      this.beamAnimationTime = 1200;
+      this.nextRandomEvent("10x100");
+    }
+  }
+
+  private onControllerLTPressed(value: boolean) {
+    if(value) {
+      this.beamAnimationTime = 700;
+      this.nextRandomEvent("18x275");
+    }
+
+  }
+
+  private onControllerYPressed(value: boolean) {
+    if(value) this.cycleGeometry();
   }
 
   changeCurrentTime(event: Event) {
@@ -616,7 +709,7 @@ export class MainDisplayComponent implements OnInit {
         this.currentTime = obj.currentTime;
         this.processCurrentTimeChange(); // Assuming this method updates your display
       })
-      .easing(TWEEN.Easing.Quadratic.Out) // This can be changed to other easing functions
+      //.easing(TWEEN.Easing.Quadratic.In) // This can be changed to other easing functions
       .start();
 
     //this.animate();
@@ -638,6 +731,7 @@ export class MainDisplayComponent implements OnInit {
   exitTimedDisplay() {
     this.stopAnimation();
     this.rewindTime();
+    this.animateEventAfterLoad = false;
     if(this.trackInfos) {
       for (let trackInfo of this.trackInfos) {
         trackInfo.trackNode.visible = true;
@@ -658,7 +752,7 @@ export class MainDisplayComponent implements OnInit {
         trackInfo.trackNode.visible = false;
       }
     }
-    this.animationManager?.collideParticles(1000, 30, 5000, new Color(0xAAAAAA),
+    this.animationManager?.collideParticles(this.beamAnimationTime, 30, 5000, new Color(0xAAAAAA),
       () => {
         this.animateTime();
     });
@@ -698,4 +792,71 @@ export class MainDisplayComponent implements OnInit {
       this.showGeometryGroup(this.currentGeometry);
     }
   }
+
+  protected nextRandomEvent(energyStr="18x275") {
+    const name = `event_18x275_minq2_100_${Math.floor(Math.random() * 10)}`
+    console.log(name); // This will log a random index from 0 to 3
+
+    let eventNames=[];
+    for(const eventName of this.eventsByName.keys()) {
+      if(eventName.includes(energyStr)) {
+        eventNames.push(eventName);
+      }
+    }
+
+    if(eventNames.length === 0) {
+      console.warn(`this.eventsByName that has ${this.eventsByName.size} elements, doesn't have keys with energy: ${energyStr}`);
+      console.log(this.eventsByName);
+      return;
+    }
+
+    let eventIndex = Math.floor(Math.random() * eventNames.length);
+    if(eventIndex < 0 || eventIndex >= eventNames.length) {
+      console.warn(`if(eventIndex < 0 || eventIndex >= eventNames.length) eventIndex=${eventIndex}`);
+    }
+
+    const eventName = eventNames[eventIndex];
+
+    // Handle existing animations
+    this.stopAnimation();
+    if(this.trackInfos) {
+      for (let trackInfo of this.trackInfos) {
+        trackInfo.trackNode.visible = false;
+      }   }
+
+    this._snackBar.open(`Showing event: ${eventName}`, 'Dismiss', {
+      duration: 2000,  // Duration in milliseconds after which the snack-bar will auto dismiss
+      horizontalPosition: 'right',  // 'start' | 'center' | 'end' | 'left' | 'right'
+      verticalPosition: 'top',    // 'top' | 'bottom'
+    });
+
+    this.animateEventAfterLoad = true;
+
+    this.eventDisplay.loadEvent(eventName);
+
+    if(this.trackInfos && this.animateEventAfterLoad) {
+      for (let trackInfo of this.trackInfos) {
+        trackInfo.trackNode.visible = false;
+      }
+    }
+
+
+    //  this.buildEventDataFromJSON(eventIndex);
+
+  }
+
+  onUserSelectedEvent() {
+
+    let event = this.eventsByName.get(this.selectedEventKey ?? "");
+    if(event === undefined) {
+      console.warn(`User selected event ${this.selectedEventKey} which is not found in eventsByName collection.
+      Collection has ${this.eventsByName.size} elements `);
+      return;
+    }
+    console.log(`User selected event ${this.selectedEventKey} `);
+    this.buildEventDataFromJSON(event);
+  }
+
+
+
 }

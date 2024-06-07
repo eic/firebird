@@ -1,5 +1,5 @@
 import * as THREE from "three"
-import {EventDisplay} from "phoenix-event-display";
+import {EventDisplay, RendererManager} from "phoenix-event-display";
 import {EventDisplayService} from "phoenix-ui-components";
 
 export class PhoenixThreeFacade {
@@ -29,6 +29,11 @@ export class PhoenixThreeFacade {
 
   public get sceneGeometries() {
     return this.phoenixThreeManager.getSceneManager().getGeometries();
+
+  }
+
+  public get mainRenderer() {
+    return ((this.phoenixThreeManager as any).rendererManager as RendererManager).getMainRenderer();
   }
 
   public get sceneEvent() {
