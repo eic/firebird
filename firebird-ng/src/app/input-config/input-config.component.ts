@@ -1,5 +1,5 @@
 // event-display-source.component.ts
-import { Component, OnInit } from '@angular/core';
+import {AfterViewInit, Component, OnInit, ViewChild} from '@angular/core';
 import { FormBuilder, FormGroup, FormControl } from '@angular/forms';
 import { UserConfigService } from "../user-config.service";
 import { ReactiveFormsModule } from '@angular/forms';
@@ -13,8 +13,9 @@ import {map, Observable, startWith} from "rxjs";
 import {MatAutocomplete, MatAutocompleteTrigger, MatOption} from "@angular/material/autocomplete";
 import {AsyncPipe, NgForOf} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
+import {ResourceSelectComponent} from "../resource-select/resource-select.component";
 
-export interface User {
+export interface Resource {
   name: string;
   url: string;
 }
@@ -22,11 +23,11 @@ export interface User {
 @Component({
   selector: 'app-input-config',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf],
+  imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf, ResourceSelectComponent],
   templateUrl: './input-config.component.html',
   styleUrl: './input-config.component.scss'
 })
-export class InputConfigComponent implements OnInit {
+export class InputConfigComponent implements OnInit, AfterViewInit {
 
   geometrySelectValue = new FormControl('');
   geometryUrl = new FormControl('');
@@ -35,11 +36,14 @@ export class InputConfigComponent implements OnInit {
   serverUseApi: FormControl<boolean | null> = new FormControl(false);
   serverApiHost = new FormControl('localhost');
   serverApiPort: FormControl<number | null> = new FormControl(5454);
-  filteredOptions: Observable<User[]>  = new Observable<User[]>();
+  filteredOptions: Observable<Resource[]>  = new Observable<Resource[]>();
+
+  @ViewChild('geometrySelect')
+  geometrySelect!: ResourceSelectComponent;
 
 
-  myControl = new FormControl<string | User>('');
-  options: User[] = [
+  myControl = new FormControl<string | Resource>('');
+  public geometryOptions: Resource[] = [
     {url: "builtin://epic-central-optimized", name: "EIC ePIC Central Detector optimized"},
     {url: "https://eic.github.io/epic/artifacts/tgeo/epic_bhcal.root", name: "epic_bhcal.root"},
     {url: "https://eic.github.io/epic/artifacts/tgeo/epic_calorimeters.root", name: "epic_calorimeters.root"},
@@ -73,11 +77,6 @@ export class InputConfigComponent implements OnInit {
     {url: "https://eic.github.io/epic/artifacts/tgeo/epic_zdc_sipm_on_tile_only.root", name: "epic_zdc_sipm_on_tile_only.root"}
 ];
 
-
-
-
-
-
   constructor(private configService: UserConfigService) {
   }
 
@@ -98,9 +97,16 @@ export class InputConfigComponent implements OnInit {
     );
   }
 
+  ngAfterViewInit() {
+    // Now the 'geometrySelect' is available
+    this.bindConfigToControl(this.geometrySelect.value, this.configService.selectedGeometry);
+  }
+
   ngOnInit(): void {
     //this.selectedGeometry.setValue(this.configService.selectedGeometry.value, { emitEvent: false })
-    this.bindConfigToControl(this.geometryUrl, this.configService.selectedGeometry);
+    //this.bindConfigToControl(this.geometryUrl, this.configService.selectedGeometry);
+
+
     this.bindConfigToControl(this.selectedEventSource, this.configService.eventSource);
     this.bindConfigToControl(this.onlyCentralDetector, this.configService.onlyCentralDetector);
     this.bindConfigToControl(this.serverUseApi, this.configService.localServerUseApi);
@@ -113,17 +119,23 @@ export class InputConfigComponent implements OnInit {
       map(value => {
         // Get string name
         const name = typeof value === 'string' ? value : value?.name;
-        return name ? this._filter(name as string) : this.options.slice();
+        return name ? this._filter(name as string) : this.geometryOptions.slice();
       })
     );
   }
 
-  displayFn(user: User): string {
-    return user && user.name ? user.name : '';
+  displayFn(data: any): string {
+    if(typeof data === "string") {
+      return data;  // User input
+    }
+    if(typeof data.url === "string") {
+      return data.url;
+    }
+    return '';
   }
 
-  private _filter(name: string): User[] {
+  private _filter(name: string): Resource[] {
     const filterValue = name.toLowerCase();
-    return this.options.filter(option => option.name.toLowerCase().includes(filterValue));
+    return this.geometryOptions.filter(option => option.name.toLowerCase().includes(filterValue));
   }
 }

@@ -6,11 +6,6 @@
 
   <form >
 
-
-
-
-
-
   <div class="card mt-4">
     <div class="card-body">
       <h5 class="card-title">Geometry Source</h5>
@@ -30,6 +25,19 @@
         </div>
 
       </div>
+
+      <div class="form-group">
+        <div class="mt-4">
+          <h6>Events</h6>
+          Select events files
+          <div class="mt-4">
+            <firebird-resource-select #geometrySelect [options]="geometryOptions" label="Geometry source" class="full-width-field"></firebird-resource-select>
+          </div>
+
+        </div>
+      </div>
+
+
 
       <h5 class="card-title">Events Source</h5>
       <div class="form-group">
