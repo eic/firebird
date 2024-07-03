@@ -5,44 +5,30 @@
   <img src="assets/diagrams/geometry-pipeline.svg" alt="geometry-pipeline">
 
   <form >
+
+
+
+
+
+
   <div class="card mt-4">
     <div class="card-body">
       <h5 class="card-title">Geometry Source</h5>
       <div class="form-group">
-        Geometry file sources are taken from <a href="https://eic.github.io/epic/">https://eic.github.io/epic/</a>
-        <select class="form-control" [formControl]="selectedGeometry">
-          <option value="epic-central-optimized">EIC ePIC Central Detector optimized</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_bhcal.root">epic_bhcal.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_calorimeters.root">epic_calorimeters.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root">epic_craterlake.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_10x100.root">epic_craterlake_10x100.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_10x275.root">epic_craterlake_10x275.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_18x110_Au.root">epic_craterlake_18x110_Au.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_18x275.root">epic_craterlake_18x275.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_5x41.root">epic_craterlake_5x41.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_material_map.root">epic_craterlake_material_map.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_no_bhcal.root">epic_craterlake_no_bhcal.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root">epic_craterlake_tracking_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_dirc_only.root">epic_dirc_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_drich_only.root">epic_drich_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_forward_detectors.root">epic_forward_detectors.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_forward_detectors_with_inserts.root">epic_forward_detectors_with_inserts.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_full.root">epic_full.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_imaging_only.root">epic_imaging_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_inner_detector.root">epic_inner_detector.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_ip6.root">epic_ip6.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_ip6_extended.root">epic_ip6_extended.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_lfhcal_only.root">epic_lfhcal_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_lfhcal_with_insert.root">epic_lfhcal_with_insert.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_mrich_only.root">epic_mrich_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_pfrich_only.root">epic_pfrich_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_pid_only.root">epic_pid_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_tof_endcap_only.root">epic_tof_endcap_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_tof_only.root">epic_tof_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_vertex_only.root">epic_vertex_only.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_zdc_lyso_sipm.root">epic_zdc_lyso_sipm.root</option>
-          <option value="https://eic.github.io/epic/artifacts/tgeo/epic_zdc_sipm_on_tile_only.root">epic_zdc_sipm_on_tile_only.root</option>
-        </select>
+        Geometry file source:
+        <div class="mt-4">
+          <h6>API Host</h6>
+          This field sets the host address for the API server.
+          <mat-form-field class="full-width-field">
+            <mat-label>Geometry URL</mat-label>
+            <input  type="text" matInput [formControl]="geometryUrl" [matAutocomplete]="auto">
+            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
+              <mat-option *ngFor="let option of filteredOptions | async" [value]="option" [matTooltip]="option.url">{{option.name}}</mat-option>
+            </mat-autocomplete>
+          </mat-form-field>
+
+        </div>
+
       </div>
 
       <h5 class="card-title">Events Source</h5>
@@ -103,7 +89,33 @@
       </div>
     </div>
 
-<!--    <div class="card mt-4">-->
+    <!-- USE LOCAL API -->
+    <div class="card mt-4">
+      <div class="card-body">
+        <h5 class="card-title">Server API Configuration</h5>
+        <div class="form-check custom-control custom-switch mt-4">
+          <input class="custom-control-input" type="checkbox" id="serverUseApiCheckbox" [formControl]="serverUseApi">
+          <label class="custom-control-label" for="serverUseApiCheckbox">Use local backend</label>
+        </div>
+        <div class="form-row align-items-center">
+          <div class="col-auto">
+            <h6 class="mb-0">API Host:</h6>
+          </div>
+          <div class="col">
+            <input class="form-control" type="text" placeholder="Enter API host" [formControl]="serverApiHost" [disabled]="!serverUseApi.value">
+          </div>
+          <div class="col-auto">
+            <h6 class="mb-0">API Port:</h6>
+          </div>
+          <div class="col">
+            <input class="form-control" type="text" placeholder="Enter API port" [formControl]="serverApiPort" [disabled]="!serverUseApi.value">
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!--    <div class="card mt-4">-->
 <!--      <div class="card-body">-->
 <!--        <h5 class="card-title">Rendering</h5>-->
 <!--        <div class="mt-4">-->

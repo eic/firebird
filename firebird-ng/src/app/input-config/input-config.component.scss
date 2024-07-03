@@ -2,3 +2,8 @@
   background-color: var(--phoenix-background-color-secondary); /* Using theme variables */
   color: var(--phoenix-text-color);
 }
+
+.full-width-field {
+  display: block;
+  width: 100%;
+}

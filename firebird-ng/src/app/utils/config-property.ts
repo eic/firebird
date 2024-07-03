@@ -63,9 +63,11 @@ export class ConfigProperty<T> {
    * @returns {T} The loaded or default value of the property.
    */
   private loadValue(): T {
+    let storedValue: string|null = null;
+    let parsedValue: any = undefined;
     try {
-      let storedValue = this.storage.getItem(this.key);
-      let parsedValue: any;
+      storedValue = this.storage.getItem(this.key);
+
       if (storedValue !== null) {
         parsedValue = (typeof this.defaultValue) !== 'string' ? JSON.parse(storedValue) : storedValue;
       } else {
@@ -73,7 +75,12 @@ export class ConfigProperty<T> {
       }
       return this.validator && !this.validator(parsedValue) ? this.defaultValue : parsedValue;
     } catch (error) {
-      console.error('Error loading value:', error);
+      console.error(`Error at ConfigProperty.loadValue, key='${this.key}'`);
+      console.log('   storedValue', storedValue);
+      console.log('   parsedValue', parsedValue);
+      console.log('   Default value will be used: ', this.defaultValue);
+      console.log(error);
+
       return this.defaultValue;
     }
   }

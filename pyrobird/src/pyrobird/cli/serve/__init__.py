@@ -21,8 +21,29 @@ import click
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from flask import Flask, send_file, request, abort
 
 app = Flask(__name__, static_folder='dist')
+
+
+@app.route('/download/<path:filename>')
+def download_file(filename):
+    # Ensure the path is safe and only files within a certain directory can be accessed
+    # For example, let's say you store your files in a 'files' directory within the server root
+    safe_path = filename
+    base_path = ''
+    if base_path:
+        safe_path = os.path.join(base_path, filename)
+    safe_path = os.path.abspath(safe_path)  # Resolve any path traversal attempts
+
+    if not safe_path.startswith(base_path):
+        # Security check failed
+        abort(404)
+
+    if os.path.exists(safe_path) and os.path.isfile(safe_path):
+        return send_file(safe_path, as_attachment=True)
+    else:
+        abort(404)
 
 # Check for the filename argument
 if len(sys.argv) < 2:
@@ -40,26 +61,26 @@ def static_file(path):
     return send_from_directory('dist', path)
 
 
-
-@click.group()
+@click.command()
 @click.pass_context
 def serve(ctx):
     """
     Operations with database (create tables, erase everything, etc)
     """
-
-    # assert isinstance(ctx, click.Context)
-    # context = ctx.obj
-    # assert isinstance(context, CasdmAppContext)
-    # if not context.connection_str:
-    #     ctx.fail("ERROR(!) Connection string is not set. Needs it to connect to BD")
-    #     # click.echo(, err=True)
-    #     # click.echo(ctx.get_help())
-
-    if ctx.invoked_subcommand is None:
-        print("No command was specified")
-
     app.run(debug=True)
+
+    # # assert isinstance(ctx, click.Context)
+    # # context = ctx.obj
+    # # assert isinstance(context, CasdmAppContext)
+    # # if not context.connection_str:
+    # #     ctx.fail("ERROR(!) Connection string is not set. Needs it to connect to BD")
+    # #     # click.echo(, err=True)
+    # #     # click.echo(ctx.get_help())
+    #
+    # if ctx.invoked_subcommand is None:
+    #     print("No command was specified")
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
