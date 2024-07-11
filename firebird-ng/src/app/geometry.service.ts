@@ -1,17 +1,10 @@
-
 import {Injectable} from '@angular/core';
-//import { openFile } from '../../../jsroot/core.mjs';
-//import * as ROOT from '../../../jsroot/build;
 import {openFile} from 'jsrootdi';
 import {
   analyzeGeoNodes,
-  editGeoNodes,
-  findGeoManager, findGeoNodes, findSingleGeoNode, GeoAttBits,
-  GeoNodeEditRule, printAllGeoBitsStatus,
-  EditActions, removeGeoNode, testGeoBit, getGeoNodesByLevel
+  findGeoManager, getGeoNodesByLevel
 } from '../lib-root-geometry/root-geo-navigation';
 import {build} from 'jsrootdi/geom';
-import {BehaviorSubject} from "rxjs";
 import {RootGeometryProcessor} from "./root-geometry.processor";
 import {UserConfigService} from "./user-config.service";
 import {Subdetector} from "./model/subdetector";

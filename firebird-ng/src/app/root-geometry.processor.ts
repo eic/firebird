@@ -2,9 +2,8 @@
 //import * as ROOT from '../../../jsroot/build;
 import {
   findSingleGeoNode,
-  removeGeoNode
 } from '../lib-root-geometry/root-geo-navigation';
-import {EditActions, GeoNodeEditRule} from "../lib-root-geometry/root-geo-edit.model";
+import {EditActions, GeoNodeEditRule, removeGeoNode} from "../lib-root-geometry/root-geo-edit";
 import {GeoAttBits} from "../lib-root-geometry/root-geo-attribute-bits";
 import {editGeoNodes} from "../lib-root-geometry/root-geo-edit";
 

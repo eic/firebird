@@ -9,63 +9,94 @@ import * as RootGeoNavigation from './root-geo-navigation';
 import * as RootGeoEdit from './root-geo-edit'
 
 import * as GeoAttBitsModule from "./root-geo-attribute-bits";
-import {GeoAttBits} from "./root-geo-attribute-bits";
+import {GeoAttBits, testGeoBit, toggleGeoBit} from "./root-geo-attribute-bits";
 
 describe('editGeoNodes', () => {
 
   // Mock data setup for a typical geometry node structure
   let topNode: any;
   let childNode: any;
+  let childNode2: any;
+  let childNode3: any;
+
+  // Create test data
+  // Root have fGeoAtt both for nodes and volumes
+  // https://root.cern.ch/doc/master/classTGeoAtt.html
 
   beforeEach(() => {
     childNode = {
       fName: 'ChildNode',
       fVolume: {
-        fNodes: { arr: [] }
+        fNodes: { arr: [] },
+        fGeoAtt:0
       },
-      fMother: undefined
+      fMother: undefined,
+      fGeoAtt:0
+    };
+
+    childNode2 = {
+      fName: 'AnotherChildNode1',
+      fVolume: {
+        fNodes: { arr: [] },
+        fGeoAtt:0
+      },
+      fMother: undefined,
+      fGeoAtt:0
+    };
+
+    childNode3 = {
+      fName: 'AnotherChildNode2',
+      fVolume: {
+        fNodes: { arr: [] },
+        fGeoAtt:0
+      },
+      fMother: undefined,
+      fGeoAtt:0
     };
 
     topNode = {
       fName: 'TopNode',
       fVolume: {
-        fNodes: { arr: [childNode] }
+        fNodes: { arr: [childNode, childNode2, childNode3] },
+        fGeoAtt:0
       },
-      fMother: undefined
+      fMother: undefined,
+      fGeoAtt:0
     };
 
     childNode.fMother = topNode.fVolume;
-
-    // Correct spy setup
-
-    // Correct spy setup
-    spyOn(RootGeoEdit, "removeGeoNode").and.callFake((node) => {
-      const index = node.fMother.fNodes.arr.indexOf(node);
-      if (index > -1) {
-        node.fMother.fNodes.arr.splice(index, 1);
-      }
-    });
-
-    spyOn(RootGeoEdit, "removeChildren").and.callFake((node) => {
-      node.fVolume.fNodes.arr = [];
-    });
-
-    spyOn(GeoAttBitsModule, "setGeoBit").and.callThrough();
-    spyOn(GeoAttBitsModule, "toggleGeoBit").and.callThrough();
-    spyOn(RootGeoEdit, "walkGeoNodes").and.callThrough();
+  });
 
   it('should remove a specified node', () => {
-    const rules: GeoNodeEditRule[] = [{ pattern: 'ChildNode', action: EditActions.Remove }];
+    const rules: GeoNodeEditRule[] = [{ pattern: '*/ChildNode', action: EditActions.Remove }];
     editGeoNodes(topNode, rules);
     expect(topNode.fVolume.fNodes.arr).not.toContain(childNode);
-    expect(RootGeoEdit.removeGeoNode).toHaveBeenCalled();
+  });
+
+  it('should remove a specified node', () => {
+    const rules: GeoNodeEditRule[] = [{ pattern: '*/ChildNode', action: EditActions.Remove }];
+    editGeoNodes(topNode, rules);
+    expect(topNode.fVolume.fNodes.arr).not.toContain(childNode);
+  });
+
+  it('should remove siblings of a node', () => {
+    const rules: GeoNodeEditRule[] = [{ pattern: '*/ChildNode', action: EditActions.RemoveSiblings }];
+    editGeoNodes(topNode, rules);
+    expect(topNode.fVolume.fNodes.arr).toContain(childNode);
+    expect(topNode.fVolume.fNodes.arr).not.toContain(childNode2);
+    expect(topNode.fVolume.fNodes.arr).not.toContain(childNode3);
+  });
+
+  it('should NOT remove a node with wrong pattern', () => {
+    const rules: GeoNodeEditRule[] = [{ pattern: 'ChildNode', action: EditActions.Remove }];
+    editGeoNodes(topNode, rules);
+    expect(topNode.fVolume.fNodes.arr).toContain(childNode);
   });
 
   it('should remove all children of a node', () => {
-    const rules = [new GeoNodeEditRule({ pattern: 'TopNode', action: EditActions.RemoveChildren })];
+    const rules: GeoNodeEditRule[] = [{ pattern: 'TopNode', action: EditActions.RemoveChildren }];
     editGeoNodes(topNode, rules);
     expect(topNode.fVolume.fNodes.arr).toEqual([]);
-    expect(RootGeoEdit.removeChildren).toHaveBeenCalledWith(topNode);
   });
 
   it('should set a GeoBit on a node', () => {
@@ -75,7 +106,8 @@ describe('editGeoNodes', () => {
       geoBit: GeoAttBits.kVisOverride
     }];
     editGeoNodes(topNode, rules);
-    expect(GeoAttBitsModule.setGeoBit).toHaveBeenCalledWith(topNode.fVolume, GeoAttBits.kVisOverride, 1);
+    expect(testGeoBit(topNode.fVolume, GeoAttBits.kVisOverride)).toBe(true);
+    expect(testGeoBit(childNode.fVolume, GeoAttBits.kVisOverride)).toBe(false);
   });
 
   it('should toggle a GeoBit on a node', () => {
@@ -85,7 +117,8 @@ describe('editGeoNodes', () => {
       geoBit: GeoAttBits.kVisOverride
     }];
     editGeoNodes(topNode, rules);
-    expect(toggleGeoBit).toHaveBeenCalledWith(topNode.fVolume, GeoAttBits.kVisOverride);
+    expect(testGeoBit(topNode.fVolume, GeoAttBits.kVisOverride)).toBe(true);
+    expect(testGeoBit(childNode.fVolume, GeoAttBits.kVisOverride)).toBe(false);
   });
 
   // Additional tests for other actions and more complex scenarios...

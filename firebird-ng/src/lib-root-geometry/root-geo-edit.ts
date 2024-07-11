@@ -1,8 +1,6 @@
 import {
   GeoNodeWalkCallback,
   getGeoNodesByLevel,
-  removeChildren,
-  removeGeoNode,
   walkGeoNodes
 } from "./root-geo-navigation";
 import {wildCardCheck} from "../app/utils/wildcard";
