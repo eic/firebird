@@ -9,7 +9,7 @@ import {
   findGeoManager, findGeoNodes, findSingleGeoNode, GeoAttBits,
   GeoNodeEditRule, printAllGeoBitsStatus,
   EditActions, removeGeoNode, testGeoBit, getGeoNodesByLevel
-} from './utils/cern-root.utils';
+} from '../lib-root-geometry/root-geo-navigation';
 import {build} from 'jsrootdi/geom';
 import {BehaviorSubject} from "rxjs";
 import {RootGeometryProcessor} from "./root-geometry.processor";

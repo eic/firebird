@@ -1,69 +1,15 @@
-/// Prints geometry structure
+import {
+  GeoNodeWalkCallback,
+  getGeoNodesByLevel,
+  removeChildren,
+  removeGeoNode,
+  walkGeoNodes
+} from "./root-geo-navigation";
+import {wildCardCheck} from "../app/utils/wildcard";
 
-import { wildCardCheck } from './wildcard';
+import {GeoAttBits, setGeoBit, toggleGeoBit} from "./root-geo-attribute-bits";
 
 
-export type GeoNodeWalkCallback = (node: any, nodeFullPath: string, level: number) => boolean;
-
-export function walkGeoNodes(node: any, callback: GeoNodeWalkCallback|null, maxLevel = 0, level = 0, path = "", pattern?: string) {
-  const nodeName = node.fName;
-  const volume = node.fMasterVolume === undefined ? node.fVolume : node.fMasterVolume;
-  const subNodes = volume ? volume.fNodes : null;
-  const nodeFullPath = path ? `${path}/${nodeName}` : nodeName;
-  let processedNodes = 1;
-
-  // Only invoke the callback if no pattern is provided or if the pattern matches the fullPath
-  let processChildren = true;
-  if (!pattern || wildCardCheck(nodeFullPath, pattern)) {
-    if(callback){
-      processChildren = callback(node, nodeFullPath, level);
-      if(!processChildren) {
-        return processedNodes;
-      }
-    }
-  }
-
-  // Continue recursion to child nodes if they exist and the max level is not reached
-  if (volume && subNodes && level < maxLevel) {
-    for (let i = 0; i < subNodes.arr.length; i++) {
-      const childNode = subNodes.arr[i];
-      if (childNode) {
-        processedNodes += walkGeoNodes(childNode, callback, maxLevel, level + 1, nodeFullPath, pattern);
-      }
-    }
-  }
-
-  return processedNodes;
-}
-
-export function findGeoNodes(node: any, pattern: string, maxLevel:number=Infinity): any[] {
-  let matchingNodes: {geoNode: any, fullPath: string}[] = [];
-
-  // Define a callback using the GeoNodeWalkCallback type
-  const collectNodes: GeoNodeWalkCallback = (geoNode, nodeFullPath, level) => {
-    matchingNodes.push({ geoNode, fullPath: nodeFullPath });
-    return true; // go through children
-  };
-
-  // Use walkGeoNodes with the collecting callback and the pattern
-  walkGeoNodes(node, collectNodes, maxLevel, 0, "", pattern);
-
-  return matchingNodes;
-}
-
-export function findSingleGeoNode(topNode: any, pattern:string, maxLevel:number=Infinity): any|null {
-  let result = findGeoNodes(topNode, pattern, maxLevel);
-  if(result === null || result === undefined) {
-    return null;
-  }
-  if(result.length > 1) {
-    throw new Error(`findSingleGeoNode of ${topNode} returned more than 1 result (${result.length})`);
-  }
-  if(result.length == 0) {
-    return null;
-  }
-  return result[0].geoNode;
-}
 
 export enum EditActions {
   Nothing,          /** Do not remove this or other nodes */
@@ -81,12 +27,16 @@ export enum EditActions {
  */
 export class GeoNodeEditRule {
   public pattern: string = '';
-  public action: EditActions = EditActions.Nothing;
+  public action?: EditActions = EditActions.Nothing;
   public pruneSubLevel?: number = Infinity;
 
   /** Used only if action is one of SetGeoBit, UnsetGeoBit or ToggleGeoBit */
   public geoBit?:GeoAttBits;
+
+  public childrenRules?: GeoNodeEditRule[] = [];
+  public childrenRulesMaxLevel?: number = Infinity;
 }
+
 
 /**
  * Edits ROOT Geometry nodes based on specified rules. This function walks through each node,
@@ -117,6 +67,12 @@ export function editGeoNodes(topNode: any, rules: GeoNodeEditRule[], maxLevel:nu
       // Does the node fulfill the rule?
       if(wildCardCheck(nodeFullPath, rule.pattern)) {
 
+        // This rule has subnode rules
+        if(rule.childrenRules?.length) {
+          // Invoke first children rules
+          editGeoNodes(node, rule.childrenRules, rule.childrenRulesMaxLevel ?? Infinity);
+        }
+
         // Remove this geo node
         if(rule.action === EditActions.Remove) {
           removeGeoNode(node);
@@ -130,8 +86,7 @@ export function editGeoNodes(topNode: any, rules: GeoNodeEditRule[], maxLevel:nu
         }
 
         // (!) All next actions may need to process children
-
-        if(rule.action === EditActions.RemoveSiblings) {
+        if(rule.action === EditActions.RemoveSiblings || rule.action === EditActions.RemoveBySubLevel) {
           // Add a node to matches to process them after
           postponedProcessing.push({ node: node, fullPath: nodeFullPath, rule: rule });
         }
@@ -191,41 +146,6 @@ export function editGeoNodes(topNode: any, rules: GeoNodeEditRule[], maxLevel:nu
 }
 
 
-export function analyzeGeoNodes(node: any, level:number=2) {
-
-  let highLevelNodes = getGeoNodesByLevel(node, 1);
-
-  let totalNodes = 0;
-
-  console.log(`--- Detector subcomponents analysis --- Detectors: ${highLevelNodes.length}`);
-  for(let item of highLevelNodes) {
-    // Now run walkNodes for each of high level node to get number of subnodes
-    let numSubNodes = walkGeoNodes(item.geoNode, null, Infinity);
-    totalNodes += numSubNodes;
-    console.log(`${numSubNodes}: ${item.fullPath}`);
-  }
-  console.log(`--- End of analysis --- Total elements: ${totalNodes}`);
-
-}
-
-export function getGeoNodesByLevel(topNode: any, selectLevel:number=1) {
-  let selectedNodes: {geoNode: any, fullPath: string}[] = [];
-
-  // First we collect main nodes
-  const collectNodes: GeoNodeWalkCallback = (node, fullPath, nodeLevel) => {
-    // Add a node to a watch
-    if(nodeLevel == selectLevel) {
-      selectedNodes.push({ geoNode: node, fullPath: fullPath });
-      return false; // don't go deeper, we need this level
-    }
-    return true;
-  };
-
-  // Use walkGeoNodes with the collecting callback and the pattern
-  walkGeoNodes(topNode, collectNodes, selectLevel);
-
-  return selectedNodes;
-}
 
 export function removeGeoNode(node: any) {
   let motherVolume = node.fMother
@@ -250,14 +170,4 @@ export function removeChildren(node: any) {
   } else {
     console.log(`Can't get child nodes of ${node}`);
   }
-  return false; // Don't go through children. We deleted them
-}
-
-export async function findGeoManager(file: any){
-  for (const key of file.fKeys) {
-    if(key.fClassName === "TGeoManager") {
-      return file.readObject(key.fName);
-    }
-  }
-  return null;
 }

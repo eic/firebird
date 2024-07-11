@@ -1,13 +1,12 @@
 //import { openFile } from '../../../jsroot/core.mjs';
 //import * as ROOT from '../../../jsroot/build;
 import {
-  EditActions,
-  editGeoNodes,
   findSingleGeoNode,
-  GeoAttBits,
-  GeoNodeEditRule,
   removeGeoNode
-} from './utils/cern-root.utils';
+} from '../lib-root-geometry/root-geo-navigation';
+import {EditActions, GeoNodeEditRule} from "../lib-root-geometry/root-geo-edit.model";
+import {GeoAttBits} from "../lib-root-geometry/root-geo-attribute-bits";
+import {editGeoNodes} from "../lib-root-geometry/root-geo-edit";
 
 
 export class DetectorGeometryFineTuning {

@@ -2,7 +2,7 @@
 
 import { PhoenixLoader } from 'phoenix-event-display';
 import { openFile, TSelector } from 'jsroot';
-import { findGeoManager } from './utils/cern-root.utils';
+import { findGeoManager } from '../lib-root-geometry/root-geo-navigation';
 import { environment } from '../environments/environment';
 
 import {treeProcess } from 'jsroot/tree';

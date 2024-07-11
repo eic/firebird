@@ -1,4 +1,15 @@
-import { walkGeoNodes, GeoNodeWalkCallback, findGeoNodes, GeoAttBits, testGeoBit, setGeoBit, toggleGeoBit} from './cern-root.utils';
+/**
+ * @date Created on July 10, 2024
+ * @author Dmitry Romanov
+ *
+ * @license This file is part of Firebird display, which is released under a license agreement
+ * available in the LICENSE file located in the root directory of this project source tree. This
+ * file is subject to that license and is intended to be used in accordance with it.
+ *
+ * @summary Unit tests for CERN ROOT geometry navigation functions
+ */
+
+import { walkGeoNodes, GeoNodeWalkCallback, findGeoNodes} from './root-geo-navigation';
 
 describe('walkGeoNodes', () => {
   let mockCallback: jasmine.Spy<GeoNodeWalkCallback>;

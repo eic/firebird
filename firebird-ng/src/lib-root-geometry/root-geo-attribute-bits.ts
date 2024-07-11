@@ -1,32 +1,31 @@
+/**
+ * @date Created on July 10, 2024
+ * @author jsroot project
+ *
+ * @license This file is part of the Firebird display, which is released under a license agreement
+ * available in the LICENSE file located in the root directory of this project source tree. This
+ * file is subject to that license and is intended to be used in accordance with it.
+ *
+ * @summary This module defines utilities for manipulating and testing attribute bits (GeoAttBits)
+ * within the CERN ROOT framework geometry package. It includes functions to set, toggle, and test various
+ * visibility and attribute flags defined by the GeoAttBits enum.
+ */
 
 
-// /** @summary Test fGeoAtt bits
-//  * @private */
-// function testGeoBit(volume:any , f) {
-//   const att = volume.fGeoAtt;
-//   return att === undefined ? false : ((att & f) !== 0);
-// }
-/** @summary Generate mask for given bit
- * @param {number} n bit number
- * @return {Number} produced mask
- * @private */
-function BIT(n:number) { return 1 << n; }
-
-/** @summary TGeo-related bits
- * @private */
+/** @summary TGeo Attribute Bits */
 export enum GeoAttBits {
-  kVisOverride = BIT(0),  // volume's vis. attributes are overwritten
-  kVisNone= BIT(1),  // the volume/node is invisible, as well as daughters
-  kVisThis= BIT(2),  // this volume/node is visible
-  kVisDaughters= BIT(3),  // all leaves are visible
-  kVisOneLevel= BIT(4),  // first level daughters are visible (not used)
-  kVisStreamed= BIT(5),  // true if attributes have been streamed
-  kVisTouched= BIT(6),  // true if attributes are changed after closing geom
-  kVisOnScreen= BIT(7),  // true if volume is visible on screen
-  kVisContainers= BIT(12), // all containers visible
-  kVisOnly= BIT(13), // just this visible
-  kVisBranch= BIT(14), // only a given branch visible
-  kVisRaytrace= BIT(15)  // raytracing flag
+  kVisOverride = 1 << 0,     // volume's vis. attributes are overwritten
+  kVisNone= 1 << 1,          // the volume/node is invisible, as well as daughters
+  kVisThis= 1 << 2,          // this volume/node is visible
+  kVisDaughters= 1 << 3,     // all leaves are visible
+  kVisOneLevel= 1 << 4,      // first level daughters are visible (not used
+  kVisStreamed= 1 << 5,      // true if attributes have been streamed
+  kVisTouched= 1 << 6,       // true if attributes are changed after closing geom
+  kVisOnScreen= 1 << 7,      // true if volume is visible on screen
+  kVisContainers= 1 << 12,   // all containers visible
+  kVisOnly= 1 << 13,         // just this visible
+  kVisBranch= 1 << 14,       // only a given branch visible
+  kVisRaytrace= 1 << 15      // raytracing flag
 }
 
 /** @summary Test fGeoAtt bits
