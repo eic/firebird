@@ -5,10 +5,6 @@ import {
   EditActions,
 } from './root-geo-edit'; // Update with the actual path
 
-import * as RootGeoNavigation from './root-geo-navigation';
-import * as RootGeoEdit from './root-geo-edit'
-
-import * as GeoAttBitsModule from "./root-geo-attribute-bits";
 import {GeoAttBits, testGeoBit, toggleGeoBit} from "./root-geo-attribute-bits";
 
 describe('editGeoNodes', () => {
