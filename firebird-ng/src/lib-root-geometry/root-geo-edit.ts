@@ -4,9 +4,7 @@ import {
   walkGeoNodes
 } from "./root-geo-navigation";
 import {wildCardCheck} from "../app/utils/wildcard";
-
 import {GeoAttBits, setGeoBit, toggleGeoBit} from "./root-geo-attribute-bits";
-
 
 
 export enum EditActions {
@@ -144,7 +142,12 @@ export function editGeoNodes(topNode: any, rules: GeoNodeEditRule[], maxLevel:nu
 }
 
 
-
+/**
+ * Removes a node from its mother volume.
+ *
+ * @param {any} node - The node to be removed.
+ * @return {void} This function does not return a value.
+ */
 export function removeGeoNode(node: any) {
   let motherVolume = node.fMother
   let siblings = motherVolume?.fNodes?.arr
@@ -160,6 +163,12 @@ export function removeGeoNode(node: any) {
   }
 }
 
+/**
+ * Removes all child nodes from the given node.
+ *
+ * @param {any} node - The node from which to remove the child nodes.
+ * @return {void} This function does not return anything.
+ */
 export function removeChildren(node: any) {
   let daughters = node.fVolume?.fNodes?.arr;
 
