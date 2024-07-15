@@ -146,9 +146,8 @@ export function editGeoNodes(topNode: any, rules: GeoNodeEditRule[], maxLevel:nu
  * Removes a node from its mother volume.
  *
  * @param {any} node - The node to be removed.
- * @return {void} This function does not return a value.
  */
-export function removeGeoNode(node: any) {
+export function removeGeoNode(node: any): void {
   let motherVolume = node.fMother
   let siblings = motherVolume?.fNodes?.arr
   if (siblings) {
@@ -167,9 +166,8 @@ export function removeGeoNode(node: any) {
  * Removes all child nodes from the given node.
  *
  * @param {any} node - The node from which to remove the child nodes.
- * @return {void} This function does not return anything.
  */
-export function removeChildren(node: any) {
+export function removeChildren(node: any): void {
   let daughters = node.fVolume?.fNodes?.arr;
 
   if (daughters) {
