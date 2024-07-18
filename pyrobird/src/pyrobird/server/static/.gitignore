@@ -1,0 +1,3 @@
+# It is assumed that static content is copied here from frontend build
+# Thus we ignore everything in this folder
+*
