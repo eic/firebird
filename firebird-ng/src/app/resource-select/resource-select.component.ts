@@ -63,7 +63,9 @@ export class ResourceSelectComponent implements OnInit {
 
   ngOnInit(): void {
     // Connect value changes with the control output
-    this.value.valueChanges.subscribe(this.valueChange.emit);
+    this.value.valueChanges.subscribe(()=>{
+      this.valueChange.emit(this.value.value)
+    });
   }
 
   /**
