@@ -1,0 +1,8 @@
+# MANIFEST.in
+
+# Include YAML files
+include src/pyrobird/data/*.yaml
+
+# Include all files in the static and templates directories
+recursive-include src/pyrobird/server/static *
+recursive-include src/pyrobird/server/templates *
