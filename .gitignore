@@ -132,3 +132,7 @@ dist
 
 
 .vscode/
+
+pyrobird/requirements-dev.lock
+
+pyrobird/requirements.lock
