@@ -1,6 +1,6 @@
 <!-- event-display-source.component.html -->
 <div class="container mt-3">
-  <h2>Configure geometry pipeline</h2>
+  <h2 class="card-title">Configure geometry pipeline</h2>
 
   <img src="assets/diagrams/geometry-pipeline.svg" alt="geometry-pipeline">
 
@@ -8,38 +8,21 @@
 
   <div class="card mt-4">
     <div class="card-body">
-      <h5 class="card-title">Geometry Source</h5>
-      <div class="form-group">
-        Geometry file source:
-        <div class="mt-4">
-          <h6>API Host</h6>
-          This field sets the host address for the API server.
-          <mat-form-field class="full-width-field">
-            <mat-label>Geometry URL</mat-label>
-            <input  type="text" matInput [formControl]="geometryUrl" [matAutocomplete]="auto">
-            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
-              <mat-option *ngFor="let option of filteredOptions | async" [value]="option" [matTooltip]="option.url">{{option.name}}</mat-option>
-            </mat-autocomplete>
-          </mat-form-field>
-
-        </div>
-
-      </div>
+      <h4 class="card-title">Data Sources</h4>
 
       <div class="form-group">
         <div class="mt-4">
-          <h6>Events</h6>
-          Select events files
+          <h5>Geometry</h5>
+          Select file with the geometry
           <div class="mt-4">
             <firebird-resource-select #geometrySelect [options]="geometryOptions" label="Geometry source" class="full-width-field"></firebird-resource-select>
           </div>
-
         </div>
       </div>
 
 
 
-      <h5 class="card-title">Events Source</h5>
+      <h5>Trajectories Source</h5>
       <div class="form-group">
         <select class="form-control" [formControl]="selectedEventSource">
           <option value="no-events">No events (may upload later)</option>
@@ -59,6 +42,18 @@
           <option value="https://firebird-eic.org/py8_dis-nc_all_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_all_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
         </select>
       </div>
+
+      <div class="form-group">
+        <div class="mt-4">
+          <h5>EDM4EIC events</h5>
+          Select file with EDM4EIC data
+          <div class="mt-4">
+            <firebird-resource-select #edm4eicSelect [options]="edm4eicOptions" label="EDM4EIC file" class="full-width-field"></firebird-resource-select>
+          </div>
+        </div>
+      </div>
+
+
     </div>
   </div>
 

@@ -2,8 +2,8 @@
   <mat-label>{{this.label}}</mat-label>
   <input type="text" matInput [formControl]="value" [matAutocomplete]="auto">
   <mat-autocomplete #auto="matAutocomplete" [displayWith]="onDisplayValueChange" autoSelectActiveOption="true">
-    <mat-option *ngFor="let option of filteredOptions | async" [value]="option" [matTooltip]="option.url" (onSelectionChange)="onSelect(option)">
-      {{ option.name }}
+    <mat-option *ngFor="let option of filteredOptions | async" [value]="option">
+      {{ option }}
     </mat-option>
   </mat-autocomplete>
 </mat-form-field>

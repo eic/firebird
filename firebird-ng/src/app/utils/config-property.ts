@@ -30,7 +30,7 @@ class ConfigPropertyLocalStorage implements ConfigPropertyStorage {
  * @template T The type of the configuration value.
  */
 export class ConfigProperty<T> {
-  private subject: BehaviorSubject<T>;
+  public subject: BehaviorSubject<T>;
 
   /** Observable for subscribers to react to changes in the property value. */
   public changes$: Observable<T>;

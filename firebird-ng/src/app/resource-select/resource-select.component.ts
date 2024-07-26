@@ -8,10 +8,6 @@ import {AsyncPipe, NgForOf} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
 import {MatInput, MatLabel} from "@angular/material/input";
 
-export interface RemoteResourceOption {
-  name: string;
-  url: string;
-}
 
 @Component({
   selector: 'firebird-resource-select',
@@ -36,7 +32,7 @@ export class ResourceSelectComponent implements OnInit {
   /**
    * List of resources to display in autocomplete
    */
-  @Input() options: RemoteResourceOption[] = [];
+  @Input() options: string[] = [];
 
   /**
    * Watermark text of the control
@@ -56,7 +52,7 @@ export class ResourceSelectComponent implements OnInit {
   /**
    * List of filtered options depending on user input
    */
-  public filteredOptions: Observable<RemoteResourceOption[]> = this.value.valueChanges.pipe(
+  public filteredOptions: Observable<string[]> = this.value.valueChanges.pipe(
     startWith(''),
     map(input=>this.filterOptions(input))
   );
@@ -86,18 +82,18 @@ export class ResourceSelectComponent implements OnInit {
 
     // Explanation of the return: if we have only 1 option, that fully fit the name,
     // we probably have it selected already. Which means we want to show everything, so users can select something else
-    return (filteredList.length == 1 && name === filteredList[0].name) ? this.options.slice() : filteredList;
+    return (filteredList.length == 1 && name === filteredList[0]) ? this.options.slice() : filteredList;
   }
 
   /**
    * Retrieves the options which .name contains subString.
    *
    * @param {string} subString - sub string that every option.name is tested by.
-   * @return {RemoteResourceOption[]} The filtered remote resource options.
+   * @return {string[]} The filtered remote resource options.
    */
-  private _selectOptions(subString: string): RemoteResourceOption[] {
+  private _selectOptions(subString: string): string[] {
     const filterValue = subString.toLowerCase();
-    return this.options.filter(option => option.name.toLowerCase().includes(filterValue));
+    return this.options.filter(option => option.toLowerCase().includes(filterValue));
   }
 
   /**
@@ -114,9 +110,5 @@ export class ResourceSelectComponent implements OnInit {
       result = input.url;
     }
     return result;
-  }
-
-  onSelect(option: RemoteResourceOption) {
-    // TODO add some hint, what is the name/value of selected object
   }
 }

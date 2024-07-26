@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import {MainDisplayComponent} from "./main-display/main-display.component";
 import {FileBrowserComponent} from "./file-browser/file-browser.component";
 import {InputConfigComponent} from "./input-config/input-config.component";
+import {Edm4hepListingComponent} from "./edm4hep-listing/edm4hep-listing.component";
 
 export const routes: Routes = [
   { path: '', redirectTo: '/display', pathMatch: 'full' },
@@ -21,5 +22,9 @@ export const routes: Routes = [
   {
     path: 'geometry',
     loadComponent: () => import('./geometry-tree/geometry-tree.component').then(m => m.GeometryTreeComponent)
+  },
+  {
+    path: 'listing',
+    loadComponent: () => import('./edm4hep-listing/edm4hep-listing.component').then(m => m.Edm4hepListingComponent)
   },
 ];

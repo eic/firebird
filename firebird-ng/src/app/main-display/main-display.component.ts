@@ -403,7 +403,7 @@ export class MainDisplayComponent implements OnInit {
   ngOnInit() {
 
 
-    let eventSource = this.settings.eventSource.value;
+    let eventSource = this.settings.trajectoryEventSource.value;
     let eventConfig = {eventFile: "https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip", eventType: "zip"};
     if( eventSource != "no-events" && !eventSource.endsWith("edm4hep.json")) {
       let eventType = eventSource.endsWith("zip") ? "zip" : "json";
