@@ -7,8 +7,10 @@ import logging
 from csv import excel
 
 import werkzeug.exceptions
-from flask import render_template, send_from_directory, Flask, send_file, abort, Config, current_app
+from flask import render_template, send_from_directory, Flask, send_file, abort, Config, jsonify, request
 import flask
+import json5
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -52,7 +54,7 @@ def _can_user_download_file(filename):
     if unrestricted_download:
         return True
 
-    # if allowed/disable checks are done and we are here,
+    # if allowed/disable checks are done, and we are here,
     # if relative path is given, it will be joined with DOWNLOAD_PATH
     if not os.path.isabs(filename):
         return True
@@ -100,6 +102,42 @@ def download_file(filename):
         abort(404)  # Return 404 if the file does not exist
 
 
+@flask_app.route('/assets/config.jsonc', methods=['GET'])
+def asset_config():
+    config_path = 'assets/config.jsonc'
+
+    config_dict = {}
+
+    try:
+        # Open the config file and load its content using jsonc
+        with open(config_path, 'r') as file:
+            config_dict = json5.load(file)
+    except Exception as ex:
+        logger.error(f"error opening {config_path}: {ex}")
+
+    host = request.host.split(':')[0]
+    port = request.host.split(':')[1]
+
+    if not port:
+        port = 5454
+
+    """
+      serverPort: number;
+      serverHost: string;
+      servedByPyrobird: boolean;
+      apiAvailable: boolean;
+    """
+
+    # Modify the fields in the dictionary as needed
+    config_dict['serverPort'] = int(port)
+    config_dict['serverHost'] = host
+    config_dict['servedByPyrobird'] = True
+    config_dict['apiAvailable'] = True
+
+    # Convert the updated dictionary to JSON
+    return jsonify(config_dict)
+
+
 @flask_app.route('/')
 def index():
     return static_file("index.html")
@@ -122,7 +160,7 @@ def static_file(path):
             return send_from_directory(static_dir, "index.html")
 
 
-def run(config=None, host=None, port=None, debug=True, load_dotenv=True):
+def run(config=None, host=None, port=5454, debug=True, load_dotenv=True):
     if config:
         if isinstance(config, Config) or isinstance(config, map):
             flask_app.config.from_mapping(config)

@@ -13,6 +13,7 @@ keywords = []
 authors = [
   { name = "Dmitry Romanov", email = "romanovda@gmail.com" },
 ]
+packages = [{ include = "pyrobird" }]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
@@ -25,7 +26,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "click", "rich", "pyyaml", "flask_cors"
+  "click", "rich", "pyyaml", "flask_cors", "json5"
 ]
 
 #[project.urls]
@@ -34,7 +35,8 @@ dependencies = [
 #Source = "https://github.com/eic/firebird"
 
 [project.scripts]
-fbd = "pyrobird.cli:pyrobird"
+fbd = "pyrobird.cli:cli_app"
+pyrobird = "pyrobird.cli:cli_app"
 
 [tool.hatch.version]
 path = "src/pyrobird/__about__.py"
@@ -79,6 +81,11 @@ exclude_lines = [
   "if TYPE_CHECKING:",
 ]
 
+[tool.hatch.build]
+packages = [
+  "src/pyrobird"
+]
+
 [tool.hatch.publish.index]
 disable = true
 repository = "https://upload.pypi.org/legacy/"
@@ -93,3 +100,4 @@ include = [
   "src/pyrobird/server/static/**/*",
   "src/pyrobird/server/templates/**/*"
 ]
+

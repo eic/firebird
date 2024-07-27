@@ -1,5 +1,8 @@
 # MANIFEST.in
 
+# pyrobird library
+recursive-include src/pyrobird *.py
+
 # Include YAML files
 include src/pyrobird/data/*.yaml
 

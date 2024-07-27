@@ -136,3 +136,5 @@ dist
 pyrobird/requirements-dev.lock
 
 pyrobird/requirements.lock
+
+pyrobird/src/pyrobird/server/static/
