@@ -9,18 +9,20 @@ import {MatCard, MatCardContent, MatCardTitle} from "@angular/material/card";
 import {MatSlideToggle} from "@angular/material/slide-toggle";
 import {MatFormField} from "@angular/material/form-field";
 import {MatInput, MatLabel} from "@angular/material/input";
-import {map, Observable, startWith} from "rxjs";
+import {config, map, Observable, startWith} from "rxjs";
 import {MatAutocomplete, MatAutocompleteTrigger, MatOption} from "@angular/material/autocomplete";
 import {AsyncPipe, NgForOf} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
 import {ResourceSelectComponent} from "../resource-select/resource-select.component";
+import {defaultFirebirdConfig, FirebirdConfig, FirebirdConfigService} from "../firebird-config.service";
+import {MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader} from "@angular/material/expansion";
 
 
 
 @Component({
   selector: 'app-input-config',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf, ResourceSelectComponent],
+  imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf, ResourceSelectComponent, MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader],
   templateUrl: './input-config.component.html',
   styleUrl: './input-config.component.scss'
 })
@@ -32,6 +34,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   serverUseApi: FormControl<boolean | null> = new FormControl(false);
   serverApiHost = new FormControl('localhost');
   serverApiPort: FormControl<number | null> = new FormControl(5454);
+  firebirdConfig: FirebirdConfig = defaultFirebirdConfig;
 
 
   @ViewChild('geometrySelect')
@@ -81,7 +84,8 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     ];
 
 
-  constructor(private configService: UserConfigService) {
+  constructor(private configService: UserConfigService,
+              private firebirdConfigService: FirebirdConfigService) {
   }
 
 
@@ -117,5 +121,8 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     this.bindConfigToControl(this.serverUseApi, this.configService.localServerUseApi);
     this.bindConfigToControl(this.serverApiHost, this.configService.localServerHost);
     this.bindConfigToControl(this.serverApiPort, this.configService.localServerPort);
+
+    this.firebirdConfig = this.firebirdConfigService.config;
+
   }
 }

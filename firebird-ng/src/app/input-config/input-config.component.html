@@ -136,5 +136,52 @@
       <button type="button" class="btn btn-lg btn-primary" [routerLink]="['/display']">DISPLAY</button>
     </div>
 
+    <mat-accordion class="mt-4">
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            Backend details
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+        <div>
+          <table class="table">
+            <thead>
+            <tr>
+              <th scope="col">Property</th>
+              <th scope="col">Value</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <td>Server Port</td>
+              <td>{{ firebirdConfig.serverPort }}</td>
+            </tr>
+            <tr>
+              <td>Server Host</td>
+              <td>{{ firebirdConfig.serverHost }}</td>
+            </tr>
+            <tr>
+              <td>Served by Pyrobird</td>
+              <td>{{ firebirdConfig.servedByPyrobird ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+              <td>API Available</td>
+              <td>{{ firebirdConfig.apiAvailable ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+              <td>Use Authentication</td>
+              <td>{{ firebirdConfig.useAuthentication ? 'Yes' : 'No' }}</td>
+            </tr>
+            <tr>
+              <td>Log Level</td>
+              <td>{{ firebirdConfig.logLevel }}</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+    <br>
+
   </form>
 </div>
