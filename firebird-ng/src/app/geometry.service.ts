@@ -24,7 +24,7 @@ export const ALL_GROUPS = [
 ]
 
 // constants.ts
-export const DEFAULT_GEOMETRY = 'epic-central-optimized';
+export const DEFAULT_GEOMETRY = 'builtin://epic-central-optimized';
 
 @Injectable({
   providedIn: 'root'

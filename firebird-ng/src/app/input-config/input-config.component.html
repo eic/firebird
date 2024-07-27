@@ -20,32 +20,18 @@
         </div>
       </div>
 
-
-
-      <h5>Trajectories Source</h5>
       <div class="form-group">
-        <select class="form-control" [formControl]="selectedEventSource">
-          <option value="no-events">No events (may upload later)</option>
-          <option value="https://firebird-eic.org/dirc_event.json.zip">DIRC optical (load DIRC only geometry)</option>
-          <option value="https://firebird-eic.org/py8_dis-cc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-cc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-cc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-cc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-cc_all_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-cc_all_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-nc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-nc_10x100_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_10x100_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-nc_10x100_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_10x100_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-nc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-nc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-nc_18x275_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_18x275_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-nc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-          <option value="https://firebird-eic.org/py8_dis-nc_all_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip">py8_dis-nc_all_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip</option>
-        </select>
+        <div class="mt-4">
+          <h5>Trajectories Event Source</h5>
+          <div class="mt-4">
+            <firebird-resource-select #trajectorySelect [options]="trajectoryOptions" label="Trajectories event source file" class="full-width-field"></firebird-resource-select>
+          </div>
+        </div>
       </div>
 
       <div class="form-group">
         <div class="mt-4">
-          <h5>EDM4EIC events</h5>
+          <h5>Edm4Eic Event Source</h5>
           Select file with EDM4EIC data
           <div class="mt-4">
             <firebird-resource-select #edm4eicSelect [options]="edm4eicOptions" label="EDM4EIC file" class="full-width-field"></firebird-resource-select>
@@ -135,6 +121,8 @@
     <div class="mt-4 text-center">
       <button type="button" class="btn btn-lg btn-primary" [routerLink]="['/display']">DISPLAY</button>
     </div>
+
+    <br><br>
 
     <mat-accordion class="mt-4">
       <mat-expansion-panel>

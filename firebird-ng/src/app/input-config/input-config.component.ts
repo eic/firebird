@@ -43,6 +43,9 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   @ViewChild('edm4eicSelect')
   edm4eicSelect!: ResourceSelectComponent;
 
+  @ViewChild('trajectorySelect')
+  trajectorySelect!: ResourceSelectComponent;
+
 
   public geometryOptions: string[] = [
     "builtin://epic-central-optimized",
@@ -78,6 +81,25 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     "https://eic.github.io/epic/artifacts/tgeo/epic_zdc_sipm_on_tile_only.root"
 ];
 
+  public trajectoryOptions: string[] = [
+      "https://firebird-eic.org/dirc_event.json.zip",
+      "https://firebird-eic.org/py8_dis-cc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-cc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-cc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-cc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-cc_all_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-nc_10x100_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-nc_10x100_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-nc_10x100_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-nc_18x275_minq2-1000_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-nc_18x275_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-nc_18x275_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-nc_5x41_minq2-100_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+      "https://firebird-eic.org/py8_dis-nc_all_minq2-1_minp-300mev_vtxcut-5m_nevt-5.evt.zip",
+    ]
+
+
+
   public edm4eicOptions: string[] = [
     "",
 
@@ -109,6 +131,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     // Now the 'geometrySelect' is available
     this.bindConfigToControl(this.geometrySelect.value, this.configService.selectedGeometry);
     this.bindConfigToControl(this.edm4eicSelect.value, this.configService.edm4eicEventSource);
+    this.bindConfigToControl(this.trajectorySelect.value, this.configService.trajectoryEventSource);
   }
 
   ngOnInit(): void {
@@ -116,7 +139,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     //this.bindConfigToControl(this.geometryUrl, this.configService.selectedGeometry);
 
 
-    this.bindConfigToControl(this.selectedEventSource, this.configService.trajectoryEventSource);
+    //this.bindConfigToControl(this.selectedEventSource, this.configService.trajectoryEventSource);
     this.bindConfigToControl(this.onlyCentralDetector, this.configService.onlyCentralDetector);
     this.bindConfigToControl(this.serverUseApi, this.configService.localServerUseApi);
     this.bindConfigToControl(this.serverApiHost, this.configService.localServerHost);
