@@ -106,7 +106,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     ];
 
 
-  constructor(private configService: UserConfigService,
+  constructor(private userConfigService: UserConfigService,
               private firebirdConfigService: FirebirdConfigService) {
   }
 
@@ -129,9 +129,9 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
 
   ngAfterViewInit() {
     // Now the 'geometrySelect' is available
-    this.bindConfigToControl(this.geometrySelect.value, this.configService.selectedGeometry);
-    this.bindConfigToControl(this.edm4eicSelect.value, this.configService.edm4eicEventSource);
-    this.bindConfigToControl(this.trajectorySelect.value, this.configService.trajectoryEventSource);
+    this.bindConfigToControl(this.geometrySelect.value, this.userConfigService.selectedGeometry);
+    this.bindConfigToControl(this.edm4eicSelect.value, this.userConfigService.edm4eicEventSource);
+    this.bindConfigToControl(this.trajectorySelect.value, this.userConfigService.trajectoryEventSource);
   }
 
   ngOnInit(): void {
@@ -140,10 +140,10 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
 
 
     //this.bindConfigToControl(this.selectedEventSource, this.configService.trajectoryEventSource);
-    this.bindConfigToControl(this.onlyCentralDetector, this.configService.onlyCentralDetector);
-    this.bindConfigToControl(this.serverUseApi, this.configService.localServerUseApi);
-    this.bindConfigToControl(this.serverApiHost, this.configService.localServerHost);
-    this.bindConfigToControl(this.serverApiPort, this.configService.localServerPort);
+    this.bindConfigToControl(this.onlyCentralDetector, this.userConfigService.onlyCentralDetector);
+    this.bindConfigToControl(this.serverUseApi, this.userConfigService.localServerUseApi);
+    this.bindConfigToControl(this.serverApiHost, this.userConfigService.localServerHost);
+    this.bindConfigToControl(this.serverApiPort, this.userConfigService.localServerPort);
 
     this.firebirdConfig = this.firebirdConfigService.config;
 

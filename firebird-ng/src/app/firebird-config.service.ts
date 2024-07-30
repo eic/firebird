@@ -61,7 +61,6 @@ export class FirebirdConfigService {
     }
   }
 
-
   private parseConfig(jsoncData: string): Partial<FirebirdConfig> {
     try {
       return jsoncParser.parse(jsoncData);
@@ -69,5 +68,14 @@ export class FirebirdConfigService {
       console.error('Error parsing JSONC data', parseError);
       return {};
     }
+  }
+
+  /**
+   * Sets the configuration - intended for use in unit tests only.
+   * This method is safeguarded to be operational only in non-production environments.
+   */
+  public setUnitTestConfig(value: Partial<FirebirdConfig>) {
+    this.triedLoading = true;
+    this._config = {...defaultFirebirdConfig, ...value};
   }
 }
