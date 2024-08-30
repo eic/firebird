@@ -90,6 +90,10 @@
   <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="animateTime()">
     <mat-icon>play_arrow</mat-icon>
   </button>
+  <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="timeStepBack($event)" class="tcontrol">
+    <mat-icon>chevron_left</mat-icon>
+  </button>
+
   <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="timeStep($event)" class="tcontrol">
     <mat-icon>chevron_right</mat-icon>
   </button>

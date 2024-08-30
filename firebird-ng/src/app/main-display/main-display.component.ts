@@ -649,6 +649,11 @@ export class MainDisplayComponent implements OnInit {
 
     //this.updateParticlePosition(value);
   }
+  timeStepBack($event: MouseEvent) {
+    if(this.currentTime > this.minTime) this.currentTime--;
+    if(this.currentTime < this.minTime) this.currentTime = this.minTime;
+    this.processCurrentTimeChange();
+  }
 
   timeStep($event: MouseEvent) {
     if(this.currentTime < this.maxTime) this.currentTime++;
