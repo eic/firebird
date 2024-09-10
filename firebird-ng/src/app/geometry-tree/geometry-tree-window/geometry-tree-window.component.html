@@ -1,0 +1,13 @@
+<button mat-icon-button (click)="toggleWindow()" class="tree-button">
+  <mat-icon>{{windowOpenState ? 'close' : 'account_tree'}}</mat-icon>
+</button>
+
+<div class="window" *ngIf="windowOpenState" #windowContainer>
+  <div class="window-header" #windowHeader>
+    <span>Geometry Tree</span>
+  </div>
+
+  <app-geometry-tree *ngIf="windowOpenState"></app-geometry-tree>
+
+  <div class="resize-handle" #resizeHandle></div>
+</div>

@@ -50,6 +50,8 @@ interface ExampleFlatNode {
   name: string;
   level: number;
   type: string;
+  object3D: Object3D;
+  visible: boolean;
 }
 
 @Component({
@@ -76,7 +78,9 @@ export class GeometryTreeComponent implements OnInit{
       expandable: !!node.children && node.children.length > 0,
       name: node.name,
       level: level,
-      type: node.type
+      type: node.type,
+      object3D: node,
+      visible: node.visible
     };
   };
 
@@ -115,5 +119,8 @@ export class GeometryTreeComponent implements OnInit{
       });
     }
 
-
+  toggleVisibility(node: ExampleFlatNode) {
+    this.geomService.toggleVisibility(node.object3D);
+    node.visible = !node.visible;
+  }
 }
