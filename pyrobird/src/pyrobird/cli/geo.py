@@ -169,11 +169,11 @@ def info(ctx, file_name):
     # print(" Accessing 'histo_2' gives: '{}'.\n".format(histo_2))
 
 
-        # #inspect(key, methods=True)
-        # class_info = ROOT.gROOT.GetClass(key.GetClassName())
-        #
-        # print(class_info)
-        # print(key.GetClassName())
+    # #inspect(key, methods=True)
+    # class_info = ROOT.gROOT.GetClass(key.GetClassName())
+    #
+    # print(class_info)
+    # print(key.GetClassName())
 
 
 

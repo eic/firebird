@@ -53,7 +53,7 @@ def serve(ctx, unsecure_files, allow_cors, disable_download, work_path):
     logging.info(f"Work Path Set To: {work_path if work_path else 'Current Working Directory'}")
 
     pyrobird.server.run(debug=True, config={
-        "DOWNLOAD_ALLOW_UNRESTRICTED": unsecure_files,
+        "DOWNLOAD_IS_UNRESTRICTED": unsecure_files,
         "DOWNLOAD_DISABLE": disable_download,
         "DOWNLOAD_PATH": work_path,
         "DOWNLOAD_ALLOW_CORS": allow_cors})

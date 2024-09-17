@@ -26,7 +26,12 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "click", "rich", "pyyaml", "flask_cors", "json5"
+  "click", "rich", "pyyaml", "flask", "flask_cors", "flask-compress", "json5", "uproot"
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest"
 ]
 
 #[project.urls]
