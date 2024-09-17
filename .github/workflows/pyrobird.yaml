@@ -1,4 +1,4 @@
-name: Pyrobird tests
+name: Backend Pyrobird Workflow
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11']  # Python versions matrix
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']  # Python versions matrix
 
     steps:
       - name: Check out the repository
@@ -27,7 +27,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
+          python -m pip install pytest
+          cd pyrobird
+          python -m pip install .[test] 
           # Add any other dependencies your project requires
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
