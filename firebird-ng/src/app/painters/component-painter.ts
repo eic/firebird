@@ -1,4 +1,4 @@
-interface IEntryComponentRenderer {
+interface ComponentPainter {
     createFromObject(source: any): any;
     toModel(source: any): any;
     renderAtTime(source: any): any;

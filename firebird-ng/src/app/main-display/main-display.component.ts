@@ -423,7 +423,8 @@ export class MainDisplayComponent implements OnInit {
         //this.buildEventDataFromJSON(this.eventsArray[0]);
         this.eventDisplay.parsePhoenixEvents(data);
         console.log(this);
-        console.log(`Loading event: ${data}`);
+        console.log(`Loading event: `);
+        console.log(data);
       };
       worker.postMessage(eventConfig.eventFile);
     } else {

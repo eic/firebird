@@ -1,4 +1,4 @@
 
-interface Painter {
+interface EventPainter {
   sendEmail(address: string, content: string): void;
 }
