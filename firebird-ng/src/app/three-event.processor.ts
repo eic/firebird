@@ -158,7 +158,6 @@ export class ThreeEventProcessor {
         let startPoint = new Vector3();
         let endPoint = new Vector3();
 
-
         for(let obj of trackGroup.children) {
 
           if(obj.type == "Line") {

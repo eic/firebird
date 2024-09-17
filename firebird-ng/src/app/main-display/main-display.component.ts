@@ -401,8 +401,6 @@ export class MainDisplayComponent implements OnInit {
 
 
   ngOnInit() {
-
-
     let eventSource = this.settings.trajectoryEventSource.value;
     let eventConfig = {eventFile: "https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip", eventType: "zip"};
     if( eventSource != "no-events" && !eventSource.endsWith("edm4hep.json")) {
@@ -430,7 +428,6 @@ export class MainDisplayComponent implements OnInit {
       worker.postMessage(eventConfig.eventFile);
     } else {
       // Web workers are not supported in this environment.
-      // You should add a fallback so that your program still executes correctly.
     }
 
     // Create the event display configuration
@@ -502,17 +499,16 @@ export class MainDisplayComponent implements OnInit {
     // // GUI
     // const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
     //
-    // const gui = new GUI({
-    //   // container: document.getElementById("lil-gui-place") ?? undefined,
-    //
-    // });
-    //
-    // gui.title("Debug");
-    // gui.add(this, "produceRenderOrder");
-    // gui.add(this, "logGamepadStates").name( 'Log controls' );
-    // gui.add(this, "logCamera").name( 'Log camera' );
-    // gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
-    // gui.close();
+    const gui = new GUI({
+      container: document.getElementById("lil-gui-place") ?? undefined,
+    });
+
+    gui.title("Dev Controls");
+    gui.add(this, "produceRenderOrder");
+    gui.add(this, "logGamepadStates").name( 'Log controls' );
+    gui.add(this, "logCamera").name( 'Log camera' );
+    gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
+    gui.close();
 
     // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);
@@ -861,7 +857,4 @@ export class MainDisplayComponent implements OnInit {
     console.log(`User selected event ${this.selectedEventKey} `);
     this.buildEventDataFromJSON(event);
   }
-
-
-
 }
