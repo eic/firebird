@@ -1,18 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { FirebirdConfigService } from './firebird-config.service';
+import { ServerConfigService } from './server-config.service';
 import * as jsoncParser from 'jsonc-parser';
 
 describe('FirebirdConfigService', () => {
-  let service: FirebirdConfigService;
+  let service: ServerConfigService;
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [FirebirdConfigService]
+      providers: [ServerConfigService]
     });
-    service = TestBed.inject(FirebirdConfigService);
+    service = TestBed.inject(ServerConfigService);
     httpMock = TestBed.inject(HttpTestingController);
   });
 
@@ -50,14 +50,14 @@ describe('FirebirdConfigService', () => {
 
 // import { TestBed } from '@angular/core/testing';
 //
-// import { FirebirdConfigService } from './firebird-config.service';
+// import { ServerConfigService } from './firebird-config.service';
 //
-// describe('FirebirdConfigService', () => {
-//   let service: FirebirdConfigService;
+// describe('ServerConfigService', () => {
+//   let service: ServerConfigService;
 //
 //   beforeEach(() => {
 //     TestBed.configureTestingModule({});
-//     service = TestBed.inject(FirebirdConfigService);
+//     service = TestBed.inject(ServerConfigService);
 //   });
 //
 //   it('should be created', () => {

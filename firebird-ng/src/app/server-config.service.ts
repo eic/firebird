@@ -5,7 +5,7 @@ import {deepCopy} from "./utils/deep-copy";
 import {BehaviorSubject, Observable, catchError, map, of, firstValueFrom} from "rxjs";
 
 
-export interface FirebirdConfig {
+export interface ServerConfig {
   serverPort: number;
   serverHost: string;
   servedByPyrobird: boolean;
@@ -14,7 +14,7 @@ export interface FirebirdConfig {
   logLevel: string;
 }
 
-export const defaultFirebirdConfig: FirebirdConfig = {
+export const defaultFirebirdConfig: ServerConfig = {
   serverPort: 5454,
   serverHost: "localhost",
   apiAvailable: false,
@@ -27,7 +27,7 @@ export const defaultFirebirdConfig: FirebirdConfig = {
 @Injectable({
   providedIn: 'root'
 })
-export class FirebirdConfigService {
+export class ServerConfigService {
   private configUrl = 'assets/config.jsonc'; // URL to the JSONC config file
   private _config = deepCopy(defaultFirebirdConfig);
 
@@ -35,7 +35,7 @@ export class FirebirdConfigService {
 
   constructor(private http: HttpClient) {}
 
-  get config(): FirebirdConfig {
+  get config(): ServerConfig {
     if (!this.triedLoading) {
       this.triedLoading = true;
       console.error("Client called config while config is not loaded.")
@@ -61,7 +61,7 @@ export class FirebirdConfigService {
     }
   }
 
-  private parseConfig(jsoncData: string): Partial<FirebirdConfig> {
+  private parseConfig(jsoncData: string): Partial<ServerConfig> {
     try {
       return jsoncParser.parse(jsoncData);
     } catch (parseError) {
@@ -74,7 +74,7 @@ export class FirebirdConfigService {
    * Sets the configuration - intended for use in unit tests only.
    * This method is safeguarded to be operational only in non-production environments.
    */
-  public setUnitTestConfig(value: Partial<FirebirdConfig>) {
+  public setUnitTestConfig(value: Partial<ServerConfig>) {
     this.triedLoading = true;
     this._config = {...defaultFirebirdConfig, ...value};
   }

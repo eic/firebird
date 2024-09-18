@@ -14,7 +14,7 @@ import {MatAutocomplete, MatAutocompleteTrigger, MatOption} from "@angular/mater
 import {AsyncPipe, NgForOf} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
 import {ResourceSelectComponent} from "../resource-select/resource-select.component";
-import {defaultFirebirdConfig, FirebirdConfig, FirebirdConfigService} from "../firebird-config.service";
+import {defaultFirebirdConfig, ServerConfig, ServerConfigService} from "../server-config.service";
 import {MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader} from "@angular/material/expansion";
 
 
@@ -34,7 +34,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   serverUseApi: FormControl<boolean | null> = new FormControl(false);
   serverApiHost = new FormControl('localhost');
   serverApiPort: FormControl<number | null> = new FormControl(5454);
-  firebirdConfig: FirebirdConfig = defaultFirebirdConfig;
+  firebirdConfig: ServerConfig = defaultFirebirdConfig;
 
 
   @ViewChild('geometrySelect')
@@ -107,7 +107,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
 
 
   constructor(private userConfigService: UserConfigService,
-              private firebirdConfigService: FirebirdConfigService) {
+              private firebirdConfigService: ServerConfigService) {
   }
 
 

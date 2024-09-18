@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import {UserConfigService} from "./user-config.service";
-import {FirebirdConfigService} from "./firebird-config.service";
+import {ServerConfigService} from "./server-config.service";
 
 let defaultProtocolAliases = [
   {"local://": "http://localhost/" },
@@ -60,7 +60,7 @@ export class UrlService {
 
 
   constructor(private userConfigService: UserConfigService,
-              private firebirdConfigService: FirebirdConfigService) {
+              private firebirdConfigService: ServerConfigService) {
 
     // Track user config changes
     this.userConfigService.localServerHost.subject.subscribe((value)=>{this.userConfigHost = value});

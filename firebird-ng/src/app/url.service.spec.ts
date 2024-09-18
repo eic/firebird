@@ -2,13 +2,13 @@ import { TestBed } from '@angular/core/testing';
 
 import {resolveProtocolAlias, UrlService} from './url.service';
 import { UserConfigService } from './user-config.service';
-import { FirebirdConfigService } from './firebird-config.service';
+import { ServerConfigService } from './server-config.service';
 import {BehaviorSubject} from "rxjs";
 
 xdescribe('UrlService', () => {
   let service: UrlService;
   let userConfigService: jasmine.SpyObj<UserConfigService>;
-  let firebirdConfigService: jasmine.SpyObj<FirebirdConfigService>;
+  let firebirdConfigService: jasmine.SpyObj<ServerConfigService>;
 
   beforeEach(() => {
     const userConfigSpy = jasmine.createSpyObj('UserConfigService', ['localServerHost', 'localServerPort', 'localServerUseApi']);
@@ -22,12 +22,12 @@ xdescribe('UrlService', () => {
       providers: [
         UrlService,
         { provide: UserConfigService, useValue: userConfigSpy },
-        { provide: FirebirdConfigService, useValue: firebirdConfigSpy }
+        { provide: ServerConfigService, useValue: firebirdConfigSpy }
       ]
     });
 
     userConfigService = TestBed.inject(UserConfigService) as any;
-    firebirdConfigService = TestBed.inject(FirebirdConfigService) as any;
+    firebirdConfigService = TestBed.inject(ServerConfigService) as any;
     service = TestBed.inject(UrlService);
   });
 

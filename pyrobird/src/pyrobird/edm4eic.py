@@ -193,5 +193,5 @@ def edm4eic_to_dict(tree, entry_ids, origin_info=None):
         "origin": origin_info,
         "entries": entries_data
     }
-
+    
     return result

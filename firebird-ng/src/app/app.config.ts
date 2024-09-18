@@ -2,7 +2,7 @@ import {APP_INITIALIZER, ApplicationConfig, importProvidersFrom} from '@angular/
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import {provideAnimations} from "@angular/platform-browser/animations";
-import {FirebirdConfigService} from "./firebird-config.service";
+import {ServerConfigService} from "./server-config.service";
 import {provideHttpClient, withFetch} from "@angular/common/http";
 
 export const appConfig: ApplicationConfig = {
@@ -13,12 +13,12 @@ export const appConfig: ApplicationConfig = {
     {
       provide: APP_INITIALIZER,
       useFactory: configInitializer,
-      deps: [FirebirdConfigService],
+      deps: [ServerConfigService],
       multi: true
     }
   ]
 };
 
-export function configInitializer(configService: FirebirdConfigService): () => Promise<any> {
+export function configInitializer(configService: ServerConfigService): () => Promise<any> {
   return () => configService.loadConfig();
 }

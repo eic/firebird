@@ -22,6 +22,5 @@ export class UserConfigService {
     this.localServerUseApi = new ConfigProperty("server.useApi", false);
     this.localServerHost = new ConfigProperty("server.host", "localhost");
     this.localServerPort = new ConfigProperty("server.port", 5454);
-
   }
 }
