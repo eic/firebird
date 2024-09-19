@@ -8,10 +8,10 @@ export class DataExchange  {
   entries: Entry[] = []
 
 
-  toObj() {
+  toDexObject() {
     let objEntries:any[] = [];
     for(const entry of this.entries) {
-      objEntries.push(entry.toObj());
+      objEntries.push(entry.toDexObject());
     }
     return {
       version: this.version,
@@ -20,12 +20,12 @@ export class DataExchange  {
     }
   }
 
-  static fromFirebirdEventObj(obj: any): DataExchange {
+  static fromDexObj(obj: any): DataExchange {
     let result = new DataExchange();
     result.version = obj["version"];
     result.origin = obj["origin"];
     for(const objEntry of obj["entries"]) {
-      result.entries.push(Entry.fromFirebirdEventObj(objEntry));
+      result.entries.push(Entry.fromDexObject(objEntry));
     }
     return result;
   }

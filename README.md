@@ -100,3 +100,117 @@ Hit has
 - "t": time information [ns] (time, err_time),
 - "ed": energy deposit with error [GeV] (edep, err_edep)
 
+## TypeScript Event Model
+
+
+The Firebird Data Exchange model provides a structured way to serialize and deserialize 
+event data. This model is implemented in TypeScript and designed to be extensible, 
+allowing users to add their own custom components without modifying the core parsing logic. 
+
+The implementation consists of several TypeScript classes and interfaces that mirror the data exchange
+format and provide methods for serialization and deserialization. 
+
+- **DataExchange** class - Represents the entire data exchange object.
+- **Entry** class - Represents an individual event entry.
+- **EntryComponent** abstract class - A base class representing a generic entry component. Described below.
+
+It Typescript Firebird Data Exchange often referenced as Dex (Data EXchange). E.g. 
+`toDexObject`, `fromDexObject`. `DexObject` is a JS object, that if serialized to JSON
+would correspond a part of DataExchangeFormat. E.g. Dex HitBox will have `pos`, `dim` etc.
+
+We can put it differently. In general JSON format is very close to object definition in JS => TS.
+But despite that, Firebird JSON format is just a data exchange layer and when deserialized from
+JSON is not designed to be a 100% a convenient to work with JS data structure. 
+More over, it lacks some methods and abstractions, that our domain data-model should have, 
+such as links between event model and three.js rendering tree objects. 
+
+Summarizing:
+
+- Firebird Data Exchange - is JSON schema shaping data exchange between backend and frontend
+- DexObject - JSON parsed to JS object
+- TypeScript event model - Frontend set of classes mimicking DexObject structure but designed
+  to be convenient in terms of the frontend API
+
+
+### EntryComponent machinery
+
+Different collection of objects such as hits, tracks, vertexes, etc. 
+that firebird can work with are represented as various event or Entry Component-s.
+Each type derive from EntryComponent and registered in a system. 
+Then corresponding Painters classes know how to render/paint them, there are rules how 
+to display them in tables, etc. 
+
+- **EntryComponent**  An abstract class representing a generic entry component.
+- Contains common properties:
+  - `name`: Unique identifier.
+  - `type`: Component type (used for determining the appropriate factory).
+  - `originType`: Optional string indicating the origin type.
+- Declares an abstract method `toDexObject()` that must be implemented by subclasses.
+
+- **EntryComponentFactory Interface**: Defines a factory for creating `EntryComponent` 
+  instances from Dex objects - deserialized data.
+- **Component Registry**: A mapping of component types to their corresponding factories.
+- Functions:
+  - `registerComponentFactory(factory: EntryComponentFactory)`: Registers a new factory.
+  - `getComponentFactory(type: string)`: Retrieves a factory based on the component type.
+
+
+## Extending the Model
+
+### Adding a New Component Type
+
+To add a new component type, follow these steps:
+
+1. **Create a New Component Class**: Extend `EntryComponent` and implement the `toDexObject()` method.
+
+   ```typescript
+   export class CustomComponent extends EntryComponent {
+     static type = 'CustomType';
+     // Define additional properties
+
+     constructor(name: string, /* additional parameters */, originType?: string) {
+       super(name, CustomComponent.type, originType);
+       // Initialize additional properties
+     }
+
+     toDexObject(): any {
+       return {
+         name: this.name,
+         type: this.type,
+         originType: this.originType,
+         // Serialize additional properties
+       };
+     }
+   }
+   ```
+
+2. **Create a Factory for the Component**: Implement `EntryComponentFactory` for your component.
+
+   ```typescript
+   export class CustomComponentFactory implements EntryComponentFactory {
+     type: string = CustomComponent.type;
+
+     fromDexObject(obj: any): EntryComponent {
+       const name = obj["name"];
+       // Extract additional properties
+       const originType = obj["originType"];
+
+       // Validate required fields
+       if (!name /* || missing other required fields */) {
+         throw new Error("Missing required fields in CustomComponent");
+       }
+
+       return new CustomComponent(name, /* additional parameters */, originType);
+     }
+   }
+   ```
+
+3. **Register the Factory**: Use the `registerComponentFactory()` function to register your component factory.
+
+   ```typescript
+   // Register the custom component factory
+   registerComponentFactory(new CustomComponentFactory());
+   ```
+
+4. **Update JSON Parsing Logic**: No need to modify existing parsing logic. The registry will dynamically resolve the new component type.
+
