@@ -20,7 +20,7 @@ export class Entry
     let result = new Entry();
     result.id = obj["id"];
     for(const objComponent of obj["components"]) {
-      const compType = obj["type"];
+      const compType = objComponent["type"];
 
       if(!compType) {
         console.warn(`A problem with entry component type (a required field). It is: '${compType}'`);
@@ -32,7 +32,7 @@ export class Entry
         console.warn(`Can't find EntryComponent factory for type name: '${compType}'`)
       }
       else {
-        result.components.push(factory.fromDexObject(compType));
+        result.components.push(factory.fromDexObject(objComponent));
       }
     }
     return result;
