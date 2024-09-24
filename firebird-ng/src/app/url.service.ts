@@ -23,16 +23,17 @@ let defaultProtocolAliases = [
  *
  * @example
  * // Using string replacement:
- * let url = resolveProtocolAlias('local://8080/service', {
- *   "local://": "http://localhost/"
+ * let url = resolveProtocolAlias('local://service', {
+ *   "local://": "http://localhost:8080/"
  * });
- * console.log(url); // Outputs: "http://localhost/8080/service"
+ *
+ * Outputs: "http://localhost:8080/service"
  *
  * // Using a function for dynamic URL transformation:
- * url = resolveProtocolAlias('local://8080/service', {
- *   "local://": (url) => `http://localhost${url.substring(8)}`
+ * url = resolveProtocolAlias('local://service', {
+ *   "local://": (url) => `http://localhost:8080/${url.substring(8)}`
  * });
- * console.log(url); // Outputs: "http://localhost8080/service"
+ * console.log(url); // Outputs: "http://localhost:8080/service"
  */
 export function resolveProtocolAlias(url: string, aliases: { [key: string]: string | ((url: string) => string) } = {}): string {
   // Iterate through alias keys to find and replace the protocol if matched
@@ -48,45 +49,64 @@ export function resolveProtocolAlias(url: string, aliases: { [key: string]: stri
   return url;
 }
 
+
 @Injectable({
   providedIn: 'root'
 })
 export class UrlService {
 
-  private userConfigHost = "localhost";
+  // Default user configuration values
+  private userConfigHost = 'localhost';
   private userConfigPort = 5454;
   private userConfigUseApi = false;
 
-
-
-  constructor(private userConfigService: UserConfigService,
-              private firebirdConfigService: ServerConfigService) {
-
-    // Track user config changes
-    this.userConfigService.localServerHost.subject.subscribe((value)=>{this.userConfigHost = value});
-    this.userConfigService.localServerPort.subject.subscribe((value)=>{this.userConfigPort = value});
-    this.userConfigService.localServerUseApi.subject.subscribe((value)=>{this.userConfigUseApi = value});
+  constructor(
+    private userConfigService: UserConfigService,
+    private serverConfigService: ServerConfigService
+  ) {
+    // Subscribe to user configuration changes to update local variables
+    this.userConfigService.localServerHost.subject.subscribe((value) => {
+      this.userConfigHost = value;
+    });
+    this.userConfigService.localServerPort.subject.subscribe((value) => {
+      this.userConfigPort = value;
+    });
+    this.userConfigService.localServerUseApi.subject.subscribe((value) => {
+      this.userConfigUseApi = value;
+    });
   }
 
-  public resolveLocalhostUrl(url: string) {
-    const firebirdConfig = this.firebirdConfigService.config;
-    const localProto = "local://";
+  /**
+   * Resolves URLs that start with 'local://' by replacing the protocol with an appropriate base URL.
+   *
+   * - If the server is served by Pyrobird (`servedByPyrobird` is true), it uses the server's host and port.
+   * - If the user has enabled API usage (`userConfigUseApi` is true), it uses the user's host and port.
+   * - If neither condition is met, 'local://' is replaced with an empty string, resulting in a relative path.
+   *
+   * @param {string} url The URL to resolve.
+   * @returns {string} The resolved URL.
+   */
+  public resolveLocalhostUrl(url: string): string {
+    const firebirdConfig = this.serverConfigService.config;
+    const localProto = 'local://';
 
-    if(!url.startsWith(localProto)) {
-      return url;     // Not this function problem
+    // Return the original URL if it doesn't start with 'local://'
+    if (!url.startsWith(localProto)) {
+      return url;
     }
 
-    // (!) important. By default we use "" so that if there is no localhost info, local:// could be replaced with ""
-    // So that relative paths are used. We have to provide something
-    let replaceStr = "";
+    // Default replacement string (empty) for relative paths
+    let replaceStr = '';
 
-    if(firebirdConfig.servedByPyrobird)  {
+    if (firebirdConfig && firebirdConfig.servedByPyrobird) {
+      // Use server host and port if served by Pyrobird
       replaceStr = `http://${firebirdConfig.serverHost}:${firebirdConfig.serverPort}/`;
-
-    } else if(this.userConfigUseApi) {
+    } else if (this.userConfigUseApi) {
+      // Use user-configured host and port if API usage is enabled
       replaceStr = `http://${this.userConfigHost}:${this.userConfigPort}/`;
     }
 
-    return replaceStr + url.substring(0, localProto.length);
+    // Replace 'local://' with the determined base URL and append the rest of the path
+    return replaceStr + url.substring(localProto.length);
   }
 }
