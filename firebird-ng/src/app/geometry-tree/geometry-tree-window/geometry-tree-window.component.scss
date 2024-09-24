@@ -51,9 +51,44 @@
 .resize-handle {
   width: 16px;
   height: 16px;
-  background-color: #ccc;
   position: absolute;
   bottom: 0;
   right: 0;
   cursor: se-resize;
+}
+
+.window {
+  position: absolute;
+  border: 1px solid #2e2e2e;
+  transition: width 0.3s ease;
+
+  &.side-nav {
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 250px;
+    max-width: 250px;
+  }
+
+  .window-header {
+
+    padding: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+  }
+
+  .side-nav-button {
+    margin-left: auto;
+  }
+
+  .resize-handle {
+    width: 10px;
+    height: 10px;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    cursor: nwse-resize;
+  }
 }

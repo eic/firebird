@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
 import {MatIconButton} from "@angular/material/button";
 import {MatIcon} from "@angular/material/icon";
 import {GeometryTreeComponent} from "../geometry-tree.component";
@@ -16,8 +16,9 @@ import {NgIf} from "@angular/common";
   ],
   standalone: true
 })
-export class GeometryTreeWindowComponent implements AfterViewInit {
-  windowOpenState = true;
+export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
+  windowOpenState = false;
+  sideNavOpen = false;
 
   @ViewChild('windowContainer', { static: false }) windowContainer!: ElementRef;
   @ViewChild('windowHeader', { static: false }) windowHeader!: ElementRef;
@@ -28,11 +29,21 @@ export class GeometryTreeWindowComponent implements AfterViewInit {
   private lastX = 0;
   private lastY = 0;
 
+  private dragMouseMoveHandler: any;
+  private dragMouseUpHandler: any;
+  private resizeMouseMoveHandler: any;
+  private resizeMouseUpHandler: any;
+
   ngAfterViewInit() {
     if (this.windowOpenState) {
       this.initDrag();
       this.initResize();
     }
+  }
+
+  ngOnDestroy() {
+    this.removeDragListeners();
+    this.removeResizeListeners();
   }
 
   toggleWindow() {
@@ -43,6 +54,9 @@ export class GeometryTreeWindowComponent implements AfterViewInit {
         this.initDrag();
         this.initResize();
       });
+    } else {
+      this.removeDragListeners();
+      this.removeResizeListeners();
     }
   }
 
@@ -60,7 +74,7 @@ export class GeometryTreeWindowComponent implements AfterViewInit {
       }
     });
 
-    document.addEventListener('mousemove', (e: MouseEvent) => {
+    this.dragMouseMoveHandler = (e: MouseEvent) => {
       if (this.isDragging) {
         const dx = e.clientX - this.lastX;
         const dy = e.clientY - this.lastY;
@@ -72,11 +86,14 @@ export class GeometryTreeWindowComponent implements AfterViewInit {
         this.lastX = e.clientX;
         this.lastY = e.clientY;
       }
-    });
+    };
 
-    document.addEventListener('mouseup', () => {
+    this.dragMouseUpHandler = () => {
       this.isDragging = false;
-    });
+    };
+
+    document.addEventListener('mousemove', this.dragMouseMoveHandler);
+    document.addEventListener('mouseup', this.dragMouseUpHandler);
   }
 
   initResize() {
@@ -92,7 +109,7 @@ export class GeometryTreeWindowComponent implements AfterViewInit {
       e.preventDefault();
     });
 
-    document.addEventListener('mousemove', (e: MouseEvent) => {
+    this.resizeMouseMoveHandler = (e: MouseEvent) => {
       if (this.isResizing) {
         const dx = e.clientX - this.lastX;
         const dy = e.clientY - this.lastY;
@@ -103,10 +120,39 @@ export class GeometryTreeWindowComponent implements AfterViewInit {
         this.lastX = e.clientX;
         this.lastY = e.clientY;
       }
-    });
+    };
 
-    document.addEventListener('mouseup', () => {
+    this.resizeMouseUpHandler = () => {
       this.isResizing = false;
-    });
+    };
+
+    document.addEventListener('mousemove', this.resizeMouseMoveHandler);
+    document.addEventListener('mouseup', this.resizeMouseUpHandler);
   }
+
+  removeDragListeners() {
+    if (this.dragMouseMoveHandler && this.dragMouseUpHandler) {
+      document.removeEventListener('mousemove', this.dragMouseMoveHandler);
+      document.removeEventListener('mouseup', this.dragMouseUpHandler);
+    }
+  }
+
+  removeResizeListeners() {
+    if (this.resizeMouseMoveHandler && this.resizeMouseUpHandler) {
+      document.removeEventListener('mousemove', this.resizeMouseMoveHandler);
+      document.removeEventListener('mouseup', this.resizeMouseUpHandler);
+    }
+  }
+
+  toggleSideNav() {
+    this.sideNavOpen = !this.sideNavOpen;
+
+    if (this.sideNavOpen) {
+      this.windowContainer.nativeElement.style.left = '0px';
+      this.windowContainer.nativeElement.style.width = '400px';
+    } else {
+      this.windowContainer.nativeElement.style.width = '';
+    }
+  }
+
 }
