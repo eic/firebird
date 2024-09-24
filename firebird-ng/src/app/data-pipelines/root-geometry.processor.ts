@@ -2,10 +2,10 @@
 //import * as ROOT from '../../../jsroot/build;
 import {
   findSingleGeoNode,
-} from '../lib-root-geometry/root-geo-navigation';
-import {EditActions, GeoNodeEditRule, removeGeoNode} from "../lib-root-geometry/root-geo-edit";
-import {GeoAttBits} from "../lib-root-geometry/root-geo-attribute-bits";
-import {editGeoNodes} from "../lib-root-geometry/root-geo-edit";
+} from '../../lib-root-geometry/root-geo-navigation';
+import {EditActions, GeoNodeEditRule, removeGeoNode} from "../../lib-root-geometry/root-geo-edit";
+import {GeoAttBits} from "../../lib-root-geometry/root-geo-attribute-bits";
+import {editGeoNodes} from "../../lib-root-geometry/root-geo-edit";
 
 
 export class DetectorGeometryFineTuning {

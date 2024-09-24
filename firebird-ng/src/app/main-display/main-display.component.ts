@@ -10,9 +10,9 @@ import {
 import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
 import {Color, DoubleSide, InstancedBufferGeometry, Line, MeshLambertMaterial, MeshPhongMaterial,} from "three";
-import {ALL_GROUPS, GeometryService} from '../geometry.service';
+import {ALL_GROUPS, GeometryService} from '../services/geometry.service';
 import {ActivatedRoute} from '@angular/router';
-import {ThreeGeometryProcessor} from "../three-geometry.processor";
+import {ThreeGeometryProcessor} from "../data-pipelines/three-geometry.processor";
 import * as TWEEN from '@tweenjs/tween.js';
 import GUI from "lil-gui";
 import {produceRenderOrder} from "jsrootdi/geom";
@@ -26,13 +26,13 @@ import {
 import {mergeMeshList, MergeResult} from "../utils/three-geometry-merge";
 import {PhoenixThreeFacade} from "../utils/phoenix-three-facade";
 import {BehaviorSubject, Subject} from "rxjs";
-import {GameControllerService} from "../game-controller.service";
+import {GameControllerService} from "../services/game-controller.service";
 import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
 import {Line2} from "three/examples/jsm/lines/Line2";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
 import {IoOptionsComponent} from "./io-options/io-options.component";
-import {ProcessTrackInfo, ThreeEventProcessor} from "../three-event.processor";
-import {UserConfigService} from "../user-config.service";
+import {ProcessTrackInfo, ThreeEventProcessor} from "../data-pipelines/three-event.processor";
+import {UserConfigService} from "../services/user-config.service";
 import {EicAnimationsManager} from "../eic-animation-manager";
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 import {MatIcon} from "@angular/material/icon";

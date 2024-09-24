@@ -1,10 +1,10 @@
 // event-display-source.component.ts
 import {AfterViewInit, Component, OnInit, ViewChild} from '@angular/core';
 import { FormBuilder, FormGroup, FormControl } from '@angular/forms';
-import { UserConfigService } from "../user-config.service";
+import { UserConfigService } from "../../services/user-config.service";
 import { ReactiveFormsModule } from '@angular/forms';
 import {RouterLink} from '@angular/router';
-import {ConfigProperty} from "../utils/config-property";
+import {ConfigProperty} from "../../utils/config-property";
 import {MatCard, MatCardContent, MatCardTitle} from "@angular/material/card";
 import {MatSlideToggle} from "@angular/material/slide-toggle";
 import {MatFormField} from "@angular/material/form-field";
@@ -13,8 +13,8 @@ import {config, map, Observable, startWith} from "rxjs";
 import {MatAutocomplete, MatAutocompleteTrigger, MatOption} from "@angular/material/autocomplete";
 import {AsyncPipe, NgForOf} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
-import {ResourceSelectComponent} from "../resource-select/resource-select.component";
-import {defaultFirebirdConfig, ServerConfig, ServerConfigService} from "../server-config.service";
+import {ResourceSelectComponent} from "../../components/resource-select/resource-select.component";
+import {defaultFirebirdConfig, ServerConfig, ServerConfigService} from "../../services/server-config.service";
 import {MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader} from "@angular/material/expansion";
 
 

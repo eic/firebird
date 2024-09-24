@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import {MainDisplayComponent} from "./main-display/main-display.component";
 import {FileBrowserComponent} from "./file-browser/file-browser.component";
-import {InputConfigComponent} from "./input-config/input-config.component";
+import {InputConfigComponent} from "./pages/input-config/input-config.component";
 import {Edm4hepListingComponent} from "./edm4hep-listing/edm4hep-listing.component";
 
 export const routes: Routes = [
@@ -17,7 +17,7 @@ export const routes: Routes = [
   },
   {
     path: 'playground',
-    loadComponent: () => import('./playground/playground.component').then(m => m.PlaygroundComponent)
+    loadComponent: () => import('./pages/playground/playground.component').then(m => m.PlaygroundComponent)
   },
   {
     path: 'geometry',

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import {ConfigProperty} from "./utils/config-property";
+import {ConfigProperty} from "../utils/config-property";
 
 @Injectable({
   providedIn: 'root'

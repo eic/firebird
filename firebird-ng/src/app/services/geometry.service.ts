@@ -3,11 +3,11 @@ import {openFile} from 'jsrootdi';
 import {
   analyzeGeoNodes,
   findGeoManager, getGeoNodesByLevel
-} from '../lib-root-geometry/root-geo-navigation';
+} from '../../lib-root-geometry/root-geo-navigation';
 import {build} from 'jsrootdi/geom';
-import {RootGeometryProcessor} from "./root-geometry.processor";
+import {RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
 import {UserConfigService} from "./user-config.service";
-import {Subdetector} from "./model/subdetector";
+import {Subdetector} from "../model/subdetector";
 import {Object3D} from "three";
 
 export const GROUP_CALORIMETRY = "Calorimeters";
@@ -194,7 +194,7 @@ export class GeometryService {
 
   toggleVisibility(object: Object3D) {
     if (object) {
-      object.visible = !object.visible; 
+      object.visible = !object.visible;
       console.log(`Visibility toggled for object: ${object.name}. Now visible: ${object.visible}`);
     }
   }

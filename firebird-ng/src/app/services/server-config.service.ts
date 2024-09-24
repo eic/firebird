@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as jsoncParser from 'jsonc-parser';
-import {deepCopy} from "./utils/deep-copy";
+import {deepCopy} from "../utils/deep-copy";
 import {BehaviorSubject, Observable, catchError, map, of, firstValueFrom} from "rxjs";
 
 
