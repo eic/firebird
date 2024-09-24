@@ -14,6 +14,12 @@ import {MatIcon, MatIconModule} from '@angular/material/icon';
 import {MatButtonModule, MatIconButton} from '@angular/material/button';
 import {GeometryService} from "../geometry.service";
 import {Object3D} from "three";
+import {EventDisplayService} from "phoenix-ui-components";
+import {GameControllerService} from "../game-controller.service";
+import {ActivatedRoute} from "@angular/router";
+import {UserConfigService} from "../user-config.service";
+import {MatSnackBar} from "@angular/material/snack-bar";
+import {PhoenixThreeFacade} from "../utils/phoenix-three-facade";
 
 /**
  * Food data with nested structure.
@@ -50,6 +56,8 @@ interface ExampleFlatNode {
   name: string;
   level: number;
   type: string;
+  object3D: Object3D;
+  visible: boolean;
 }
 
 @Component({
@@ -76,7 +84,9 @@ export class GeometryTreeComponent implements OnInit{
       expandable: !!node.children && node.children.length > 0,
       name: node.name,
       level: level,
-      type: node.type
+      type: node.type,
+      object3D: node,
+      visible: node.visible
     };
   };
 
@@ -96,24 +106,37 @@ export class GeometryTreeComponent implements OnInit{
 
 
   hasChild = (_: number, node: ExampleFlatNode) => node.expandable;
+  private threeFacade: PhoenixThreeFacade;
 
-  constructor(private geomService: GeometryService) {
-    //this.dataSource.data = TREE_DATA;
+  constructor(private geomService: GeometryService,
+              private eventDisplay: EventDisplayService) {
+      //this.dataSource.data = TREE_DATA;
+      this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
+
+
   }
 
   ngOnInit(): void {
-      if(!this.geomService.geometry) this.geomService.loadGeometry().then(result => {
-        if(result.threeGeometry) {
-          this.dataSource.data = result.threeGeometry.children;
-        }
-        else {
-          console.error("this.geomService.loadGeometry() ! result.threeGeometry");
-        }
-    }).catch(reason=>{
-      console.error("ERROR LOADING GEOMETRY");
-      console.log(reason);
-      });
-    }
 
+    // if (!this.geomService.geometry) {
+    //   this.geomService.loadGeometry()
+    //     .then(result => {
+    //       if (result.threeGeometry) {
+    //         this.dataSource.data = result.threeGeometry.children;
+    //       } else {
+    //         console.error("this.geomService.loadGeometry() ! result.threeGeometry");
+    //       }
+    //     })
+    //     .catch(reason => {
+    //       console.error("ERROR LOADING GEOMETRY");
+    //       console.log(reason);
+    //     });
+    // }
+      this.dataSource.data = this.threeFacade.scene.children;
+  }
 
+  toggleVisibility(node: ExampleFlatNode) {
+    this.geomService.toggleVisibility(node.object3D);
+    node.visible = !node.visible;
+  }
 }

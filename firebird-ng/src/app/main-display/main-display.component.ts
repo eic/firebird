@@ -42,6 +42,8 @@ import {MatTooltip} from "@angular/material/tooltip";
 import {MatSnackBar} from "@angular/material/snack-bar"
 import {MatFormField} from "@angular/material/form-field";
 import {MatOption, MatSelect} from "@angular/material/select";
+import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window/geometry-tree-window.component";
+
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
@@ -49,7 +51,7 @@ import {MatOption, MatSelect} from "@angular/material/select";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })

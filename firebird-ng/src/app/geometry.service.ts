@@ -191,5 +191,12 @@ export class GeometryService {
   private stripIdFromName(name: string) {
       return name.replace(/_\d+$/, '');
   }
+
+  toggleVisibility(object: Object3D) {
+    if (object) {
+      object.visible = !object.visible; 
+      console.log(`Visibility toggled for object: ${object.name}. Now visible: ${object.visible}`);
+    }
+  }
 }
 
