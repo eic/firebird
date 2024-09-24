@@ -1,18 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { EventDisplayService } from 'phoenix-ui-components';
-import { Configuration, PhoenixLoader, PresetView, ClippingSetting, PhoenixMenuNode } from 'phoenix-event-display';
 import * as THREE from "three";
-import { PhoenixUIModule } from 'phoenix-ui-components';
-import { GeometryService} from '../services/geometry.service';
-import { Edm4hepRootEventLoader } from '../edm4hep-root-event-loader';
-import { ActivatedRoute } from '@angular/router';
-import {color} from "three/examples/jsm/nodes/shadernode/ShaderNode";
-import {getGeoNodesByLevel} from "../../lib-root-geometry/root-geo-navigation";
-import {produceRenderOrder} from "jsrootdi/geom";
 import {wildCardCheck} from "../utils/wildcard";
-import {createOutline, disposeHierarchy, findObject3DNodes, pruneEmptyNodes} from "../utils/three.utils";
-import {CalorimetryGeometryPrettifier} from "../geometry-prettifiers/calorimetry.prettifier";
-import {mergeBranchGeometries} from "../utils/three-geometry-merge";
+import {CalorimetryGeometryPrettifier} from "./calorimetry.prettifier";
 import {editThreeNodeContent, EditThreeNodeRule} from "../utils/three-geometry-editor";
 import {Subdetector} from "../model/subdetector";
 

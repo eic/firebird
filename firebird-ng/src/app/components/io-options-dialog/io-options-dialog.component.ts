@@ -10,7 +10,7 @@ import { MatDialogRef } from '@angular/material/dialog';
 import {EventDataFormat, EventDataImportOption, EventDisplayService, ImportOption} from "phoenix-ui-components";
 import {Cache} from "three";
 import files = Cache.files;
-import {EicEdm4hepJsonLoader} from "../../../eic-edm4hep-json-loader";
+import {EicEdm4hepJsonLoader} from "../../phoenix-overload/eic-edm4hep-json-loader";
 
 @Component({
   selector: 'app-io-options-dialog',

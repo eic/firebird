@@ -29,7 +29,7 @@ import {GameControllerService} from "../../services/game-controller.service";
 import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
 import {Line2} from "three/examples/jsm/lines/Line2";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
-import {IoOptionsComponent} from "./io-options/io-options.component";
+import {IoOptionsComponent} from "../../components/io-options/io-options.component";
 import {ProcessTrackInfo, ThreeEventProcessor} from "../../data-pipelines/three-event.processor";
 import {UserConfigService} from "../../services/user-config.service";
 import {EicAnimationsManager} from "../../phoenix-overload/eic-animation-manager";
@@ -405,7 +405,7 @@ export class MainDisplayComponent implements OnInit {
 
     if (typeof Worker !== 'undefined') {
       // Create a new
-      const worker = new Worker(new URL('../event-loader.worker.ts', import.meta.url));
+      const worker = new Worker(new URL('../../workers/event-loader.worker.ts', import.meta.url));
       worker.onmessage = ({ data }) => {
         console.log(`Result from worker: ${data}`);
         console.log(data);

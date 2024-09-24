@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 
-import { IOOptionsDialogComponent } from './io-options-dialog/io-options-dialog.component';
+import { IOOptionsDialogComponent } from '../io-options-dialog/io-options-dialog.component';
 import {PhoenixUIModule} from "phoenix-ui-components";
 
 @Component({

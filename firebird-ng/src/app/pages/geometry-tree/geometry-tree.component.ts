@@ -12,14 +12,10 @@ import {MatTreeFlatDataSource, MatTreeFlattener} from '@angular/material/tree';
 
 import {MatIcon, MatIconModule} from '@angular/material/icon';
 import {MatButtonModule, MatIconButton} from '@angular/material/button';
-import {GeometryService} from "../services/geometry.service";
+import {GeometryService} from "../../services/geometry.service";
 import {Object3D} from "three";
 import {EventDisplayService} from "phoenix-ui-components";
-import {GameControllerService} from "../services/game-controller.service";
-import {ActivatedRoute} from "@angular/router";
-import {UserConfigService} from "../services/user-config.service";
-import {MatSnackBar} from "@angular/material/snack-bar";
-import {PhoenixThreeFacade} from "../utils/phoenix-three-facade";
+import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
 
 /**
  * Food data with nested structure.
