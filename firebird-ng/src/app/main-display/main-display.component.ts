@@ -239,13 +239,6 @@ export class MainDisplayComponent implements OnInit {
     let camera = openThreeManager.controlsManager.getMainCamera();
     // camera.far = 5000;
     produceRenderOrder(scene, camera.position, 'ray');
-
-    var planeA = new THREE.Plane();
-
-    planeA.set(new THREE.Vector3(0,-1,0), 0);
-
-
-    // renderer.getMainRenderer().clippingPlanes = [planeA];
   }
 
   produceRenderOrder() {

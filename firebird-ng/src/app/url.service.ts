@@ -65,15 +65,9 @@ export class UrlService {
     private serverConfigService: ServerConfigService
   ) {
     // Subscribe to user configuration changes to update local variables
-    this.userConfigService.localServerHost.subject.subscribe((value) => {
-      this.userConfigHost = value;
-    });
-    this.userConfigService.localServerPort.subject.subscribe((value) => {
-      this.userConfigPort = value;
-    });
-    this.userConfigService.localServerUseApi.subject.subscribe((value) => {
-      this.userConfigUseApi = value;
-    });
+    this.userConfigService.localServerHost.subject.subscribe((value) => { this.userConfigHost = value; });
+    this.userConfigService.localServerPort.subject.subscribe((value) => { this.userConfigPort = value; });
+    this.userConfigService.localServerUseApi.subject.subscribe((value) => { this.userConfigUseApi = value; });
   }
 
   /**

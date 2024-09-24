@@ -94,7 +94,6 @@ export class GeometryService {
       ["Magnet_B2BeR_assembly_58", GROUP_MAGNETS],
       ["Magnets_Q3eR_assembly_59", GROUP_MAGNETS],
     ])
-
   }
 
 
