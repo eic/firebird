@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 server_dir = os.path.abspath(os.path.dirname(__file__))
 static_dir = os.path.join(server_dir, "static")
 
-flask_app = Flask(__name__, static_folder='static')
+flask_app = Flask(__name__, static_folder=None)
 flask_app.config.update()
 
 # Compression config
@@ -48,6 +48,11 @@ class ExcludeAPIConverter(BaseConverter):
        - Register the converter with a name (e.g., 'notapi').
        - Use it in the route decorator: @app.route('/<notapi:path>')
    """
+
+    # Add a regex that matches any path including slashes
+    part_isolating = False
+    regex = "[^/].*?"
+
     def to_python(self, value):
         if value.startswith('api/'):
             raise ValidationError()
@@ -58,7 +63,7 @@ class ExcludeAPIConverter(BaseConverter):
 
 
 # Register the converter
-flask_app.url_map.converters['notapi'] = ExcludeAPIConverter
+flask_app.url_map.converters['notapipath'] = ExcludeAPIConverter
 
 
 def _can_user_download_file(filename):
@@ -285,7 +290,7 @@ def index():
     return static_file("index.html")
 
 
-@flask_app.route('/<notapi:path>')
+@flask_app.route('/<notapipath:path>')
 def static_file(path):
     """Serves flask static directory files"""
 
@@ -314,7 +319,7 @@ def shutdown():
     return 'Server shutting down...'
 
 
-def run(config=None, host=None, port=5454, debug=True, load_dotenv=True):
+def run(config=None, host=None, port=5454, debug=True, load_dotenv=False):
     """Runs flask server"""
     if config:
         if isinstance(config, Config) or isinstance(config, map):

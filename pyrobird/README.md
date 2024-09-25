@@ -12,10 +12,15 @@
 
 ## Installation
 
-```console
+```bash
 pip install pyrobird
 ```
 
+Development installation 
+
+```bash
+python -m pip install --editable .[test]
+```
 
 ## Contributing
 
@@ -44,6 +49,11 @@ pytest
 pytest -x --pdb 
 ```
 
+## Development install
+
+```
+python -m pip install --upgrade --editable  .[test]
+```
 
 # Pyrobird Server
 
