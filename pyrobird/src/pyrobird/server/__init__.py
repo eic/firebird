@@ -331,6 +331,9 @@ def run(config=None, host=None, port=5454, debug=True, load_dotenv=False):
         from flask_cors import CORS
 
         # Enable CORS for all routes and specify the domains and settings
-        CORS(flask_app, resources={r"/download/*": {"origins": "*"}})
+        CORS(flask_app, resources={
+            r"/download/*": {"origins": "*"},
+            r"/api/v1/*": {"origins": "*"},
+        })
 
     flask_app.run(host=host, port=port, debug=debug, load_dotenv=load_dotenv)
