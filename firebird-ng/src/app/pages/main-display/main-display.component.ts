@@ -42,6 +42,7 @@ import {MatSnackBar} from "@angular/material/snack-bar"
 import {MatFormField} from "@angular/material/form-field";
 import {MatOption, MatSelect} from "@angular/material/select";
 import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window/geometry-tree-window.component";
+import {DataModelService} from "../../services/data-model.service";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -105,6 +106,7 @@ export class MainDisplayComponent implements OnInit {
     private controller: GameControllerService,
     private route: ActivatedRoute,
     private settings: UserConfigService,
+    private dataService: DataModelService,
     private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
 
@@ -123,7 +125,6 @@ export class MainDisplayComponent implements OnInit {
   }
 
   async loadGeometry(initiallyVisible=true, scale=10) {
-
 
     let {rootGeometry, threeGeometry} = await this.geomService.loadGeometry();
     if(!threeGeometry) return;
@@ -231,6 +232,7 @@ export class MainDisplayComponent implements OnInit {
         child.material.clipShadows = false;
       }
     });
+
     let renderer  = openThreeManager.rendererManager;
     // Set render priority
     let scene = threeManager.getSceneManager().getScene();
@@ -543,6 +545,7 @@ export class MainDisplayComponent implements OnInit {
         this.animateWithCollision();
       }
     })
+
     // Display event loader
     this.eventDisplay.getLoadingManager().addLoadListenerWithCheck(() => {
       console.log('Loading default configuration.');
@@ -585,6 +588,11 @@ export class MainDisplayComponent implements OnInit {
       console.error("ERROR LOADING GEOMETRY");
       console.log(reason);
     });
+
+    this.dataService.loadData().then(data => {
+      console.log("loaded data model");
+      console.log(data);
+    })
 
 
 

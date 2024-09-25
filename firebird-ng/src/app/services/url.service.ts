@@ -3,7 +3,6 @@ import {UserConfigService} from "./user-config.service";
 import {ServerConfigService} from "./server-config.service";
 
 let defaultProtocolAliases = [
-  {"local://": "http://localhost/" },
   {"epic://": "https://eic.github.io/epic/artifacts/" }
 ]
 
