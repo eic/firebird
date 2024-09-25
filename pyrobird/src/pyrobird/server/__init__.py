@@ -303,6 +303,17 @@ def static_file(path):
             return send_from_directory(static_dir, "index.html")
 
 
+@flask_app.route('/shutdown', methods=['GET', 'POST'])
+def shutdown():
+    """Shutdowns the server"""
+
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        return 'Not running with the Werkzeug Server', 500
+    func()
+    return 'Server shutting down...'
+
+
 def run(config=None, host=None, port=5454, debug=True, load_dotenv=True):
     """Runs flask server"""
     if config:
