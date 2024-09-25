@@ -4,8 +4,9 @@ import time
 import requests
 import asyncio
 import click
-from pyppeteer import launch
-from my_module import serve  # Replace with the actual module where your `serve` function is defined
+from pyrobird.cli.serve import serve as cli_serve_command
+
+
 
 def run_flask_app(unsecure_files, allow_cors, disable_download, work_path):
     # Call the serve function directly with parameters
@@ -16,10 +17,12 @@ def run_flask_app(unsecure_files, allow_cors, disable_download, work_path):
         'work_path': work_path
     }
     # Simulate Click context
-    ctx = click.Context(serve)
-    serve.invoke(ctx, **serve_params)
+    ctx = click.Context(cli_serve_command)
+    cli_serve_command.invoke(ctx, **serve_params)
 
 async def capture_screenshot(url, output_path):
+    from pyppeteer import launch
+
     # Launch a headless browser
     browser = await launch(headless=True)
         # If necessary, adjust Pyppeteer launch options here
@@ -81,7 +84,6 @@ def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_p
         requests.post(shutdown_url)
     except requests.RequestException as e:
         print(f"Error shutting down Flask app: {e}")
+        print(f"It will be dead anyway... soon... ")
 
-    # Wait for the Flask app to shut down
-    flask_thread.join()
-    print("Flask app has been shut down.")
+
