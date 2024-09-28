@@ -16,4 +16,8 @@ export const routes: Routes = [
     path: 'geometry',
     loadComponent: () => import('./pages/geometry-tree/geometry-tree.component').then(m => m.GeometryTreeComponent)
   },
+  {
+    path: 'split-window',
+    loadComponent: () => import('./pages/split-window/split-window.component').then(m => m.SplitWindowComponent)
+  },
 ];

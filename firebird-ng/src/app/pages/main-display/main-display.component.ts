@@ -1,6 +1,7 @@
 import {Component, Input, OnInit} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
 
+
 import {
   EventDataFormat,
   EventDataImportOption,
@@ -43,6 +44,7 @@ import {MatFormField} from "@angular/material/form-field";
 import {MatOption, MatSelect} from "@angular/material/select";
 import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window/geometry-tree-window.component";
 import {DataModelService} from "../../services/data-model.service";
+import {AngularSplitModule} from "angular-split";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -51,7 +53,7 @@ import {DataModelService} from "../../services/data-model.service";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -496,16 +498,16 @@ export class MainDisplayComponent implements OnInit {
     // // GUI
     // const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
     //
-    const gui = new GUI({
-      container: document.getElementById("lil-gui-place") ?? undefined,
-    });
+    // const gui = new GUI({
+    //   container: document.getElementById("lil-gui-place") ?? undefined,
+    // });
 
-    gui.title("Dev Controls");
-    gui.add(this, "produceRenderOrder");
-    gui.add(this, "logGamepadStates").name( 'Log controls' );
-    gui.add(this, "logCamera").name( 'Log camera' );
-    gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
-    gui.close();
+    // gui.title("Dev Controls");
+    // gui.add(this, "produceRenderOrder");
+    // gui.add(this, "logGamepadStates").name( 'Log controls' );
+    // gui.add(this, "logCamera").name( 'Log camera' );
+    // gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
+    // gui.close();
 
     // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);
