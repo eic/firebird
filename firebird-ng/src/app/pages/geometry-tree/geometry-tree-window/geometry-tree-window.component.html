@@ -2,13 +2,17 @@
   <mat-icon>{{ windowOpenState ? 'close' : 'account_tree' }}</mat-icon>
 </button>
 
-<div #windowContainer class="window-container" style="width: 100%; height: 100%;">
+<div class="window" *ngIf="windowOpenState" #windowContainer [class.side-nav]="sideNavOpen">
+  <div class="window-header" #windowHeader>
+    <span>Geometry Tree</span>
 
-  <div class="window" *ngIf="windowOpenState" >
+    <button mat-icon-button (click)="toggleSideNav()" class="side-nav-button">
+      <mat-icon>{{ sideNavOpen ? 'chevron_left' : 'chevron_right' }}</mat-icon>
+    </button>
 
-    <app-geometry-tree *ngIf="windowOpenState"></app-geometry-tree>
-
-<!--    <div class="resize-handle" #resizeHandle></div>-->
   </div>
 
+  <app-geometry-tree *ngIf="windowOpenState"></app-geometry-tree>
+
+  <div class="resize-handle" *ngIf="!sideNavOpen" #resizeHandle></div>
 </div>
