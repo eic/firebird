@@ -45,6 +45,7 @@ import {MatOption, MatSelect} from "@angular/material/select";
 import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window/geometry-tree-window.component";
 import {DataModelService} from "../../services/data-model.service";
 import {AngularSplitModule} from "angular-split";
+import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -53,7 +54,7 @@ import {AngularSplitModule} from "angular-split";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })

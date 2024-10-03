@@ -22,35 +22,33 @@
 }
 
 .window {
-  position: absolute;
+
   width: 400px;
-  height: 400px;
+  //height: 400px;
   background-color: #2e2e2e;
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  overflow: hidden;
-  resize: both;
-  min-width: 200px;
-  min-height: 200px;
-  color: white;
-  overflow-y: auto;
-  transition: width 0.3s ease, left 0.3s ease;
-  z-index: 1000;
+  //display: flex;
+  //flex-direction: column;
+  //border-radius: 8px;
+  //min-width: 200px;
+  //min-height: 200px;
+  //color: white;
+  //overflow-y: auto;
+  //transition: width 0.3s ease, left 0.3s ease;
+  //z-index: 1000;
 
-  &.side-nav {
-    position: fixed;
-    left: 0;
-    top: 60px;
-    height: 100%;
-    width: 250px;
-    max-width: 250px;
-    z-index: 1100;
-  }
-
-  &.shifted {
-    margin-left: 400px;
-  }
+  //&.side-nav {
+  //  position: fixed;
+  //  left: 0;
+  //  top: 60px;
+  //  height: 100%;
+  //  width: 250px;
+  //  max-width: 250px;
+  //  z-index: 1100;
+  //}
+  //
+  //&.shifted {
+  //  margin-left: 400px;
+  //}
 }
 
 .window-header {
@@ -62,24 +60,6 @@
   align-items: center;
 }
 
-.resize-handle {
-  width: 16px;
-  height: 16px;
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  cursor: se-resize;
-}
 
-.side-nav-button {
-  margin-left: auto;
-}
 
-.resize-handle {
-  width: 10px;
-  height: 10px;
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  cursor: nwse-resize;
-}
+

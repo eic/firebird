@@ -17,7 +17,7 @@ import { NgIf } from "@angular/common";
   standalone: true
 })
 export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
-  windowOpenState = false;
+  // windowOpenState = false;
   sideNavOpen = true;
   isDetached = false;
 
@@ -38,11 +38,11 @@ export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   constructor(private renderer: Renderer2) {}
 
   ngAfterViewInit() {
-    if (this.windowOpenState) {
-      this.initDrag();
-      this.initResize();
-      this.updateMainContentShift();
-    }
+    // if (this.windowOpenState) {
+    //   this.initDrag();
+    //   this.initResize();
+    //
+    // }
   }
 
   ngOnDestroy() {
@@ -51,55 +51,46 @@ export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   }
 
   toggleWindow() {
-    this.windowOpenState = !this.windowOpenState;
-    if (this.windowOpenState) {
-      setTimeout(() => {
-        this.initDrag();
-        this.initResize();
-        this.updateMainContentShift();
-      });
-    } else {
-      this.removeDragListeners();
-      this.removeResizeListeners();
-      this.updateMainContentShift();
-    }
+    // this.windowOpenState = !this.windowOpenState;
+    // if (this.windowOpenState) {
+    //   setTimeout(() => {
+    //     this.initDrag();
+    //     this.initResize();
+    //
+    //   });
+    // } else {
+    //   this.removeDragListeners();
+    //   this.removeResizeListeners();
+    //
+    // }
   }
 
-  toggleSideNav() {
-    this.isDetached = !this.isDetached;
+  // toggleSideNav() {
+  //   this.isDetached = !this.isDetached;
+  //
+  //   if (!this.isDetached) {
+  //
+  //     this.sideNavOpen = true;
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'left', '0px');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'top', '60px');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'position', 'fixed');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'width', '300px');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'height', '100vh');
+  //     this.removeDragListeners();
+  //   } else {
+  //
+  //     this.sideNavOpen = false;
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'position', 'absolute');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'width', '400px');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'height', '400px');
+  //     this.initDrag();
+  //   }
+  //   this.updateMainContentShift();
+  // }
 
-    if (!this.isDetached) {
-
-      this.sideNavOpen = true;
-      this.renderer.setStyle(this.windowContainer.nativeElement, 'left', '0px');
-      this.renderer.setStyle(this.windowContainer.nativeElement, 'top', '60px');
-      this.renderer.setStyle(this.windowContainer.nativeElement, 'position', 'fixed');
-      this.renderer.setStyle(this.windowContainer.nativeElement, 'width', '300px');
-      this.renderer.setStyle(this.windowContainer.nativeElement, 'height', '100vh');
-      this.removeDragListeners();
-    } else {
-
-      this.sideNavOpen = false;
-      this.renderer.setStyle(this.windowContainer.nativeElement, 'position', 'absolute');
-      this.renderer.setStyle(this.windowContainer.nativeElement, 'width', '400px');
-      this.renderer.setStyle(this.windowContainer.nativeElement, 'height', '400px');
-      this.initDrag();
-    }
-    this.updateMainContentShift();
-  }
 
 
 
-  updateMainContentShift() {
-    const mainContentElement = document.getElementById('eventDisplay');
-    if (mainContentElement) {
-      if (this.windowOpenState && !this.isDetached) {
-        this.renderer.addClass(mainContentElement, 'shifted');
-      } else {
-        this.renderer.removeClass(mainContentElement, 'shifted');
-      }
-    }
-  }
 
   initDrag() {
     if (!this.windowContainer || !this.isDetached) return;
