@@ -5,11 +5,15 @@
 <!--  <button (click)="animateTime()">  play </button>-->
 <!--  <button (click)="stopAnimation()">stop</button>-->
 <!--</div>-->
-<div class="container">
+<div class="wrapper">
 
-  <geometry-tree-window class="navbar" ></geometry-tree-window>
+  <div class="box navbar">
+    <geometry-tree-window></geometry-tree-window>
+  </div>
 
-  <div class="main">
+  <div class="handler"></div>
+
+  <div class="box main">
     <app-loader [loaded]="loaded" [progress]="loadingProgress"></app-loader>
     <!--<app-nav></app-nav>-->
     <!-- UI menu at the bottom -->
@@ -71,64 +75,65 @@
 
     </app-ui-menu-wrapper>
 
-    <div id="eventDisplay" class="main-content"></div>
+    <div id="eventDisplay"></div>
+
+    <div class="time-controls">
+
+
+
+      <!--      <mat-select [(value)]="selectedEventKey" (selectionChange)="onUserSelectedEvent()">-->
+      <!--        <mat-option *ngFor="let key of eventsByName.keys()" [value]="key">-->
+      <!--          {{ key }}-->
+      <!--        </mat-option>-->
+      <!--      </mat-select>-->
+
+
+      <div>{{currentTime | number:'1.1-1'}}</div>
+      <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)">
+        <input matSliderThumb [value]="currentTime">
+      </mat-slider>
+      <div>{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>
+
+      <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="rewindTime()">
+        <mat-icon>first_page</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="animateWithCollision()">
+        <mat-icon>close_fullscreen</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="animateTime()">
+        <mat-icon>play_arrow</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="timeStepBack($event)" class="tcontrol">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="timeStep($event)" class="tcontrol">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="stopAnimation()" >
+        <mat-icon>pause</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >
+        <mat-icon>stop</mat-icon>
+      </button>
+      <div>{{message}}</div>
+      &nbsp;&nbsp;
+
+      <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">
+        <mat-icon>last_page</mat-icon>
+      </button>
+
+      <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >
+        <mat-icon>view_in_ar</mat-icon>
+      </button>
+
+      <div style="color: darkgray">{{currentGeometry}}</div>
+
+
+    </div>
   </div>
 
 
-  <div class="time-controls">
-
-
-
-    <!--      <mat-select [(value)]="selectedEventKey" (selectionChange)="onUserSelectedEvent()">-->
-    <!--        <mat-option *ngFor="let key of eventsByName.keys()" [value]="key">-->
-    <!--          {{ key }}-->
-    <!--        </mat-option>-->
-    <!--      </mat-select>-->
-
-
-    <div>{{currentTime | number:'1.1-1'}}</div>
-    <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)">
-      <input matSliderThumb [value]="currentTime">
-    </mat-slider>
-    <div>{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>
-
-    <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="rewindTime()">
-      <mat-icon>first_page</mat-icon>
-    </button>
-    <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="animateWithCollision()">
-      <mat-icon>close_fullscreen</mat-icon>
-    </button>
-    <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="animateTime()">
-      <mat-icon>play_arrow</mat-icon>
-    </button>
-    <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="timeStepBack($event)" class="tcontrol">
-      <mat-icon>chevron_left</mat-icon>
-    </button>
-
-    <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="timeStep($event)" class="tcontrol">
-      <mat-icon>chevron_right</mat-icon>
-    </button>
-    <button mat-raised-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="stopAnimation()" >
-      <mat-icon>pause</mat-icon>
-    </button>
-    <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >
-      <mat-icon>stop</mat-icon>
-    </button>
-    <div>{{message}}</div>
-    &nbsp;&nbsp;
-
-    <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">
-      <mat-icon>last_page</mat-icon>
-    </button>
-
-    <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >
-      <mat-icon>view_in_ar</mat-icon>
-    </button>
-
-    <div style="color: darkgray">{{currentGeometry}}</div>
-
-
-  </div>
 
 
 

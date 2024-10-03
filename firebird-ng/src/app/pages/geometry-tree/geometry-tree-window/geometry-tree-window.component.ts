@@ -19,7 +19,7 @@ import { NgIf } from "@angular/common";
 export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   windowOpenState = false;
   sideNavOpen = true;
-  isDetached = true;
+  isDetached = false;
 
   @ViewChild('windowContainer', { static: false }) windowContainer!: ElementRef;
   @ViewChild('windowHeader', { static: false }) windowHeader!: ElementRef;
@@ -138,7 +138,7 @@ export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   }
 
   initResize() {
-    if (!this.resizeHandle || !this.windowContainer) return;
+    if (!this.resizeHandle || !this.windowContainer || !this.isDetached) return;
 
     const resizeHandle = this.resizeHandle.nativeElement;
     const windowElement = this.windowContainer.nativeElement;

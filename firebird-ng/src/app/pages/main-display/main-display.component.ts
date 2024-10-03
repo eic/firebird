@@ -1,4 +1,4 @@
-import {Component, Input, OnInit} from '@angular/core';
+import {Component, ElementRef, Input, OnInit, Renderer2} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
 
 
@@ -101,6 +101,8 @@ export class MainDisplayComponent implements OnInit {
   selectedEventKey: string|undefined;
   private beamAnimationTime: number = 1000;
 
+  private isHandlerDragging = false;
+
 
   constructor(
     private geomService: GeometryService,
@@ -109,9 +111,44 @@ export class MainDisplayComponent implements OnInit {
     private route: ActivatedRoute,
     private settings: UserConfigService,
     private dataService: DataModelService,
+    private elRef: ElementRef, private renderer2: Renderer2,
     private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
 
+  }
+
+  ngAfterViewInit() {
+    const handler = this.elRef.nativeElement.querySelector('.handler');
+    const wrapper = handler.closest('.wrapper');
+    const boxA = wrapper.querySelector('.box');
+
+    this.renderer2.listen(handler, 'mousedown', (e: MouseEvent) => {
+
+      this.isHandlerDragging = true;
+    });
+
+    this.renderer2.listen(document, 'mousemove', (e: MouseEvent) => {
+      if (!this.isHandlerDragging) {
+        return;
+      }
+
+
+      const containerOffsetLeft = wrapper.offsetLeft;
+
+
+      const pointerRelativeXpos = e.clientX - containerOffsetLeft;
+
+
+      const boxAminWidth = 60;
+
+
+      boxA.style.width = `${Math.max(boxAminWidth, pointerRelativeXpos - 8)}px`;
+      boxA.style.flexGrow = '0';
+    });
+
+    this.renderer2.listen(document, 'mouseup', () => {
+      this.isHandlerDragging = false;
+    });
   }
 
   logRendererInfo() {
