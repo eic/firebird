@@ -438,6 +438,8 @@ export class MainDisplayComponent implements OnInit {
   }
 
 
+
+
   ngOnInit() {
     let eventSource = this.settings.trajectoryEventSource.value;
     let eventConfig = {eventFile: "https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip", eventType: "zip"};
@@ -498,6 +500,37 @@ export class MainDisplayComponent implements OnInit {
 
     // Initialize the event display
     this.eventDisplay.init(configuration);
+
+    window.addEventListener('resize', () => {
+      const renderer = this.threeFacade.mainRenderer;
+      const camera = this.threeFacade.mainCamera;
+      const rendererElement = renderer.domElement;
+      if(rendererElement == null) {
+        return;
+      }
+
+      // Calculate adjusted dimensions
+      const headerHeight = document?.getElementById('main-top-navbar')?.offsetHeight ?? 0;
+      const footerHeight = document?.getElementById('bottom-controls')?.offsetHeight ?? 0;
+      const sidePanelWidth = document?.getElementById('side-panel')?.offsetWidth ?? 0;
+      
+
+      const adjustedWidth = rendererElement.offsetWidth - sidePanelWidth;
+      const adjustedHeight = rendererElement.offsetHeight - headerHeight - footerHeight;
+
+      // Update renderer size
+      renderer.setSize(adjustedWidth, adjustedHeight);
+
+      if (camera.isOrthographicCamera) {
+        camera.left = adjustedWidth / -2;
+        camera.right = adjustedWidth / 2;
+        camera.top = adjustedHeight / 2;
+        camera.bottom = adjustedHeight / -2;
+      } else {
+        camera.aspect = adjustedWidth / adjustedHeight;
+      }
+      camera.updateProjectionMatrix();
+    });
 
     this.controller.buttonB.onPress.subscribe(value => {
       this.onControllerBPressed(value);

@@ -4,6 +4,7 @@
 
 import os
 import logging
+import time
 from csv import excel
 from urllib.parse import unquote
 
@@ -50,6 +51,7 @@ class ExcludeAPIConverter(BaseConverter):
    """
 
     # Add a regex that matches any path including slashes
+    # (!) This part is super important to get /nested/paths/like/this processed
     part_isolating = False
     regex = "[^/].*?"
 
@@ -153,8 +155,8 @@ def download_file(filename=None):
         abort(404)  # Return 404 if the file does not exist
 
 
-@flask_app.route('/api/v1/edm4eic/event/<string:entries>', methods=['GET'])
-@flask_app.route('/api/v1/edm4eic/event/<string:entries>/<path:filename>', methods=['GET'])
+@flask_app.route('/api/v1/convert/edm4eic/<string:entries>', methods=['GET'])
+@flask_app.route('/api/v1/convert/edm4eic/<string:entries>/<path:filename>', methods=['GET'])
 @compress.compressed()
 def open_edm4eic_file(filename=None, entries="0"):
     """
@@ -166,6 +168,8 @@ def open_edm4eic_file(filename=None, entries="0"):
     :param entries: The event number to extract.
     :return: JSON response containing the event data.
     """
+
+    start_time = time.perf_counter()
     import uproot
     from pyrobird.edm4eic import edm4eic_to_dict
 
@@ -233,18 +237,36 @@ def open_edm4eic_file(filename=None, entries="0"):
     for entry_index in entries_index_list:
         if entry_index > total_num_entries - 1:
             err_msg = f"For entries='{entries}' entry index={entry_index} is outside of tree num_entries={total_num_entries}"
-            return err_msg, 400
+            logger.error(err_msg)
+            return {"error": err_msg}, 400
 
     try:
         # Extract the event data
         event = edm4eic_to_dict(tree, entries_index_list)
     except Exception as e:
-        logger.error(f"Error processing events {entries} from file {filename}: {e}")
-        abort(500, description="Error processing event.")
+        err_msg = f"Error processing events {entries} from file {filename}: {e}"
+        logger.error(err_msg)
+        return {"error": err_msg}, 400
+
+    # This function conversion time to milliseconds
+    elapsed_time_ms = (time.perf_counter() - start_time) * 1000
+
+    # Set origin info
+    event["origin"] = {
+        "source": filename,
+        "latency": elapsed_time_ms,
+        "by": "Pyrobird Flask server"
+    }
 
     # Return the JSON data
     return jsonify(event)
 
+
+@flask_app.route('/api/v1/edm4hep/event/<string:entries>', methods=['GET'])
+@flask_app.route('/api/v1/edm4eic/event/<string:entries>/<path:filename>', methods=['GET'])
+@compress.compressed()
+def open_edm4eic_file(filename=None, entries="0"):
+    return {"error": "Is not implemented"}, 400
 
 @flask_app.route('/assets/config.jsonc', methods=['GET'])
 def asset_config():
