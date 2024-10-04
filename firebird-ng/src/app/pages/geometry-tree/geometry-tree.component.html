@@ -1,4 +1,6 @@
-<p>geometry-tree works!</p>
+<button mat-raised-button aria-label="Refresh" matTooltip="Refresh tree with current geometry" class="" (click)="refreshGeometry()" >
+  <mat-icon>refresh</mat-icon>
+</button>
 
 <mat-tree [dataSource]="dataSource" [treeControl]="treeControl">
   <!-- This is the tree node template for leaf nodes -->

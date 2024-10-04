@@ -11,11 +11,12 @@ import {NestedTreeControl, FlatTreeControl, } from '@angular/cdk/tree';
 import {MatTreeFlatDataSource, MatTreeFlattener} from '@angular/material/tree';
 
 import {MatIcon, MatIconModule} from '@angular/material/icon';
-import {MatButtonModule, MatIconButton} from '@angular/material/button';
+import {MatButton, MatButtonModule, MatIconButton} from '@angular/material/button';
 import {GeometryService} from "../../services/geometry.service";
 import {Object3D} from "three";
 import {EventDisplayService} from "phoenix-ui-components";
 import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
+import {MatTooltip} from "@angular/material/tooltip";
 
 /**
  * Food data with nested structure.
@@ -68,7 +69,9 @@ interface ExampleFlatNode {
     MatTreeNodeDef,
     MatIcon,
     MatTreeNodeOutlet,
-    MatTreeNodePadding
+    MatTreeNodePadding,
+    MatButton,
+    MatTooltip
   ],
   templateUrl: './geometry-tree.component.html',
   styleUrl: './geometry-tree.component.scss'
@@ -134,5 +137,10 @@ export class GeometryTreeComponent implements OnInit{
   toggleVisibility(node: ExampleFlatNode) {
     this.geomService.toggleVisibility(node.object3D);
     node.visible = !node.visible;
+  }
+
+  refreshGeometry() {
+    this.dataSource.data = [];
+    this.dataSource.data = this.threeFacade.scene.children;
   }
 }
