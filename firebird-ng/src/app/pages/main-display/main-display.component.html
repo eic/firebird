@@ -5,123 +5,137 @@
 <!--  <button (click)="animateTime()">  play </button>-->
 <!--  <button (click)="stopAnimation()">stop</button>-->
 <!--</div>-->
-<app-loader [loaded]="loaded" [progress]="loadingProgress"></app-loader>
-<!--<app-nav></app-nav>-->
-<!-- UI menu at the bottom -->
-<!--<app-ui-menu></app-ui-menu>-->
-<app-experiment-info experiment="ePIC" experimentTagline="EPIC experiment at EIC"></app-experiment-info>
-<!-- Phoenix menu at the top right -->
-<app-phoenix-menu [rootNode]="phoenixMenuRoot"></app-phoenix-menu>
+<div class="wrapper">
 
-<app-ui-menu-wrapper>
-  <!-- Event selector -->
-  <app-event-selector></app-event-selector>
+  <div class="box navbar">
+    <app-geometry-tree></app-geometry-tree>
+  </div>
 
-  <!-- Zoom in and zoom out controls -->
-  <app-zoom-controls></app-zoom-controls>
+  <div class="handler"></div>
 
-  <app-view-options></app-view-options>
+  <div class="box main">
+    <app-loader [loaded]="loaded" [progress]="loadingProgress"></app-loader>
+    <!--<app-nav></app-nav>-->
+    <!-- UI menu at the bottom -->
+    <!--<app-ui-menu></app-ui-menu>-->
+    <app-experiment-info experiment="ePIC" experimentTagline="EPIC experiment at EIC"></app-experiment-info>
+    <!-- Phoenix menu at the top right -->
+    <app-phoenix-menu [rootNode]="phoenixMenuRoot"></app-phoenix-menu>
 
-  <app-auto-rotate></app-auto-rotate>
+    <app-ui-menu-wrapper >
+      <!-- Event selector -->
+      <app-event-selector></app-event-selector>
 
-  <!-- Dark theme toggle -->
-  <app-dark-theme></app-dark-theme>
+      <!-- Zoom in and zoom out controls -->
+      <app-zoom-controls></app-zoom-controls>
 
-  <!-- Toggle for clipping geometries -->
-  <app-object-clipping></app-object-clipping>
+      <app-view-options></app-view-options>
 
-  <!-- Main view toggle -->
-  <app-main-view-toggle></app-main-view-toggle>
+      <app-auto-rotate></app-auto-rotate>
 
-  <!-- Toggle for overlay panel -->
-  <app-overlay-view></app-overlay-view>
+      <!-- Dark theme toggle -->
+      <app-dark-theme></app-dark-theme>
 
-  <!-- Toggle for selected object panel -->
-  <app-object-selection></app-object-selection>
+      <!-- Toggle for clipping geometries -->
+      <app-object-clipping></app-object-clipping>
 
-  <!-- Toggle for animating the event data -->
-  <app-animate-event></app-animate-event>
+      <!-- Main view toggle -->
+      <app-main-view-toggle></app-main-view-toggle>
 
-  <!-- Toggle for collections info -->
-  <app-collections-info></app-collections-info>
+      <!-- Toggle for overlay panel -->
+      <app-overlay-view></app-overlay-view>
 
-  <!-- Toggle for geometry browser -->
-  <app-geometry-browser></app-geometry-browser>
+      <!-- Toggle for selected object panel -->
+      <app-object-selection></app-object-selection>
 
-  <!-- Toggle for performance -->
-  <app-performance-toggle></app-performance-toggle>
+      <!-- Toggle for animating the event data -->
+      <app-animate-event></app-animate-event>
 
-  <!-- Toggle for loading geometries modal-->
-  <eic-io-options></eic-io-options>
+      <!-- Toggle for collections info -->
+      <app-collections-info></app-collections-info>
 
-  <!-- Toggle for shareable link constructor modal-->
-  <app-share-link></app-share-link>
+      <!-- Toggle for geometry browser -->
+      <app-geometry-browser></app-geometry-browser>
 
-  <!-- Info panel -->
-  <app-info-panel></app-info-panel>
+      <!-- Toggle for performance -->
+      <app-performance-toggle></app-performance-toggle>
 
-  <!-- Extra options -->
-  <ng-content></ng-content>
+      <!-- Toggle for loading geometries modal-->
+      <eic-io-options></eic-io-options>
 
+      <!-- Toggle for shareable link constructor modal-->
+      <app-share-link></app-share-link>
 
-</app-ui-menu-wrapper>
+      <!-- Info panel -->
+      <app-info-panel></app-info-panel>
 
-<div class="time-controls" style="background-color: #424242; padding: 2px; display: flex; gap: 3px; align-items: center; position: absolute; top:0px; left: 300px;">
-
-
-
-<!--      <mat-select [(value)]="selectedEventKey" (selectionChange)="onUserSelectedEvent()">-->
-<!--        <mat-option *ngFor="let key of eventsByName.keys()" [value]="key">-->
-<!--          {{ key }}-->
-<!--        </mat-option>-->
-<!--      </mat-select>-->
+      <!-- Extra options -->
+      <ng-content></ng-content>
 
 
-  <div>{{currentTime | number:'1.1-1'}}</div>
-  <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)">
-    <input matSliderThumb [value]="currentTime">
-  </mat-slider>
-  <div>{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>
+    </app-ui-menu-wrapper>
 
-  <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="rewindTime()">
-    <mat-icon>first_page</mat-icon>
-  </button>
-  <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="animateWithCollision()">
-    <mat-icon>close_fullscreen</mat-icon>
-  </button>
-  <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="animateTime()">
-    <mat-icon>play_arrow</mat-icon>
-  </button>
-  <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="timeStepBack($event)" class="tcontrol">
-    <mat-icon>chevron_left</mat-icon>
-  </button>
+    <div id="eventDisplay"></div>
 
-  <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="timeStep($event)" class="tcontrol">
-    <mat-icon>chevron_right</mat-icon>
-  </button>
-  <button mat-raised-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="stopAnimation()" >
-    <mat-icon>pause</mat-icon>
-  </button>
-  <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >
-    <mat-icon>stop</mat-icon>
-  </button>
-  <div>{{message}}</div>
-  &nbsp;&nbsp;
+    <div class="time-controls">
 
-  <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">
-    <mat-icon>last_page</mat-icon>
-  </button>
 
-  <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >
-    <mat-icon>view_in_ar</mat-icon>
-  </button>
 
-  <div style="color: darkgray">{{currentGeometry}}</div>
+      <!--      <mat-select [(value)]="selectedEventKey" (selectionChange)="onUserSelectedEvent()">-->
+      <!--        <mat-option *ngFor="let key of eventsByName.keys()" [value]="key">-->
+      <!--          {{ key }}-->
+      <!--        </mat-option>-->
+      <!--      </mat-select>-->
+
+
+      <div>{{currentTime | number:'1.1-1'}}</div>
+      <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)">
+        <input matSliderThumb [value]="currentTime">
+      </mat-slider>
+      <div>{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>
+
+      <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="rewindTime()">
+        <mat-icon>first_page</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="animateWithCollision()">
+        <mat-icon>close_fullscreen</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="animateTime()">
+        <mat-icon>play_arrow</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="timeStepBack($event)" class="tcontrol">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="timeStep($event)" class="tcontrol">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="stopAnimation()" >
+        <mat-icon>pause</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >
+        <mat-icon>stop</mat-icon>
+      </button>
+      <div>{{message}}</div>
+      &nbsp;&nbsp;
+
+      <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">
+        <mat-icon>last_page</mat-icon>
+      </button>
+
+      <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >
+        <mat-icon>view_in_ar</mat-icon>
+      </button>
+
+      <div style="color: darkgray">{{currentGeometry}}</div>
+
+
+    </div>
+  </div>
+
+
+
+
 
 
 </div>
-
-<geometry-tree-window></geometry-tree-window>
-
-<div id="eventDisplay"></div>
-

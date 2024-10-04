@@ -1,5 +1,6 @@
-import {Component, Input, OnInit} from '@angular/core';
+import {Component, ElementRef, Input, OnInit, Renderer2} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
+
 
 import {
   EventDataFormat,
@@ -43,6 +44,8 @@ import {MatFormField} from "@angular/material/form-field";
 import {MatOption, MatSelect} from "@angular/material/select";
 import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window/geometry-tree-window.component";
 import {DataModelService} from "../../services/data-model.service";
+import {AngularSplitModule} from "angular-split";
+import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -51,7 +54,7 @@ import {DataModelService} from "../../services/data-model.service";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -99,6 +102,8 @@ export class MainDisplayComponent implements OnInit {
   selectedEventKey: string|undefined;
   private beamAnimationTime: number = 1000;
 
+  private isHandlerDragging = false;
+
 
   constructor(
     private geomService: GeometryService,
@@ -107,9 +112,44 @@ export class MainDisplayComponent implements OnInit {
     private route: ActivatedRoute,
     private settings: UserConfigService,
     private dataService: DataModelService,
+    private elRef: ElementRef, private renderer2: Renderer2,
     private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
 
+  }
+
+  ngAfterViewInit() {
+    const handler = this.elRef.nativeElement.querySelector('.handler');
+    const wrapper = handler.closest('.wrapper');
+    const boxA = wrapper.querySelector('.box');
+
+    this.renderer2.listen(handler, 'mousedown', (e: MouseEvent) => {
+
+      this.isHandlerDragging = true;
+    });
+
+    this.renderer2.listen(document, 'mousemove', (e: MouseEvent) => {
+      if (!this.isHandlerDragging) {
+        return;
+      }
+
+
+      const containerOffsetLeft = wrapper.offsetLeft;
+
+
+      const pointerRelativeXpos = e.clientX - containerOffsetLeft;
+
+
+      const boxAminWidth = 60;
+
+
+      boxA.style.width = `${Math.max(boxAminWidth, pointerRelativeXpos - 8)}px`;
+      boxA.style.flexGrow = '0';
+    });
+
+    this.renderer2.listen(document, 'mouseup', () => {
+      this.isHandlerDragging = false;
+    });
   }
 
   logRendererInfo() {
@@ -496,16 +536,16 @@ export class MainDisplayComponent implements OnInit {
     // // GUI
     // const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
     //
-    const gui = new GUI({
-      container: document.getElementById("lil-gui-place") ?? undefined,
-    });
+    // const gui = new GUI({
+    //   container: document.getElementById("lil-gui-place") ?? undefined,
+    // });
 
-    gui.title("Dev Controls");
-    gui.add(this, "produceRenderOrder");
-    gui.add(this, "logGamepadStates").name( 'Log controls' );
-    gui.add(this, "logCamera").name( 'Log camera' );
-    gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
-    gui.close();
+    // gui.title("Dev Controls");
+    // gui.add(this, "produceRenderOrder");
+    // gui.add(this, "logGamepadStates").name( 'Log controls' );
+    // gui.add(this, "logCamera").name( 'Log camera' );
+    // gui.add(this, "updateProjectionMatrix").name( 'Try to screw up the camera =)' );
+    // gui.close();
 
     // Set default clipping
     this.eventDisplay.getUIManager().setClipping(true);

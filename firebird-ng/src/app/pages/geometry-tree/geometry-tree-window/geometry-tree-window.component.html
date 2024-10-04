@@ -1,18 +1,21 @@
-<button mat-icon-button (click)="toggleWindow()" class="tree-button">
-  <mat-icon>{{ windowOpenState ? 'close' : 'account_tree' }}</mat-icon>
-</button>
+<!--<button mat-icon-button (click)="toggleWindow()" class="tree-button">-->
+<!--  <mat-icon>{{ windowOpenState ? 'close' : 'account_tree' }}</mat-icon>-->
+<!--</button>-->
 
-<div class="window" *ngIf="windowOpenState" #windowContainer [class.side-nav]="sideNavOpen">
+<div class="window"  #windowContainer [class.side-nav]="sideNavOpen">
   <div class="window-header" #windowHeader>
     <span>Geometry Tree</span>
 
-    <!-- Кнопка для активации сайд-навигации -->
-    <button mat-icon-button (click)="toggleSideNav()" class="side-nav-button">
-      <mat-icon>{{ sideNavOpen ? 'chevron_left' : 'chevron_right' }}</mat-icon>
-    </button>
+<!--    <button mat-icon-button (click)="toggleSideNav()" class="side-nav-button">-->
+<!--      <mat-icon>{{ sideNavOpen ? 'chevron_left' : 'chevron_right' }}</mat-icon>-->
+<!--    </button>-->
+
   </div>
 
-  <app-geometry-tree *ngIf="windowOpenState"></app-geometry-tree>
+  <app-geometry-tree ></app-geometry-tree>
 
-  <div class="resize-handle" *ngIf="!sideNavOpen" #resizeHandle></div>
+<!--  <div class="resize-handle" *ngIf="!sideNavOpen" #resizeHandle></div>-->
 </div>
+<!--<div class="window">-->
+<!--  <app-geometry-tree></app-geometry-tree>-->
+<!--</div>-->

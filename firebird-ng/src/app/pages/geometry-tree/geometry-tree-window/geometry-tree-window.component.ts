@@ -1,8 +1,8 @@
-import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
-import {MatIconButton} from "@angular/material/button";
-import {MatIcon} from "@angular/material/icon";
-import {GeometryTreeComponent} from "../geometry-tree.component";
-import {NgIf} from "@angular/common";
+import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, Renderer2 } from '@angular/core';
+import { MatIconButton } from "@angular/material/button";
+import { MatIcon } from "@angular/material/icon";
+import { GeometryTreeComponent } from "../geometry-tree.component";
+import { NgIf } from "@angular/common";
 
 @Component({
   selector: 'geometry-tree-window',
@@ -17,8 +17,9 @@ import {NgIf} from "@angular/common";
   standalone: true
 })
 export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
-  windowOpenState = false;
-  sideNavOpen = false;
+  // windowOpenState = false;
+  sideNavOpen = true;
+  isDetached = false;
 
   @ViewChild('windowContainer', { static: false }) windowContainer!: ElementRef;
   @ViewChild('windowHeader', { static: false }) windowHeader!: ElementRef;
@@ -34,11 +35,14 @@ export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   private resizeMouseMoveHandler: any;
   private resizeMouseUpHandler: any;
 
+  constructor(private renderer: Renderer2) {}
+
   ngAfterViewInit() {
-    if (this.windowOpenState) {
-      this.initDrag();
-      this.initResize();
-    }
+    // if (this.windowOpenState) {
+    //   this.initDrag();
+    //   this.initResize();
+    //
+    // }
   }
 
   ngOnDestroy() {
@@ -47,21 +51,49 @@ export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   }
 
   toggleWindow() {
-    this.windowOpenState = !this.windowOpenState;
-
-    if (this.windowOpenState) {
-      setTimeout(() => {
-        this.initDrag();
-        this.initResize();
-      });
-    } else {
-      this.removeDragListeners();
-      this.removeResizeListeners();
-    }
+    // this.windowOpenState = !this.windowOpenState;
+    // if (this.windowOpenState) {
+    //   setTimeout(() => {
+    //     this.initDrag();
+    //     this.initResize();
+    //
+    //   });
+    // } else {
+    //   this.removeDragListeners();
+    //   this.removeResizeListeners();
+    //
+    // }
   }
 
+  // toggleSideNav() {
+  //   this.isDetached = !this.isDetached;
+  //
+  //   if (!this.isDetached) {
+  //
+  //     this.sideNavOpen = true;
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'left', '0px');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'top', '60px');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'position', 'fixed');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'width', '300px');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'height', '100vh');
+  //     this.removeDragListeners();
+  //   } else {
+  //
+  //     this.sideNavOpen = false;
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'position', 'absolute');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'width', '400px');
+  //     this.renderer.setStyle(this.windowContainer.nativeElement, 'height', '400px');
+  //     this.initDrag();
+  //   }
+  //   this.updateMainContentShift();
+  // }
+
+
+
+
+
   initDrag() {
-    if (!this.windowContainer) return;
+    if (!this.windowContainer || !this.isDetached) return;
 
     const windowElement = this.windowContainer.nativeElement;
 
@@ -97,7 +129,7 @@ export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   }
 
   initResize() {
-    if (!this.resizeHandle || !this.windowContainer) return;
+    if (!this.resizeHandle || !this.windowContainer || !this.isDetached) return;
 
     const resizeHandle = this.resizeHandle.nativeElement;
     const windowElement = this.windowContainer.nativeElement;
@@ -114,9 +146,13 @@ export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
         const dx = e.clientX - this.lastX;
         const dy = e.clientY - this.lastY;
 
-        windowElement.style.width = windowElement.offsetWidth + dx + 'px';
-        windowElement.style.height = windowElement.offsetHeight + dy + 'px';
 
+        if (this.sideNavOpen) {
+          windowElement.style.width = windowElement.offsetWidth + dx + 'px';
+        } else {
+          windowElement.style.width = windowElement.offsetWidth + dx + 'px';
+          windowElement.style.height = windowElement.offsetHeight + dy + 'px';
+        }
         this.lastX = e.clientX;
         this.lastY = e.clientY;
       }
@@ -143,16 +179,4 @@ export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
       document.removeEventListener('mouseup', this.resizeMouseUpHandler);
     }
   }
-
-  toggleSideNav() {
-    this.sideNavOpen = !this.sideNavOpen;
-
-    if (this.sideNavOpen) {
-      this.windowContainer.nativeElement.style.left = '0px';
-      this.windowContainer.nativeElement.style.width = '400px';
-    } else {
-      this.windowContainer.nativeElement.style.width = '';
-    }
-  }
-
 }
