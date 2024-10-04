@@ -36,8 +36,8 @@ import {UserConfigService} from "../../services/user-config.service";
 import {EicAnimationsManager} from "../../phoenix-overload/eic-animation-manager";
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 import {MatIcon} from "@angular/material/icon";
-import {MatButton} from "@angular/material/button";
-import {DecimalPipe, NgForOf} from "@angular/common";
+import {MatButton, MatIconButton} from "@angular/material/button";
+import {DecimalPipe, NgClass, NgForOf} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
 import {MatSnackBar} from "@angular/material/snack-bar"
 import {MatFormField} from "@angular/material/form-field";
@@ -54,7 +54,7 @@ import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent, NgClass, MatIconButton],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -67,6 +67,7 @@ export class MainDisplayComponent implements OnInit {
   maxTime = 200;
   minTime = 0;
   message = "";
+
 
   /** The root Phoenix menu node. */
   phoenixMenuRoot = new PhoenixMenuNode("Phoenix Menu");
@@ -103,6 +104,7 @@ export class MainDisplayComponent implements OnInit {
   private beamAnimationTime: number = 1000;
 
   private isHandlerDragging = false;
+  isSidebarHidden = false;
 
 
   constructor(
@@ -899,5 +901,9 @@ export class MainDisplayComponent implements OnInit {
     }
     console.log(`User selected event ${this.selectedEventKey} `);
     this.buildEventDataFromJSON(event);
+  }
+
+  toggleSidebar() {
+    this.isSidebarHidden = !this.isSidebarHidden;
   }
 }
