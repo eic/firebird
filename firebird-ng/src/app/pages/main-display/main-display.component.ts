@@ -513,6 +513,7 @@ export class MainDisplayComponent implements OnInit {
       const headerHeight = document?.getElementById('main-top-navbar')?.offsetHeight ?? 0;
       const footerHeight = document?.getElementById('bottom-controls')?.offsetHeight ?? 0;
       const sidePanelWidth = document?.getElementById('side-panel')?.offsetWidth ?? 0;
+      
 
       const adjustedWidth = rendererElement.offsetWidth - sidePanelWidth;
       const adjustedHeight = rendererElement.offsetHeight - headerHeight - footerHeight;
