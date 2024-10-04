@@ -7,9 +7,18 @@
 <!--</div>-->
 <div class="wrapper">
 
-  <div class="box navbar">
-    <app-geometry-tree></app-geometry-tree>
+
+
+  <div class="box sidebar" [ngClass]="{ 'hidden': isSidebarHidden }">
+    <app-geometry-tree
+      [isSidebarHidden]="isSidebarHidden"
+      (toggleSidebar)="toggleSidebar()">
+    </app-geometry-tree>
   </div>
+
+  <button mat-icon-button matTooltip="Open geometry" (click)="toggleSidebar()" class="toggle-btn">
+    <mat-icon>{{ isSidebarHidden ? 'menu' : 'close' }}</mat-icon>
+  </button>
 
   <div class="handler"></div>
 
@@ -132,10 +141,4 @@
 
     </div>
   </div>
-
-
-
-
-
-
 </div>
