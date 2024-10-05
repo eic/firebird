@@ -1,0 +1,39 @@
+<div class="display-shell">
+  <div class="header">
+    <ng-content select="[header]"></ng-content>
+  </div>
+  <div class="main-content">
+    <div
+      *ngIf="isLeftPaneVisible"
+      class="pane left-pane"
+      [style]="{ 'flex-basis': leftPaneWidth + 'px' }"
+    >
+      <ng-content select="[leftPane]"></ng-content>
+      <ng-template #leftPaneContainer></ng-template>
+    </div>
+    <div
+      *ngIf="isLeftPaneVisible"
+      class="divider left-divider"
+      (mousedown)="onMouseDownLeft($event)"
+    ></div>
+    <div class="central-pane">
+      <ng-content select="[centralPane]"></ng-content>
+    </div>
+    <div
+      *ngIf="isRightPaneVisible"
+      class="divider right-divider"
+      (mousedown)="onMouseDownRight($event)"
+    ></div>
+    <div
+      *ngIf="isRightPaneVisible"
+      class="pane right-pane"
+      [style]="{ 'flex-basis': rightPaneWidth + 'px' }"
+    >
+      <ng-content select="[rightPane]"></ng-content>
+      <ng-template #rightPaneContainer></ng-template>
+    </div>
+  </div>
+  <div class="footer">
+    <ng-content select="[footer]"></ng-content>
+  </div>
+</div>
