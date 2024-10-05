@@ -78,9 +78,6 @@ interface ExampleFlatNode {
 })
 export class GeometryTreeComponent implements OnInit{
 
-  @Input() isSidebarHidden: boolean = false;
-  @Output() toggleSidebar = new EventEmitter<void>();
-
   private _transformer = (node: Object3D, level: number) => {
     return {
       expandable: !!node.children && node.children.length > 0,
@@ -148,8 +145,5 @@ export class GeometryTreeComponent implements OnInit{
   }
 
 
-  onToggleSidebar() {
-    this.toggleSidebar.emit();
-  }
 
 }

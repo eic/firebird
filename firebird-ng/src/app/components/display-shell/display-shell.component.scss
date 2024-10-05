@@ -1,16 +1,24 @@
 
 .display-shell {
+  padding-top: 62px;
+  margin-top: -62px;
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100%;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
-.header {
-  height: 50px;
-  background-color: #f5f5f5;
+.header{
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  ////height: 50px;
+  background-color: #2e2e2e;
   border-bottom: 1px solid #ddd;
+  box-sizing: border-box;
 }
 
 .main-content {
@@ -25,16 +33,16 @@
 }
 
 .left-pane {
-  background-color: #f0f0f0;
+  background-color: #2e2e2e;
 }
 
 .right-pane {
-  background-color: #e0e0e0;
+  background-color: #2e2e2e;
 }
 
 .central-pane {
   flex: 1;
-  background-color: #ffffff;
+  background-color: #424242;
   overflow: auto;
 }
 
@@ -53,8 +61,5 @@
   cursor: col-resize;
 }
 
-.footer {
-  height: 30px;
-  background-color: #f5f5f5;
-  border-top: 1px solid #ddd;
-}
+
+

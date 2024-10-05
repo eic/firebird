@@ -1,4 +1,4 @@
-import {Component, ElementRef, Input, OnInit, Renderer2} from '@angular/core';
+import {Component, ElementRef, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
 
 
@@ -46,6 +46,7 @@ import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window
 import {DataModelService} from "../../services/data-model.service";
 import {AngularSplitModule} from "angular-split";
 import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
+import {DisplayShellComponent} from "../../components/display-shell/display-shell.component";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -54,7 +55,7 @@ import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent, NgClass, MatIconButton],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent, NgClass, MatIconButton, DisplayShellComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -104,7 +105,7 @@ export class MainDisplayComponent implements OnInit {
   private beamAnimationTime: number = 1000;
 
   private isHandlerDragging = false;
-  isSidebarHidden = false;
+  isLeftPaneOpen: boolean = true;
 
 
   constructor(
@@ -120,39 +121,53 @@ export class MainDisplayComponent implements OnInit {
 
   }
 
-  ngAfterViewInit() {
-    const handler = this.elRef.nativeElement.querySelector('.handler');
-    const wrapper = handler.closest('.wrapper');
-    const boxA = wrapper.querySelector('.box');
 
-    this.renderer2.listen(handler, 'mousedown', (e: MouseEvent) => {
+  @ViewChild(DisplayShellComponent)
+  displayShellComponent!: DisplayShellComponent;
 
-      this.isHandlerDragging = true;
-    });
-
-    this.renderer2.listen(document, 'mousemove', (e: MouseEvent) => {
-      if (!this.isHandlerDragging) {
-        return;
-      }
-
-
-      const containerOffsetLeft = wrapper.offsetLeft;
-
-
-      const pointerRelativeXpos = e.clientX - containerOffsetLeft;
-
-
-      const boxAminWidth = 60;
-
-
-      boxA.style.width = `${Math.max(boxAminWidth, pointerRelativeXpos - 8)}px`;
-      boxA.style.flexGrow = '0';
-    });
-
-    this.renderer2.listen(document, 'mouseup', () => {
-      this.isHandlerDragging = false;
-    });
+  toggleLeftPane() {
+    this.displayShellComponent.toggleLeftPane();
+    this.isLeftPaneOpen = !this.isLeftPaneOpen;
   }
+
+  toggleRightPane() {
+    this.displayShellComponent.toggleRightPane();
+  }
+
+  //
+  // ngAfterViewInit() {
+  //   const handler = this.elRef.nativeElement.querySelector('.handler');
+  //   const wrapper = handler.closest('.wrapper');
+  //   const boxA = wrapper.querySelector('.box');
+  //
+  //   this.renderer2.listen(handler, 'mousedown', (e: MouseEvent) => {
+  //
+  //     this.isHandlerDragging = true;
+  //   });
+  //
+  //   this.renderer2.listen(document, 'mousemove', (e: MouseEvent) => {
+  //     if (!this.isHandlerDragging) {
+  //       return;
+  //     }
+  //
+  //
+  //     const containerOffsetLeft = wrapper.offsetLeft;
+  //
+  //
+  //     const pointerRelativeXpos = e.clientX - containerOffsetLeft;
+  //
+  //
+  //     const boxAminWidth = 60;
+  //
+  //
+  //     boxA.style.width = `${Math.max(boxAminWidth, pointerRelativeXpos - 8)}px`;
+  //     boxA.style.flexGrow = '0';
+  //   });
+  //
+  //   this.renderer2.listen(document, 'mouseup', () => {
+  //     this.isHandlerDragging = false;
+  //   });
+  // }
 
   logRendererInfo() {
     let renderer = this.threeFacade.mainRenderer;
@@ -513,7 +528,7 @@ export class MainDisplayComponent implements OnInit {
       const headerHeight = document?.getElementById('main-top-navbar')?.offsetHeight ?? 0;
       const footerHeight = document?.getElementById('bottom-controls')?.offsetHeight ?? 0;
       const sidePanelWidth = document?.getElementById('side-panel')?.offsetWidth ?? 0;
-      
+
 
       const adjustedWidth = rendererElement.offsetWidth - sidePanelWidth;
       const adjustedHeight = rendererElement.offsetHeight - headerHeight - footerHeight;
@@ -936,7 +951,7 @@ export class MainDisplayComponent implements OnInit {
     this.buildEventDataFromJSON(event);
   }
 
-  toggleSidebar() {
-    this.isSidebarHidden = !this.isSidebarHidden;
-  }
+  // toggleSidebar() {
+  //   this.isSidebarHidden = !this.isSidebarHidden;
+  // }
 }

@@ -27,7 +27,7 @@ export class DisplayShellComponent {
   rightPaneWidth = 250;
 
   isLeftPaneVisible = true;
-  isRightPaneVisible = true;
+  isRightPaneVisible = false;
 
 
   onMouseDownLeft(event: MouseEvent) {
