@@ -17,6 +17,7 @@ from pyrobird.edm4eic import parse_entry_numbers
 from flask_compress import Compress
 
 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -155,18 +156,21 @@ def download_file(filename=None):
         abort(404)  # Return 404 if the file does not exist
 
 
-@flask_app.route('/api/v1/convert/edm4eic/<string:entries>', methods=['GET'])
-@flask_app.route('/api/v1/convert/edm4eic/<string:entries>/<path:filename>', methods=['GET'])
+@flask_app.route('/api/v1/convert/<string:file_type>/<string:entries>', methods=['GET'])
+@flask_app.route('/api/v1/convert/<string:file_type>/<string:entries>/<path:filename>', methods=['GET'])
 @compress.compressed()
-def open_edm4eic_file(filename=None, entries="0"):
+def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     """
     Opens an EDM4eic file, extracts the specified event, converts it to JSON, and serves it.
     If the file is local, it checks if the user is allowed to access it.
     If the file is remote (starts with http://, https://, root://), it proceeds without permission checks.
 
-    :param filename: The path or URL of the EDM4eic file.
-    :param entries: The event number to extract.
-    :return: JSON response containing the event data.
+
+    Parameters
+    ----------
+    filename - Name or URL of the file to open
+    file_type - String identifying file type: "edm4hep" or "edm4eic" or else...
+    entries - List of entries, May be one entry, range or comma separated list
     """
 
     start_time = time.perf_counter()
@@ -262,11 +266,6 @@ def open_edm4eic_file(filename=None, entries="0"):
     return jsonify(event)
 
 
-@flask_app.route('/api/v1/edm4hep/event/<string:entries>', methods=['GET'])
-@flask_app.route('/api/v1/edm4eic/event/<string:entries>/<path:filename>', methods=['GET'])
-@compress.compressed()
-def open_edm4eic_file(filename=None, entries="0"):
-    return {"error": "Is not implemented"}, 400
 
 @flask_app.route('/assets/config.jsonc', methods=['GET'])
 def asset_config():
@@ -284,11 +283,16 @@ def asset_config():
     except Exception as ex:
         logger.error(f"error opening {config_path}: {ex}")
 
-    host = request.host.split(':')[0]
-    port = request.host.split(':')[1]
+    host = 'unknown'
+    port = 80
 
-    if not port:
-        port = 5454
+    tokens = request.host.split(':')
+
+    if tokens and tokens[0]:
+        host = tokens[0]
+
+    if len(tokens) > 1:
+        port = tokens[1]
 
     """
       serverPort: number;

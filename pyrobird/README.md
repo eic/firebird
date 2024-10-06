@@ -236,3 +236,11 @@ Serves the asset configuration file (`config.jsonc`) with additional server info
 curl "http://localhost:5454/assets/config.jsonc"
 ```
 
+### Publishing
+
+```bash
+hatch build
+hatch publish
+
+# You will have to setup your pip authentication key
+```
