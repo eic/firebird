@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 server_dir = os.path.abspath(os.path.dirname(__file__))
 static_dir = os.path.join(server_dir, "static")
 
-flask_app = Flask(__name__, static_folder=None)
+flask_app = Flask(__name__, static_folder=static_dir)
 flask_app.config.update()
 
 # Compression config
@@ -266,7 +266,6 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     return jsonify(event)
 
 
-
 @flask_app.route('/assets/config.jsonc', methods=['GET'])
 def asset_config():
     """Returns asset configuration file.
@@ -276,9 +275,13 @@ def asset_config():
     config_path = 'assets/config.jsonc'
     config_dict = {}
 
+    os_config_path = os.path.join(flask_app.static_folder, 'assets', 'config.jsonc')
+    logger.debug(f"Flask static folder: {flask_app.static_folder}")
+    logger.debug(f"os_config_path: {os_config_path}")
+
     try:
         # Open the config file and load its content using jsonc
-        with open(config_path, 'r') as file:
+        with open(os_config_path, 'r') as file:
             config_dict = json5.load(file)
     except Exception as ex:
         logger.error(f"error opening {config_path}: {ex}")
@@ -320,18 +323,11 @@ def index():
 def static_file(path):
     """Serves flask static directory files"""
 
-    if flask_app.debug:
-        print("Serve path:")
-        print("  Server dir :", server_dir)
-        print("  Static dir :", static_dir)
-        print("  path       :", path)
-
     try:
         return send_from_directory(static_dir, path)
     except werkzeug.exceptions.NotFound as ex:
-        if flask_app.debug:
-            print("File is not found, assuming it is SPA and serving index.html")
-            return send_from_directory(static_dir, "index.html")
+        logger.debug("File is not found, assuming it is SPA and serving index.html")
+        return static_file("index.html")
 
 
 @flask_app.route('/shutdown', methods=['GET', 'POST'])
@@ -345,7 +341,7 @@ def shutdown():
     return 'Server shutting down...'
 
 
-def run(config=None, host=None, port=5454, debug=True, load_dotenv=False):
+def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
     """Runs flask server"""
     if config:
         if isinstance(config, Config) or isinstance(config, map):
@@ -361,5 +357,9 @@ def run(config=None, host=None, port=5454, debug=True, load_dotenv=False):
             r"/download/*": {"origins": "*"},
             r"/api/v1/*": {"origins": "*"},
         })
+
+    logger.debug("Serve path:")
+    logger.debug("  Server dir :", server_dir)
+    logger.debug("  Static dir :", static_dir)
 
     flask_app.run(host=host, port=port, debug=debug, load_dotenv=load_dotenv)

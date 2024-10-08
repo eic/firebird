@@ -1,11 +1,10 @@
-
 import threading
 import time
-import requests
 import asyncio
 import click
 from pyrobird.cli.serve import serve as cli_serve_command
-
+import urllib.request
+import urllib.error
 
 
 def run_flask_app(unsecure_files, allow_cors, disable_download, work_path):
@@ -20,12 +19,25 @@ def run_flask_app(unsecure_files, allow_cors, disable_download, work_path):
     ctx = click.Context(cli_serve_command)
     cli_serve_command.invoke(ctx, **serve_params)
 
+
 async def capture_screenshot(url, output_path):
+
+    try:
+        from pyppeteer import launch
+    except ImportError:
+        print("Pyppeteer is not installed! Pyppeteer is a python library that controls Chrome browser")
+        print("Running headless chrome is needed to make a screenshot in a batch mode")
+        print("You can install pyppeteer with command: ")
+        print("   python3 -m pip install --upgrade pyppeteer")
+        print("Beware that on the first run, if chrome is not installed in the system it will try to download it")
+        print("Google pyppeteer if not sure. Exiting without screenshot now")
+        exit(1)
+
     from pyppeteer import launch
 
     # Launch a headless browser
     browser = await launch(headless=True)
-        # If necessary, adjust Pyppeteer launch options here
+    # If necessary, adjust Pyppeteer launch options here
     page = await browser.newPage()
     await page.setViewport({'width': 1920, 'height': 1080})
     await page.goto(url)
@@ -65,10 +77,12 @@ def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_p
     # Ensure Flask is running
     for _ in range(10):
         try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                break
-        except requests.ConnectionError:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req) as response:
+                status_code = response.getcode()
+                if status_code == 200:
+                    break
+        except urllib.error.URLError:
             time.sleep(1)
     else:
         print("Flask app did not start correctly")
@@ -81,9 +95,13 @@ def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_p
     # Shutdown Flask app
     try:
         shutdown_url = url.rstrip('/') + '/shutdown'
-        requests.post(shutdown_url)
-    except requests.RequestException as e:
+        data = ''.encode('utf-8')  # Empty data for POST
+        req = urllib.request.Request(shutdown_url, data=data)
+        with urllib.request.urlopen(req) as response:
+            pass  # Process the response if needed
+    except urllib.error.URLError as e:
         print(f"Error shutting down Flask app: {e}")
         print(f"It will be dead anyway... soon... ")
 
-
+if __name__ == '__main__':
+    screenshot()

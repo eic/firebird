@@ -5,22 +5,33 @@
 
 -----
 
-**Table of Contents**
-
-- [Installation](#installation)
-- [License](#license)
-
 ## Installation
 
 ```bash
 pip install pyrobird
 ```
 
+Optional dependencies:
+
+- `batch` - install pyppeteer, that allows to make screenshots in batch mode
+- `xrootd` - install libraries to read xrootd located files and URLs starting with `root://`
+- `test` - install pytest, mainly to run tests in development build
+
+> If installed via pip, `xrootd` library requires compilation, so the system should have cmake,
+> compiler and some xrootd dependencies installed. 
+
 Development installation 
 
 ```bash
-python -m pip install --editable .[test]
+python -m pip install --editable .[test,batch]
 ```
+
+Running with Gunicorn (development mode)
+
+```bash
+gunicorn --bind 0.0.0.0:5454 pyrobird.server:flask_app --log-level debug --capture-output
+```
+
 
 ## Contributing
 

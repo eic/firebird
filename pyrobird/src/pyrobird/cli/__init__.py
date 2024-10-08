@@ -6,10 +6,10 @@ import logging
 import click
 
 from pyrobird.__about__ import __version__
-from . geo import geo as geo_group
-from . serve import serve as serve_group
-from . convert import convert as convert_cmd
-from . screenshot import screenshot as screenshot_cmd
+from pyrobird.cli.geo import geo as geo_group
+from pyrobird.cli.serve import serve as serve_group
+from pyrobird.cli.convert import convert as convert_cmd
+from pyrobird.cli.screenshot import screenshot as screenshot_cmd
 
 
 def setup_logging(is_verbose):
