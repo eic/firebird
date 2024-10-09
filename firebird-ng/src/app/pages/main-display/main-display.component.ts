@@ -1,7 +1,6 @@
 import {Component, ElementRef, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
 
-
 import {
   EventDataFormat,
   EventDataImportOption,
@@ -47,6 +46,7 @@ import {DataModelService} from "../../services/data-model.service";
 import {AngularSplitModule} from "angular-split";
 import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
 import {DisplayShellComponent} from "../../components/display-shell/display-shell.component";
+import {DataModelPainter} from "../../painters/data-model-painter";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -107,6 +107,8 @@ export class MainDisplayComponent implements OnInit {
   private isHandlerDragging = false;
   isLeftPaneOpen: boolean = true;
 
+  private painter: DataModelPainter = new DataModelPainter();
+
 
   constructor(
     private geomService: GeometryService,
@@ -124,6 +126,9 @@ export class MainDisplayComponent implements OnInit {
 
   @ViewChild(DisplayShellComponent)
   displayShellComponent!: DisplayShellComponent;
+
+  @ViewChild(GeometryTreeComponent)
+  geometryTreeComponent: GeometryTreeComponent|null|undefined;
 
   toggleLeftPane() {
     this.displayShellComponent.toggleLeftPane();
@@ -516,6 +521,8 @@ export class MainDisplayComponent implements OnInit {
     // Initialize the event display
     this.eventDisplay.init(configuration);
 
+
+
     window.addEventListener('resize', () => {
       const renderer = this.threeFacade.mainRenderer;
       const camera = this.threeFacade.mainCamera;
@@ -524,10 +531,14 @@ export class MainDisplayComponent implements OnInit {
         return;
       }
 
+      if(this.displayShellComponent == null) {
+        return;
+      }
+
       // Calculate adjusted dimensions
-      const headerHeight = document?.getElementById('main-top-navbar')?.offsetHeight ?? 0;
-      const footerHeight = document?.getElementById('bottom-controls')?.offsetHeight ?? 0;
-      const sidePanelWidth = document?.getElementById('side-panel')?.offsetWidth ?? 0;
+      const headerHeight =  0; // TODO?
+      const footerHeight =  0; // TODO?
+      const sidePanelWidth = this.displayShellComponent.leftPaneWidth;
 
 
       const adjustedWidth = rendererElement.offsetWidth - sidePanelWidth;
@@ -603,6 +614,7 @@ export class MainDisplayComponent implements OnInit {
     this.eventDisplay.getUIManager().rotateStartAngleClipping(90);
 
     this.eventDisplay.listenToDisplayedEventChange(event => {
+      this.updateSceneTreeComponent();
       console.log("listenToDisplayedEventChange");
       console.log(event);
       this.trackInfos = null;
@@ -672,19 +684,39 @@ export class MainDisplayComponent implements OnInit {
     let jsonGeometry;
     this.loadGeometry().then(jsonGeom => {
       jsonGeometry = jsonGeom;
-      this.eventDisplay
-        .getLoadingManager().itemLoaded("MyGeometry");
+
+      this.updateSceneTreeComponent();
+
+      this.eventDisplay.getLoadingManager().itemLoaded("MyGeometry");
     }).catch(reason=> {
       console.error("ERROR LOADING GEOMETRY");
       console.log(reason);
     });
 
-    this.dataService.loadData().then(data => {
+    this.dataService.loadEdm4EicData().then(data => {
+      this.updateSceneTreeComponent();
       console.log("loaded data model");
       console.log(data);
     })
 
+    this.dataService.loadDexData().then(data => {
+      this.updateSceneTreeComponent();
+      if(data == null) {
+        console.warn("DataService.loadDexData() Received data is null or undefined");
+        return;
+      }
 
+      if(data.entries?.length ?? 0 > 0) {
+        this.painter.setEntry(data.entries[0]);
+        this.painter.paint(this.currentTime);
+      } else {
+        console.warn("DataService.loadDexData() Received data had no entries");
+        console.log(data);
+      }
+
+      //console.log("loaded data model");
+      //console.log(data);
+    })
 
     document.addEventListener('keydown', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') {
@@ -755,6 +787,7 @@ export class MainDisplayComponent implements OnInit {
   }
 
   private processCurrentTimeChange() {
+    this.painter.paint(this.currentTime);
     let partialTracks: ProcessTrackInfo[] = [];
     if(this.trackInfos) {
       for (let trackInfo of this.trackInfos) {
@@ -951,7 +984,22 @@ export class MainDisplayComponent implements OnInit {
     this.buildEventDataFromJSON(event);
   }
 
-  // toggleSidebar() {
-  //   this.isSidebarHidden = !this.isSidebarHidden;
-  // }
+  private updateSceneTreeComponent() {
+    // Name scene lights
+    if (this.scene) {
+      if (this.scene.children.length > 2) {
+        if (this.scene.children[0]) {
+          this.scene.children[0].name = "Ambient light";
+        }
+        if (this.scene.children[1]) {
+          this.scene.children[1].name = "Direct. light";
+        }
+      }
+    }
+
+    if(this.geometryTreeComponent) {
+      this.geometryTreeComponent.refreshScheneTree();
+    }
+
+  }
 }

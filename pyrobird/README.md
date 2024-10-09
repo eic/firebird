@@ -195,8 +195,8 @@ Allows users to download specified files. The download can be restricted based o
 #### **Endpoint**
 
 ```
-GET /api/v1/edm4eic/event/<int:event_number>
-GET /api/v1/edm4eic/event/<int:event_number>/<path:filename>
+GET /api/v1/convert/edm4eic/<int:event_number>
+GET /api/v1/convert/edm4eic/<int:event_number>/<path:filename>
 ```
 
 #### **Description**
@@ -220,13 +220,13 @@ Processes an EDM4eic file to extract a specific event and returns the event data
 1. **Process Local File via Query Parameter**
 
    ```bash
-   curl "http://localhost:5454/api/v1/edm4eic/event/5?filename=path/to/file.edm4eic.root"
+   curl "http://localhost:5454/api/v1/convert/edm4eic/5?filename=path/to/file.edm4eic.root"
    ```
 
 2. **Process Remote File via URL Path**
 
    ```bash
-   curl "http://localhost:5454/api/v1/edm4eic/event/5/http://example.com/data/file.edm4eic.root"
+   curl "http://localhost:5454/api/v1/convert/edm4eic/5/http://example.com/data/file.edm4eic.root"
    ```
 
 ### Asset Configuration

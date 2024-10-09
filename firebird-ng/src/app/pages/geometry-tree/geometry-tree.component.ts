@@ -139,7 +139,7 @@ export class GeometryTreeComponent implements OnInit{
     node.visible = !node.visible;
   }
 
-  refreshGeometry() {
+  refreshScheneTree() {
     this.dataSource.data = [];
     this.dataSource.data = this.threeFacade.scene.children;
   }
