@@ -24,8 +24,10 @@ allow_cors_help = (
 @click.option("--allow-cors", "allow_cors", is_flag=True, show_default=True, default=False, help=allow_cors_help)
 @click.option("--disable-files", "disable_download", is_flag=True, show_default=True, default=False, help="Disable all file downloads from the server")
 @click.option("--work-path", "work_path", show_default=True, default="", help="Set the base directory path for file downloads. Defaults to the current working directory.")
+@click.option("--host", "host", default="", help="Set the host for development server to listen to")
+@click.option("--port", "port", default="", help="Set the port for development server to listen to")
 @click.pass_context
-def serve(ctx, unsecure_files, allow_cors, disable_download, work_path):
+def serve(ctx, unsecure_files, allow_cors, disable_download, work_path, host, port):
     """
     Start the server that serves Firebird frontend and can communicate with it.
 
@@ -52,7 +54,13 @@ def serve(ctx, unsecure_files, allow_cors, disable_download, work_path):
     logging.info(f"File Download Disabled: {disable_download}")
     logging.info(f"Work Path Set To: {work_path if work_path else 'Current Working Directory'}")
 
-    pyrobird.server.run(debug=True, config={
+    if not host:
+        host = None
+
+    if not port:
+        port = 5454
+
+    pyrobird.server.run(debug=True, host=host, port=port, config={
         "DOWNLOAD_IS_UNRESTRICTED": unsecure_files,
         "DOWNLOAD_DISABLE": disable_download,
         "DOWNLOAD_PATH": work_path,

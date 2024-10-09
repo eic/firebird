@@ -5,22 +5,33 @@
 
 -----
 
-**Table of Contents**
-
-- [Installation](#installation)
-- [License](#license)
-
 ## Installation
 
 ```bash
 pip install pyrobird
 ```
 
+Optional dependencies:
+
+- `batch` - install pyppeteer, that allows to make screenshots in batch mode
+- `xrootd` - install libraries to read xrootd located files and URLs starting with `root://`
+- `test` - install pytest, mainly to run tests in development build
+
+> If installed via pip, `xrootd` library requires compilation, so the system should have cmake,
+> compiler and some xrootd dependencies installed. 
+
 Development installation 
 
 ```bash
-python -m pip install --editable .[test]
+python -m pip install --editable .[test,batch]
 ```
+
+Running with Gunicorn (development mode)
+
+```bash
+gunicorn --bind 0.0.0.0:5454 pyrobird.server:flask_app --log-level debug --capture-output
+```
+
 
 ## Contributing
 
@@ -184,8 +195,8 @@ Allows users to download specified files. The download can be restricted based o
 #### **Endpoint**
 
 ```
-GET /api/v1/edm4eic/event/<int:event_number>
-GET /api/v1/edm4eic/event/<int:event_number>/<path:filename>
+GET /api/v1/convert/edm4eic/<int:event_number>
+GET /api/v1/convert/edm4eic/<int:event_number>/<path:filename>
 ```
 
 #### **Description**
@@ -209,13 +220,13 @@ Processes an EDM4eic file to extract a specific event and returns the event data
 1. **Process Local File via Query Parameter**
 
    ```bash
-   curl "http://localhost:5454/api/v1/edm4eic/event/5?filename=path/to/file.edm4eic.root"
+   curl "http://localhost:5454/api/v1/convert/edm4eic/5?filename=path/to/file.edm4eic.root"
    ```
 
 2. **Process Remote File via URL Path**
 
    ```bash
-   curl "http://localhost:5454/api/v1/edm4eic/event/5/http://example.com/data/file.edm4eic.root"
+   curl "http://localhost:5454/api/v1/convert/edm4eic/5/http://example.com/data/file.edm4eic.root"
    ```
 
 ### Asset Configuration
@@ -236,3 +247,11 @@ Serves the asset configuration file (`config.jsonc`) with additional server info
 curl "http://localhost:5454/assets/config.jsonc"
 ```
 
+### Publishing
+
+```bash
+hatch build
+hatch publish
+
+# You will have to setup your pip authentication key
+```

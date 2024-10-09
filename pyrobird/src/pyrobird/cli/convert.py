@@ -70,7 +70,9 @@ def convert(filename, output_file, entries_str):
     """
     import uproot
 
-    if not os.path.isfile(filename):
+    may_be_url = "://" in filename
+
+    if not may_be_url and not os.path.isfile(filename):
         msg = f"File not found: '{filename}'"
         raise FileNotFoundError(msg)
 

@@ -7,6 +7,7 @@ import {HttpClient} from "@angular/common/http";
 import {firstValueFrom} from "rxjs";
 import {resolveProtocolAlias, UrlService} from "./url.service";
 import {DataExchange} from "../model/data-exchange";
+import {loadJSONFileEvents, loadZipFileEvents} from "../utils/data-fetching.utils";
 
 @Injectable({
   providedIn: 'root'
@@ -30,7 +31,7 @@ export class DataModelService {
   }
 
   public getEndpointEdm4eic(fileName:string, entries:string): string {
-    return `/api/v1/edm4eic/event/${entries}?f=${fileName}`;
+    return `/api/v1/convert/edm4eic/${entries}?f=${fileName}`;
   }
 
   public getApiServerBase(): string {
@@ -45,7 +46,7 @@ export class DataModelService {
     return "";
   }
 
-  async loadData(entryNames: string = "0"): Promise<DataExchange|null> {
+  async loadEdm4EicData(entryNames: string = "0"): Promise<DataExchange|null> {
     try {
 
       let userInput = this.userConfig.edm4eicEventSource.value;
@@ -79,6 +80,59 @@ export class DataModelService {
       );
 
       const dexData = JSON.parse(jsonData);
+      let data = DataExchange.fromDexObj(dexData);
+
+      console.log(data)
+      return data;
+    } catch (error) {
+      console.error(`Failed to load data: ${error}`);
+      console.log(`Default config will be used`);
+    } finally {
+    }
+    return null;
+  }
+
+
+  async loadDexData(): Promise<DataExchange|null> {
+    try {
+
+      let userInput = this.userConfig.trajectoryEventSource.value;
+      // TODO url aliases if(this.serverConfig.config.)
+      // resolveProtocolAlias()
+
+      if(!userInput) {
+        console.log("[DataModelService] No data source specified. I.e. !this.userConfig.edm4eicEventSource.value");
+        return null;
+      }
+
+      if(!userInput.endsWith("firebird.json") &&
+         !userInput.endsWith("firebird.json.zip") &&
+         !userInput.endsWith("firebird.zip"))
+      {
+        console.log("[DataModelService.loadDexData] Wrong extension. I.e. !this.userConfig.edm4eicEventSource.value");
+      }
+
+      let url = "";
+
+      if(userInput.startsWith("asset://")) {
+        url = userInput.replace("asset://", "")
+      } else {
+        const baseUrl = this.getApiServerBase();
+        const endPoint = this.getEndpointDownload(userInput);
+
+        // If we were able to get baseURL, we use it with endpoint
+        // Otherwise we just open whatever...
+        url = baseUrl ? `${baseUrl}/${endPoint}` : userInput;
+      }
+
+      let dexData = {};
+
+      if(url.endsWith("zip")) {
+        dexData = await loadZipFileEvents(url);
+      } else {
+        dexData = await loadJSONFileEvents(url);
+      }
+
       let data = DataExchange.fromDexObj(dexData);
 
       console.log(data)

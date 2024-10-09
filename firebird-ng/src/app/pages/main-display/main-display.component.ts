@@ -1,6 +1,5 @@
-import {Component, ElementRef, Input, OnInit, Renderer2} from '@angular/core';
+import {Component, ElementRef, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
-
 
 import {
   EventDataFormat,
@@ -46,6 +45,8 @@ import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window
 import {DataModelService} from "../../services/data-model.service";
 import {AngularSplitModule} from "angular-split";
 import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
+import {DisplayShellComponent} from "../../components/display-shell/display-shell.component";
+import {DataModelPainter} from "../../painters/data-model-painter";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -54,7 +55,7 @@ import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent, NgClass, MatIconButton],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent, NgClass, MatIconButton, DisplayShellComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -104,7 +105,9 @@ export class MainDisplayComponent implements OnInit {
   private beamAnimationTime: number = 1000;
 
   private isHandlerDragging = false;
-  isSidebarHidden = false;
+  isLeftPaneOpen: boolean = true;
+
+  private painter: DataModelPainter = new DataModelPainter();
 
 
   constructor(
@@ -120,39 +123,56 @@ export class MainDisplayComponent implements OnInit {
 
   }
 
-  ngAfterViewInit() {
-    const handler = this.elRef.nativeElement.querySelector('.handler');
-    const wrapper = handler.closest('.wrapper');
-    const boxA = wrapper.querySelector('.box');
 
-    this.renderer2.listen(handler, 'mousedown', (e: MouseEvent) => {
+  @ViewChild(DisplayShellComponent)
+  displayShellComponent!: DisplayShellComponent;
 
-      this.isHandlerDragging = true;
-    });
+  @ViewChild(GeometryTreeComponent)
+  geometryTreeComponent: GeometryTreeComponent|null|undefined;
 
-    this.renderer2.listen(document, 'mousemove', (e: MouseEvent) => {
-      if (!this.isHandlerDragging) {
-        return;
-      }
-
-
-      const containerOffsetLeft = wrapper.offsetLeft;
-
-
-      const pointerRelativeXpos = e.clientX - containerOffsetLeft;
-
-
-      const boxAminWidth = 60;
-
-
-      boxA.style.width = `${Math.max(boxAminWidth, pointerRelativeXpos - 8)}px`;
-      boxA.style.flexGrow = '0';
-    });
-
-    this.renderer2.listen(document, 'mouseup', () => {
-      this.isHandlerDragging = false;
-    });
+  toggleLeftPane() {
+    this.displayShellComponent.toggleLeftPane();
+    this.isLeftPaneOpen = !this.isLeftPaneOpen;
   }
+
+  toggleRightPane() {
+    this.displayShellComponent.toggleRightPane();
+  }
+
+  //
+  // ngAfterViewInit() {
+  //   const handler = this.elRef.nativeElement.querySelector('.handler');
+  //   const wrapper = handler.closest('.wrapper');
+  //   const boxA = wrapper.querySelector('.box');
+  //
+  //   this.renderer2.listen(handler, 'mousedown', (e: MouseEvent) => {
+  //
+  //     this.isHandlerDragging = true;
+  //   });
+  //
+  //   this.renderer2.listen(document, 'mousemove', (e: MouseEvent) => {
+  //     if (!this.isHandlerDragging) {
+  //       return;
+  //     }
+  //
+  //
+  //     const containerOffsetLeft = wrapper.offsetLeft;
+  //
+  //
+  //     const pointerRelativeXpos = e.clientX - containerOffsetLeft;
+  //
+  //
+  //     const boxAminWidth = 60;
+  //
+  //
+  //     boxA.style.width = `${Math.max(boxAminWidth, pointerRelativeXpos - 8)}px`;
+  //     boxA.style.flexGrow = '0';
+  //   });
+  //
+  //   this.renderer2.listen(document, 'mouseup', () => {
+  //     this.isHandlerDragging = false;
+  //   });
+  // }
 
   logRendererInfo() {
     let renderer = this.threeFacade.mainRenderer;
@@ -501,6 +521,8 @@ export class MainDisplayComponent implements OnInit {
     // Initialize the event display
     this.eventDisplay.init(configuration);
 
+
+
     window.addEventListener('resize', () => {
       const renderer = this.threeFacade.mainRenderer;
       const camera = this.threeFacade.mainCamera;
@@ -509,11 +531,15 @@ export class MainDisplayComponent implements OnInit {
         return;
       }
 
+      if(this.displayShellComponent == null) {
+        return;
+      }
+
       // Calculate adjusted dimensions
-      const headerHeight = document?.getElementById('main-top-navbar')?.offsetHeight ?? 0;
-      const footerHeight = document?.getElementById('bottom-controls')?.offsetHeight ?? 0;
-      const sidePanelWidth = document?.getElementById('side-panel')?.offsetWidth ?? 0;
-      
+      const headerHeight =  0; // TODO?
+      const footerHeight =  0; // TODO?
+      const sidePanelWidth = this.displayShellComponent.leftPaneWidth;
+
 
       const adjustedWidth = rendererElement.offsetWidth - sidePanelWidth;
       const adjustedHeight = rendererElement.offsetHeight - headerHeight - footerHeight;
@@ -588,6 +614,7 @@ export class MainDisplayComponent implements OnInit {
     this.eventDisplay.getUIManager().rotateStartAngleClipping(90);
 
     this.eventDisplay.listenToDisplayedEventChange(event => {
+      this.updateSceneTreeComponent();
       console.log("listenToDisplayedEventChange");
       console.log(event);
       this.trackInfos = null;
@@ -657,19 +684,39 @@ export class MainDisplayComponent implements OnInit {
     let jsonGeometry;
     this.loadGeometry().then(jsonGeom => {
       jsonGeometry = jsonGeom;
-      this.eventDisplay
-        .getLoadingManager().itemLoaded("MyGeometry");
+
+      this.updateSceneTreeComponent();
+
+      this.eventDisplay.getLoadingManager().itemLoaded("MyGeometry");
     }).catch(reason=> {
       console.error("ERROR LOADING GEOMETRY");
       console.log(reason);
     });
 
-    this.dataService.loadData().then(data => {
+    this.dataService.loadEdm4EicData().then(data => {
+      this.updateSceneTreeComponent();
       console.log("loaded data model");
       console.log(data);
     })
 
+    this.dataService.loadDexData().then(data => {
+      this.updateSceneTreeComponent();
+      if(data == null) {
+        console.warn("DataService.loadDexData() Received data is null or undefined");
+        return;
+      }
 
+      if(data.entries?.length ?? 0 > 0) {
+        this.painter.setEntry(data.entries[0]);
+        this.painter.paint(this.currentTime);
+      } else {
+        console.warn("DataService.loadDexData() Received data had no entries");
+        console.log(data);
+      }
+
+      //console.log("loaded data model");
+      //console.log(data);
+    })
 
     document.addEventListener('keydown', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') {
@@ -740,6 +787,7 @@ export class MainDisplayComponent implements OnInit {
   }
 
   private processCurrentTimeChange() {
+    this.painter.paint(this.currentTime);
     let partialTracks: ProcessTrackInfo[] = [];
     if(this.trackInfos) {
       for (let trackInfo of this.trackInfos) {
@@ -936,7 +984,22 @@ export class MainDisplayComponent implements OnInit {
     this.buildEventDataFromJSON(event);
   }
 
-  toggleSidebar() {
-    this.isSidebarHidden = !this.isSidebarHidden;
+  private updateSceneTreeComponent() {
+    // Name scene lights
+    if (this.scene) {
+      if (this.scene.children.length > 2) {
+        if (this.scene.children[0]) {
+          this.scene.children[0].name = "Ambient light";
+        }
+        if (this.scene.children[1]) {
+          this.scene.children[1].name = "Direct. light";
+        }
+      }
+    }
+
+    if(this.geometryTreeComponent) {
+      this.geometryTreeComponent.refreshScheneTree();
+    }
+
   }
 }

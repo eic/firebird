@@ -30,9 +30,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = [
-  "pytest"
-]
+test = ["pytest"]
+batch = ["pyppeteer"]
+xrootd = ["fsspec-xrootd", "xrootd"]
 
 #[project.urls]
 #Documentation = "https://github.com/eic/firebird"

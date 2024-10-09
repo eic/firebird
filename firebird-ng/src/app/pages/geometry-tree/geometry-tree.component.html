@@ -1,9 +1,6 @@
 <div class="header">
-  <button mat-icon-button aria-label="Refresh" matTooltip="Refresh tree with current geometry" (click)="refreshGeometry()" >
+  <button mat-icon-button aria-label="Refresh" matTooltip="Refresh tree with current geometry" (click)="refreshScheneTree()" >
     <mat-icon>refresh</mat-icon>
-  </button>
-  <button mat-icon-button matTooltip="Close geometry" (click)="onToggleSidebar()">
-    <mat-icon>{{ isSidebarHidden ? 'menu' : 'close' }}</mat-icon>
   </button>
 </div>
 <mat-tree [dataSource]="dataSource" [treeControl]="treeControl" >

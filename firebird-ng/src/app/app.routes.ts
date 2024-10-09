@@ -17,6 +17,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/geometry-tree/geometry-tree.component').then(m => m.GeometryTreeComponent)
   },
   {
+    path: 'testdp',
+    loadComponent: () => import('./pages/shell-example/shell-example.component').then(m => m.ShellExampleComponent)
+  },
+  {
     path: 'split-window',
     loadComponent: () => import('./pages/split-window/split-window.component').then(m => m.SplitWindowComponent)
   },

@@ -17,6 +17,7 @@ from pyrobird.edm4eic import parse_entry_numbers
 from flask_compress import Compress
 
 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 server_dir = os.path.abspath(os.path.dirname(__file__))
 static_dir = os.path.join(server_dir, "static")
 
-flask_app = Flask(__name__, static_folder=None)
+flask_app = Flask(__name__, static_folder=static_dir)
 flask_app.config.update()
 
 # Compression config
@@ -155,18 +156,21 @@ def download_file(filename=None):
         abort(404)  # Return 404 if the file does not exist
 
 
-@flask_app.route('/api/v1/convert/edm4eic/<string:entries>', methods=['GET'])
-@flask_app.route('/api/v1/convert/edm4eic/<string:entries>/<path:filename>', methods=['GET'])
+@flask_app.route('/api/v1/convert/<string:file_type>/<string:entries>', methods=['GET'])
+@flask_app.route('/api/v1/convert/<string:file_type>/<string:entries>/<path:filename>', methods=['GET'])
 @compress.compressed()
-def open_edm4eic_file(filename=None, entries="0"):
+def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     """
     Opens an EDM4eic file, extracts the specified event, converts it to JSON, and serves it.
     If the file is local, it checks if the user is allowed to access it.
     If the file is remote (starts with http://, https://, root://), it proceeds without permission checks.
 
-    :param filename: The path or URL of the EDM4eic file.
-    :param entries: The event number to extract.
-    :return: JSON response containing the event data.
+
+    Parameters
+    ----------
+    filename - Name or URL of the file to open
+    file_type - String identifying file type: "edm4hep" or "edm4eic" or else...
+    entries - List of entries, May be one entry, range or comma separated list
     """
 
     start_time = time.perf_counter()
@@ -262,12 +266,6 @@ def open_edm4eic_file(filename=None, entries="0"):
     return jsonify(event)
 
 
-@flask_app.route('/api/v1/edm4hep/event/<string:entries>', methods=['GET'])
-@flask_app.route('/api/v1/edm4eic/event/<string:entries>/<path:filename>', methods=['GET'])
-@compress.compressed()
-def open_edm4eic_file(filename=None, entries="0"):
-    return {"error": "Is not implemented"}, 400
-
 @flask_app.route('/assets/config.jsonc', methods=['GET'])
 def asset_config():
     """Returns asset configuration file.
@@ -277,18 +275,27 @@ def asset_config():
     config_path = 'assets/config.jsonc'
     config_dict = {}
 
+    os_config_path = os.path.join(flask_app.static_folder, 'assets', 'config.jsonc')
+    logger.debug(f"Flask static folder: {flask_app.static_folder}")
+    logger.debug(f"os_config_path: {os_config_path}")
+
     try:
         # Open the config file and load its content using jsonc
-        with open(config_path, 'r') as file:
+        with open(os_config_path, 'r') as file:
             config_dict = json5.load(file)
     except Exception as ex:
         logger.error(f"error opening {config_path}: {ex}")
 
-    host = request.host.split(':')[0]
-    port = request.host.split(':')[1]
+    host = 'unknown'
+    port = 80
 
-    if not port:
-        port = 5454
+    tokens = request.host.split(':')
+
+    if tokens and tokens[0]:
+        host = tokens[0]
+
+    if len(tokens) > 1:
+        port = tokens[1]
 
     """
       serverPort: number;
@@ -316,18 +323,11 @@ def index():
 def static_file(path):
     """Serves flask static directory files"""
 
-    if flask_app.debug:
-        print("Serve path:")
-        print("  Server dir :", server_dir)
-        print("  Static dir :", static_dir)
-        print("  path       :", path)
-
     try:
         return send_from_directory(static_dir, path)
     except werkzeug.exceptions.NotFound as ex:
-        if flask_app.debug:
-            print("File is not found, assuming it is SPA and serving index.html")
-            return send_from_directory(static_dir, "index.html")
+        logger.debug("File is not found, assuming it is SPA and serving index.html")
+        return static_file("index.html")
 
 
 @flask_app.route('/shutdown', methods=['GET', 'POST'])
@@ -341,7 +341,7 @@ def shutdown():
     return 'Server shutting down...'
 
 
-def run(config=None, host=None, port=5454, debug=True, load_dotenv=False):
+def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
     """Runs flask server"""
     if config:
         if isinstance(config, Config) or isinstance(config, map):
@@ -357,5 +357,9 @@ def run(config=None, host=None, port=5454, debug=True, load_dotenv=False):
             r"/download/*": {"origins": "*"},
             r"/api/v1/*": {"origins": "*"},
         })
+
+    logger.debug("Serve path:")
+    logger.debug("  Server dir :", server_dir)
+    logger.debug("  Static dir :", static_dir)
 
     flask_app.run(host=host, port=port, debug=debug, load_dotenv=load_dotenv)

@@ -60,7 +60,7 @@ export class SplitWindowComponent implements AfterViewInit {
 
   ngAfterViewInit() {
     const handler = this.elRef.nativeElement.querySelector('.handler');
-    const wrapper = handler.closest('.container');
+    const wrapper = handler.closest('.wrapper');
     const boxA = wrapper.querySelector('.box');
 
     this.renderer.listen(handler, 'mousedown', (e: MouseEvent) => {
