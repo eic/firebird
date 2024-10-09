@@ -521,41 +521,15 @@ export class MainDisplayComponent implements OnInit {
     // Initialize the event display
     this.eventDisplay.init(configuration);
 
+    // TODO CLEAN THI UP!
+    const rendererElement = this.threeFacade?.mainRenderer?.domElement;
 
+    rendererElement?.addEventListener('resize', () => {
+      this.onRendererElementResize();
+    });
 
     window.addEventListener('resize', () => {
-      const renderer = this.threeFacade.mainRenderer;
-      const camera = this.threeFacade.mainCamera;
-      const rendererElement = renderer.domElement;
-      if(rendererElement == null) {
-        return;
-      }
-
-      if(this.displayShellComponent == null) {
-        return;
-      }
-
-      // Calculate adjusted dimensions
-      const headerHeight =  0; // TODO?
-      const footerHeight =  0; // TODO?
-      const sidePanelWidth = this.displayShellComponent.leftPaneWidth;
-
-
-      const adjustedWidth = rendererElement.offsetWidth - sidePanelWidth;
-      const adjustedHeight = rendererElement.offsetHeight - headerHeight - footerHeight;
-
-      // Update renderer size
-      renderer.setSize(adjustedWidth, adjustedHeight);
-
-      if (camera.isOrthographicCamera) {
-        camera.left = adjustedWidth / -2;
-        camera.right = adjustedWidth / 2;
-        camera.top = adjustedHeight / 2;
-        camera.bottom = adjustedHeight / -2;
-      } else {
-        camera.aspect = adjustedWidth / adjustedHeight;
-      }
-      camera.updateProjectionMatrix();
+      this.onRendererElementResize();
     });
 
     this.controller.buttonB.onPress.subscribe(value => {
@@ -731,6 +705,47 @@ export class MainDisplayComponent implements OnInit {
       console.log((e as KeyboardEvent).key);
 
     });
+  }
+
+  private onRendererElementResize() {
+    const renderer = this.threeFacade.mainRenderer;
+    const camera = this.threeFacade.mainCamera;
+    const rendererElement = renderer.domElement;
+    if(rendererElement == null) {
+      return;
+    }
+
+    if(this.displayShellComponent == null) {
+      return;
+    }
+
+    // Calculate adjusted dimensions
+    let headerHeight =  0;
+    const footerHeight =  0; // TODO?
+    const sidePanelWidth = this.displayShellComponent.leftPaneWidth;
+
+    // We use padding to
+    let element = document.getElementById('eventDisplay');
+    if(element) {
+      let computedStyle = window.getComputedStyle(element);
+      headerHeight = parseFloat(computedStyle.paddingTop) ?? 0;
+    }
+
+    const adjustedWidth = rendererElement.offsetWidth;
+    const adjustedHeight = rendererElement.offsetHeight - headerHeight - footerHeight;
+
+    // Update renderer size
+    renderer.setSize(adjustedWidth, adjustedHeight);
+
+    if (camera.isOrthographicCamera) {
+      camera.left = adjustedWidth / -2;
+      camera.right = adjustedWidth / 2;
+      camera.top = adjustedHeight / 2;
+      camera.bottom = adjustedHeight / -2;
+    } else {
+      camera.aspect = adjustedWidth / adjustedHeight;
+    }
+    camera.updateProjectionMatrix();
   }
 
   private onControllerBPressed(value: boolean) {
