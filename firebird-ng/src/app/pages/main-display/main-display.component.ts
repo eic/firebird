@@ -135,6 +135,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   toggleLeftPane() {
     this.displayShellComponent.toggleLeftPane();
     this.isLeftPaneOpen = !this.isLeftPaneOpen;
+
   }
 
   toggleRightPane() {
@@ -667,8 +668,20 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
 
   ngAfterViewInit(): void {
-    this.displayShellComponent.onVisibilityChangeLeft.subscribe(()=> {this.onRendererElementResize();})
-    this.displayShellComponent.onVisibilityChangeRight.subscribe(()=> {this.onRendererElementResize();})
+
+    // When sidebar is collapsed/opened, the main container, i.e. #eventDisplay offsetWidth is not yet updated.
+    // This leads to a not proper resize  processing. We add 100ms delay before calling a function
+    const this_obj = this
+    const resizeInvoker = function(){
+      setTimeout(() => {
+        this_obj.onRendererElementResize();
+      }, 100);  // 100 milliseconds = 0.1 seconds
+    };
+
+    this.displayShellComponent.onVisibilityChangeLeft.subscribe(resizeInvoker);
+    this.displayShellComponent.onVisibilityChangeRight.subscribe(resizeInvoker);
+
+    // This works good without 100mv delay
     this.displayShellComponent.onEndResizeLeft.subscribe(()=> {this.onRendererElementResize();})
     this.displayShellComponent.onEndResizeRight.subscribe(()=> {this.onRendererElementResize();})
 
@@ -709,7 +722,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
     const adjustedWidth = outerElement.offsetWidth;
     const adjustedHeight = outerElement.offsetHeight - headerHeight - footerHeight;
-    console.log(`New size: ${adjustedWidth}x${adjustedHeight}`)
+    console.log(`[RendererResize] New size: ${adjustedWidth}x${adjustedHeight} px`)
 
     // Update renderer size
     renderer.setSize(adjustedWidth, adjustedHeight);
