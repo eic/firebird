@@ -1,4 +1,4 @@
-import {Component, ElementRef, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
 
 import {
@@ -59,7 +59,7 @@ import {DataModelPainter} from "../../painters/data-model-painter";
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
-export class MainDisplayComponent implements OnInit {
+export class MainDisplayComponent implements OnInit, AfterViewInit {
 
   @Input()
   eventDataImportOptions: EventDataImportOption[] = Object.values(EventDataFormat);
@@ -124,6 +124,8 @@ export class MainDisplayComponent implements OnInit {
   }
 
 
+
+
   @ViewChild(DisplayShellComponent)
   displayShellComponent!: DisplayShellComponent;
 
@@ -139,40 +141,6 @@ export class MainDisplayComponent implements OnInit {
     this.displayShellComponent.toggleRightPane();
   }
 
-  //
-  // ngAfterViewInit() {
-  //   const handler = this.elRef.nativeElement.querySelector('.handler');
-  //   const wrapper = handler.closest('.wrapper');
-  //   const boxA = wrapper.querySelector('.box');
-  //
-  //   this.renderer2.listen(handler, 'mousedown', (e: MouseEvent) => {
-  //
-  //     this.isHandlerDragging = true;
-  //   });
-  //
-  //   this.renderer2.listen(document, 'mousemove', (e: MouseEvent) => {
-  //     if (!this.isHandlerDragging) {
-  //       return;
-  //     }
-  //
-  //
-  //     const containerOffsetLeft = wrapper.offsetLeft;
-  //
-  //
-  //     const pointerRelativeXpos = e.clientX - containerOffsetLeft;
-  //
-  //
-  //     const boxAminWidth = 60;
-  //
-  //
-  //     boxA.style.width = `${Math.max(boxAminWidth, pointerRelativeXpos - 8)}px`;
-  //     boxA.style.flexGrow = '0';
-  //   });
-  //
-  //   this.renderer2.listen(document, 'mouseup', () => {
-  //     this.isHandlerDragging = false;
-  //   });
-  // }
 
   logRendererInfo() {
     let renderer = this.threeFacade.mainRenderer;
@@ -521,16 +489,6 @@ export class MainDisplayComponent implements OnInit {
     // Initialize the event display
     this.eventDisplay.init(configuration);
 
-    // TODO CLEAN THI UP!
-    const rendererElement = this.threeFacade?.mainRenderer?.domElement;
-
-    rendererElement?.addEventListener('resize', () => {
-      this.onRendererElementResize();
-    });
-
-    window.addEventListener('resize', () => {
-      this.onRendererElementResize();
-    });
 
     this.controller.buttonB.onPress.subscribe(value => {
       this.onControllerBPressed(value);
@@ -707,11 +665,29 @@ export class MainDisplayComponent implements OnInit {
     });
   }
 
+
+  ngAfterViewInit(): void {
+    this.displayShellComponent.onVisibilityChangeLeft.subscribe(()=> {this.onRendererElementResize();})
+    this.displayShellComponent.onVisibilityChangeRight.subscribe(()=> {this.onRendererElementResize();})
+    this.displayShellComponent.onEndResizeLeft.subscribe(()=> {this.onRendererElementResize();})
+    this.displayShellComponent.onEndResizeRight.subscribe(()=> {this.onRendererElementResize();})
+
+    window.addEventListener('resize', () => {
+      this.onRendererElementResize();
+    });
+  }
+
   private onRendererElementResize() {
     const renderer = this.threeFacade.mainRenderer;
     const camera = this.threeFacade.mainCamera;
     const rendererElement = renderer.domElement;
     if(rendererElement == null) {
+      return;
+    }
+
+    // This is the element in which Three.js canvas is located
+    const outerElement = document.getElementById('eventDisplay');
+    if(outerElement == null) {
       return;
     }
 
@@ -731,8 +707,9 @@ export class MainDisplayComponent implements OnInit {
       headerHeight = parseFloat(computedStyle.paddingTop) ?? 0;
     }
 
-    const adjustedWidth = rendererElement.offsetWidth;
-    const adjustedHeight = rendererElement.offsetHeight - headerHeight - footerHeight;
+    const adjustedWidth = outerElement.offsetWidth;
+    const adjustedHeight = outerElement.offsetHeight - headerHeight - footerHeight;
+    console.log(`New size: ${adjustedWidth}x${adjustedHeight}`)
 
     // Update renderer size
     renderer.setSize(adjustedWidth, adjustedHeight);

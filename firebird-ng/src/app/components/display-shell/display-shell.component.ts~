@@ -132,7 +132,7 @@ export class DisplayShellComponent {
 
   toggleLeftPane() {
     this.isLeftPaneVisible = !this.isLeftPaneVisible;
-    this.onVisibilityChangeLeft.emit(this.isLeftPaneVisible);
+    this.onVisibilityChangeLeft.emit(this.leftPaneWidth);
   }
 
   toggleRightPane() {
