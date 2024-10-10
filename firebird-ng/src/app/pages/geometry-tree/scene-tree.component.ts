@@ -73,10 +73,10 @@ interface ExampleFlatNode {
     MatButton,
     MatTooltip
   ],
-  templateUrl: './geometry-tree.component.html',
-  styleUrl: './geometry-tree.component.scss'
+  templateUrl: './scene-tree.component.html',
+  styleUrl: './scene-tree.component.scss'
 })
-export class GeometryTreeComponent implements OnInit{
+export class SceneTreeComponent implements OnInit{
 
   isHighlightingEnabled: boolean = false;
 

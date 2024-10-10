@@ -44,7 +44,7 @@ import {MatOption, MatSelect} from "@angular/material/select";
 import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window/geometry-tree-window.component";
 import {DataModelService} from "../../services/data-model.service";
 import {AngularSplitModule} from "angular-split";
-import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
+import {SceneTreeComponent} from "../geometry-tree/scene-tree.component";
 import {DisplayShellComponent} from "../../components/display-shell/display-shell.component";
 import {DataModelPainter} from "../../painters/data-model-painter";
 
@@ -55,7 +55,7 @@ import {DataModelPainter} from "../../painters/data-model-painter";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent, NgClass, MatIconButton, DisplayShellComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -129,8 +129,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   @ViewChild(DisplayShellComponent)
   displayShellComponent!: DisplayShellComponent;
 
-  @ViewChild(GeometryTreeComponent)
-  geometryTreeComponent: GeometryTreeComponent|null|undefined;
+  @ViewChild(SceneTreeComponent)
+  geometryTreeComponent: SceneTreeComponent|null|undefined;
 
   toggleLeftPane() {
     this.displayShellComponent.toggleLeftPane();

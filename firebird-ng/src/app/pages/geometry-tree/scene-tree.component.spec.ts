@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { GeometryTreeComponent } from './geometry-tree.component';
+import { SceneTreeComponent } from './scene-tree.component';
 
 describe('GeometryTreeComponent', () => {
-  let component: GeometryTreeComponent;
-  let fixture: ComponentFixture<GeometryTreeComponent>;
+  let component: SceneTreeComponent;
+  let fixture: ComponentFixture<SceneTreeComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [GeometryTreeComponent]
+      imports: [SceneTreeComponent]
     })
     .compileComponents();
-    
-    fixture = TestBed.createComponent(GeometryTreeComponent);
+
+    fixture = TestBed.createComponent(SceneTreeComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
