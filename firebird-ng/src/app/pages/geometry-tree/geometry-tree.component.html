@@ -1,4 +1,7 @@
 <div class="header">
+  <button mat-icon-button aria-label="Toggle Highlight" matTooltip="Toggle highlight function" (click)="toggleHighlighting()">
+    <mat-icon>{{ isHighlightingEnabled ? 'highlight_off' : 'highlight' }}</mat-icon>
+  </button>
   <button mat-icon-button aria-label="Refresh" matTooltip="Refresh tree with current geometry" (click)="refreshScheneTree()" >
     <mat-icon>refresh</mat-icon>
   </button>
@@ -14,7 +17,9 @@
     </button>
   </mat-tree-node>
   <!-- This is the tree node template for expandable nodes -->
-  <mat-tree-node *matTreeNodeDef="let node;when: hasChild" matTreeNodePadding>
+  <mat-tree-node *matTreeNodeDef="let node; when: hasChild" matTreeNodePadding
+                 (mouseenter)="highlightNode(node)"
+                 (mouseleave)="unhighlightElement(node)">
     <button mat-icon-button matTreeNodeToggle
             [attr.aria-label]="'Toggle ' + node.name">
       <mat-icon class="mat-icon-rtl-mirror">
