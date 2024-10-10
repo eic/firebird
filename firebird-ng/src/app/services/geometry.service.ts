@@ -1,10 +1,10 @@
 import {Injectable} from '@angular/core';
-import {openFile} from 'jsrootdi';
+import {openFile} from 'jsroot';
 import {
   analyzeGeoNodes,
   findGeoManager, getGeoNodesByLevel
 } from '../../lib-root-geometry/root-geo-navigation';
-import {build} from 'jsrootdi/geom';
+import {build} from 'jsroot/geom';
 import {RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
 import {UserConfigService} from "./user-config.service";
 import {Subdetector} from "../model/subdetector";
@@ -105,8 +105,7 @@ export class GeometryService {
     // let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
     // >oO let objectName = 'default';
 
-    const url = this.settings.selectedGeometry.value !== DEFAULT_GEOMETRY?
-      this.settings.selectedGeometry.value:
+    const url = this.settings.selectedGeometry.value !== DEFAULT_GEOMETRY ? this.settings.selectedGeometry.value:
       'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
 
     console.time('[GeometryService]: Total load geometry time');

@@ -15,7 +15,7 @@ import {ActivatedRoute} from '@angular/router';
 import {ThreeGeometryProcessor} from "../../data-pipelines/three-geometry.processor";
 import * as TWEEN from '@tweenjs/tween.js';
 import GUI from "lil-gui";
-import {produceRenderOrder} from "jsrootdi/geom";
+import {produceRenderOrder} from "jsroot/geom";
 import {
   disposeHierarchy,
   disposeNode,
