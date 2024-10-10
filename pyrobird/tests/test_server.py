@@ -32,7 +32,7 @@ def test_open_edm4eic_file_local_allowed(client):
     # Test accessing a permitted local file
     filename = TEST_ROOT_FILE
     event_number = 0
-    response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={filename}')
+    response = client.get(f'/api/v1/convert/edm4eic/{event_number}?f={filename}')
 
     assert response.status_code == 200
     data = response.get_json()
@@ -42,17 +42,15 @@ def test_open_edm4eic_file_local_allowed(client):
     assert data['entries'][0]["id"] == event_number
 
 
-
-
 def test_open_edm4eic_file_local_not_allowed(client):
     from urllib.parse import quote
     # Test accessing a local file outside of DOWNLOAD_PATH
     filename = '/etc/passwd'  # A file outside the allowed path
     event_number = 0
     encoded_filename = quote(filename, safe='')
-    response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={encoded_filename}')
+    response = client.get(f'/api/v1/convert/edm4eic/{event_number}?f={encoded_filename}')
 
-    assert response.status_code == 404
+    assert response.status_code == 403
 
 
 def test_open_dangerous(client):
@@ -69,16 +67,16 @@ def test_open_edm4eic_file_invalid_event_number(client):
     # Test accessing an invalid event number
     filename = 'reco_2024-09_craterlake_2evt.edm4eic.root'
     event_number = 100  # Assuming the file has less than 100 events
-    response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={filename}')
+    response = client.get(f'/api/v1/convert/edm4eic/{event_number}?f={filename}')
 
-    assert response.status_code == 404  # Bad Request
+    assert response.status_code == 400  # Bad Request
 
 
 def test_open_edm4eic_file_nonexistent_file(client):
     # Test accessing a file that does not exist
     filename = 'nonexistent_file.edm4eic.root'
     event_number = 0
-    response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={filename}')
+    response = client.get(f'/api/v1/convert/edm4eic/{event_number}?f={filename}')
 
     assert response.status_code == 404  # Not Found
 
@@ -89,9 +87,9 @@ def test_open_edm4eic_file_download_disabled(client):
 
     filename = 'reco_2024-09_craterlake_2evt.edm4eic.root'
     event_number = 0
-    response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={filename}')
+    response = client.get(f'/api/v1/convert/edm4eic/{event_number}?f={filename}')
 
-    assert response.status_code == 404  # Forbidden
+    assert response.status_code == 403  # Forbidden
 
     # Re-enable downloads for other tests
     flask_app.config['DOWNLOAD_DISABLE'] = False
@@ -106,9 +104,9 @@ def test_open_edm4eic_file_invalid_file(client):
         f.write('This is not a valid ROOT file.')
 
     event_number = 0
-    response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={invalid_filename}')
+    response = client.get(f'/api/v1/convert/edm4eic/{event_number}?f={invalid_filename}')
 
-    assert response.status_code == 404  # Internal Server Error
+    assert response.status_code == 500  # Internal Server Error
 
     # Clean up the invalid file
     os.remove(invalid_file_path)
