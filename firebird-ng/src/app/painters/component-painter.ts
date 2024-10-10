@@ -1,5 +1,10 @@
 import { Object3D } from "three";
 import { EntryComponent } from "../model/entry-component";
+import {disposeNode} from "../utils/three.utils";
+
+
+/** Define the type for the constructor of ComponentPainter subclasses */
+export type ComponentPainterConstructor = new (node: Object3D, component: EntryComponent) => ComponentPainter;
 
 /** Paints all primitives for a given EntryComponent */
 export abstract class ComponentPainter {
@@ -21,22 +26,8 @@ export abstract class ComponentPainter {
   /** Dispose method to clean up resources */
   public dispose(): void {
     // Remove node from the scene
-    if (this.node.parent) {
-      this.node.parent.remove(this.node);
+    if (this.node) {
+      disposeNode(this.node);
     }
-    // Dispose of Three.js resources if necessary
-    this.node.traverse((child) => {
-      if (child instanceof Mesh) {
-        child.geometry.dispose();
-        if (Array.isArray(child.material)) {
-          child.material.forEach((material) => material.dispose());
-        } else {
-          child.material.dispose();
-        }
-      }
-    });
-    // Nullify references
-    this.node = null;
-    this.component = null;
   }
 }

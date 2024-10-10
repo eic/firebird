@@ -152,7 +152,10 @@ export class ThreeGeometryProcessor {
     {
       name: "VertexBarrelSubAssembly_3",
       rules: [
-
+        {
+          merge: true,
+          outline: true
+        }
       ]
     },
     {
@@ -164,7 +167,6 @@ export class ThreeGeometryProcessor {
         }
       ]
     }
-
   ]
 
   calorimetry = new CalorimetryGeometryPrettifier();
