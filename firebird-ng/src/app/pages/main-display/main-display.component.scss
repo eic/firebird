@@ -46,3 +46,14 @@ mat-slider{
   width: 200px;
 }
 
+.phoenix-menu{
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2e2e2e;
+}

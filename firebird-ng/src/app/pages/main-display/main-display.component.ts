@@ -104,8 +104,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   selectedEventKey: string|undefined;
   private beamAnimationTime: number = 1000;
 
-  private isHandlerDragging = false;
-  isLeftPaneOpen: boolean = true;
+  isLeftPaneOpen: boolean = false;
 
   private painter: DataModelPainter = new DataModelPainter();
 
@@ -664,6 +663,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
       console.log((e as KeyboardEvent).key);
 
     });
+
+
   }
 
 
