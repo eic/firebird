@@ -13,7 +13,7 @@ import {MatTreeFlatDataSource, MatTreeFlattener} from '@angular/material/tree';
 import {MatIcon, MatIconModule} from '@angular/material/icon';
 import {MatButton, MatButtonModule, MatIconButton} from '@angular/material/button';
 import {GeometryService} from "../../services/geometry.service";
-import {Object3D} from "three";
+import {Mesh, MeshBasicMaterial, Object3D} from "three";
 import {EventDisplayService} from "phoenix-ui-components";
 import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
 import {MatTooltip} from "@angular/material/tooltip";
@@ -77,6 +77,8 @@ interface ExampleFlatNode {
   styleUrl: './geometry-tree.component.scss'
 })
 export class GeometryTreeComponent implements OnInit{
+
+  isHighlightingEnabled: boolean = false;
 
   private _transformer = (node: Object3D, level: number) => {
     return {
@@ -144,6 +146,75 @@ export class GeometryTreeComponent implements OnInit{
     this.dataSource.data = this.threeFacade.scene.children;
   }
 
+  toggleHighlighting(): void {
+    this.isHighlightingEnabled = !this.isHighlightingEnabled;
+    console.log(`Highlighting is now ${this.isHighlightingEnabled ? 'enabled' : 'disabled'}`);
+  }
+
+  private isEventDataNode(node: ExampleFlatNode): boolean {
+    let currentNode: ExampleFlatNode | null = node;
+
+    while (currentNode) {
+      if (currentNode.name.includes('EventData')) {
+        return true;
+      }
+      currentNode = this.getParentNode(currentNode);
+    }
+
+    return false;
+  }
+
+  private getParentNode(node: ExampleFlatNode): ExampleFlatNode | null {
+    for (let i = 0; i < this.treeControl.dataNodes.length; i++) {
+      const currentNode = this.treeControl.dataNodes[i];
+      if (currentNode.expandable && this.treeControl.getLevel(currentNode) < node.level) {
+        const childNodes = this.treeControl.getDescendants(currentNode);
+        if (childNodes.includes(node)) {
+          return currentNode;
+        }
+      }
+    }
+    return null;
+  }
+
+  highlightNode(node: ExampleFlatNode): void {
+    if (!this.isHighlightingEnabled) {
+      return;
+    }
+
+    const isEventData = this.isEventDataNode(node);
+
+    node.object3D.traverse((child: Object3D) => {
+      if (child instanceof Mesh) {
+        if (!child.userData['originalMaterial']) {
+          child.userData['originalMaterial'] = child.material;
+        }
+
+        if (isEventData) {
+          const originalMaterial = child.material as any;
+          const highlightMaterial = originalMaterial.clone();
+          highlightMaterial.color.set(0xffff00);
+          highlightMaterial.wireframe = true;
+
+          child.material = highlightMaterial;
+        } else {
+          child.material = new MeshBasicMaterial({ color: 0xffff00, wireframe: true });
+        }
+      }
+    });
+    console.log(`Element highlighted: ${node.name}`);
+  }
 
 
+  unhighlightElement(node: ExampleFlatNode): void {
+    if (!this.isHighlightingEnabled) {
+      return;
+    }
+    node.object3D.traverse((child: Object3D) => {
+      if (child instanceof Mesh && child.userData['originalMaterial']) {
+        child.material = child.userData['originalMaterial'];
+      }
+    });
+    console.log(`Element unhighlighted: ${node.name}`);
+  }
 }

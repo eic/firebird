@@ -11,57 +11,21 @@
   padding-right: 0;
 }
 
-//.wrapper {
-//  display: flex;
-//  //height: 100vh;
-//  flex-direction: row;
-//  padding-top: 65px;
-//  margin-top: -65px;
-//}
-
-//.sidebar {
-//  flex: 1 1 auto;
-//  background-color: #2e2e2e;
-//  //left: 0;
-//  min-width: 260px;
-//  box-sizing: border-box;
-//  overflow: auto;
-//  height: 100vh;
-//  padding-top: 65px;
-//  margin-top: -65px;
-//}
-
-//.handler {
-//  width: 4px;
-//  padding: 0;
-//  cursor: ew-resize;
-//  flex: 0 0 auto;
-//}
-
-
 #eventDisplay {
-  padding-top: 168px;
-  margin-top: -170px;
+  padding-top: 115px;
+  margin-top: -115px;
 }
 
-//.main {
-//  flex: 1 1 auto;
-//  box-sizing: border-box;
-//  display: flex;
-//  flex-direction: column;
-//}
 
 .toggle-btn {
-  //position: absolute;
-  //top: 60px;
+  position: absolute;
+  top: 64px;
 
   color: white;
   padding-top: 8px;
+  z-index: 10;
 }
 
-//.hidden {
-//  display: none;
-//}
 
 .time-controls {
   flex: 1 1 auto;
@@ -78,9 +42,7 @@
 }
 
 
-.phoenix-menu{
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+mat-slider{
+  width: 200px;
 }
+
