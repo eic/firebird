@@ -3,10 +3,10 @@
 import { DataExchange } from './data-exchange';
 import { Entry } from './entry';
 import { BoxTrackerHitComponent, BoxTrackerHit, BoxTrackerHitComponentFactory } from './box-tracker-hit.component';
-import { registerComponentFactory } from './entry-component';
+import {_resetComponentRegistry, registerComponentFactory} from './entry-component';
 
 // Register the BoxTrackerHitComponentFactory
-registerComponentFactory(new BoxTrackerHitComponentFactory());
+
 
 describe('DataExchange with BoxTrackerHitComponent', () => {
   it('should serialize and deserialize correctly', () => {
@@ -28,6 +28,9 @@ describe('DataExchange with BoxTrackerHitComponent', () => {
     dataExchange.version = '0.01';
     dataExchange.origin = { fileName: 'sample.dat' };
     dataExchange.entries.push(entry);
+
+    _resetComponentRegistry();
+    registerComponentFactory(new BoxTrackerHitComponentFactory());
 
     // Serialize
     const serialized = dataExchange.toDexObject();
