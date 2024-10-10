@@ -1,7 +1,20 @@
-.example-fill-remaining-space {
+nav{
+  display: flex;
+  flex-direction: row;
+  background-color: #2e2e2e;
+  color: white;
+}
+.top_nav{
+  background-color: #2e2e2e;
   flex: 1 1 auto;
+  max-width: 250px;
+}
+.phoenix-menu{
+
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2e2e2e;
 }
 
-mat-toolbar {
-  background-color: #424242; /* Dark grey background */
-}

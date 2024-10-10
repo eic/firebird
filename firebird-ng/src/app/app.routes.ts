@@ -14,7 +14,7 @@ export const routes: Routes = [
   },
   {
     path: 'geometry',
-    loadComponent: () => import('./pages/geometry-tree/geometry-tree.component').then(m => m.GeometryTreeComponent)
+    loadComponent: () => import('./pages/geometry-tree/scene-tree.component').then(m => m.SceneTreeComponent)
   },
   {
     path: 'testdp',

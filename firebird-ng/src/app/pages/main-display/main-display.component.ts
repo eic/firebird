@@ -1,4 +1,4 @@
-import {Component, ElementRef, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
 
 import {
@@ -44,7 +44,7 @@ import {MatOption, MatSelect} from "@angular/material/select";
 import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window/geometry-tree-window.component";
 import {DataModelService} from "../../services/data-model.service";
 import {AngularSplitModule} from "angular-split";
-import {GeometryTreeComponent} from "../geometry-tree/geometry-tree.component";
+import {SceneTreeComponent} from "../geometry-tree/scene-tree.component";
 import {DisplayShellComponent} from "../../components/display-shell/display-shell.component";
 import {DataModelPainter} from "../../painters/data-model-painter";
 
@@ -55,11 +55,11 @@ import {DataModelPainter} from "../../painters/data-model-painter";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, GeometryTreeComponent, NgClass, MatIconButton, DisplayShellComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
-export class MainDisplayComponent implements OnInit {
+export class MainDisplayComponent implements OnInit, AfterViewInit {
 
   @Input()
   eventDataImportOptions: EventDataImportOption[] = Object.values(EventDataFormat);
@@ -124,55 +124,24 @@ export class MainDisplayComponent implements OnInit {
   }
 
 
+
+
   @ViewChild(DisplayShellComponent)
   displayShellComponent!: DisplayShellComponent;
 
-  @ViewChild(GeometryTreeComponent)
-  geometryTreeComponent: GeometryTreeComponent|null|undefined;
+  @ViewChild(SceneTreeComponent)
+  geometryTreeComponent: SceneTreeComponent|null|undefined;
 
   toggleLeftPane() {
     this.displayShellComponent.toggleLeftPane();
     this.isLeftPaneOpen = !this.isLeftPaneOpen;
+
   }
 
   toggleRightPane() {
     this.displayShellComponent.toggleRightPane();
   }
 
-  //
-  // ngAfterViewInit() {
-  //   const handler = this.elRef.nativeElement.querySelector('.handler');
-  //   const wrapper = handler.closest('.wrapper');
-  //   const boxA = wrapper.querySelector('.box');
-  //
-  //   this.renderer2.listen(handler, 'mousedown', (e: MouseEvent) => {
-  //
-  //     this.isHandlerDragging = true;
-  //   });
-  //
-  //   this.renderer2.listen(document, 'mousemove', (e: MouseEvent) => {
-  //     if (!this.isHandlerDragging) {
-  //       return;
-  //     }
-  //
-  //
-  //     const containerOffsetLeft = wrapper.offsetLeft;
-  //
-  //
-  //     const pointerRelativeXpos = e.clientX - containerOffsetLeft;
-  //
-  //
-  //     const boxAminWidth = 60;
-  //
-  //
-  //     boxA.style.width = `${Math.max(boxAminWidth, pointerRelativeXpos - 8)}px`;
-  //     boxA.style.flexGrow = '0';
-  //   });
-  //
-  //   this.renderer2.listen(document, 'mouseup', () => {
-  //     this.isHandlerDragging = false;
-  //   });
-  // }
 
   logRendererInfo() {
     let renderer = this.threeFacade.mainRenderer;
@@ -522,42 +491,6 @@ export class MainDisplayComponent implements OnInit {
     this.eventDisplay.init(configuration);
 
 
-
-    window.addEventListener('resize', () => {
-      const renderer = this.threeFacade.mainRenderer;
-      const camera = this.threeFacade.mainCamera;
-      const rendererElement = renderer.domElement;
-      if(rendererElement == null) {
-        return;
-      }
-
-      if(this.displayShellComponent == null) {
-        return;
-      }
-
-      // Calculate adjusted dimensions
-      const headerHeight =  0; // TODO?
-      const footerHeight =  0; // TODO?
-      const sidePanelWidth = this.displayShellComponent.leftPaneWidth;
-
-
-      const adjustedWidth = rendererElement.offsetWidth - sidePanelWidth;
-      const adjustedHeight = rendererElement.offsetHeight - headerHeight - footerHeight;
-
-      // Update renderer size
-      renderer.setSize(adjustedWidth, adjustedHeight);
-
-      if (camera.isOrthographicCamera) {
-        camera.left = adjustedWidth / -2;
-        camera.right = adjustedWidth / 2;
-        camera.top = adjustedHeight / 2;
-        camera.bottom = adjustedHeight / -2;
-      } else {
-        camera.aspect = adjustedWidth / adjustedHeight;
-      }
-      camera.updateProjectionMatrix();
-    });
-
     this.controller.buttonB.onPress.subscribe(value => {
       this.onControllerBPressed(value);
     });
@@ -731,6 +664,78 @@ export class MainDisplayComponent implements OnInit {
       console.log((e as KeyboardEvent).key);
 
     });
+  }
+
+
+  ngAfterViewInit(): void {
+
+    // When sidebar is collapsed/opened, the main container, i.e. #eventDisplay offsetWidth is not yet updated.
+    // This leads to a not proper resize  processing. We add 100ms delay before calling a function
+    const this_obj = this
+    const resizeInvoker = function(){
+      setTimeout(() => {
+        this_obj.onRendererElementResize();
+      }, 100);  // 100 milliseconds = 0.1 seconds
+    };
+
+    this.displayShellComponent.onVisibilityChangeLeft.subscribe(resizeInvoker);
+    this.displayShellComponent.onVisibilityChangeRight.subscribe(resizeInvoker);
+
+    // This works good without 100mv delay
+    this.displayShellComponent.onEndResizeLeft.subscribe(()=> {this.onRendererElementResize();})
+    this.displayShellComponent.onEndResizeRight.subscribe(()=> {this.onRendererElementResize();})
+
+    window.addEventListener('resize', () => {
+      this.onRendererElementResize();
+    });
+  }
+
+  private onRendererElementResize() {
+    const renderer = this.threeFacade.mainRenderer;
+    const camera = this.threeFacade.mainCamera;
+    const rendererElement = renderer.domElement;
+    if(rendererElement == null) {
+      return;
+    }
+
+    // This is the element in which Three.js canvas is located
+    const outerElement = document.getElementById('eventDisplay');
+    if(outerElement == null) {
+      return;
+    }
+
+    if(this.displayShellComponent == null) {
+      return;
+    }
+
+    // Calculate adjusted dimensions
+    let headerHeight =  0;
+    const footerHeight =  0; // TODO?
+    const sidePanelWidth = this.displayShellComponent.leftPaneWidth;
+
+    // We use padding to
+    let element = document.getElementById('eventDisplay');
+    if(element) {
+      let computedStyle = window.getComputedStyle(element);
+      headerHeight = parseFloat(computedStyle.paddingTop) ?? 0;
+    }
+
+    const adjustedWidth = outerElement.offsetWidth;
+    const adjustedHeight = outerElement.offsetHeight - headerHeight - footerHeight;
+    console.log(`[RendererResize] New size: ${adjustedWidth}x${adjustedHeight} px`)
+
+    // Update renderer size
+    renderer.setSize(adjustedWidth, adjustedHeight);
+
+    if (camera.isOrthographicCamera) {
+      camera.left = adjustedWidth / -2;
+      camera.right = adjustedWidth / 2;
+      camera.top = adjustedHeight / 2;
+      camera.bottom = adjustedHeight / -2;
+    } else {
+      camera.aspect = adjustedWidth / adjustedHeight;
+    }
+    camera.updateProjectionMatrix();
   }
 
   private onControllerBPressed(value: boolean) {
