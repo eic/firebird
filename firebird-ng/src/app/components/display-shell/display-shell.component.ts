@@ -63,7 +63,7 @@ export class DisplayShellComponent {
   rightPaneWidth = 250;
 
   /** If left plane is visible or collapsed */
-  isLeftPaneVisible = true;
+  isLeftPaneVisible = false;
 
   /** If right plane is visible or collapsed */
   isRightPaneVisible = false;
