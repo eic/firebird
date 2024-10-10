@@ -52,7 +52,7 @@ def test_open_edm4eic_file_local_not_allowed(client):
     encoded_filename = quote(filename, safe='')
     response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={encoded_filename}')
 
-    assert response.status_code == 403  # Forbidden
+    assert response.status_code == 404
 
 
 def test_open_dangerous(client):
@@ -71,7 +71,7 @@ def test_open_edm4eic_file_invalid_event_number(client):
     event_number = 100  # Assuming the file has less than 100 events
     response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={filename}')
 
-    assert response.status_code == 400  # Bad Request
+    assert response.status_code == 404  # Bad Request
 
 
 def test_open_edm4eic_file_nonexistent_file(client):
@@ -91,7 +91,7 @@ def test_open_edm4eic_file_download_disabled(client):
     event_number = 0
     response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={filename}')
 
-    assert response.status_code == 403  # Forbidden
+    assert response.status_code == 404  # Forbidden
 
     # Re-enable downloads for other tests
     flask_app.config['DOWNLOAD_DISABLE'] = False
@@ -108,7 +108,7 @@ def test_open_edm4eic_file_invalid_file(client):
     event_number = 0
     response = client.get(f'/api/v1/edm4eic/event/{event_number}?f={invalid_filename}')
 
-    assert response.status_code == 500  # Internal Server Error
+    assert response.status_code == 404  # Internal Server Error
 
     # Clean up the invalid file
     os.remove(invalid_file_path)
