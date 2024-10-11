@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import {UserConfigService} from "./user-config.service";
-import {ServerConfigService} from "./server-config.service";
+import {ServerConfig, ServerConfigService} from "./server-config.service";
 
 let defaultProtocolAliases = [
   {"epic://": "https://eic.github.io/epic/artifacts/" }
@@ -54,52 +54,110 @@ export function resolveProtocolAlias(url: string, aliases: { [key: string]: stri
 })
 export class UrlService {
 
+
+
   // Default user configuration values
-  private userConfigHost = 'localhost';
-  private userConfigPort = 5454;
+  private userConfigHost = 'http://localhost:5454';
   private userConfigUseApi = false;
+  private serverConfig: ServerConfig;
 
   constructor(
     private userConfigService: UserConfigService,
     private serverConfigService: ServerConfigService
   ) {
     // Subscribe to user configuration changes to update local variables
-    this.userConfigService.localServerHost.subject.subscribe((value) => { this.userConfigHost = value; });
-    this.userConfigService.localServerPort.subject.subscribe((value) => { this.userConfigPort = value; });
+    this.userConfigService.localServerUrl.subject.subscribe((value) => { this.userConfigHost = value; });
     this.userConfigService.localServerUseApi.subject.subscribe((value) => { this.userConfigUseApi = value; });
+    this.serverConfig = this.serverConfigService.config;
   }
+
+  public getEndpointDownload(fileName:string): string {
+    return `/api/v1/download?f=${fileName}`
+  }
+
+  public getEndpointConvert(fileName:string, entries:string, fileType="edm4eic"): string {
+    return `/api/v1/convert/${fileType}/${entries}?f=${fileName}`;
+  }
+
+  public getApiServerBase(): string {
+
+    if (this.serverConfig.servedByPyrobird) {
+      // Use server host and port if served by Pyrobird
+      const protocol = window.location.protocol;  // e.g., 'http:' or 'https:'
+      return `${protocol}//${this.serverConfig.serverHost}:${this.serverConfig.serverPort}`;
+    } else if (this.userConfigUseApi) {
+      // Use user-configured host and port if API usage is enabled
+      return this.userConfigHost;
+    }
+
+    // If we are here, then it is a static site without API
+    return document.baseURI;
+  }
+
+  public get isBackendAvailable() {
+    return this.serverConfig.servedByPyrobird || this.userConfigUseApi;
+  }
+
 
   /**
    * Resolves URLs that start with 'local://' by replacing the protocol with an appropriate base URL.
    *
-   * - If the server is served by Pyrobird (`servedByPyrobird` is true), it uses the server's host and port.
-   * - If the user has enabled API usage (`userConfigUseApi` is true), it uses the user's host and port.
+   * - If the server is served by Pyrobird (`servedByPyrobird` is true), it uses pyrobird download API endpoint
+   * - If the user has enabled API usage (`userConfigUseApi` is true), it uses the user's host with download API endpoint
    * - If neither condition is met, 'local://' is replaced with an empty string, resulting in a relative path.
    *
    * @param {string} url The URL to resolve.
    * @returns {string} The resolved URL.
    */
   public resolveLocalhostUrl(url: string): string {
-    const firebirdConfig = this.serverConfigService.config;
+    const serverConfig = this.serverConfigService.config;
     const localProto = 'local://';
+
 
     // Return the original URL if it doesn't start with 'local://'
     if (!url.startsWith(localProto)) {
       return url;
     }
 
-    // Default replacement string (empty) for relative paths
-    let replaceStr = '';
+    // Remove local://
+    const fileName = url.substring(localProto.length);
 
-    if (firebirdConfig && firebirdConfig.servedByPyrobird) {
-      // Use server host and port if served by Pyrobird
-      replaceStr = `http://${firebirdConfig.serverHost}:${firebirdConfig.serverPort}/`;
-    } else if (this.userConfigUseApi) {
-      // Use user-configured host and port if API usage is enabled
-      replaceStr = `http://${this.userConfigHost}:${this.userConfigPort}/`;
+    // Default replacement string (empty) for relative paths
+    let base = this.getApiServerBase();
+
+    // Do we need go to download API?
+    if(this.isBackendAvailable) {
+      return this.getApiServerBase() + this.getEndpointDownload(fileName)
     }
 
     // Replace 'local://' with the determined base URL and append the rest of the path
-    return replaceStr + url.substring(localProto.length);
+    return `${this.getApiServerBase()}/${fileName}`;
+  }
+
+  /**
+   * Transforms inputUrl if needed and return a correct thing that can be fetched
+   * @param inputUrl
+   */
+  public resolveUrl(inputUrl: string): string {
+    let result = inputUrl;
+
+    // What if there is no protocol?
+    if(!inputUrl.includes("://")) {
+
+      // Assume it is a local file
+      inputUrl = "local://" + inputUrl;
+    }
+
+    // One special case if url starts with asset://
+    if(inputUrl.startsWith("asset://")) {
+      inputUrl = inputUrl.replace("asset://", "");
+      // Assets are always served from where frontend is served.
+      // We have 1 level or routing so far. If Angular SPA will have multilevel routing this will fail
+      result = `${document.baseURI}/assets/${inputUrl}`;
+    } else if (inputUrl.startsWith("local://")){
+      result = this.resolveLocalhostUrl(inputUrl);
+    }
+
+    return result;
   }
 }

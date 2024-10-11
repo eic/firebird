@@ -32,7 +32,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   selectedEventSource = new FormControl('');
   onlyCentralDetector: FormControl<boolean | null> = new FormControl(true);
   serverUseApi: FormControl<boolean | null> = new FormControl(false);
-  serverApiHost = new FormControl('localhost');
+  serverApiUrl = new FormControl('localhost');
   serverApiPort: FormControl<number | null> = new FormControl(5454);
   firebirdConfig: ServerConfig = defaultFirebirdConfig;
 
@@ -137,15 +137,11 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     //this.selectedGeometry.setValue(this.configService.selectedGeometry.value, { emitEvent: false })
     //this.bindConfigToControl(this.geometryUrl, this.configService.selectedGeometry);
-
-
     //this.bindConfigToControl(this.selectedEventSource, this.configService.trajectoryEventSource);
     this.bindConfigToControl(this.onlyCentralDetector, this.userConfigService.onlyCentralDetector);
     this.bindConfigToControl(this.serverUseApi, this.userConfigService.localServerUseApi);
-    this.bindConfigToControl(this.serverApiHost, this.userConfigService.localServerHost);
-    this.bindConfigToControl(this.serverApiPort, this.userConfigService.localServerPort);
+    this.bindConfigToControl(this.serverApiUrl, this.userConfigService.localServerUrl);
 
     this.firebirdConfig = this.firebirdConfigService.config;
-
   }
 }

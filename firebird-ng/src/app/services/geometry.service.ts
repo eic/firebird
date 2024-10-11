@@ -9,6 +9,7 @@ import {RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
 import {UserConfigService} from "./user-config.service";
 import {Subdetector} from "../model/subdetector";
 import {Object3D} from "three";
+import {UrlService} from "./url.service";
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -44,7 +45,8 @@ export class GeometryService {
 
   public groupsByDetName: Map<string, string>;
 
-  constructor(private settings: UserConfigService) {
+  constructor(private settings: UserConfigService,
+              private urlService: UrlService) {
     this.groupsByDetName = new Map<string,string> ([
       ["SolenoidBarrel_assembly_0", GROUP_MAGNETS],
       ["SolenoidEndcapP_1", GROUP_MAGNETS],
@@ -105,8 +107,9 @@ export class GeometryService {
     // let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
     // >oO let objectName = 'default';
 
-    const url = this.settings.selectedGeometry.value !== DEFAULT_GEOMETRY ? this.settings.selectedGeometry.value:
+    let url = this.settings.selectedGeometry.value !== DEFAULT_GEOMETRY ? this.settings.selectedGeometry.value:
       'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
+    url = this.urlService.resolveUrl(url);
 
     console.time('[GeometryService]: Total load geometry time');
     console.log(`[GeometryService]: Loading file ${url}`)

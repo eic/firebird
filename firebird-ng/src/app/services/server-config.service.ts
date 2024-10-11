@@ -38,7 +38,7 @@ export class ServerConfigService {
   get config(): ServerConfig {
     if (!this.triedLoading) {
       this.triedLoading = true;
-      console.error("Client called config while config is not loaded.")
+      console.error("[ServerConfigService] config() is called while config is not loaded")
     }
     return this._config;
   }
@@ -53,9 +53,10 @@ export class ServerConfigService {
 
       // Merge loadedConfig over default config
       this._config = { ...defaultFirebirdConfig, ...loadedConfig };
+      console.log("[ServerConfigService] Server config loaded file")
     } catch (error) {
       console.error(`Failed to load config: ${error}`);
-      console.log(`Default config will be used`);
+      console.log(`[ServerConfigService] Default config will be used`);
     } finally {
       this.triedLoading = true;
     }

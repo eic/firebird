@@ -119,11 +119,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     private elRef: ElementRef, private renderer2: Renderer2,
     private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
-
   }
-
-
-
 
   @ViewChild(DisplayShellComponent)
   displayShellComponent!: DisplayShellComponent;
