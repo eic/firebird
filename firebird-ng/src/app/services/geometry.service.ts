@@ -109,7 +109,7 @@ export class GeometryService {
 
     let url = this.settings.selectedGeometry.value !== DEFAULT_GEOMETRY ? this.settings.selectedGeometry.value:
       'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
-    url = this.urlService.resolveUrl(url);
+    url = this.urlService.resolveDownloadUrl(url);
 
     console.time('[GeometryService]: Total load geometry time');
     console.log(`[GeometryService]: Loading file ${url}`)

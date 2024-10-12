@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { SceneTreeComponent } from './scene-tree.component';
+import {HttpClientModule} from "@angular/common/http";
 
 describe('GeometryTreeComponent', () => {
   let component: SceneTreeComponent;
@@ -8,7 +9,7 @@ describe('GeometryTreeComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SceneTreeComponent]
+      imports: [SceneTreeComponent, HttpClientModule]
     })
     .compileComponents();
 

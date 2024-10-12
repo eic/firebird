@@ -5,7 +5,7 @@ import {defaultFirebirdConfig, ServerConfigService} from "./server-config.servic
 import {Entry} from "../model/entry";
 import {HttpClient} from "@angular/common/http";
 import {firstValueFrom} from "rxjs";
-import {resolveProtocolAlias, UrlService} from "./url.service";
+import {UrlService} from "./url.service";
 import {DataExchange} from "../model/data-exchange";
 import {loadJSONFileEvents, loadZipFileEvents} from "../utils/data-fetching.utils";
 
@@ -36,12 +36,9 @@ export class DataModelService {
         return null;
       }
 
-      const baseUrl = this.urlService.getApiServerBase();
-      const endPoint = this.urlService.getEndpointConvert(userInput, entryNames);
-
       // If we were able to get baseURL, we use it with endpoint
       // Otherwise we just open whatever...
-      let url = baseUrl ? `${baseUrl}/${endPoint}` : userInput;
+      let url = this.urlService.resolveConvertUrl(userInput, "edm4eic", entryNames);
 
 
       // // if no protocol specified, assume local

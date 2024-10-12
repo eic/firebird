@@ -1,222 +1,208 @@
+// url.service.spec.ts
+
 import { TestBed } from '@angular/core/testing';
 import { UrlService } from './url.service';
+import { UserConfigService } from './user-config.service';
 import { ServerConfigService } from './server-config.service';
 import { BehaviorSubject } from 'rxjs';
-import { UserConfigService } from './user-config.service';
-import { resolveProtocolAlias } from './url.service'
-
-describe('resolveProtocolAlias', () => {
-  it('should return the same URL if no aliases are provided', () => {
-    const url = 'http://example.com';
-    const result = resolveProtocolAlias(url);
-    expect(result).toBe(url);
-  });
-
-  it('should correctly replace a simple alias with a string value', () => {
-    const url = 'local://service';
-    const aliases = {
-      'local://': 'http://localhost:8080/'
-    };
-    const result = resolveProtocolAlias(url, aliases);
-    expect(result).toBe('http://localhost:8080/service');
-  });
-
-  it('should correctly replace a simple alias with a function value', () => {
-    const url = 'local://service';
-    const aliases = {
-      'local://': (url: string) => `http://localhost:8080/${url.substring(8)}`
-    };
-    const result = resolveProtocolAlias(url, aliases);
-    expect(result).toBe('http://localhost:8080/service');
-  });
-
-  it('should only replace when the URL starts with the alias', () => {
-    const url = 'http://example.com/local://service';
-    const aliases = {
-      'local://': 'http://localhost:8080/'
-    };
-    const result = resolveProtocolAlias(url, aliases);
-    expect(result).toBe(url); // Should not replace anything
-  });
-
-  it('should work with multiple aliases', () => {
-    const url = 'api://users';
-    const aliases = {
-      'api://': 'http://api.example.com/',
-      'local://': 'http://localhost:8080/'
-    };
-    const result = resolveProtocolAlias(url, aliases);
-    expect(result).toBe('http://api.example.com/users');
-  });
-
-  it('should replace using the correct alias when aliases overlap', () => {
-    const url = 'local://service';
-    const aliases = {
-      'local://': 'http://localhost:8080/',
-      'local://service': 'http://different-service/'
-    };
-    const result = resolveProtocolAlias(url, aliases);
-    expect(result).toBe('http://localhost:8080/service'); // Matches 'local://' first
-  });
-
-  it('should handle an empty URL', () => {
-    const url = '';
-    const aliases = {
-      'local://': 'http://localhost:8080/'
-    };
-    const result = resolveProtocolAlias(url, aliases);
-    expect(result).toBe(''); // Should return an empty string
-  });
-
-  it('should handle empty aliases', () => {
-    const url = 'local://service';
-    const aliases = {};
-    const result = resolveProtocolAlias(url, aliases);
-    expect(result).toBe('local://service');
-  });
-
-  it('should be case-sensitive', () => {
-    const url = 'Local://service';
-    const aliases = {
-      'local://': 'http://localhost:8080/'
-    };
-    const result = resolveProtocolAlias(url, aliases);
-    expect(result).toBe('Local://service'); // Should not replace anything
-  });
-});
-
-
-// Mock UserConfigService with BehaviorSubjects for immediate values
-class MockUserConfigService {
-  localServerHost = { subject: new BehaviorSubject<string>('localhost') };
-  localServerPort = { subject: new BehaviorSubject<number>(5454) };
-  localServerUseApi = { subject: new BehaviorSubject<boolean>(false) };
-}
-
-// Mock ServerConfigService with default configuration
-class MockServerConfigService {
-  config = {
-    serverPort: 5454,
-    serverHost: 'localhost',
-    servedByPyrobird: false,
-    apiAvailable: false,
-    useAuthentication: true,
-    logLevel: 'info'
-  };
-}
 
 describe('UrlService', () => {
   let service: UrlService;
-  let userConfigService: MockUserConfigService;
-  let serverConfigService: MockServerConfigService;
+  let userConfigService: UserConfigService;
+  let serverConfigService: ServerConfigService;
 
   beforeEach(() => {
+    // Create mock services
+    const mockUserConfigService = {
+      localServerUrl: {
+        subject: new BehaviorSubject<string>('http://localhost:5454'),
+        value: 'http://localhost:5454'
+      },
+      localServerUseApi: {
+        subject: new BehaviorSubject<boolean>(false),
+        value: false
+      }
+    };
+
+    const mockServerConfigService = {
+      config: {
+        servedByPyrobird: false,
+        serverHost: 'localhost',
+        serverPort: 5000
+      }
+    };
+
     TestBed.configureTestingModule({
       providers: [
         UrlService,
-        { provide: UserConfigService, useClass: MockUserConfigService },
-        { provide: ServerConfigService, useClass: MockServerConfigService },
-      ],
+        { provide: UserConfigService, useValue: mockUserConfigService },
+        { provide: ServerConfigService, useValue: mockServerConfigService }
+      ]
     });
 
     service = TestBed.inject(UrlService);
-    userConfigService = TestBed.inject(UserConfigService) as unknown as MockUserConfigService;
-    serverConfigService = TestBed.inject(ServerConfigService) as unknown as MockServerConfigService;
+    userConfigService = TestBed.inject(UserConfigService);
+    serverConfigService = TestBed.inject(ServerConfigService);
   });
 
-  it('should return the original URL if it does not start with local://', () => {
-    const url = 'http://example.com/resource';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe(url);
+  it('should be created', () => {
+    expect(service).toBeTruthy();
   });
 
-  it('should replace local:// with server host and port when servedByPyrobird is true', () => {
-    serverConfigService.config.servedByPyrobird = true;
-    serverConfigService.config.serverHost = 'server-host';
-    serverConfigService.config.serverPort = 1234;
+  describe('resolveDownloadUrl', () => {
+    it('should return absolute URL as is (Case 1.1)', () => {
+      const inputUrl = 'https://example.com/file.root';
+      const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+      expect(resolvedUrl).toBe(inputUrl);
+    });
 
-    const url = 'local://api/resource';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe('http://server-host:1234/api/resource');
+    it('should handle relative URL without protocol when backend is available (Case 1.2)', () => {
+      // Simulate backend availability
+      userConfigService.localServerUseApi.subject.next(true);
+
+      const inputUrl = '/path/to/file.root';
+      const expectedUrl = 'http://localhost:5454/api/v1/download?f=%2Fpath%2Fto%2Ffile.root';
+
+      const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+      expect(resolvedUrl).toBe(expectedUrl);
+    });
+
+    it('should handle relative URL without protocol when backend is not available (Case 1.2)', () => {
+      // Ensure backend is not available
+      userConfigService.localServerUseApi.subject.next(false);
+
+      const inputUrl = '/path/to/file.root';
+      const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+      expect(resolvedUrl).toBe(inputUrl);
+    });
+
+    it('should handle URLs starting with asset://', () => {
+      const inputUrl = 'asset://images/logo.png';
+      const baseUri = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
+      const expectedUrl = `${baseUri}assets/images/logo.png`;
+
+      const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+      expect(resolvedUrl).toBe(expectedUrl);
+    });
+
+    it('should handle URLs with custom protocol alias epic://', () => {
+      const inputUrl = 'epic://some/path/file.root';
+      const expectedUrl = 'https://eic.github.io/epic/artifacts/some/path/file.root';
+
+      const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+      expect(resolvedUrl).toBe(expectedUrl);
+    });
+
+    it('should encode the input URL correctly in download endpoint', () => {
+      // Simulate backend availability
+      userConfigService.localServerUseApi.subject.next(true);
+
+      const inputUrl = '/path with spaces/file.root';
+      const expectedUrl = 'http://localhost:5454/api/v1/download?f=%2Fpath%20with%20spaces%2Ffile.root';
+
+      const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+      expect(resolvedUrl).toBe(expectedUrl);
+    });
   });
 
-  it('should replace local:// with user-configured host and port when userConfigUseApi is true', () => {
-    // Update user configuration
-    userConfigService.localServerHost.subject.next('user-host');
-    userConfigService.localServerPort.subject.next(5678);
-    userConfigService.localServerUseApi.subject.next(true);
+  describe('resolveConvertUrl', () => {
+    it('should construct convert URL when backend is available', () => {
+      // Simulate backend availability
+      userConfigService.localServerUseApi.subject.next(true);
 
-    const url = 'local://api/resource';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe('http://user-host:5678/api/resource');
+      const inputUrl = 'https://example.com/file.root';
+      const fileType = 'edm4eic';
+      const entries = 'all';
+      const expectedUrl = `http://localhost:5454/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(inputUrl)}`;
+
+      const resolvedUrl = service.resolveConvertUrl(inputUrl, fileType, entries);
+      expect(resolvedUrl).toBe(expectedUrl);
+    });
+
+    it('should return input URL when backend is not available', () => {
+      // Ensure backend is not available
+      userConfigService.localServerUseApi.subject.next(false);
+
+      const inputUrl = 'https://example.com/file.root';
+      const fileType = 'edm4eic';
+      const entries = 'all';
+
+      const resolvedUrl = service.resolveConvertUrl(inputUrl, fileType, entries);
+      expect(resolvedUrl).toBe(inputUrl);
+    });
+
+    it('should handle URLs starting with asset:// in convert URL', () => {
+      // Simulate backend availability
+      userConfigService.localServerUseApi.subject.next(true);
+
+      const inputUrl = 'asset://data/sample.dat';
+      const baseUri = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
+      const resolvedAssetUrl = `${baseUri}assets/data/sample.dat`;
+
+      const fileType = 'edm4eic';
+      const entries = 'all';
+      const expectedUrl = `http://localhost:5454/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(resolvedAssetUrl)}`;
+
+      const resolvedUrl = service.resolveConvertUrl(inputUrl, fileType, entries);
+      expect(resolvedUrl).toBe(expectedUrl);
+    });
+
+    it('should handle URLs with custom protocol alias epic:// in convert URL', () => {
+      // Simulate backend availability
+      userConfigService.localServerUseApi.subject.next(true);
+
+      const inputUrl = 'epic://some/path/file.root';
+      const resolvedAliasUrl = 'https://eic.github.io/epic/artifacts/some/path/file.root';
+
+      const fileType = 'edm4eic';
+      const entries = 'all';
+      const expectedUrl = `http://localhost:5454/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(resolvedAliasUrl)}`;
+
+      const resolvedUrl = service.resolveConvertUrl(inputUrl, fileType, entries);
+      expect(resolvedUrl).toBe(expectedUrl);
+    });
   });
 
-  it('should replace local:// with empty string when neither servedByPyrobird nor userConfigUseApi is true', () => {
-    serverConfigService.config.servedByPyrobird = false;
-    userConfigService.localServerUseApi.subject.next(false);
+  describe('backend availability and server address', () => {
+    it('should use PyroBird server address if servedByPyrobird is true', () => {
+      // Simulate PyroBird server
+      serverConfigService.config.servedByPyrobird = true;
+      serverConfigService.config.serverHost = 'pyrobirdhost';
+      serverConfigService.config.serverPort = 8080;
 
-    const url = 'local://api/resource';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe('api/resource');
-  });
+      const expectedServerAddress = `${window.location.protocol}//pyrobirdhost:8080`;
 
-  it('should prioritize servedByPyrobird over userConfigUseApi', () => {
-    serverConfigService.config.servedByPyrobird = true;
-    serverConfigService.config.serverHost = 'server-host';
-    serverConfigService.config.serverPort = 1234;
+      // Reinitialize the service to pick up new config
+      service = new UrlService(userConfigService, serverConfigService);
 
-    userConfigService.localServerHost.subject.next('user-host');
-    userConfigService.localServerPort.subject.next(5678);
-    userConfigService.localServerUseApi.subject.next(true);
+      // Access private property via getter (assuming you add getters)
+      // expect(service.getServerAddress()).toBe(expectedServerAddress);
 
-    const url = 'local://api/resource';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe('http://server-host:1234/api/resource');
-  });
+      // Or access private property directly for testing purposes
+      expect((service as any).serverAddress).toBe(expectedServerAddress);
+    });
 
-  it('should use default user config values if none are set', () => {
-    userConfigService.localServerUseApi.subject.next(true);
+    it('should use user-configured server address if localServerUseApi is true', () => {
+      userConfigService.localServerUseApi.subject.next(true);
+      userConfigService.localServerUrl.subject.next('http://customserver:1234');
 
-    const url = 'local://api/resource';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe('http://localhost:5454/api/resource');
-  });
+      const expectedServerAddress = 'http://customserver:1234';
 
+      // Reinitialize the service to pick up new config
+      service = new UrlService(userConfigService, serverConfigService);
 
-  it('should use default user config host and port if not set when userConfigUseApi is true', () => {
-    userConfigService.localServerUseApi.subject.next(true);
+      expect((service as any).serverAddress).toBe(expectedServerAddress);
+    });
 
-    const url = 'local://api/resource';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe('http://localhost:5454/api/resource');
-  });
+    it('should have backend unavailable when neither PyroBird nor user API is configured', () => {
+      userConfigService.localServerUseApi.subject.next(false);
+      serverConfigService.config.servedByPyrobird = false;
 
-  it('should handle URL that is exactly local://', () => {
-    serverConfigService.config.servedByPyrobird = true;
-    serverConfigService.config.serverHost = 'server-host';
-    serverConfigService.config.serverPort = 1234;
+      // Reinitialize the service to pick up new config
+      service = new UrlService(userConfigService, serverConfigService);
 
-    const url = 'local://';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe('http://server-host:1234/');
-  });
-
-  it('should return empty string when URL is local:// and neither condition is met', () => {
-    serverConfigService.config.servedByPyrobird = false;
-    userConfigService.localServerUseApi.subject.next(false);
-
-    const url = 'local://';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe('');
-  });
-
-  it('should be case-sensitive and not replace Local://', () => {
-    serverConfigService.config.servedByPyrobird = true;
-    serverConfigService.config.serverHost = 'server-host';
-    serverConfigService.config.serverPort = 1234;
-
-    const url = 'Local://api/resource';
-    const resolvedUrl = service.resolveLocalhostUrl(url);
-    expect(resolvedUrl).toBe('Local://api/resource');
+      expect((service as any).isBackendAvailable).toBe(false);
+      expect((service as any).serverAddress).toBe('');
+    });
   });
 });
