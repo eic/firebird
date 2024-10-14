@@ -144,13 +144,25 @@
     <!-- Header content -->
 
 <!--    <div class="header-buttons">-->
+    <nav class="navbar navbar-expand-lg navbar-dark" id="main-top-navbar">
+      <a class="navbar-brand" href="#"><img src="assets/firebird/firebird-simplified-circle.png" width="32" height="32" alt="App Logo"></a>
+<!--      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">-->
+<!--        <span class="navbar-toggler-icon"></span>-->
+<!--      </button>-->
+<!--      <div class="top_nav" id="navbarNavDropdown">-->
+        <ul class="navbar-nav">
+          <li class="nav-item"><a [routerLink]="['/config']" class="nav-link">Configure</a></li>
+          <li class="nav-item"><a [routerLink]="['/display']" class="nav-link">Display</a></li>
+        </ul>
+<!--      </div>-->
+    </nav>
+    <router-outlet></router-outlet>
 
-      <button mat-icon-button matTooltip="Toggle geometry" (click)="toggleLeftPane()" class="toggle-btn">
-        <mat-icon>{{ isLeftPaneOpen ? 'close' : 'account_tree' }}</mat-icon>
-      </button>
-  <!--    <button (click)="toggleRightPane()">Toggle Right Pane</button>-->
-<!--    </div>-->
-    <div class="phoenix-menu">
+    <button mat-icon-button matTooltip="Toggle geometry" (click)="toggleLeftPane()" class="toggle-btn">
+      <mat-icon>{{ isLeftPaneOpen ? 'close' : 'account_tree' }}</mat-icon>
+    </button>
+
+    <div class="phoenix-menu" [ngClass]="{ 'd-none': !isPhoenixMenuOpen && isMobileView }">
       <!-- Event selector -->
       <app-event-selector></app-event-selector>
 
@@ -201,20 +213,27 @@
       <ng-content></ng-content>
     </div>
 
+    <button mat-icon-button matTooltip="Toggle phoenix menu" (click)="togglePhoenixMenu()" class="toggle-btn1 phoenix-menu-toggle d-md-none">
+      <mat-icon>{{ isPhoenixMenuOpen ? 'close' : 'menu' }}</mat-icon>
+    </button>
+
   </ng-container>
 
 
   <div leftPane>
     <app-geometry-tree></app-geometry-tree>
   </div>
+
   <div centralPane>
     <!-- Central content area -->
     <div id="eventDisplay"></div>
 
   </div>
+
   <div rightPane>
     <!-- Optional content for right pane -->
   </div>
+
   <div footer>
     <div class="time-controls" id="bottom-controls">
       <div style="margin-right: 10px">{{currentTime | number:'1.1-1'}}</div>

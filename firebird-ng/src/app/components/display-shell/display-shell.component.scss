@@ -1,7 +1,5 @@
 
 .display-shell {
-  padding-top: 62px;
-  margin-top: -62px;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -10,16 +8,16 @@
   box-sizing: border-box;
 }
 
-//.header{
-//  width: 100%;
-//  display: flex;
-//  flex-direction: row;
-//  align-items: center;
-//  ////height: 50px;
-//  background-color: #2e2e2e;
-//  border-bottom: 1px solid #ddd;
-//
-//}
+.header{
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-height: 50px;
+  background-color: #2e2e2e;
+  border-bottom: 1px solid #ddd;
+
+}
 
 .main-content {
   box-sizing: border-box;

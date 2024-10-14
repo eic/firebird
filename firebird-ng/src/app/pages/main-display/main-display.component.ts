@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, HostListener, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
 import {HttpClient, HttpClientModule} from '@angular/common/http';
 
 import {
@@ -11,7 +11,7 @@ import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetVi
 import * as THREE from 'three';
 import {Color, DoubleSide, InstancedBufferGeometry, Line, MeshLambertMaterial, MeshPhongMaterial,} from "three";
 import {ALL_GROUPS, GeometryService} from '../../services/geometry.service';
-import {ActivatedRoute} from '@angular/router';
+import {ActivatedRoute, RouterLink, RouterOutlet} from '@angular/router';
 import {ThreeGeometryProcessor} from "../../data-pipelines/three-geometry.processor";
 import * as TWEEN from '@tweenjs/tween.js';
 import GUI from "lil-gui";
@@ -47,6 +47,7 @@ import {AngularSplitModule} from "angular-split";
 import {SceneTreeComponent} from "../geometry-tree/scene-tree.component";
 import {DisplayShellComponent} from "../../components/display-shell/display-shell.component";
 import {DataModelPainter} from "../../painters/data-model-painter";
+import {AppComponent} from "../../app.component";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -55,7 +56,7 @@ import {DataModelPainter} from "../../painters/data-model-painter";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, AppComponent, RouterOutlet, RouterLink],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -105,6 +106,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   private beamAnimationTime: number = 1000;
 
   isLeftPaneOpen: boolean = false;
+  isPhoenixMenuOpen = true;
+  isMobileView = false;
 
   private painter: DataModelPainter = new DataModelPainter();
 
@@ -135,6 +138,20 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
   toggleRightPane() {
     this.displayShellComponent.toggleRightPane();
+  }
+
+  @HostListener('window:resize', ['$event'])
+  onResize(event: Event) {
+    this.checkViewport();
+  }
+
+  checkViewport() {
+    this.isMobileView = window.innerWidth < 992;
+
+  }
+
+  togglePhoenixMenu() {
+    this.isPhoenixMenuOpen = !this.isPhoenixMenuOpen;
   }
 
 
@@ -425,6 +442,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
 
   ngOnInit() {
+    this.checkViewport();
+
     let eventSource = this.settings.trajectoryEventSource.value;
     let eventConfig = {eventFile: "https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip", eventType: "zip"};
     if( eventSource != "no-events" && !eventSource.endsWith("edm4hep.json")) {
