@@ -1,100 +1,141 @@
-import { TestBed } from '@angular/core/testing';
+// url.service.spec.ts
 
-import {resolveProtocolAlias, UrlService} from './url.service';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { UrlService } from './url.service';
 import { UserConfigService } from './user-config.service';
 import { ServerConfigService } from './server-config.service';
-import {BehaviorSubject} from "rxjs";
+import { BehaviorSubject } from 'rxjs';
+import {HttpClientModule} from "@angular/common/http";
 
-xdescribe('UrlService', () => {
+describe('UrlService', () => {
   let service: UrlService;
-  let userConfigService: jasmine.SpyObj<UserConfigService>;
-  let firebirdConfigService: jasmine.SpyObj<ServerConfigService>;
+  let userConfigService: any;
+  let serverConfigService: any;
 
   beforeEach(() => {
-    const userConfigSpy = jasmine.createSpyObj('UserConfigService', ['localServerHost', 'localServerPort', 'localServerUseApi']);
-    userConfigSpy.localServerHost = new BehaviorSubject('localhost');
-    userConfigSpy.localServerPort = new BehaviorSubject(8080);
-    userConfigSpy.localServerUseApi = new BehaviorSubject(true);
+    // Create mock services with .value property
+    userConfigService = {
+      localServerUrl: {
+        subject: new BehaviorSubject<string>('http://localhost:5454'),
+        get value() {
+          return this.subject.value;
+        }
+      },
+      localServerUseApi: {
+        subject: new BehaviorSubject<boolean>(false),
+        get value() {
+          return this.subject.value;
+        }
+      }
+    };
 
-    const firebirdConfigSpy = jasmine.createSpyObj('FirebirdConfigService', ['config']);
+    serverConfigService = {
+      config: {
+        servedByPyrobird: false,
+        serverHost: 'localhost',
+        serverPort: 5000
+      }
+    };
 
     TestBed.configureTestingModule({
+      imports: [HttpClientModule], // Add this line
       providers: [
         UrlService,
-        { provide: UserConfigService, useValue: userConfigSpy },
-        { provide: ServerConfigService, useValue: firebirdConfigSpy }
+        { provide: UserConfigService, useValue: userConfigService },
+        { provide: ServerConfigService, useValue: serverConfigService }
       ]
     });
 
-    userConfigService = TestBed.inject(UserConfigService) as any;
-    firebirdConfigService = TestBed.inject(ServerConfigService) as any;
     service = TestBed.inject(UrlService);
   });
 
-  it('should return original URL if it does not start with "local://"', () => {
-    const url = 'http://example.com';
-    expect(service.resolveLocalhostUrl(url)).toEqual(url);
+  describe('resolveDownloadUrl', () => {
+    it('should handle relative URL without protocol when backend is available (Case 1.2)', fakeAsync(() => {
+      userConfigService.localServerUseApi.subject.next(true);
+      tick(); // Allow subscriptions to process
+
+      const inputUrl = '/path/to/file.root';
+      const expectedUrl = 'http://localhost:5454/api/v1/download?f=%2Fpath%2Fto%2Ffile.root';
+
+      const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+      expect(resolvedUrl).toBe(expectedUrl);
+    }));
+
+    it('should encode the input URL correctly in download endpoint', fakeAsync(() => {
+      userConfigService.localServerUseApi.subject.next(true);
+      tick();
+
+      const inputUrl = '/path with spaces/file.root';
+      const expectedUrl = 'http://localhost:5454/api/v1/download?f=%2Fpath%20with%20spaces%2Ffile.root';
+
+      const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+      expect(resolvedUrl).toBe(expectedUrl);
+    }));
   });
 
-  it('should return an empty string for "local://" if no host info is provided', () => {
-    const url = 'local://path/to/resource';
-    expect(service.resolveLocalhostUrl(url)).toBe('http://localhost/');
+  describe('resolveConvertUrl', () => {
+    it('should construct convert URL when backend is available', fakeAsync(() => {
+      userConfigService.localServerUseApi.subject.next(true);
+      tick();
+
+      const inputUrl = 'https://example.com/file.root';
+      const fileType = 'edm4eic';
+      const entries = 'all';
+      const expectedUrl = `http://localhost:5454/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(inputUrl)}`;
+
+      const resolvedUrl = service.resolveConvertUrl(inputUrl, fileType, entries);
+      expect(resolvedUrl).toBe(expectedUrl);
+    }));
+
+    it('should handle URLs starting with asset:// in convert URL', fakeAsync(() => {
+      userConfigService.localServerUseApi.subject.next(true);
+      tick();
+
+      const inputUrl = 'asset://data/sample.dat';
+      const baseUri = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
+      const resolvedAssetUrl = `${baseUri}assets/data/sample.dat`;
+
+      const fileType = 'edm4eic';
+      const entries = 'all';
+      const expectedUrl = `http://localhost:5454/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(resolvedAssetUrl)}`;
+
+      const resolvedUrl = service.resolveConvertUrl(inputUrl, fileType, entries);
+      expect(resolvedUrl).toBe(expectedUrl);
+    }));
+
+    it('should handle URLs with custom protocol alias epic:// in convert URL', fakeAsync(() => {
+      userConfigService.localServerUseApi.subject.next(true);
+      tick();
+
+      const inputUrl = 'epic://some/path/file.root';
+      const resolvedAliasUrl = 'https://eic.github.io/epic/artifacts/some/path/file.root';
+
+      const fileType = 'edm4eic';
+      const entries = 'all';
+      const expectedUrl = `http://localhost:5454/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(resolvedAliasUrl)}`;
+
+      const resolvedUrl = service.resolveConvertUrl(inputUrl, fileType, entries);
+      expect(resolvedUrl).toBe(expectedUrl);
+    }));
   });
 
-  it('should use Pyrobird server configuration if served by Pyrobird', () => {
-    const url = 'local://path/to/resource';
-    firebirdConfigService.setUnitTestConfig({ servedByPyrobird: true, serverHost: 'pyrohost', serverPort: 4000 });
-    expect(service.resolveLocalhostUrl(url)).toBe('http://pyrohost:4000/path/to/resource');
-  });
+  describe('backend availability and server address', () => {
+    it('should use user-configured server address if localServerUseApi is true', fakeAsync(() => {
+      userConfigService.localServerUseApi.subject.next(true);
+      userConfigService.localServerUrl.subject.next('http://customserver:1234');
+      tick();
 
-  it('should use user config server details if userConfigUseApi is true', () => {
-    const url = 'local://path/to/resource';
-    userConfigService.localServerUseApi.subject.next(true);
-    userConfigService.localServerHost.subject.next('apihost');
-    userConfigService.localServerPort.subject.next(3000);
-    expect(service.resolveLocalhostUrl(url)).toBe('http://apihost:3000/path/to/resource');
-  });
+      const expectedServerAddress = 'http://customserver:1234';
+      expect((service as any).serverAddress).toBe(expectedServerAddress);
+    }));
 
-});
+    it('should have backend unavailable when neither PyroBird nor user API is configured', fakeAsync(() => {
+      userConfigService.localServerUseApi.subject.next(false);
+      serverConfigService.config.servedByPyrobird = false;
+      tick();
 
-describe('resolveProtocolAlias', () => {
-  it('should replace custom protocol with common protocol from default aliases', () => {
-    const result = resolveProtocolAlias('local://8080/service', {
-      "local://": "http://localhost/"
-    });
-    expect(result).toBe('http://localhost/8080/service');
-  });
-
-  it('should handle function-based alias to transform URL', () => {
-    const aliases = {
-      "local://": (url: string) => `http://localhost${url.substring(8)}`
-    };
-    const result = resolveProtocolAlias('local://8080/service', aliases);
-    expect(result).toBe('http://localhost8080/service');
-  });
-
-  it('should replace custom protocol with common protocol from provided aliases', () => {
-    const aliases = { "custom://": "https://example.com/" };
-    const result = resolveProtocolAlias('custom://path', aliases);
-    expect(result).toBe('https://example.com/path');
-  });
-
-  it('should handle URLs without alias replacements', () => {
-    const result = resolveProtocolAlias('https://already-common.com');
-    expect(result).toBe('https://already-common.com');
-  });
-
-  it('should give precedence to provided aliases over default ones', () => {
-    const aliases = { "local://": "https://modified-localhost/" };
-    const result = resolveProtocolAlias('local://service', aliases);
-    expect(result).toBe('https://modified-localhost/service');
-  });
-
-  it('should correctly handle function-based alias that appends paths', () => {
-    const aliases = {
-      "api://": (url: string) => `https://api.example.com/${url.substring(6)}`
-    };
-    const result = resolveProtocolAlias('api://users/123', aliases);
-    expect(result).toBe('https://api.example.com/users/123');
+      expect((service as any).isBackendAvailable).toBe(false);
+      expect((service as any).serverAddress).toBe('');
+    }));
   });
 });

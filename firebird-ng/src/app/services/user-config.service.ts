@@ -11,8 +11,7 @@ export class UserConfigService {
   public trajectoryEventSource: ConfigProperty<string>;
   public edm4eicEventSource: ConfigProperty<string>;
   public localServerUseApi: ConfigProperty<boolean>;
-  public localServerHost: ConfigProperty<string>;
-  public localServerPort: ConfigProperty<number>;
+  public localServerUrl: ConfigProperty<string>;
 
   constructor() {
     this.selectedGeometry = new ConfigProperty("geometry.selectedGeometry", "epic-central-optimized");
@@ -20,7 +19,6 @@ export class UserConfigService {
     this.trajectoryEventSource = new ConfigProperty("events.trajectoryEventsSource", "");
     this.edm4eicEventSource = new ConfigProperty("events.edm4eicEventsSource", "");
     this.localServerUseApi = new ConfigProperty("server.useApi", false);
-    this.localServerHost = new ConfigProperty("server.host", "localhost");
-    this.localServerPort = new ConfigProperty("server.port", 5454);
+    this.localServerUrl = new ConfigProperty("server.url", "http://localhost:5454");
   }
 }

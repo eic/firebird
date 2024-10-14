@@ -5,7 +5,7 @@ import {defaultFirebirdConfig, ServerConfigService} from "./server-config.servic
 import {Entry} from "../model/entry";
 import {HttpClient} from "@angular/common/http";
 import {firstValueFrom} from "rxjs";
-import {resolveProtocolAlias, UrlService} from "./url.service";
+import {UrlService} from "./url.service";
 import {DataExchange} from "../model/data-exchange";
 import {loadJSONFileEvents, loadZipFileEvents} from "../utils/data-fetching.utils";
 
@@ -16,35 +16,13 @@ export class DataModelService {
 
   public currentEvent: Entry|null = null;
 
-
   constructor(private userConfig: UserConfigService,
               private serverConfig: ServerConfigService,
               private urlService: UrlService,
               private http: HttpClient
               ) {
-
-
   }
 
-  public getEndpointDownload(fileName:string): string {
-    return `/api/v1/download?f=${fileName}`
-  }
-
-  public getEndpointEdm4eic(fileName:string, entries:string): string {
-    return `/api/v1/convert/edm4eic/${entries}?f=${fileName}`;
-  }
-
-  public getApiServerBase(): string {
-    const config = this.serverConfig?.config;
-    if (config && config.servedByPyrobird) {
-      // Use server host and port if served by Pyrobird
-      return `http://${config.serverHost}:${config.serverPort}`;
-    } else if (this.userConfig.localServerUseApi.value) {
-      // Use user-configured host and port if API usage is enabled
-      return `http://${this.userConfig.localServerHost.value}:${this.userConfig.localServerPort.value}`;
-    }
-    return "";
-  }
 
   async loadEdm4EicData(entryNames: string = "0"): Promise<DataExchange|null> {
     try {
@@ -58,12 +36,9 @@ export class DataModelService {
         return null;
       }
 
-      const baseUrl = this.getApiServerBase();
-      const endPoint = this.getEndpointEdm4eic(userInput, entryNames);
-
       // If we were able to get baseURL, we use it with endpoint
       // Otherwise we just open whatever...
-      let url = baseUrl ? `${baseUrl}/${endPoint}` : userInput;
+      let url = this.urlService.resolveConvertUrl(userInput, "edm4eic", entryNames);
 
 
       // // if no protocol specified, assume local
@@ -114,16 +89,7 @@ export class DataModelService {
 
       let url = "";
 
-      if(userInput.startsWith("asset://")) {
-        url = userInput.replace("asset://", "")
-      } else {
-        const baseUrl = this.getApiServerBase();
-        const endPoint = this.getEndpointDownload(userInput);
 
-        // If we were able to get baseURL, we use it with endpoint
-        // Otherwise we just open whatever...
-        url = baseUrl ? `${baseUrl}/${endPoint}` : userInput;
-      }
 
       let dexData = {};
 

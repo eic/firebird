@@ -1,105 +1,193 @@
-import { Injectable } from '@angular/core';
-import {UserConfigService} from "./user-config.service";
-import {ServerConfigService} from "./server-config.service";
+/**
+ * @file url.service.ts
+ * @description Provides URL resolution services for handling file downloads and conversions in an Angular application.
+ *              The service supports different configurations depending on how the application is served and includes
+ *              protocol aliasing for custom URL schemes.
+ */
 
-let defaultProtocolAliases = [
-  {"epic://": "https://eic.github.io/epic/artifacts/" }
-]
+import { Injectable } from '@angular/core';
+import { UserConfigService } from "./user-config.service";
+import { ServerConfigService } from "./server-config.service";
 
 /**
- * Resolves and replaces protocol aliases in a URL with their actual URL counterparts.
- * This function supports both direct string replacements and dynamic transformations via functions.
+ * @class UrlService
+ * @description This service resolves URLs for downloading and converting files. It handles different scenarios based
+ *              on whether the application is served as a standalone static site, served by a backend like PyroBird, or
+ *              configured to use a specific API endpoint. It also supports protocol aliases and special URL schemes.
  *
- * @param {string} url The URL to be transformed.
- * @param {Object} aliases An object mapping protocol aliases to either strings or functions.
- * The keys represent the protocol alias (e.g., "local://") and the values can be either:
- *   - A string representing the full replacement URL.
- *   - A function that takes the original URL as an argument and returns the transformed URL.
- * If no aliases are provided, the function will use an empty object by default.
+ * ### Assumptions:
+ * - The application may be served in various configurations:
+ *   - Standalone static site without backend API.
+ *   - Served by a Flask application (e.g., PyroBird) with a backend API.
+ *   - Served by another service with or without a backend API.
+ * - Users may configure a custom API endpoint via `UserConfigService`.
+ * - The service needs to resolve URLs for files that may:
+ *   - Be accessible over HTTP/HTTPS.
+ *   - Be local files requiring backend API to serve them.
+ *   - Use custom protocols (e.g., `asset://`, `epic://`).
  *
- * @returns {string} The URL transformed based on the provided aliases. If no matching alias is found,
- * the original URL is returned unchanged.
+ * ### Use Cases:
+ * - **Case 1: Downloading Files**
+ *   - **1.1**: Input URL starts with `http://` or `https://`. The URL is used as is.
+ *   - **1.2**: Input URL has no protocol or is a local file. The service checks if a backend is available and constructs the download endpoint URL.
+ * - **Case 2: Converting Files**
+ *   - **2.1 & 2.2**: Input URL is converted using the backend 'convert' endpoint, regardless of the original protocol.
  *
- * @example
- * // Using string replacement:
- * let url = resolveProtocolAlias('local://service', {
- *   "local://": "http://localhost:8080/"
- * });
+ * ### Protocol Aliases:
+ * - `asset://`: Points to assets served from the frontend server.
+ * - `epic://`: Custom protocol replaced with a specific base URL.
  *
- * Outputs: "http://localhost:8080/service"
- *
- * // Using a function for dynamic URL transformation:
- * url = resolveProtocolAlias('local://service', {
- *   "local://": (url) => `http://localhost:8080/${url.substring(8)}`
- * });
- * console.log(url); // Outputs: "http://localhost:8080/service"
+ * ### Examples:
+ * - Download URL:
+ *   - Input: `https://example.com/file.root`
+ *   - Output: `https://example.com/file.root` (Case 1.1)
+ * - Download URL:
+ *   - Input: `/path/to/file.root`
+ *   - Output: `<serverAddress>/api/v1/download?f=%2Fpath%2Fto%2Ffile.root` (if backend is available) (Case 1.2)
+ * - Convert URL:
+ *   - Input: `https://example.com/file.root`, `fileType`, `entries`
+ *   - Output: `<serverAddress>/api/v1/convert/fileType/entries?f=https%3A%2F%2Fexample.com%2Ffile.root`
  */
-export function resolveProtocolAlias(url: string, aliases: { [key: string]: string | ((url: string) => string) } = {}): string {
-  // Iterate through alias keys to find and replace the protocol if matched
-  Object.keys(aliases).forEach(alias => {
-    if (url.startsWith(alias)) {
-      const value = aliases[alias];
-      // Check if the alias value is a function, then call it with the URL, else replace directly
-      url = typeof value === 'function' ? value(url) : url.replace(alias, value);
-    }
-  });
-
-  // Return the modified URL
-  return url;
-}
-
 
 @Injectable({
   providedIn: 'root'
 })
 export class UrlService {
 
-  // Default user configuration values
-  private userConfigHost = 'localhost';
-  private userConfigPort = 5454;
-  private userConfigUseApi = false;
+  private serverAddress: string = '';
+  private isBackendAvailable: boolean = false;
+
+  // Protocol aliases mapping
+  private readonly protocolAliases: { [key: string]: string } = {
+    'epic://': 'https://eic.github.io/epic/artifacts/',
+    // Add other protocol aliases here if needed
+  };
 
   constructor(
     private userConfigService: UserConfigService,
     private serverConfigService: ServerConfigService
   ) {
-    // Subscribe to user configuration changes to update local variables
-    this.userConfigService.localServerHost.subject.subscribe((value) => { this.userConfigHost = value; });
-    this.userConfigService.localServerPort.subject.subscribe((value) => { this.userConfigPort = value; });
-    this.userConfigService.localServerUseApi.subject.subscribe((value) => { this.userConfigUseApi = value; });
+    this.initializeConfig();
   }
 
   /**
-   * Resolves URLs that start with 'local://' by replacing the protocol with an appropriate base URL.
-   *
-   * - If the server is served by Pyrobird (`servedByPyrobird` is true), it uses the server's host and port.
-   * - If the user has enabled API usage (`userConfigUseApi` is true), it uses the user's host and port.
-   * - If neither condition is met, 'local://' is replaced with an empty string, resulting in a relative path.
-   *
-   * @param {string} url The URL to resolve.
-   * @returns {string} The resolved URL.
+   * Initializes the service configuration and subscribes to changes in user and server configurations.
    */
-  public resolveLocalhostUrl(url: string): string {
-    const firebirdConfig = this.serverConfigService.config;
-    const localProto = 'local://';
+  private initializeConfig() {
+    this.updateServerConfig();
 
-    // Return the original URL if it doesn't start with 'local://'
-    if (!url.startsWith(localProto)) {
-      return url;
+    // Subscribe to user configuration changes
+    this.userConfigService.localServerUrl.subject.subscribe(() => {
+      this.updateServerConfig();
+    });
+    this.userConfigService.localServerUseApi.subject.subscribe(() => {
+      this.updateServerConfig();
+    });
+  }
+
+  /**
+   * Updates the backend availability and server address based on current configurations.
+   */
+  private updateServerConfig() {
+    const servedByPyrobird = this.serverConfigService.config.servedByPyrobird;
+    const userUseApi = this.userConfigService.localServerUseApi.value;
+    const userServerUrl = this.userConfigService.localServerUrl.value;
+
+    this.isBackendAvailable = servedByPyrobird || userUseApi;
+
+    if (servedByPyrobird) {
+      const protocol = window.location.protocol; // 'http:' or 'https:'
+      this.serverAddress = `${protocol}//${this.serverConfigService.config.serverHost}:${this.serverConfigService.config.serverPort}`;
+    } else if (userUseApi) {
+      this.serverAddress = userServerUrl;
+    } else {
+      this.serverAddress = '';
+    }
+  }
+
+  /**
+   * Resolves protocol aliases in the URL.
+   *
+   * - Replaces 'asset://' with the base URI of the application and the 'assets' path.
+   * - Replaces any custom protocol aliases defined in the `protocolAliases` map.
+   *
+   * @param url The URL to resolve.
+   * @returns The URL with protocol aliases resolved.
+   */
+  private resolveProtocolAliases(url: string): string {
+    if (url.startsWith('asset://')) {
+      const assetPath = url.substring('asset://'.length);
+      // Assets are served from where the frontend is served.
+      // Ensure there's no double slash
+      const baseUri = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
+      return `${baseUri}assets/${assetPath}`;
     }
 
-    // Default replacement string (empty) for relative paths
-    let replaceStr = '';
-
-    if (firebirdConfig && firebirdConfig.servedByPyrobird) {
-      // Use server host and port if served by Pyrobird
-      replaceStr = `http://${firebirdConfig.serverHost}:${firebirdConfig.serverPort}/`;
-    } else if (this.userConfigUseApi) {
-      // Use user-configured host and port if API usage is enabled
-      replaceStr = `http://${this.userConfigHost}:${this.userConfigPort}/`;
+    for (const alias in this.protocolAliases) {
+      if (url.startsWith(alias)) {
+        return url.replace(alias, this.protocolAliases[alias]);
+      }
     }
+    return url;
+  }
 
-    // Replace 'local://' with the determined base URL and append the rest of the path
-    return replaceStr + url.substring(localProto.length);
+  /**
+   * Checks if a URL is absolute (i.e., starts with a protocol like 'http://').
+   *
+   * @param url The URL to check.
+   * @returns True if the URL is absolute, false otherwise.
+   */
+  private isAbsoluteUrl(url: string): boolean {
+    return /^[a-z][a-z0-9+.-]*:/.test(url);
+  }
+
+  /**
+   * Resolves the URL for downloading a file.
+   *
+   * **Case 1.1**: If the URL is absolute (starts with 'http://' or 'https://'), it is returned as is.
+   *
+   * **Case 1.2**: If the URL has no protocol, it uses the backend download endpoint if available.
+   *               Constructs the URL: `<serverAddress>/api/v1/download?f=<encoded inputUrl>`
+   *
+   * @param inputUrl The input URL to resolve.
+   * @returns The resolved URL for downloading.
+   */
+  public resolveDownloadUrl(inputUrl: string): string {
+    inputUrl = this.resolveProtocolAliases(inputUrl);
+
+    if (this.isAbsoluteUrl(inputUrl)) {
+      // Case 1.1: Leave the URL as is
+      return inputUrl;
+    } else {
+      // Case 1.2: Use the download endpoint if available
+      if (this.isBackendAvailable && this.serverAddress) {
+        return `${this.serverAddress}/api/v1/download?f=${encodeURIComponent(inputUrl)}`;
+      } else {
+        console.warn("Backend is not available to fetch the file");
+        return inputUrl;
+      }
+    }
+  }
+
+  /**
+   * Resolves the URL for converting a file using the 'convert' endpoint.
+   *
+   * **Case 2.1 & 2.2**: Constructs the URL using the backend 'convert' endpoint.
+   *                     Constructs the URL: `<serverAddress>/api/v1/convert/<fileType>/<entries>?f=<encoded inputUrl>`
+   *
+   * @param inputUrl The input URL to resolve.
+   * @param fileType The file type for conversion.
+   * @param entries Additional entries for conversion.
+   * @returns The resolved URL for conversion.
+   */
+  public resolveConvertUrl(inputUrl: string, fileType: string, entries: string): string {
+    inputUrl = this.resolveProtocolAliases(inputUrl);
+
+    if (this.isBackendAvailable && this.serverAddress) {
+      return `${this.serverAddress}/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(inputUrl)}`;
+    } else {
+      console.warn("Backend is not available to perform conversion");
+      return inputUrl;
+    }
   }
 }

@@ -88,16 +88,10 @@
         </div>
         <div class="form-row align-items-center">
           <div class="col-auto">
-            <h6 class="mb-0">API Host:</h6>
+            <h6 class="mb-0">API URL:</h6>
           </div>
           <div class="col">
-            <input class="form-control" type="text" placeholder="Enter API host" [formControl]="serverApiHost" [disabled]="!serverUseApi.value">
-          </div>
-          <div class="col-auto">
-            <h6 class="mb-0">API Port:</h6>
-          </div>
-          <div class="col">
-            <input class="form-control" type="text" placeholder="Enter API port" [formControl]="serverApiPort" [disabled]="!serverUseApi.value">
+            <input class="form-control" type="text" placeholder="Enter API URL: http://localhost:5454" [formControl]="serverApiUrl" [disabled]="!serverUseApi.value">
           </div>
         </div>
       </div>

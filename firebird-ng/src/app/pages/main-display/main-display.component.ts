@@ -15,7 +15,7 @@ import {ActivatedRoute} from '@angular/router';
 import {ThreeGeometryProcessor} from "../../data-pipelines/three-geometry.processor";
 import * as TWEEN from '@tweenjs/tween.js';
 import GUI from "lil-gui";
-import {produceRenderOrder} from "jsrootdi/geom";
+import {produceRenderOrder} from "jsroot/geom";
 import {
   disposeHierarchy,
   disposeNode,
@@ -119,11 +119,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     private elRef: ElementRef, private renderer2: Renderer2,
     private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
-
   }
-
-
-
 
   @ViewChild(DisplayShellComponent)
   displayShellComponent!: DisplayShellComponent;
