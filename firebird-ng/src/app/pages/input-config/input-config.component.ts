@@ -3,7 +3,7 @@ import {AfterViewInit, Component, OnInit, ViewChild} from '@angular/core';
 import { FormBuilder, FormGroup, FormControl } from '@angular/forms';
 import { UserConfigService } from "../../services/user-config.service";
 import { ReactiveFormsModule } from '@angular/forms';
-import {RouterLink} from '@angular/router';
+import {RouterLink, RouterOutlet} from '@angular/router';
 import {ConfigProperty} from "../../utils/config-property";
 import {MatCard, MatCardContent, MatCardTitle} from "@angular/material/card";
 import {MatSlideToggle} from "@angular/material/slide-toggle";
@@ -22,7 +22,7 @@ import {MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPan
 @Component({
   selector: 'app-input-config',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf, ResourceSelectComponent, MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader],
+  imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf, ResourceSelectComponent, MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader, RouterOutlet],
   templateUrl: './input-config.component.html',
   styleUrl: './input-config.component.scss'
 })
