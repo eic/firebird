@@ -1,6 +1,8 @@
 import logging
 import click
 import pyrobird.server
+from pyrobird.server import CFG_DOWNLOAD_IS_UNRESTRICTED, CFG_DOWNLOAD_IS_DISABLED, CFG_DOWNLOAD_PATH, \
+    CFG_CORS_IS_ALLOWED, CFG_API_BASE_URL, CFG_FIREBIRD_CONFIG_PATH
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -26,8 +28,10 @@ allow_cors_help = (
 @click.option("--work-path", "work_path", show_default=True, default="", help="Set the base directory path for file downloads. Defaults to the current working directory.")
 @click.option("--host", "host", default="", help="Set the host for development server to listen to")
 @click.option("--port", "port", default="", help="Set the port for development server to listen to")
+@click.option("--api-url", "api_url", default="", help="Force to use this address as backend API base URL. E.g. https://my-server:1234/")
+@click.option("--config", "config_path", default="", help="Path to firebird config.jsonc if used a custom")
 @click.pass_context
-def serve(ctx, unsecure_files, allow_cors, disable_download, work_path, host, port):
+def serve(ctx, unsecure_files, allow_cors, disable_download, work_path, host, port, api_url, config_path):
     """
     Start the server that serves Firebird frontend and can communicate with it.
 
@@ -61,10 +65,12 @@ def serve(ctx, unsecure_files, allow_cors, disable_download, work_path, host, po
         port = 5454
 
     pyrobird.server.run(debug=True, host=host, port=port, config={
-        "DOWNLOAD_IS_UNRESTRICTED": unsecure_files,
-        "DOWNLOAD_DISABLE": disable_download,
-        "DOWNLOAD_PATH": work_path,
-        "DOWNLOAD_ALLOW_CORS": allow_cors})
+        CFG_DOWNLOAD_IS_UNRESTRICTED: unsecure_files,
+        CFG_DOWNLOAD_IS_DISABLED: disable_download,
+        CFG_DOWNLOAD_PATH: work_path,
+        CFG_CORS_IS_ALLOWED: allow_cors,
+        CFG_API_BASE_URL: api_url,
+        CFG_FIREBIRD_CONFIG_PATH: config_path})
 
 
 if __name__ == '__main__':

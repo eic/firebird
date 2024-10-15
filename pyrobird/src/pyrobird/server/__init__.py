@@ -30,10 +30,20 @@ flask_app = Flask(__name__, static_folder=static_dir)
 flask_app.config.update()
 
 # Compression config
-# We want to use compression only transfering JSON for now...
+# We want to use compression only transferring JSON for now...
 flask_app.config["COMPRESS_REGISTER"] = False  # disable default compression of all requests
 compress = Compress()
 compress.init_app(flask_app)
+
+# Config KEYS
+
+CFG_DOWNLOAD_IS_UNRESTRICTED = "DOWNLOAD_IS_UNRESTRICTED"
+CFG_DOWNLOAD_IS_DISABLED = "DOWNLOAD_IS_DISABLED"
+CFG_DOWNLOAD_PATH = "DOWNLOAD_PATH"
+CFG_CORS_IS_ALLOWED = "DOWNLOAD_ALLOW_CORS"
+CFG_API_BASE_URL = "API_BASE_URL"
+CFG_FIREBIRD_CONFIG_PATH = "FIREBIRD_CONFIG_PATH"
+
 
 
 class ExcludeAPIConverter(BaseConverter):
@@ -80,7 +90,7 @@ def _can_user_download_file(filename):
    - bool: True if the file can be downloaded, False otherwise.
 
    Process:
-   - If downloading is globally disabled (DOWNLOAD_DISABLE=True), returns False.
+   - If downloading is globally disabled (DOWNLOAD_IS_DISABLED=True), returns False.
    - If unrestricted downloads are allowed (DOWNLOAD_IS_UNRESTRICTED=True), returns True.
    - For relative paths, assumes that the download is allowable.
    - For absolute paths, checks that the file resides within the configured DOWNLOAD_PATH.
@@ -90,12 +100,12 @@ def _can_user_download_file(filename):
     app = flask.current_app
 
     # If any downloads are disabled
-    if app.config.get("DOWNLOAD_DISABLE") is True:
-        logger.warning("Can't download file. DOWNLOAD_DISABLE=True")
+    if app.config.get(CFG_DOWNLOAD_IS_DISABLED) is True:
+        logger.warning("Can't download file. DOWNLOAD_IS_DISABLED=True")
         return False
 
     # If we allow any download
-    unrestricted_download = app.config.get("DOWNLOAD_IS_UNRESTRICTED") is True
+    unrestricted_download = app.config.get(CFG_DOWNLOAD_IS_UNRESTRICTED) is True
     if unrestricted_download:
         return True
 
@@ -106,7 +116,7 @@ def _can_user_download_file(filename):
 
     # HERE we have and absolute path! Check if it is safe to download
 
-    allowed_path = app.config.get("DOWNLOAD_PATH")
+    allowed_path = app.config.get(CFG_DOWNLOAD_PATH)
     if not allowed_path:
         allowed_path = os.getcwd()
 
@@ -138,7 +148,7 @@ def download_file(filename=None):
 
     # If it is relative, combine it with DOWNLOAD_PATH
     if not os.path.isabs(filename):
-        download_path = flask.current_app.config.get("DOWNLOAD_PATH")
+        download_path = flask.current_app.config.get(CFG_DOWNLOAD_PATH)
         if not download_path:
             download_path = os.getcwd()
 
@@ -202,7 +212,7 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     if not is_remote:
         # If it is relative, combine it with DOWNLOAD_PATH
         if not os.path.isabs(filename):
-            download_path = flask.current_app.config.get("DOWNLOAD_PATH")
+            download_path = flask.current_app.config.get(CFG_DOWNLOAD_PATH)
             if not download_path:
                 download_path = os.getcwd()
 
@@ -272,7 +282,9 @@ def asset_config():
 
     It reads out existing file adding server info
     """
-    config_path = 'assets/config.jsonc'
+    config_path = flask_app.config.get(CFG_FIREBIRD_CONFIG_PATH)
+    if not config_path:
+        config_path = 'assets/config.jsonc'
     config_dict = {}
 
     os_config_path = os.path.join(flask_app.static_folder, 'assets', 'config.jsonc')
@@ -286,7 +298,7 @@ def asset_config():
     except Exception as ex:
         logger.error(f"error opening {config_path}: {ex}")
 
-    host = 'unknown'
+    host = 'localhost'
     port = 80
 
     tokens = request.host.split(':')
@@ -309,6 +321,8 @@ def asset_config():
     config_dict['serverHost'] = host
     config_dict['servedByPyrobird'] = True
     config_dict['apiAvailable'] = True
+    config_api_url = flask_app.config.get(CFG_API_BASE_URL)
+    config_dict['apiBaseUrl'] = config_api_url if config_api_url else f"{request.scheme}://{host}:{port}"
 
     # Convert the updated dictionary to JSON
     return jsonify(config_dict)
@@ -344,18 +358,19 @@ def shutdown():
 def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
     """Runs flask server"""
     if config:
-        if isinstance(config, Config) or isinstance(config, map):
+        if isinstance(config, flask.Config) or isinstance(config, map):
             flask_app.config.from_mapping(config)
         else:
             flask_app.config.from_object(config)
 
-    if flask_app.config and flask_app.config.get("DOWNLOAD_ALLOW_CORS") is True:
+    if flask_app.config and flask_app.config.get(CFG_CORS_IS_ALLOWED) is True:
         from flask_cors import CORS
 
         # Enable CORS for all routes and specify the domains and settings
         CORS(flask_app, resources={
             r"/download/*": {"origins": "*"},
             r"/api/v1/*": {"origins": "*"},
+            r"/assets/config.jsonc": {"origins": "*"},
         })
 
     logger.debug("Serve path:")

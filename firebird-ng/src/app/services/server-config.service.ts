@@ -6,20 +6,16 @@ import {BehaviorSubject, Observable, catchError, map, of, firstValueFrom} from "
 
 
 export interface ServerConfig {
-  serverPort: number;
-  serverHost: string;
   servedByPyrobird: boolean;
   apiAvailable: boolean;
-  useAuthentication: boolean;
+  apiBaseUrl: string;
   logLevel: string;
 }
 
 export const defaultFirebirdConfig: ServerConfig = {
-  serverPort: 5454,
-  serverHost: "localhost",
   apiAvailable: false,
+  apiBaseUrl: "",
   servedByPyrobird: false,
-  useAuthentication: true,
   logLevel: 'info'
 };
 

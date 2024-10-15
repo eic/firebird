@@ -1,7 +1,7 @@
 config = {
-    "DOWNLOAD_DISABLE": True,
+    "DOWNLOAD_IS_DISABLED": True,
     "DOWNLOAD_IS_UNRESTRICTED": False,
-    "DOWNLOAD_ALLOW_CORS": True
+    "CORS_IS_ALLOWED": True
 }
 
 from pyrobird.server import flask_app as application

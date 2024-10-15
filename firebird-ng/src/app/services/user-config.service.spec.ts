@@ -27,8 +27,7 @@ describe('UrlService', () => {
     const mockServerConfigService = {
       config: {
         servedByPyrobird: false,
-        serverHost: 'localhost',
-        serverPort: 5000
+        apiBaseUrl: 'http:/localhost:4545'
       }
     };
 
@@ -160,49 +159,6 @@ describe('UrlService', () => {
 
       const resolvedUrl = service.resolveConvertUrl(inputUrl, fileType, entries);
       expect(resolvedUrl).toBe(expectedUrl);
-    });
-  });
-
-  describe('backend availability and server address', () => {
-    it('should use PyroBird server address if servedByPyrobird is true', () => {
-      // Simulate PyroBird server
-      serverConfigService.config.servedByPyrobird = true;
-      serverConfigService.config.serverHost = 'pyrobirdhost';
-      serverConfigService.config.serverPort = 8080;
-
-      const expectedServerAddress = `${window.location.protocol}//pyrobirdhost:8080`;
-
-      // Reinitialize the service to pick up new config
-      service = new UrlService(userConfigService, serverConfigService);
-
-      // Access private property via getter (assuming you add getters)
-      // expect(service.getServerAddress()).toBe(expectedServerAddress);
-
-      // Or access private property directly for testing purposes
-      expect((service as any).serverAddress).toBe(expectedServerAddress);
-    });
-
-    it('should use user-configured server address if localServerUseApi is true', () => {
-      userConfigService.localServerUseApi.subject.next(true);
-      userConfigService.localServerUrl.subject.next('http://customserver:1234');
-
-      const expectedServerAddress = 'http://customserver:1234';
-
-      // Reinitialize the service to pick up new config
-      service = new UrlService(userConfigService, serverConfigService);
-
-      expect((service as any).serverAddress).toBe(expectedServerAddress);
-    });
-
-    it('should have backend unavailable when neither PyroBird nor user API is configured', () => {
-      userConfigService.localServerUseApi.subject.next(false);
-      serverConfigService.config.servedByPyrobird = false;
-
-      // Reinitialize the service to pick up new config
-      service = new UrlService(userConfigService, serverConfigService);
-
-      expect((service as any).isBackendAvailable).toBe(false);
-      expect((service as any).serverAddress).toBe('');
     });
   });
 });

@@ -32,8 +32,8 @@ describe('UrlService', () => {
     serverConfigService = {
       config: {
         servedByPyrobird: false,
-        serverHost: 'localhost',
-        serverPort: 5000
+        apiAvailable: true,
+        apiBaseUrl: 'http://localhost:5454',
       }
     };
 
@@ -58,6 +58,7 @@ describe('UrlService', () => {
       const expectedUrl = 'http://localhost:5454/api/v1/download?f=%2Fpath%2Fto%2Ffile.root';
 
       const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+
       expect(resolvedUrl).toBe(expectedUrl);
     }));
 
