@@ -1,9 +1,8 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, waitForAsync } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { ServerConfigService } from './server-config.service';
-import * as jsoncParser from 'jsonc-parser';
 
-describe('FirebirdConfigService', () => {
+describe('ServerConfigService', () => {
   let service: ServerConfigService;
   let httpMock: HttpTestingController;
 
@@ -19,21 +18,25 @@ describe('FirebirdConfigService', () => {
   afterEach(() => {
     httpMock.verify(); // Ensure that no requests are outstanding.
   });
-  //
-  it('should fetch and parse JSONC data correctly', () => {
-    const dummyConfig = { apiBaseUrl: "http://localhost:5454" };
-    const jsoncData = '{ "key": "value" // comment }';
+
+  it('should fetch and parse JSONC data correctly', async () => {
+    const jsoncData = '{ "apiBaseUrl": "http://localhost:5454", "logLevel": "info" }';
+
+    // Call loadConfig()
+    const loadPromise = service.loadConfig();
 
     // Set up the HttpTestingController
     const req = httpMock.expectOne(service['configUrl']);
     expect(req.request.method).toBe('GET');
-    req.flush('{ "apiBaseUrl": "http://localhost:5454", "logLevel": "info" }'); // Mock the HTTP response
 
-    service.loadConfig().then(()=>{
-      expect(service.config.apiBaseUrl).toBe("http://localhost:5454");
-    });
+    // Mock the HTTP response
+    req.flush(jsoncData);
 
+    // Wait for loadConfig() to complete
+    await loadPromise;
+
+    // Verify the config
+    expect(service.config.apiBaseUrl).toBe("http://localhost:5454");
+    expect(service.config.logLevel).toBe("info");
   });
 });
-
-
