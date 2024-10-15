@@ -22,7 +22,7 @@ def client():
     # Set the DOWNLOAD_PATH to the 'data' directory where test files are located
     flask_app.config['DOWNLOAD_PATH'] = os.path.abspath(TEST_ROOT_DATA_DIR)
     # Ensure downloads are allowed
-    flask_app.config['DOWNLOAD_DISABLE'] = False
+    flask_app.config['DOWNLOAD_IS_DISABLED'] = False
     flask_app.config['DOWNLOAD_IS_UNRESTRICTED'] = False
 
     return flask_app.test_client()
@@ -58,7 +58,7 @@ def test_open_dangerous(client):
     filename = '/etc/passwd'  # A file outside the allowed path
     event_number = 0
     flask_app.config['DOWNLOAD_IS_UNRESTRICTED'] = True
-    flask_app.config['DOWNLOAD_DISABLE'] = False
+    flask_app.config['DOWNLOAD_IS_DISABLED'] = False
     response = client.get(f'/api/v1/download?filename={filename}')
     assert response.status_code == 200  # OK
 
@@ -81,9 +81,9 @@ def test_open_edm4eic_file_nonexistent_file(client):
     assert response.status_code == 404  # Not Found
 
 
-def test_open_edm4eic_file_download_disabled(client):
+def test_open_edm4eic_file_DOWNLOAD_IS_DISABLEDd(client):
     # Test accessing a file when downloads are disabled
-    flask_app.config['DOWNLOAD_DISABLE'] = True
+    flask_app.config['DOWNLOAD_IS_DISABLED'] = True
 
     filename = 'reco_2024-09_craterlake_2evt.edm4eic.root'
     event_number = 0
@@ -92,7 +92,7 @@ def test_open_edm4eic_file_download_disabled(client):
     assert response.status_code == 403  # Forbidden
 
     # Re-enable downloads for other tests
-    flask_app.config['DOWNLOAD_DISABLE'] = False
+    flask_app.config['DOWNLOAD_IS_DISABLED'] = False
 
 
 def test_open_edm4eic_file_invalid_file(client):

@@ -20,7 +20,6 @@ import { ServerConfigService } from "./server-config.service";
  *   - Standalone static site without backend API.
  *   - Served by a Flask application (e.g., PyroBird) with a backend API.
  *   - Served by another service with or without a backend API.
- * - Users may configure a custom API endpoint via `UserConfigService`.
  * - The service needs to resolve URLs for files that may:
  *   - Be accessible over HTTP/HTTPS.
  *   - Be local files requiring backend API to serve them.
@@ -28,7 +27,7 @@ import { ServerConfigService } from "./server-config.service";
  *
  * ### Use Cases:
  * - **Case 1: Downloading Files**
- *   - **1.1**: Input URL starts with `http://` or `https://`. The URL is used as is.
+ *   - **1.1**: Input URL starts with protocol like `root://`, `http://` or `https://`. The URL is used as is.
  *   - **1.2**: Input URL has no protocol or is a local file. The service checks if a backend is available and constructs the download endpoint URL.
  * - **Case 2: Converting Files**
  *   - **2.1 & 2.2**: Input URL is converted using the backend 'convert' endpoint, regardless of the original protocol.
@@ -96,8 +95,7 @@ export class UrlService {
     this.isBackendAvailable = servedByPyrobird || userUseApi;
 
     if (servedByPyrobird) {
-      const protocol = window.location.protocol; // 'http:' or 'https:'
-      this.serverAddress = `${protocol}//${this.serverConfigService.config.serverHost}:${this.serverConfigService.config.serverPort}`;
+      this.serverAddress = this.serverConfigService.config.apiBaseUrl;
     } else if (userUseApi) {
       this.serverAddress = userServerUrl;
     } else {
