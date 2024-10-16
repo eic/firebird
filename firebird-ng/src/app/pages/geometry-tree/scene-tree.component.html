@@ -1,0 +1,34 @@
+<div class="header">
+  <button mat-icon-button aria-label="Toggle Highlight" matTooltip="Toggle highlight function" (click)="toggleHighlighting()">
+    <mat-icon>{{ isHighlightingEnabled ? 'highlight_off' : 'highlight' }}</mat-icon>
+  </button>
+  <button mat-icon-button aria-label="Refresh" matTooltip="Refresh tree with current geometry" (click)="refreshScheneTree()" >
+    <mat-icon>refresh</mat-icon>
+  </button>
+</div>
+<mat-tree [dataSource]="dataSource" [treeControl]="treeControl" >
+  <!-- This is the tree node template for leaf nodes -->
+  <mat-tree-node *matTreeNodeDef="let node" matTreeNodePadding>
+    <!-- use a disabled button to provide padding for tree leaf -->
+    <button mat-icon-button disabled></button>
+    {{node.name}}
+    <button mat-icon-button (click)="toggleVisibility(node)">
+      <mat-icon>{{ node.visible ? 'visibility' : 'visibility_off' }}</mat-icon>
+    </button>
+  </mat-tree-node>
+  <!-- This is the tree node template for expandable nodes -->
+  <mat-tree-node *matTreeNodeDef="let node; when: hasChild" matTreeNodePadding
+                 (mouseenter)="highlightNode(node)"
+                 (mouseleave)="unhighlightElement(node)">
+    <button mat-icon-button matTreeNodeToggle
+            [attr.aria-label]="'Toggle ' + node.name">
+      <mat-icon class="mat-icon-rtl-mirror">
+        {{treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
+      </mat-icon>
+    </button>
+    {{node.name}}
+    <button mat-icon-button (click)="toggleVisibility(node)">
+      <mat-icon>{{ node.visible ? 'visibility' : 'visibility_off' }}</mat-icon>
+    </button>
+  </mat-tree-node>
+</mat-tree>

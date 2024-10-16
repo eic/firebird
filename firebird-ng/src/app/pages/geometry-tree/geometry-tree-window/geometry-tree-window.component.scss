@@ -1,0 +1,40 @@
+.tree-button {
+  background-color: #2e2e2e;
+  color: white;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background-color 0.3s;
+  position: fixed;
+  top: 150px;
+  right: 20px;
+
+  &:hover {
+    background-color: #95A5A5;
+  }
+
+  mat-icon {
+    font-size: 24px;
+  }
+}
+
+.window {
+  width: 400px;
+  background-color: #2e2e2e;
+}
+
+.window-header {
+  background-color: #3e3e3e;
+  padding: 8px;
+  cursor: move;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+
+

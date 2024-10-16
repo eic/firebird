@@ -1,0 +1,282 @@
+<!--<div id="controls">-->
+<!--  <input type="range" id="timeSlider" min="0" [max]="maxTime" step="1" [value]="currentTime" (input)="changeCurrentTime($event)" />-->
+<!--  <div>{{currentTime}} {{message}}</div>-->
+<!--  <button (click)="timeStep($event)">  step </button>-->
+<!--  <button (click)="animateTime()">  play </button>-->
+<!--  <button (click)="stopAnimation()">stop</button>-->
+<!--</div>-->
+<!--<div class="wrapper">-->
+
+
+
+<!--  <div class="box sidebar" [ngClass]="{ 'hidden': isSidebarHidden }">-->
+<!--    <app-geometry-tree></app-geometry-tree>-->
+<!--  </div>-->
+
+<!--  <button mat-icon-button matTooltip="Open geometry" (click)="toggleSidebar()" class="toggle-btn">-->
+<!--    <mat-icon>{{ isSidebarHidden ? 'menu' : 'close' }}</mat-icon>-->
+<!--  </button>-->
+
+<!--  <div class="handler"></div>-->
+
+<!--  <div class="box main">-->
+<!--&lt;!&ndash;    <app-loader [loaded]="loaded" [progress]="loadingProgress"></app-loader>&ndash;&gt;-->
+<!--&lt;!&ndash;    &lt;!&ndash;<app-nav></app-nav>&ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;    &lt;!&ndash; UI menu at the bottom &ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;    &lt;!&ndash;<app-ui-menu></app-ui-menu>&ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;    <app-experiment-info experiment="ePIC" experimentTagline="EPIC experiment at EIC"></app-experiment-info>&ndash;&gt;-->
+<!--&lt;!&ndash;    &lt;!&ndash; Phoenix menu at the top right &ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;    <app-phoenix-menu [rootNode]="phoenixMenuRoot"></app-phoenix-menu>&ndash;&gt;-->
+
+<!--    <app-ui-menu-wrapper >-->
+<!--      &lt;!&ndash; Event selector &ndash;&gt;-->
+<!--      <app-event-selector></app-event-selector>-->
+
+<!--      &lt;!&ndash; Zoom in and zoom out controls &ndash;&gt;-->
+<!--      <app-zoom-controls></app-zoom-controls>-->
+
+<!--      <app-view-options></app-view-options>-->
+
+<!--      <app-auto-rotate></app-auto-rotate>-->
+
+<!--      &lt;!&ndash; Dark theme toggle &ndash;&gt;-->
+<!--      <app-dark-theme></app-dark-theme>-->
+
+<!--      &lt;!&ndash; Toggle for clipping geometries &ndash;&gt;-->
+<!--      <app-object-clipping></app-object-clipping>-->
+
+<!--      &lt;!&ndash; Main view toggle &ndash;&gt;-->
+<!--      <app-main-view-toggle></app-main-view-toggle>-->
+
+<!--      &lt;!&ndash; Toggle for overlay panel &ndash;&gt;-->
+<!--      <app-overlay-view></app-overlay-view>-->
+
+<!--      &lt;!&ndash; Toggle for selected object panel &ndash;&gt;-->
+<!--      <app-object-selection></app-object-selection>-->
+
+<!--      &lt;!&ndash; Toggle for animating the event data &ndash;&gt;-->
+<!--      <app-animate-event></app-animate-event>-->
+
+<!--      &lt;!&ndash; Toggle for collections info &ndash;&gt;-->
+<!--      <app-collections-info></app-collections-info>-->
+
+<!--      &lt;!&ndash; Toggle for geometry browser &ndash;&gt;-->
+<!--      <app-geometry-browser></app-geometry-browser>-->
+
+<!--      &lt;!&ndash; Toggle for performance &ndash;&gt;-->
+<!--      <app-performance-toggle></app-performance-toggle>-->
+
+<!--      &lt;!&ndash; Toggle for loading geometries modal&ndash;&gt;-->
+<!--      <eic-io-options></eic-io-options>-->
+
+<!--      &lt;!&ndash; Toggle for shareable link constructor modal&ndash;&gt;-->
+<!--      <app-share-link></app-share-link>-->
+
+<!--      &lt;!&ndash; Info panel &ndash;&gt;-->
+<!--      <app-info-panel></app-info-panel>-->
+
+<!--      &lt;!&ndash; Extra options &ndash;&gt;-->
+<!--      <ng-content></ng-content>-->
+
+
+<!--    </app-ui-menu-wrapper>-->
+
+<!--    <div id="eventDisplay"></div>-->
+
+<!--    <div class="time-controls" id="bottom-controls">-->
+
+
+
+<!--      &lt;!&ndash;      <mat-select [(value)]="selectedEventKey" (selectionChange)="onUserSelectedEvent()">&ndash;&gt;-->
+<!--      &lt;!&ndash;        <mat-option *ngFor="let key of eventsByName.keys()" [value]="key">&ndash;&gt;-->
+<!--      &lt;!&ndash;          {{ key }}&ndash;&gt;-->
+<!--      &lt;!&ndash;        </mat-option>&ndash;&gt;-->
+<!--      &lt;!&ndash;      </mat-select>&ndash;&gt;-->
+
+
+<!--      <div>{{currentTime | number:'1.1-1'}}</div>-->
+<!--      <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)">-->
+<!--        <input matSliderThumb [value]="currentTime">-->
+<!--      </mat-slider>-->
+<!--      <div>{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>-->
+
+<!--      <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="rewindTime()">-->
+<!--        <mat-icon>first_page</mat-icon>-->
+<!--      </button>-->
+<!--      <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="animateWithCollision()">-->
+<!--        <mat-icon>close_fullscreen</mat-icon>-->
+<!--      </button>-->
+<!--      <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="animateTime()">-->
+<!--        <mat-icon>play_arrow</mat-icon>-->
+<!--      </button>-->
+<!--      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="timeStepBack($event)" class="tcontrol">-->
+<!--        <mat-icon>chevron_left</mat-icon>-->
+<!--      </button>-->
+
+<!--      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="timeStep($event)" class="tcontrol">-->
+<!--        <mat-icon>chevron_right</mat-icon>-->
+<!--      </button>-->
+<!--      <button mat-raised-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="stopAnimation()" >-->
+<!--        <mat-icon>pause</mat-icon>-->
+<!--      </button>-->
+<!--      <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >-->
+<!--        <mat-icon>stop</mat-icon>-->
+<!--      </button>-->
+<!--      <div>{{message}}</div>-->
+<!--      &nbsp;&nbsp;-->
+
+<!--      <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">-->
+<!--        <mat-icon>last_page</mat-icon>-->
+<!--      </button>-->
+
+<!--      <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >-->
+<!--        <mat-icon>view_in_ar</mat-icon>-->
+<!--      </button>-->
+
+<!--      <div style="color: darkgray">{{currentGeometry}}</div>-->
+
+
+<!--    </div>-->
+<!--  </div>-->
+<!--</div>-->
+<app-display-shell>
+  <ng-container header>
+    <!-- Header content -->
+
+<!--    <div class="header-buttons">-->
+    <nav class="navbar navbar-expand-lg navbar-dark" id="main-top-navbar">
+      <a class="navbar-brand" href="#"><img src="assets/firebird/firebird-simplified-circle.png" width="32" height="32" alt="App Logo"></a>
+<!--      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">-->
+<!--        <span class="navbar-toggler-icon"></span>-->
+<!--      </button>-->
+<!--      <div class="top_nav" id="navbarNavDropdown">-->
+        <ul class="navbar-nav">
+          <li class="nav-item"><a [routerLink]="['/config']" class="nav-link">Configure</a></li>
+          <li class="nav-item"><a [routerLink]="['/display']" class="nav-link">Display</a></li>
+        </ul>
+<!--      </div>-->
+    </nav>
+    <router-outlet></router-outlet>
+
+    <button mat-icon-button matTooltip="Toggle geometry" (click)="toggleLeftPane()" class="toggle-btn">
+      <mat-icon>{{ isLeftPaneOpen ? 'close' : 'account_tree' }}</mat-icon>
+    </button>
+
+    <div class="phoenix-menu" [ngClass]="{ 'd-none': !isPhoenixMenuOpen && isMobileView }">
+      <!-- Event selector -->
+      <app-event-selector></app-event-selector>
+
+      <!-- Zoom in and zoom out controls -->
+      <app-zoom-controls></app-zoom-controls>
+
+      <app-view-options></app-view-options>
+
+      <app-auto-rotate></app-auto-rotate>
+
+      <!-- Dark theme toggle -->
+      <app-dark-theme></app-dark-theme>
+
+      <!-- Toggle for clipping geometries -->
+      <app-object-clipping></app-object-clipping>
+
+      <!-- Main view toggle -->
+      <app-main-view-toggle></app-main-view-toggle>
+
+      <!-- Toggle for overlay panel -->
+      <app-overlay-view></app-overlay-view>
+
+      <!-- Toggle for selected object panel -->
+      <app-object-selection></app-object-selection>
+
+      <!-- Toggle for animating the event data -->
+      <app-animate-event></app-animate-event>
+
+      <!-- Toggle for collections info -->
+      <app-collections-info></app-collections-info>
+
+      <!-- Toggle for geometry browser -->
+      <app-geometry-browser></app-geometry-browser>
+
+      <!-- Toggle for performance -->
+      <app-performance-toggle></app-performance-toggle>
+
+      <!-- Toggle for loading geometries modal-->
+      <eic-io-options></eic-io-options>
+
+      <!-- Toggle for shareable link constructor modal-->
+      <app-share-link></app-share-link>
+
+      <!-- Info panel -->
+      <app-info-panel></app-info-panel>
+
+      <!-- Extra options -->
+      <ng-content></ng-content>
+    </div>
+
+    <button mat-icon-button matTooltip="Toggle phoenix menu" (click)="togglePhoenixMenu()" class="toggle-btn1 phoenix-menu-toggle d-md-none">
+      <mat-icon>{{ isPhoenixMenuOpen ? 'close' : 'menu' }}</mat-icon>
+    </button>
+
+  </ng-container>
+
+
+  <div leftPane>
+    <app-geometry-tree></app-geometry-tree>
+  </div>
+
+  <div centralPane>
+    <!-- Central content area -->
+    <div id="eventDisplay"></div>
+
+  </div>
+
+  <div rightPane>
+    <!-- Optional content for right pane -->
+  </div>
+
+  <div footer>
+    <div class="time-controls" id="bottom-controls">
+      <div style="margin-right: 10px">{{currentTime | number:'1.1-1'}}</div>
+      <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)" class="tslider">
+        <input matSliderThumb [value]="currentTime">
+      </mat-slider>
+      <div>{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>
+
+      <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="rewindTime()">
+        <mat-icon>first_page</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="animateWithCollision()">
+        <mat-icon>close_fullscreen</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="animateTime()">
+        <mat-icon>play_arrow</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="timeStepBack($event)" class="tcontrol">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="timeStep($event)" class="tcontrol">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="stopAnimation()" >
+        <mat-icon>pause</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >
+        <mat-icon>stop</mat-icon>
+      </button>
+      <div>{{message}}</div>
+      &nbsp;&nbsp;
+
+      <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">
+        <mat-icon>last_page</mat-icon>
+      </button>
+
+      <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >
+        <mat-icon>view_in_ar</mat-icon>
+      </button>
+
+      <div style="color: darkgray">{{currentGeometry}}</div>
+    </div>
+  </div>
+
+</app-display-shell>

@@ -13,6 +13,7 @@ keywords = []
 authors = [
   { name = "Dmitry Romanov", email = "romanovda@gmail.com" },
 ]
+packages = [{ include = "pyrobird" }]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
@@ -25,8 +26,13 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "click", "rich", "pyyaml"
+  "click", "rich", "pyyaml", "flask", "flask_cors", "flask-compress", "json5", "uproot"
 ]
+
+[project.optional-dependencies]
+test = ["pytest"]
+batch = ["pyppeteer"]
+xrootd = ["fsspec-xrootd", "xrootd"]
 
 #[project.urls]
 #Documentation = "https://github.com/eic/firebird"
@@ -34,7 +40,8 @@ dependencies = [
 #Source = "https://github.com/eic/firebird"
 
 [project.scripts]
-fbd = "pyrobird.cli:pyrobird"
+fbd = "pyrobird.cli:cli_app"
+pyrobird = "pyrobird.cli:cli_app"
 
 [tool.hatch.version]
 path = "src/pyrobird/__about__.py"
@@ -44,6 +51,7 @@ dependencies = [
   "coverage[toml]>=6.5",
   "pytest",
 ]
+
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
@@ -58,13 +66,6 @@ cov = [
 
 [[tool.hatch.envs.all.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
-
-[tool.hatch.envs.types]
-dependencies = [
-  "mypy>=1.0.0",
-]
-[tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/pyrobird tests}"
 
 [tool.coverage.run]
 source_pkgs = ["pyrobird", "tests"]
@@ -85,6 +86,11 @@ exclude_lines = [
   "if TYPE_CHECKING:",
 ]
 
+[tool.hatch.build]
+packages = [
+  "src/pyrobird"
+]
+
 [tool.hatch.publish.index]
 disable = true
 repository = "https://upload.pypi.org/legacy/"
@@ -94,4 +100,9 @@ username = "__token__"
 url = "https://upload.pypi.org/legacy/"
 
 [tool.hatch.build.targets.wheel]
-include = ["src/pyrobird/data/*.yaml"]
+include = [
+  "src/pyrobird/data/*.yaml",
+  "src/pyrobird/server/static/**/*",
+  "src/pyrobird/server/templates/**/*"
+]
+

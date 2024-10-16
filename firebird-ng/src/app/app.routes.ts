@@ -1,25 +1,27 @@
 import { Routes } from '@angular/router';
-import {MainDisplayComponent} from "./main-display/main-display.component";
-import {FileBrowserComponent} from "./file-browser/file-browser.component";
-import {InputConfigComponent} from "./input-config/input-config.component";
+import {InputConfigComponent} from "./pages/input-config/input-config.component";
 
 export const routes: Routes = [
   { path: '', redirectTo: '/display', pathMatch: 'full' },
   { path: 'config', component: InputConfigComponent },
   {
-    path: 'files',
-    loadComponent: () => import('./file-browser/file-browser.component').then(m => m.FileBrowserComponent)
-  },
-  {
     path: 'display',
-    loadComponent: () => import('./main-display/main-display.component').then(m => m.MainDisplayComponent)
+    loadComponent: () => import('./pages/main-display/main-display.component').then(m => m.MainDisplayComponent)
   },
   {
     path: 'playground',
-    loadComponent: () => import('./playground/playground.component').then(m => m.PlaygroundComponent)
+    loadComponent: () => import('./pages/playground/playground.component').then(m => m.PlaygroundComponent)
   },
   {
     path: 'geometry',
-    loadComponent: () => import('./geometry-tree/geometry-tree.component').then(m => m.GeometryTreeComponent)
+    loadComponent: () => import('./pages/geometry-tree/scene-tree.component').then(m => m.SceneTreeComponent)
+  },
+  {
+    path: 'testdp',
+    loadComponent: () => import('./pages/shell-example/shell-example.component').then(m => m.ShellExampleComponent)
+  },
+  {
+    path: 'split-window',
+    loadComponent: () => import('./pages/split-window/split-window.component').then(m => m.SplitWindowComponent)
   },
 ];

@@ -1,0 +1,4 @@
+{
+  // Flag indicates if python Flask server from Pyrobird package is in used. Set automatically by Pyrobird
+  "servedByPyrobird": false
+}
