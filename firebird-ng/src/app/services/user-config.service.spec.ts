@@ -26,8 +26,8 @@ describe('UrlService', () => {
 
     const mockServerConfigService = {
       config: {
-        servedByPyrobird: false,
-        apiBaseUrl: 'http:/localhost:4545'
+        servedByPyrobird: true,
+        apiBaseUrl: 'http://localhost:5454'
       }
     };
 
@@ -68,7 +68,12 @@ describe('UrlService', () => {
 
     it('should handle relative URL without protocol when backend is not available (Case 1.2)', () => {
       // Ensure backend is not available
+      serverConfigService.config.servedByPyrobird = false;
       userConfigService.localServerUseApi.subject.next(false);
+
+      // Manually trigger the service to update its config
+      (service as any).updateServerConfig();
+
 
       const inputUrl = '/path/to/file.root';
       const resolvedUrl = service.resolveDownloadUrl(inputUrl);
@@ -120,7 +125,13 @@ describe('UrlService', () => {
 
     it('should return input URL when backend is not available', () => {
       // Ensure backend is not available
+      // Ensure backend is not available
+      serverConfigService.config.servedByPyrobird = false;
       userConfigService.localServerUseApi.subject.next(false);
+
+      // Manually trigger the service to update its config
+      (service as any).updateServerConfig();
+
 
       const inputUrl = 'https://example.com/file.root';
       const fileType = 'edm4eic';
