@@ -41,7 +41,6 @@ import {MatTooltip} from "@angular/material/tooltip";
 import {MatSnackBar} from "@angular/material/snack-bar"
 import {MatFormField} from "@angular/material/form-field";
 import {MatOption, MatSelect} from "@angular/material/select";
-import {GeometryTreeWindowComponent} from "../geometry-tree/geometry-tree-window/geometry-tree-window.component";
 import {DataModelService} from "../../services/data-model.service";
 import {AngularSplitModule} from "angular-split";
 import {SceneTreeComponent} from "../geometry-tree/scene-tree.component";
@@ -56,7 +55,7 @@ import {AppComponent} from "../../app.component";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, GeometryTreeWindowComponent, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, AppComponent, RouterOutlet, RouterLink],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, AppComponent, RouterOutlet, RouterLink],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })

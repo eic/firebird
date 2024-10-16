@@ -1,7 +1,7 @@
 import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, Renderer2 } from '@angular/core';
 import { MatIconButton } from "@angular/material/button";
 import { MatIcon } from "@angular/material/icon";
-import { SceneTreeComponent } from "../scene-tree.component";
+import { SceneTreeComponent } from "../../pages/geometry-tree/scene-tree.component";
 import { NgIf } from "@angular/common";
 
 @Component({
