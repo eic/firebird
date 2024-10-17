@@ -16,13 +16,14 @@ import {MatTooltip} from "@angular/material/tooltip";
 import {ResourceSelectComponent} from "../../components/resource-select/resource-select.component";
 import {defaultFirebirdConfig, ServerConfig, ServerConfigService} from "../../services/server-config.service";
 import {MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader} from "@angular/material/expansion";
+import {NavConfigComponent} from "../../components/nav-config/nav-config.component";
 
 
 
 @Component({
   selector: 'app-input-config',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf, ResourceSelectComponent, MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader, RouterOutlet],
+  imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf, ResourceSelectComponent, MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader, RouterOutlet, NavConfigComponent],
   templateUrl: './input-config.component.html',
   styleUrl: './input-config.component.scss'
 })

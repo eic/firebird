@@ -36,7 +36,7 @@ import {EicAnimationsManager} from "../../phoenix-overload/eic-animation-manager
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 import {MatIcon} from "@angular/material/icon";
 import {MatButton, MatIconButton} from "@angular/material/button";
-import {DecimalPipe, NgClass, NgForOf} from "@angular/common";
+import {DecimalPipe, NgClass, NgForOf, NgIf} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
 import {MatSnackBar} from "@angular/material/snack-bar"
 import {MatFormField} from "@angular/material/form-field";
@@ -48,6 +48,7 @@ import {DisplayShellComponent} from "../../components/display-shell/display-shel
 import {DataModelPainter} from "../../painters/data-model-painter";
 import {AppComponent} from "../../app.component";
 import {ToolPanelComponent} from "../../components/tool-panel/tool-panel.component";
+import {NavConfigComponent} from "../../components/nav-config/nav-config.component";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -56,7 +57,7 @@ import {ToolPanelComponent} from "../../components/tool-panel/tool-panel.compone
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-    imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, AppComponent, RouterOutlet, RouterLink, ToolPanelComponent],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, AppComponent, RouterOutlet, RouterLink, ToolPanelComponent, NavConfigComponent, NgIf],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -106,8 +107,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   private beamAnimationTime: number = 1000;
 
   isLeftPaneOpen: boolean = false;
-  isPhoenixMenuOpen = true;
-  isMobileView = false;
+
+  isPhoenixMenuOpen: boolean = false;
+  isSmallScreen: boolean = window.innerWidth < 768;
 
   private painter: DataModelPainter = new DataModelPainter();
 
@@ -141,13 +143,11 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   }
 
   @HostListener('window:resize', ['$event'])
-  onResize(event: Event) {
-    this.checkViewport();
-  }
-
-  checkViewport() {
-    this.isMobileView = window.innerWidth < 992;
-
+  onResize(event: any) {
+    this.isSmallScreen = event.target.innerWidth < 768;
+    if (!this.isSmallScreen) {
+      this.isPhoenixMenuOpen = true;
+    }
   }
 
   togglePhoenixMenu() {
@@ -442,8 +442,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
 
   ngOnInit() {
-    this.checkViewport();
-
     let eventSource = this.settings.trajectoryEventSource.value;
     let eventConfig = {eventFile: "https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip", eventType: "zip"};
     if( eventSource != "no-events" && !eventSource.endsWith("edm4hep.json")) {

@@ -15,13 +15,12 @@
   align-items: center;
   min-height: 50px;
   background-color: #2e2e2e;
-  border-bottom: 1px solid #ddd;
-
+  border-bottom: 1px solid #1c1c1c;
+  box-sizing: border-box;
 }
 
 .main-content {
   box-sizing: border-box;
-  border-top: 1px solid #ddd;
   display: flex;
   flex: 1;
   overflow: hidden;

@@ -3,12 +3,7 @@
   padding: 0;
 }
 
-.navbar{
 
-  display: flex;
-  left: 10px;
-  flex-wrap: nowrap;
-}
 .phoenix-menu{
   flex: 1 1 auto;
   display: flex;
@@ -35,9 +30,13 @@
 
 .toggle-btn1 {
   color: white;
-
 }
 
+.phoenix-toggle-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
 
 .tcontrol {
   width: 40px;
@@ -67,18 +66,6 @@ mat-slider{
   width: 200px;
 }
 
-//.phoenix-menu-toggle {
-//  display: none;
-//
-//  @media (max-width: 767.98px) {
-//    display: inline-block;
-//  }
-//}
-//
-//.phoenix-menu {
-//  @media (max-width: 767.98px) {
-//    display: none;
-//  }
-//}
+
 
 
