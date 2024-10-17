@@ -1,14 +1,16 @@
 import {Component, Input} from '@angular/core';
 import {NgIf} from "@angular/common";
 import {MatIcon} from "@angular/material/icon";
-import { EventDisplayService } from 'phoenix-ui-components';
+import {EventDisplayService, PhoenixUIModule} from 'phoenix-ui-components';
+import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
 
 @Component({
   selector: 'app-tool-panel',
   standalone: true,
   imports: [
     NgIf,
-    MatIcon
+    MatIcon,
+    PhoenixUIModule
   ],
   templateUrl: './tool-panel.component.html',
   styleUrl: './tool-panel.component.scss'
@@ -16,6 +18,7 @@ import { EventDisplayService } from 'phoenix-ui-components';
 export class ToolPanelComponent {
   isCollapsed = false;
 
+  private threeFacade: PhoenixThreeFacade;
   /** Factor to zoom by. */
   private zoomFactor: number = 1.1;
   /** Timeout for clearing mouse hold. */
@@ -23,22 +26,22 @@ export class ToolPanelComponent {
   /** The speed and time of zoom. */
   private zoomTime: number = 100;
 
-  constructor(private eventDisplay: EventDisplayService) {}
+  constructor(
+    private eventDisplay: EventDisplayService)
+  {
+    this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
+  }
 
   /**
    * Zoom all the cameras by a specific zoom factor.
    * The factor may either be greater (zoom in) or smaller (zoom out) than 1.
-   * @param zoomFactor The factor to zoom by.
+   * @param factor
    */
-  zoomTo(zoomFactor: number) {
-    this.zoomTime =
-      this.zoomTime > 30 ? Math.floor(this.zoomTime / 1.1) : this.zoomTime;
-
-    this.eventDisplay.zoomTo(zoomFactor, this.zoomTime);
-
-    this.zoomTimeout = setTimeout(() => {
-      this.zoomTo(zoomFactor);
-    }, this.zoomTime);
+  zoomTo(factor: number) {
+    let orbitControls = this.threeFacade.activeOrbitControls;
+    let camera = this.threeFacade.mainCamera;
+    orbitControls.object.position.subVectors(camera.position, orbitControls.target).multiplyScalar(factor).add(orbitControls.target);
+    orbitControls.update();
   }
 
   onLeftClick(event: MouseEvent, action: string) {
