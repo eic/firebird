@@ -87,9 +87,7 @@ export class DataModelService {
         console.log("[DataModelService.loadDexData] Wrong extension. I.e. !this.userConfig.edm4eicEventSource.value");
       }
 
-      let url = "";
-
-
+      let url = this.urlService.resolveDownloadUrl(userInput);
 
       let dexData = {};
 
