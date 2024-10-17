@@ -538,6 +538,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     this.scene = threeManager.getSceneManager().getScene() as THREE.Scene;
     this.camera = openThreeManager.controlsManager.getMainCamera() as THREE.Camera;
 
+    this.painter.setThreeSceneParent(openThreeManager.sceneManager.getEventData());
 
     // // GUI
     // const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
@@ -661,7 +662,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
       //console.log("loaded data model");
       //console.log(data);
-    })
+    });
 
     document.addEventListener('keydown', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') {
