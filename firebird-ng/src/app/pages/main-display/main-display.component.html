@@ -166,8 +166,8 @@
       <!-- Event selector -->
       <app-event-selector></app-event-selector>
 
-      <!-- Zoom in and zoom out controls -->
-      <app-zoom-controls></app-zoom-controls>
+<!--      &lt;!&ndash; Zoom in and zoom out controls &ndash;&gt;-->
+<!--      <app-zoom-controls></app-zoom-controls>-->
 
       <app-view-options></app-view-options>
 
@@ -227,7 +227,7 @@
   <div centralPane>
     <!-- Central content area -->
     <div id="eventDisplay"></div>
-
+    <app-tool-panel ></app-tool-panel>
   </div>
 
   <div rightPane>
@@ -278,5 +278,6 @@
       <div style="color: darkgray">{{currentGeometry}}</div>
     </div>
   </div>
+
 
 </app-display-shell>

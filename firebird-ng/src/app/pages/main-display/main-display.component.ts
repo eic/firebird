@@ -47,6 +47,7 @@ import {SceneTreeComponent} from "../geometry-tree/scene-tree.component";
 import {DisplayShellComponent} from "../../components/display-shell/display-shell.component";
 import {DataModelPainter} from "../../painters/data-model-painter";
 import {AppComponent} from "../../app.component";
+import {ToolPanelComponent} from "../../components/tool-panel/tool-panel.component";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -55,7 +56,7 @@ import {AppComponent} from "../../app.component";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, AppComponent, RouterOutlet, RouterLink],
+    imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, AppComponent, RouterOutlet, RouterLink, ToolPanelComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
