@@ -22,14 +22,14 @@ allow_cors_help = (
 
 
 @click.command()
-@click.option("--allow-any-file", "unsecure_files", is_flag=True, show_default=True, default=False, help=unsecure_files_help)
-@click.option("--allow-cors", "allow_cors", is_flag=True, show_default=True, default=False, help=allow_cors_help)
-@click.option("--disable-files", "disable_download", is_flag=True, show_default=True, default=False, help="Disable all file downloads from the server")
-@click.option("--work-path", "work_path", show_default=True, default="", help="Set the base directory path for file downloads. Defaults to the current working directory.")
+@click.option("--allow-any-file", "unsecure_files", envvar=CFG_DOWNLOAD_IS_UNRESTRICTED, is_flag=True, show_default=True, default=False, help=unsecure_files_help)
+@click.option("--allow-cors", "allow_cors", envvar=CFG_CORS_IS_ALLOWED, is_flag=True, show_default=True, default=False, help=allow_cors_help)
+@click.option("--disable-files", "disable_download", envvar=CFG_DOWNLOAD_IS_DISABLED, is_flag=True, show_default=True, default=False, help="Disable all file downloads from the server")
+@click.option("--work-path", "work_path", envvar=CFG_DOWNLOAD_PATH, show_default=True, default="", help="Set the base directory path for file downloads. Defaults to the current working directory.")
 @click.option("--host", "host", default="", help="Set the host for development server to listen to")
 @click.option("--port", "port", default="", help="Set the port for development server to listen to")
-@click.option("--api-url", "api_url", default="", help="Force to use this address as backend API base URL. E.g. https://my-server:1234/")
-@click.option("--config", "config_path", default="", help="Path to firebird config.jsonc if used a custom")
+@click.option("--api-url", "api_url", envvar=CFG_API_BASE_URL, default="", help="Force to use this address as backend API base URL. E.g. https://my-server:1234/")
+@click.option("--config", "config_path", envvar=CFG_FIREBIRD_CONFIG_PATH, default="", help="Path to firebird config.jsonc if used a custom")
 @click.pass_context
 def serve(ctx, unsecure_files, allow_cors, disable_download, work_path, host, port, api_url, config_path):
     """

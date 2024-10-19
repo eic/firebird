@@ -19,11 +19,11 @@ TEST_ROOT_DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 def client():
     # Configure the Flask app for testing
     flask_app.config['TESTING'] = True
-    # Set the DOWNLOAD_PATH to the 'data' directory where test files are located
-    flask_app.config['DOWNLOAD_PATH'] = os.path.abspath(TEST_ROOT_DATA_DIR)
+    # Set the PYROBIRD_DOWNLOAD_PATH to the 'data' directory where test files are located
+    flask_app.config['PYROBIRD_DOWNLOAD_PATH'] = os.path.abspath(TEST_ROOT_DATA_DIR)
     # Ensure downloads are allowed
-    flask_app.config['DOWNLOAD_IS_DISABLED'] = False
-    flask_app.config['DOWNLOAD_IS_UNRESTRICTED'] = False
+    flask_app.config['PYROBIRD_DOWNLOAD_IS_DISABLED'] = False
+    flask_app.config['PYROBIRD_DOWNLOAD_IS_UNRESTRICTED'] = False
 
     return flask_app.test_client()
 
@@ -44,7 +44,7 @@ def test_open_edm4eic_file_local_allowed(client):
 
 def test_open_edm4eic_file_local_not_allowed(client):
     from urllib.parse import quote
-    # Test accessing a local file outside of DOWNLOAD_PATH
+    # Test accessing a local file outside of PYROBIRD_DOWNLOAD_PATH
     filename = '/etc/passwd'  # A file outside the allowed path
     event_number = 0
     encoded_filename = quote(filename, safe='')
@@ -54,11 +54,11 @@ def test_open_edm4eic_file_local_not_allowed(client):
 
 
 def test_open_dangerous(client):
-    # Test accessing a local file outside of DOWNLOAD_PATH
+    # Test accessing a local file outside of PYROBIRD_DOWNLOAD_PATH
     filename = '/etc/passwd'  # A file outside the allowed path
     event_number = 0
-    flask_app.config['DOWNLOAD_IS_UNRESTRICTED'] = True
-    flask_app.config['DOWNLOAD_IS_DISABLED'] = False
+    flask_app.config['PYROBIRD_DOWNLOAD_IS_UNRESTRICTED'] = True
+    flask_app.config['PYROBIRD_DOWNLOAD_IS_DISABLED'] = False
     response = client.get(f'/api/v1/download?filename={filename}')
     assert response.status_code == 200  # OK
 
@@ -81,9 +81,9 @@ def test_open_edm4eic_file_nonexistent_file(client):
     assert response.status_code == 404  # Not Found
 
 
-def test_open_edm4eic_file_DOWNLOAD_IS_DISABLEDd(client):
+def test_open_edm4eic_file_PYROBIRD_DOWNLOAD_IS_DISABLEDd(client):
     # Test accessing a file when downloads are disabled
-    flask_app.config['DOWNLOAD_IS_DISABLED'] = True
+    flask_app.config['PYROBIRD_DOWNLOAD_IS_DISABLED'] = True
 
     filename = 'reco_2024-09_craterlake_2evt.edm4eic.root'
     event_number = 0
@@ -92,14 +92,14 @@ def test_open_edm4eic_file_DOWNLOAD_IS_DISABLEDd(client):
     assert response.status_code == 403  # Forbidden
 
     # Re-enable downloads for other tests
-    flask_app.config['DOWNLOAD_IS_DISABLED'] = False
+    flask_app.config['PYROBIRD_DOWNLOAD_IS_DISABLED'] = False
 
 
 def test_open_edm4eic_file_invalid_file(client):
     # Test accessing a file that is not a valid ROOT file
     # Create an invalid file in the data directory
     invalid_filename = 'invalid_file.root'
-    invalid_file_path = os.path.join(flask_app.config['DOWNLOAD_PATH'], invalid_filename)
+    invalid_file_path = os.path.join(flask_app.config['PYROBIRD_DOWNLOAD_PATH'], invalid_filename)
     with open(invalid_file_path, 'w') as f:
         f.write('This is not a valid ROOT file.')
 

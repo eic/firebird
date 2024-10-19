@@ -134,8 +134,8 @@ This is technical explanation of what is under the hood of the server part
 
 ### Configuration Options
 - **DOWNLOAD_PATH**: `str[getcwd()]`, Specifies the directory from which files can be downloaded when using relative paths.
-- **DOWNLOAD_IS_DISABLED**: `bool[False]` If set to `True`, all download functionalities are disabled.
-- **DOWNLOAD_IS_UNRESTRICTED**: `bool[False]`, allows unrestricted access to download any file, including sensitive ones.
+- **PYROBIRD_DOWNLOAD_IS_DISABLED**: `bool[False]` If set to `True`, all download functionalities are disabled.
+- **PYROBIRD_DOWNLOAD_IS_UNRESTRICTED**: `bool[False]`, allows unrestricted access to download any file, including sensitive ones.
 - **CORS_IS_ALLOWED**: `bool[False]`, If set to `True`, enables Cross-Origin Resource Sharing (CORS) for download routes.
 
 
