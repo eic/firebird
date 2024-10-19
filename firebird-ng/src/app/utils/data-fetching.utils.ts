@@ -28,7 +28,11 @@ export async function fetchTextFile(fileURL: string): Promise<string> {
   try{
     const loadingTimeMessage = `${fetchTextFile.name}: fetching ${fileURL}`;
     console.time(loadingTimeMessage);
-    const fileText = await (await fetch(fileURL)).text();
+    const response = await fetch(fileURL);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    const fileText = await response.text();
     console.timeEnd(loadingTimeMessage);
     return fileText;
   }

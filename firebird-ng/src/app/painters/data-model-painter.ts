@@ -1,8 +1,15 @@
+/**
+ * This class is responsible in rendering Event or Frame data.
+ * It first takes event components and manipulates three.js Scene
+ * Then responsible for correct rendering at a given time
+ */
+
 import { Entry } from "../model/entry";
 import { Object3D, Group } from "three";
 import {ComponentPainter, ComponentPainterConstructor} from "./component-painter";
 import {BoxTrackerHitComponent} from "../model/box-tracker-hit.component";
 import {BoxTrackerHitPainter} from "./box-tracker-hit.painter";
+import {BoxTrackerHitSimplePainter} from "./box-tracker-hit-simple.painter";
 
 
 export class DataModelPainter {
@@ -14,7 +21,8 @@ export class DataModelPainter {
 
   public constructor() {
     // Register builtin painters
-    this.registerPainter(BoxTrackerHitComponent.type, BoxTrackerHitPainter);
+    //this.registerPainter(BoxTrackerHitComponent.type, BoxTrackerHitPainter);
+    this.registerPainter(BoxTrackerHitComponent.type, BoxTrackerHitSimplePainter);
 
   }
 

@@ -2,10 +2,25 @@
   <mat-icon>{{ isNavConfigOpen ? 'close' : 'menu' }}</mat-icon>
 </button>
 <nav class="navbar navbar-expand-lg navbar-dark" id="main-top-navbar" *ngIf="isNavConfigOpen || !isSmallScreen">
-  <a class="navbar-brand" href="#"><img src="assets/firebird/firebird-simplified-circle.png" width="32" height="32" alt="App Logo"></a>
+  <button [matMenuTriggerFor]="menu" class="logo-button" aria-label="App Logo Button">
+    <img src="assets/firebird/firebird-simplified-circle.png" width="32" height="32" alt="App Logo">
+  </button>
+  <mat-menu #menu="matMenu">
+    <button mat-menu-item>
+      <span><a href="https://github.com/eic/firebird" target="_blank">GitHub Repository</a></span>
+    </button>
+    <button mat-menu-item>
+      <span><a href="https://github.com/eic/firebird/issues" target="_blank">Submit ideas (or issues)</a></span>
+    </button>
+    <button mat-menu-item disabled>
+      <span>Firebird: {{packageVersion}}</span>
+    </button>
+  </mat-menu>
+
+
   <ul class="navbar-nav">
     <li class="nav-item"><a [routerLink]="['/config']" class="nav-link">Configure</a></li>
     <li class="nav-item"><a [routerLink]="['/display']" class="nav-link">Display</a></li>
   </ul>
 </nav>
-<router-outlet></router-outlet>
+

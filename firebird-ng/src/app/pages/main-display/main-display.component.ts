@@ -49,6 +49,7 @@ import {DataModelPainter} from "../../painters/data-model-painter";
 import {AppComponent} from "../../app.component";
 import {ToolPanelComponent} from "../../components/tool-panel/tool-panel.component";
 import {NavConfigComponent} from "../../components/nav-config/nav-config.component";
+import {UrlService} from "../../services/url.service";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -57,7 +58,7 @@ import {NavConfigComponent} from "../../components/nav-config/nav-config.compone
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, AppComponent, RouterOutlet, RouterLink, ToolPanelComponent, NavConfigComponent, NgIf],
+  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent,  ToolPanelComponent, NavConfigComponent, NgIf],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -121,7 +122,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     private route: ActivatedRoute,
     private settings: UserConfigService,
     private dataService: DataModelService,
-    private elRef: ElementRef, private renderer2: Renderer2,
+    private elRef: ElementRef,
+    private renderer2: Renderer2,
+    private urlService: UrlService,
     private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
   }
@@ -443,6 +446,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
   ngOnInit() {
     let eventSource = this.settings.trajectoryEventSource.value;
+    eventSource = this.urlService.resolveDownloadUrl(eventSource);
     let eventConfig = {eventFile: "https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip", eventType: "zip"};
     if( eventSource != "no-events" && !eventSource.endsWith("edm4hep.json")) {
       let eventType = eventSource.endsWith("zip") ? "zip" : "json";
@@ -641,10 +645,24 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
     this.dataService.loadEdm4EicData().then(data => {
       this.updateSceneTreeComponent();
-      console.log("loaded data model");
+      console.log("loadEdm4EicData data:");
       console.log(data);
-    })
+      if(data == null) {
+        console.warn("DataService.loadEdm4EicData() Received data is null or undefined");
+        return;
+      }
 
+      if(data.entries?.length ?? 0 > 0) {
+        this.painter.setThreeSceneParent(openThreeManager.sceneManager.getEventData());
+        this.painter.setEntry(data.entries[0]);
+        this.painter.paint(this.currentTime);
+        this.updateSceneTreeComponent();
+      } else {
+        console.warn("DataService.loadEdm4EicData() Received data had no entries");
+        console.log(data);
+      }
+    })
+    //
     this.dataService.loadDexData().then(data => {
       this.updateSceneTreeComponent();
       if(data == null) {
@@ -653,8 +671,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
       }
 
       if(data.entries?.length ?? 0 > 0) {
+        this.painter.setThreeSceneParent(openThreeManager.sceneManager.getEventData());
         this.painter.setEntry(data.entries[0]);
         this.painter.paint(this.currentTime);
+        this.updateSceneTreeComponent();
       } else {
         console.warn("DataService.loadDexData() Received data had no entries");
         console.log(data);
@@ -878,6 +898,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   exitTimedDisplay() {
     this.stopAnimation();
     this.rewindTime();
+    this.painter.paint(null);
     this.animateEventAfterLoad = false;
     if(this.trackInfos) {
       for (let trackInfo of this.trackInfos) {

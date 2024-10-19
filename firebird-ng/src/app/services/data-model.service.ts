@@ -7,7 +7,7 @@ import {HttpClient} from "@angular/common/http";
 import {firstValueFrom} from "rxjs";
 import {UrlService} from "./url.service";
 import {DataExchange} from "../model/data-exchange";
-import {loadJSONFileEvents, loadZipFileEvents} from "../utils/data-fetching.utils";
+import {fetchTextFile, loadJSONFileEvents, loadZipFileEvents} from "../utils/data-fetching.utils";
 
 @Injectable({
   providedIn: 'root'
@@ -50,9 +50,11 @@ export class DataModelService {
       //   userInput = this.urlService.resolveLocalhostUrl(userInput);
       // }
 
-      const jsonData = await firstValueFrom(
-        this.http.get(url, { responseType: 'text' })
-      );
+      const jsonData = await fetchTextFile(url);
+      //   //this.http.get(url, { responseType: 'text' })
+      // );
+
+
 
       const dexData = JSON.parse(jsonData);
       let data = DataExchange.fromDexObj(dexData);
