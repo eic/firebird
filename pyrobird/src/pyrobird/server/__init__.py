@@ -357,8 +357,8 @@ def shutdown():
     return 'Server shutting down...'
 
 
-def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
-    """Runs flask server"""
+def configure_flask_app(config=None):
+    """Returns"""
     if config:
         if isinstance(config, flask.Config) or isinstance(config, map) or isinstance(config, dict):
             flask_app.config.from_mapping(config)
@@ -381,5 +381,9 @@ def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
     logger.debug("Serve path:")
     logger.debug("  Server dir :", server_dir)
     logger.debug("  Static dir :", static_dir)
+    return flask_app
 
+
+def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
+    configure_flask_app(config)
     flask_app.run(host=host, port=port, debug=debug, load_dotenv=load_dotenv)
