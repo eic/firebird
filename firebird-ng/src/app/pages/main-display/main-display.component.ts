@@ -4,8 +4,7 @@ import {HttpClient, HttpClientModule} from '@angular/common/http';
 import {
   EventDataFormat,
   EventDataImportOption,
-  EventDisplayService,
-  PhoenixUIModule
+  EventDisplayService
 } from 'phoenix-ui-components';
 import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
@@ -50,6 +49,10 @@ import {AppComponent} from "../../app.component";
 import {ToolPanelComponent} from "../../components/tool-panel/tool-panel.component";
 import {NavConfigComponent} from "../../components/nav-config/nav-config.component";
 import {UrlService} from "../../services/url.service";
+import {EventSelectorComponent} from "../../components/event-selector/event-selector.component";
+import {AutoRotateComponent} from "../../components/auto-rotate/auto-rotate.component";
+import {DarkThemeComponent} from "../../components/dark-theme/dark-theme.component";
+import {ObjectClippingComponent} from "../../components/object-clipping/object-clipping.component";
 
 
 // import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -58,7 +61,7 @@ import {UrlService} from "../../services/url.service";
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent,  ToolPanelComponent, NavConfigComponent, NgIf],
+  imports: [IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, ToolPanelComponent, NavConfigComponent, NgIf, EventSelectorComponent, AutoRotateComponent, DarkThemeComponent, ObjectClippingComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })

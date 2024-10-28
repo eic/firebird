@@ -3,6 +3,8 @@ import {NgIf} from "@angular/common";
 import {MatIcon} from "@angular/material/icon";
 import {EventDisplayService, PhoenixUIModule} from 'phoenix-ui-components';
 import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
+import {ViewOptionsComponent} from "../view-options/view-options.component";
+import {MainViewToggleComponent} from "../main-view-toggle/main-view-toggle.component";
 
 @Component({
   selector: 'app-tool-panel',
@@ -10,7 +12,9 @@ import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
   imports: [
     NgIf,
     MatIcon,
-    PhoenixUIModule
+    PhoenixUIModule,
+    ViewOptionsComponent,
+    MainViewToggleComponent
   ],
   templateUrl: './tool-panel.component.html',
   styleUrl: './tool-panel.component.scss'

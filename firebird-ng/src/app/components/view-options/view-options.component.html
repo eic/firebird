@@ -1,0 +1,103 @@
+<mat-menu #viewOptions>
+  <button mat-menu-item>
+    <mat-checkbox
+      #showCartesianGridCheckbox
+      (click)="$event.stopPropagation()"
+      (change)="setCartesianGrid($event)"
+      >Show Cartesian Grid
+    </mat-checkbox>
+    <button
+      class="icon-wrapper icon-button btn-blank item-settings"
+      (click)="openCartesianGridConfigDialog()"
+    >
+      <svg>
+        <use href="assets/icons/gear.svg#gear"></use>
+      </svg>
+    </button>
+  </button>
+  <button
+    mat-menu-item
+    (click)="
+      $event.stopPropagation();
+      showEtaPhiGridCheckbox._inputElement.nativeElement.click()
+    "
+  >
+    <mat-checkbox
+      #showEtaPhiGridCheckbox
+      (click)="$event.stopPropagation()"
+      (change)="setEtaPhiGrid($event)"
+      >Show Eta Phi Grid
+    </mat-checkbox>
+  </button>
+  <button
+    mat-menu-item
+    (click)="
+      $event.stopPropagation();
+      showAxisCheckbox._inputElement.nativeElement.click()
+    "
+  >
+    <mat-checkbox
+      #showAxisCheckbox
+      (click)="$event.stopPropagation()"
+      (change)="setAxis($event)"
+      >Show Axis
+    </mat-checkbox>
+  </button>
+  <button
+    mat-menu-item
+    (click)="showLabelsCheckbox._inputElement.nativeElement.click()"
+  >
+    <mat-checkbox
+      #showLabelsCheckbox
+      (click)="$event.stopPropagation()"
+      (change)="showLabels($event)"
+      >Show Labels
+    </mat-checkbox>
+  </button>
+  <button
+    mat-menu-item
+    (click)="
+      $event.stopPropagation();
+      showMouse3DPointsCheckbox._inputElement.nativeElement.click()
+    "
+  >
+    <mat-checkbox
+      #showMouse3DPointsCheckbox
+      (click)="$event.stopPropagation()"
+      (change)="show3DMousePoints($event)"
+      >Show 3D Coordinates
+    </mat-checkbox>
+  </button>
+  <button
+    mat-menu-item
+    (click)="
+      $event.stopPropagation();
+      show3DDistanceCheckbox._inputElement.nativeElement.click()
+    "
+  >
+    <mat-checkbox
+      #show3DDistanceCheckbox
+      (click)="$event.stopPropagation()"
+      (change)="toggleShowDistance($event)"
+      >Show 3D Distance
+    </mat-checkbox>
+  </button>
+  <button
+    mat-menu-item
+    *ngFor="let view of views"
+    (click)="displayView($event, view)"
+  >
+    <svg class="view-icon" *ngIf="view.icon">
+      <use attr.href="assets/icons/{{ view.icon }}.svg#{{ view.icon }}"></use>
+    </svg>
+    {{ view.name }}
+  </button>
+</mat-menu>
+
+<app-custom-menu-toggle
+  [matMenuTriggerFor]="viewOptions"
+  tooltip="View options and Tools"
+  icon="views"
+  [active]="false"
+>
+</app-custom-menu-toggle>
