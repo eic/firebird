@@ -38,7 +38,7 @@
     <button mat-icon-button matTooltip="Toggle phoenix menu" (click)="togglePhoenixMenu()" class="toggle-btn d-md-none phoenix-toggle-btn">
       <mat-icon>{{ isPhoenixMenuOpen ? 'close' : 'menu' }}</mat-icon>
     </button>
-    <div class="phoenix-menu" *ngIf="isPhoenixMenuOpen || !isSmallScreen">
+    <div class="phoenix-menu theme-button" *ngIf="isPhoenixMenuOpen || !isSmallScreen">
 
       <!-- Event selector -->
       <app-custom-event-selector></app-custom-event-selector>
@@ -50,18 +50,6 @@
 
       <!-- Toggle for clipping geometries -->
       <app-custom-object-clipping></app-custom-object-clipping>
-
-<!--       Toggle for selected object panel -->
-<!--      <app-custom-object-selection></app-custom-object-selection>-->
-
-<!--      &lt;!&ndash; Toggle for loading geometries modal&ndash;&gt;-->
-<!--      <eic-io-options></eic-io-options>-->
-
-<!--      &lt;!&ndash; Toggle for shareable link constructor modal&ndash;&gt;-->
-<!--      <app-share-link></app-share-link>-->
-
-<!--      &lt;!&ndash; Info panel &ndash;&gt;-->
-<!--      <app-info-panel></app-info-panel>-->
 
       <!-- Extra options -->
       <ng-content></ng-content>
@@ -96,11 +84,11 @@
 
   <div footer>
     <div class="time-controls" id="bottom-controls">
-      <div style="margin-right: 10px">{{currentTime | number:'1.1-1'}}</div>
+      <div class="theme-text" style="margin-right: 10px">{{currentTime | number:'1.1-1'}}</div>
       <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)" class="tslider">
         <input matSliderThumb [value]="currentTime">
       </mat-slider>
-      <div>{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>
+      <div class="theme-text">{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>
 
       <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="rewindTime()">
         <mat-icon>first_page</mat-icon>
@@ -124,7 +112,7 @@
       <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >
         <mat-icon>stop</mat-icon>
       </button>
-      <div>{{message}}</div>
+      <div class="theme-text">{{message}}</div>
       &nbsp;&nbsp;
 
       <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">
@@ -135,7 +123,7 @@
         <mat-icon>view_in_ar</mat-icon>
       </button>
 
-      <div style="color: darkgray">{{currentGeometry}}</div>
+      <div class="theme-text">{{currentGeometry}}</div>
     </div>
   </div>
 

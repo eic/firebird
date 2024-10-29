@@ -18,14 +18,15 @@
     &-icon {
       width: 100%;
       height: 100%;
+      fill: var(--icon-color);
 
       &.active-icon {
-        --phoenix-options-icon-path: #00bcd4;
+        fill: var(--active-icon-color);
       }
     }
 
     &:hover {
-      background-color: var(--phoenix-options-icon-bg);
+      background-color: var(--icon-bg);
       border-radius: 40%;
       transition: all 0.4s;
     }
@@ -35,4 +36,12 @@
       opacity: 0.4;
     }
   }
+}
+.menu-toggle-icon{
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.button_theme:hover {
+  color: var(--accent-color);
 }

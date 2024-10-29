@@ -3,12 +3,14 @@
   flex-direction: row;
   box-sizing: border-box;
   height: 50px;
-  color: white;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
 }
 
+.nav-link{
+  color: var(--text-color) !important;
+  //transition: background-color 0.3s, color 0.3s;
+}
 .config-toggle-btn {
   color: white;
   position: absolute;
@@ -24,3 +26,5 @@
   margin: 0;
   cursor: pointer;
 }
+
+
