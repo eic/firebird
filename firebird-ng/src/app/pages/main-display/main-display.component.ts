@@ -1,6 +1,4 @@
-import {AfterViewInit, Component, ElementRef, HostListener, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
-import {HttpClient, HttpClientModule} from '@angular/common/http';
-
+import {AfterViewInit, Component, HostListener, Input, OnInit, ViewChild} from '@angular/core';
 import {
   EventDataFormat,
   EventDataImportOption,
@@ -10,24 +8,12 @@ import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetVi
 import * as THREE from 'three';
 import {Color, DoubleSide, InstancedBufferGeometry, Line, MeshLambertMaterial, MeshPhongMaterial,} from "three";
 import {ALL_GROUPS, GeometryService} from '../../services/geometry.service';
-import {ActivatedRoute, RouterLink, RouterOutlet} from '@angular/router';
 import {ThreeGeometryProcessor} from "../../data-pipelines/three-geometry.processor";
 import * as TWEEN from '@tweenjs/tween.js';
-import GUI from "lil-gui";
 import {produceRenderOrder} from "jsroot/geom";
-import {
-  disposeHierarchy,
-  disposeNode,
-  findObject3DNodes,
-  getColorOrDefault,
-  pruneEmptyNodes
-} from "../../utils/three.utils";
+import {getColorOrDefault} from "../../utils/three.utils";
 import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
-import {BehaviorSubject, Subject} from "rxjs";
 import {GameControllerService} from "../../services/game-controller.service";
-import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
-import {Line2} from "three/examples/jsm/lines/Line2";
-import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
 import {IoOptionsComponent} from "../../components/io-options/io-options.component";
 import {ProcessTrackInfo, ThreeEventProcessor} from "../../data-pipelines/three-event.processor";
 import {UserConfigService} from "../../services/user-config.service";
@@ -45,7 +31,6 @@ import {AngularSplitModule} from "angular-split";
 import {SceneTreeComponent} from "../geometry-tree/scene-tree.component";
 import {DisplayShellComponent} from "../../components/display-shell/display-shell.component";
 import {DataModelPainter} from "../../painters/data-model-painter";
-import {AppComponent} from "../../app.component";
 import {ToolPanelComponent} from "../../components/tool-panel/tool-panel.component";
 import {NavConfigComponent} from "../../components/nav-config/nav-config.component";
 import {UrlService} from "../../services/url.service";
@@ -53,9 +38,6 @@ import {EventSelectorComponent} from "../../components/event-selector/event-sele
 import {AutoRotateComponent} from "../../components/auto-rotate/auto-rotate.component";
 import {DarkThemeComponent} from "../../components/dark-theme/dark-theme.component";
 import {ObjectClippingComponent} from "../../components/object-clipping/object-clipping.component";
-
-
-// import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 
 
 @Component({
@@ -123,11 +105,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     private geomService: GeometryService,
     private eventDisplay: EventDisplayService,
     private controller: GameControllerService,
-    private route: ActivatedRoute,
     private settings: UserConfigService,
     private dataService: DataModelService,
-    private elRef: ElementRef,
-    private renderer2: Renderer2,
     private urlService: UrlService,
     private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
@@ -622,22 +601,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     threeManager.setAnimationLoop(()=>{this.handleGamepadInputV1()});
 
 
-
-    //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
-    //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
-    // const events_url = "assets/events/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
-    // let loader = new Edm4hepRootEventLoader();
-    // loader.openFile(events_url).then(value => {
-    //     console.log('Opened root file');
-    //   }
-    // );
-
-    const geometryAddress = this.route.snapshot.queryParams['geo'];
-    console.log(`geometry query: ${geometryAddress}`);
-
-    let jsonGeometry;
     this.loadGeometry().then(jsonGeom => {
-      jsonGeometry = jsonGeom;
 
       this.updateSceneTreeComponent();
 
