@@ -691,6 +691,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     window.addEventListener('resize', () => {
       this.onRendererElementResize();
     });
+
+    // Set proper window size now
+    resizeInvoker();
   }
 
   private onRendererElementResize() {
