@@ -111,6 +111,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   private beamAnimationTime: number = 1000;
 
   isLeftPaneOpen: boolean = false;
+  isDarkTheme = false;
 
   isPhoenixMenuOpen: boolean = false;
   isSmallScreen: boolean = window.innerWidth < 768;

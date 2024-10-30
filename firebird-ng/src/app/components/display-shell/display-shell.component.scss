@@ -14,8 +14,6 @@
   flex-direction: row;
   align-items: center;
   min-height: 50px;
-  //background-color: #2e2e2e;
-  border-bottom: 1px solid #1c1c1c;
   box-sizing: border-box;
 }
 
@@ -41,7 +39,6 @@
 
 .central-pane {
   flex: 1;
-  //background-color: #424242;
   overflow: auto;
 }
 
