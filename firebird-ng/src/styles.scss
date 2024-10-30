@@ -49,7 +49,7 @@ $light-theme: mat.define-light-theme($colors);
   --dat-border-color: #f0f0f0;
 }
 
-/* Тёмная тема */
+/* Dark theme */
 [data-theme='dark'] {
   --background-color: #2e2e2e;
   --secondary-background-color: #292929;
@@ -89,7 +89,7 @@ body {
   background-color: var(--background-color);
 }
 
-/* Стили скроллбара */
+/* Scroll bar styles */
 ::-webkit-scrollbar {
   width: 0.3em;
   height: 0.3em;
@@ -136,7 +136,7 @@ body {
 }
 
 [data-theme='light'] .theme-button:hover {
-  bbackground-color: #145d7b;
+  background-color: #145d7b;
 }
 
 select {

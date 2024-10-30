@@ -27,11 +27,16 @@ export class DarkThemeComponent implements OnInit {
     this.darkTheme = !this.darkTheme;
     const scene = this.eventDisplay.getThreeManager().getSceneManager().getScene();
 
+    this.eventDisplay.getUIManager().setDarkTheme(this.darkTheme);
+
     // Switch three.js background
     if(scene && this.darkTheme) {
       scene.background = this.threeDarkBackground;
     } else {
       scene.background = this.threeLightBackground;
     }
+
+    const theme = this.darkTheme ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
   }
 }
