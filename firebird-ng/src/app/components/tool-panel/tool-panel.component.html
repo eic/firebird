@@ -22,7 +22,11 @@
           <mat-icon>zoom_out</mat-icon>
         </button>
         <app-custom-view-options></app-custom-view-options>
-        <app-custom-main-view-toggle></app-custom-main-view-toggle>
+        <button class="icon-button" title="Switch orthographic/perspective camera"
+                (click)="switchMainView()">
+          <mat-icon>view_in_ar</mat-icon>
+        </button>
+
       </div>
     </div>
   </div>

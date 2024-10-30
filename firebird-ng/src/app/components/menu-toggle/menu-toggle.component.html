@@ -1,11 +1,12 @@
 <button
-  class="menu-toggle"
+  mat-raised-button
+  class="toggle-button"
   [ngClass]="{ disabled: disabled }"
   [matTooltip]="tooltip"
   matTooltipPosition="above"
   matTooltipTouchGestures="off"
 >
-  <svg class="menu-toggle-icon" [ngClass]="{ 'active-icon': active }">
-    <use attr.href="assets/icons/{{ icon }}.svg#{{ icon }}"></use>
-  </svg>
+
+  <mat-icon [ngClass]="{ 'active-icon': active }" >{{ icon }}</mat-icon>
+
 </button>

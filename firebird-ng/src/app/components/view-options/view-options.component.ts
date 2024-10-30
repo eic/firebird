@@ -14,6 +14,7 @@ import { Vector3 } from 'three';
 import {MatMenu, MatMenuItem, MatMenuTrigger} from '@angular/material/menu';
 import {NgForOf, NgIf} from "@angular/common";
 import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
+import {MatIcon} from "@angular/material/icon";
 
 @Component({
   selector: 'app-custom-view-options',
@@ -26,7 +27,8 @@ import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
     NgForOf,
     MenuToggleComponent,
     MatMenuTrigger,
-    NgIf
+    NgIf,
+    MatIcon
   ],
   standalone: true
 })

@@ -4,7 +4,6 @@ import {MatIcon} from "@angular/material/icon";
 import {EventDisplayService, PhoenixUIModule} from 'phoenix-ui-components';
 import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
 import {ViewOptionsComponent} from "../view-options/view-options.component";
-import {MainViewToggleComponent} from "../main-view-toggle/main-view-toggle.component";
 
 @Component({
   selector: 'app-tool-panel',
@@ -13,8 +12,7 @@ import {MainViewToggleComponent} from "../main-view-toggle/main-view-toggle.comp
     NgIf,
     MatIcon,
     PhoenixUIModule,
-    ViewOptionsComponent,
-    MainViewToggleComponent
+    ViewOptionsComponent
   ],
   templateUrl: './tool-panel.component.html',
   styleUrl: './tool-panel.component.scss'
@@ -29,6 +27,7 @@ export class ToolPanelComponent {
   private zoomTimeout: any;
   /** The speed and time of zoom. */
   private zoomTime: number = 100;
+  private orthographicView: boolean = false;
 
   constructor(
     private eventDisplay: EventDisplayService)
@@ -72,6 +71,13 @@ export class ToolPanelComponent {
 
   togglePanel() {
     this.isCollapsed = !this.isCollapsed;
+  }
+
+  switchMainView() {
+    this.orthographicView = !this.orthographicView;
+    this.eventDisplay
+      .getUIManager()
+      .toggleOrthographicView(this.orthographicView);
   }
 
 
