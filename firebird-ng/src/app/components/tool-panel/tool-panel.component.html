@@ -1,0 +1,33 @@
+<div class="tool-panel-wrapper">
+  <div class="tool-panel" [class.collapsed]="isCollapsed">
+    <div class="content">
+      <button class="icon-button toggle-button" title="Toggle Panel" (click)="togglePanel()">
+        <mat-icon>{{ isCollapsed ? 'keyboard_arrow_left' : 'keyboard_arrow_right' }}</mat-icon>
+      </button>
+      <div class="action-buttons" *ngIf="!isCollapsed">
+        <button class="icon-button" title="Zoom In"
+                (click)="onLeftClick($event, 'zoomIn')"
+                (mouseup)="clearZoom()"
+                (mouseleave)="clearZoom()"
+                (touchend)="clearZoom()"
+                (touchcancel)="clearZoom()">
+          <mat-icon>zoom_in</mat-icon>
+        </button>
+        <button class="icon-button" title="Zoom Out"
+                (click)="onLeftClick($event, 'zoomOut')"
+                (mouseup)="clearZoom()"
+                (mouseleave)="clearZoom()"
+                (touchend)="clearZoom()"
+                (touchcancel)="clearZoom()">
+          <mat-icon>zoom_out</mat-icon>
+        </button>
+        <app-custom-view-options></app-custom-view-options>
+        <button class="icon-button" title="Switch orthographic/perspective camera"
+                (click)="switchMainView()">
+          <mat-icon>view_in_ar</mat-icon>
+        </button>
+
+      </div>
+    </div>
+  </div>
+</div>

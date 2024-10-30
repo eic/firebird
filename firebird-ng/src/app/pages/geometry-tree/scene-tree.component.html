@@ -1,8 +1,8 @@
 <div class="header">
-  <button mat-icon-button aria-label="Toggle Highlight" matTooltip="Toggle highlight function" (click)="toggleHighlighting()">
+  <button mat-icon-button aria-label="Toggle Highlight" matTooltip="Toggle highlight function" (click)="toggleHighlighting()" class="button_theme">
     <mat-icon>{{ isHighlightingEnabled ? 'highlight_off' : 'highlight' }}</mat-icon>
   </button>
-  <button mat-icon-button aria-label="Refresh" matTooltip="Refresh tree with current geometry" (click)="refreshScheneTree()" >
+  <button mat-icon-button aria-label="Refresh" matTooltip="Refresh tree with current geometry" (click)="refreshScheneTree()" class="button_theme">
     <mat-icon>refresh</mat-icon>
   </button>
 </div>

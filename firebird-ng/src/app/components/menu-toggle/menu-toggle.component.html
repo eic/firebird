@@ -1,0 +1,12 @@
+<button
+  mat-raised-button
+  class="toggle-button"
+  [ngClass]="{ disabled: disabled }"
+  [matTooltip]="tooltip"
+  matTooltipPosition="above"
+  matTooltipTouchGestures="off"
+>
+
+  <mat-icon [ngClass]="{ 'active-icon': active }" >{{ icon }}</mat-icon>
+
+</button>

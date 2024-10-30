@@ -1,0 +1,53 @@
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 7px;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #5c5c5c;
+  }
+
+  mat-icon {
+    font-size: 24px;
+    color: white;
+  }
+}
+
+.view-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-right: 0.5rem;
+}
+
+.icon-wrapper {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0.23rem;
+  transition: all 0.4s;
+  transform: translateY(27%);
+
+  &.icon-button:hover {
+    background: var(--phoenix-options-icon-bg);
+    border-radius: 40%;
+    cursor: pointer;
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    vertical-align: top;
+  }
+}
+
+.item-settings {
+  margin-right: 0.2rem;
+  margin-left: 0.5rem;
+}

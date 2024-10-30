@@ -1,34 +1,19 @@
-import {AfterViewInit, Component, ElementRef, HostListener, Input, OnInit, Renderer2, ViewChild} from '@angular/core';
-import {HttpClient, HttpClientModule} from '@angular/common/http';
-
+import {AfterViewInit, Component, HostListener, Input, OnInit, ViewChild} from '@angular/core';
 import {
   EventDataFormat,
   EventDataImportOption,
-  EventDisplayService,
-  PhoenixUIModule
+  EventDisplayService
 } from 'phoenix-ui-components';
 import {ClippingSetting, Configuration, PhoenixLoader, PhoenixMenuNode, PresetView} from 'phoenix-event-display';
 import * as THREE from 'three';
 import {Color, DoubleSide, InstancedBufferGeometry, Line, MeshLambertMaterial, MeshPhongMaterial,} from "three";
 import {ALL_GROUPS, GeometryService} from '../../services/geometry.service';
-import {ActivatedRoute, RouterLink, RouterOutlet} from '@angular/router';
 import {ThreeGeometryProcessor} from "../../data-pipelines/three-geometry.processor";
 import * as TWEEN from '@tweenjs/tween.js';
-import GUI from "lil-gui";
 import {produceRenderOrder} from "jsroot/geom";
-import {
-  disposeHierarchy,
-  disposeNode,
-  findObject3DNodes,
-  getColorOrDefault,
-  pruneEmptyNodes
-} from "../../utils/three.utils";
+import {getColorOrDefault} from "../../utils/three.utils";
 import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
-import {BehaviorSubject, Subject} from "rxjs";
 import {GameControllerService} from "../../services/game-controller.service";
-import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
-import {Line2} from "three/examples/jsm/lines/Line2";
-import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
 import {IoOptionsComponent} from "../../components/io-options/io-options.component";
 import {ProcessTrackInfo, ThreeEventProcessor} from "../../data-pipelines/three-event.processor";
 import {UserConfigService} from "../../services/user-config.service";
@@ -36,7 +21,7 @@ import {EicAnimationsManager} from "../../phoenix-overload/eic-animation-manager
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 import {MatIcon} from "@angular/material/icon";
 import {MatButton, MatIconButton} from "@angular/material/button";
-import {DecimalPipe, NgClass, NgForOf} from "@angular/common";
+import {DecimalPipe, NgClass, NgForOf, NgIf} from "@angular/common";
 import {MatTooltip} from "@angular/material/tooltip";
 import {MatSnackBar} from "@angular/material/snack-bar"
 import {MatFormField} from "@angular/material/form-field";
@@ -46,16 +31,19 @@ import {AngularSplitModule} from "angular-split";
 import {SceneTreeComponent} from "../geometry-tree/scene-tree.component";
 import {DisplayShellComponent} from "../../components/display-shell/display-shell.component";
 import {DataModelPainter} from "../../painters/data-model-painter";
-import {AppComponent} from "../../app.component";
-
-
-// import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import {ToolPanelComponent} from "../../components/tool-panel/tool-panel.component";
+import {NavConfigComponent} from "../../components/nav-config/nav-config.component";
+import {UrlService} from "../../services/url.service";
+import {EventSelectorComponent} from "../../components/event-selector/event-selector.component";
+import {AutoRotateComponent} from "../../components/auto-rotate/auto-rotate.component";
+import {DarkThemeComponent} from "../../components/dark-theme/dark-theme.component";
+import {ObjectClippingComponent} from "../../components/object-clipping/object-clipping.component";
 
 
 @Component({
   selector: 'app-test-experiment',
   templateUrl: './main-display.component.html',
-  imports: [PhoenixUIModule, IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, AppComponent, RouterOutlet, RouterLink],
+  imports: [IoOptionsComponent, MatSlider, MatIcon, MatButton, MatSliderThumb, DecimalPipe, MatTooltip, MatFormField, MatSelect, MatOption, NgForOf, AngularSplitModule, SceneTreeComponent, NgClass, MatIconButton, DisplayShellComponent, ToolPanelComponent, NavConfigComponent, NgIf, EventSelectorComponent, AutoRotateComponent, DarkThemeComponent, ObjectClippingComponent],
   standalone: true,
   styleUrls: ['./main-display.component.scss']
 })
@@ -105,8 +93,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   private beamAnimationTime: number = 1000;
 
   isLeftPaneOpen: boolean = false;
-  isPhoenixMenuOpen = true;
-  isMobileView = false;
+  isDarkTheme = false;
+
+  isPhoenixMenuOpen: boolean = false;
+  isSmallScreen: boolean = window.innerWidth < 768;
 
   private painter: DataModelPainter = new DataModelPainter();
 
@@ -115,10 +105,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     private geomService: GeometryService,
     private eventDisplay: EventDisplayService,
     private controller: GameControllerService,
-    private route: ActivatedRoute,
     private settings: UserConfigService,
     private dataService: DataModelService,
-    private elRef: ElementRef, private renderer2: Renderer2,
+    private urlService: UrlService,
     private _snackBar: MatSnackBar) {
     this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
   }
@@ -140,13 +129,11 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   }
 
   @HostListener('window:resize', ['$event'])
-  onResize(event: Event) {
-    this.checkViewport();
-  }
-
-  checkViewport() {
-    this.isMobileView = window.innerWidth < 992;
-
+  onResize(event: any) {
+    this.isSmallScreen = event.target.innerWidth < 768;
+    if (!this.isSmallScreen) {
+      this.isPhoenixMenuOpen = true;
+    }
   }
 
   togglePhoenixMenu() {
@@ -441,9 +428,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
 
   ngOnInit() {
-    this.checkViewport();
-
     let eventSource = this.settings.trajectoryEventSource.value;
+    eventSource = this.urlService.resolveDownloadUrl(eventSource);
     let eventConfig = {eventFile: "https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip", eventType: "zip"};
     if( eventSource != "no-events" && !eventSource.endsWith("edm4hep.json")) {
       let eventType = eventSource.endsWith("zip") ? "zip" : "json";
@@ -539,6 +525,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     this.scene = threeManager.getSceneManager().getScene() as THREE.Scene;
     this.camera = openThreeManager.controlsManager.getMainCamera() as THREE.Camera;
 
+    this.painter.setThreeSceneParent(openThreeManager.sceneManager.getEventData());
 
     // // GUI
     // const globalPlane = new THREE.Plane( new THREE.Vector3( - 1, 0, 0 ), 0.1 );
@@ -614,22 +601,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     threeManager.setAnimationLoop(()=>{this.handleGamepadInputV1()});
 
 
-
-    //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
-    //const events_url = "https://eic.github.io/epic/artifacts/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
-    // const events_url = "assets/events/sim_dis_10x100_minQ2=1000_epic_craterlake.edm4hep.root"
-    // let loader = new Edm4hepRootEventLoader();
-    // loader.openFile(events_url).then(value => {
-    //     console.log('Opened root file');
-    //   }
-    // );
-
-    const geometryAddress = this.route.snapshot.queryParams['geo'];
-    console.log(`geometry query: ${geometryAddress}`);
-
-    let jsonGeometry;
     this.loadGeometry().then(jsonGeom => {
-      jsonGeometry = jsonGeom;
 
       this.updateSceneTreeComponent();
 
@@ -641,10 +613,24 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
     this.dataService.loadEdm4EicData().then(data => {
       this.updateSceneTreeComponent();
-      console.log("loaded data model");
+      console.log("loadEdm4EicData data:");
       console.log(data);
-    })
+      if(data == null) {
+        console.warn("DataService.loadEdm4EicData() Received data is null or undefined");
+        return;
+      }
 
+      if(data.entries?.length ?? 0 > 0) {
+        this.painter.setThreeSceneParent(openThreeManager.sceneManager.getEventData());
+        this.painter.setEntry(data.entries[0]);
+        this.painter.paint(this.currentTime);
+        this.updateSceneTreeComponent();
+      } else {
+        console.warn("DataService.loadEdm4EicData() Received data had no entries");
+        console.log(data);
+      }
+    })
+    //
     this.dataService.loadDexData().then(data => {
       this.updateSceneTreeComponent();
       if(data == null) {
@@ -653,8 +639,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
       }
 
       if(data.entries?.length ?? 0 > 0) {
+        this.painter.setThreeSceneParent(openThreeManager.sceneManager.getEventData());
         this.painter.setEntry(data.entries[0]);
         this.painter.paint(this.currentTime);
+        this.updateSceneTreeComponent();
       } else {
         console.warn("DataService.loadDexData() Received data had no entries");
         console.log(data);
@@ -662,7 +650,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
 
       //console.log("loaded data model");
       //console.log(data);
-    })
+    });
 
     document.addEventListener('keydown', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') {
@@ -878,6 +866,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   exitTimedDisplay() {
     this.stopAnimation();
     this.rewindTime();
+    this.painter.paint(null);
     this.animateEventAfterLoad = false;
     if(this.trackInfos) {
       for (let trackInfo of this.trackInfos) {

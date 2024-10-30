@@ -156,7 +156,7 @@ def tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None):
 
     group = {
         "name": branch_name,
-        "type": "HitBox",
+        "type": "BoxTrackerHit",
         "originType": "edm4eic::TrackerHitData",
         "hits": hits,
     }

@@ -1,2 +1,167 @@
 /* You can add global styles to this file, and also import other style files */
-@import 'phoenix-ui-components/theming';
+//@import 'phoenix-ui-components/theming';
+
+@use '@angular/material' as mat;
+@include mat.core();
+
+/* Определяем светлую и тёмную темы */
+$primary: mat.define-palette(mat.$teal-palette);
+$accent: mat.define-palette(mat.$cyan-palette);
+$warn: mat.define-palette(mat.$yellow-palette);
+
+$colors: (
+  color: (
+    primary: $primary,
+    accent: $accent,
+    warn: $warn,
+  ),
+);
+
+$dark-theme: mat.define-dark-theme($colors);
+$light-theme: mat.define-light-theme($colors);
+
+@include mat.core-theme($light-theme);
+@include mat.button-theme($light-theme);
+@include mat.all-component-themes($light-theme);
+
+:root {
+  --primary-color: #33899f;
+  --secondary-color: #f1e833;
+  --background-color: #ffffff;
+  --secondary-background-color: #f5f5f5;
+  --tertiary-background-color: #e6e6e6;
+  --text-color: #333333;
+  --secondary-text-color: #777777;
+  --hover-text-color: #c5c5c5;
+  --box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.1);
+  --scroll-color: #acacac;
+  --icon-bg: rgba(0, 0, 0, 0.08);
+  --icon-color: #000000;
+  --icon-shadow: 0px 3px 6px rgba(0, 0, 0, 0.11);
+  --accent-color: #00bcd4;
+  --border-color: #c5c5c5;
+  --active-icon-color: #1976d2;
+
+  --dat-primary-background: #f9f9f9;
+  --dat-secondary-background: #efefef;
+  --dat-tertiary-background: #e9e9e9;
+  --dat-quaternary-background: #ffffff;
+  --dat-border-color: #f0f0f0;
+}
+
+/* Dark theme */
+[data-theme='dark'] {
+  --background-color: #2e2e2e;
+  --secondary-background-color: #292929;
+  --tertiary-background-color: #3f3f3f;
+  --text-color: white;
+  --secondary-text-color: #dbdbdb;
+  --hover-text-color: #c5c5c5;
+  --box-shadow: 0px 0px 8px rgb(26, 26, 26);
+  --scroll-color: #707070;
+  --icon-bg: rgba(255, 255, 255, 0.18);
+  --icon-color: #c3c3c3;
+  --icon-shadow: 0px 4px 8px rgba(0, 0, 0, 0.22);
+  --accent-color: #00bcd4;
+  --border-color: #5c5c5c;
+
+  --dat-primary-background: #1a1a1a;
+  --dat-secondary-background: #292929;
+  --dat-tertiary-background: #363636;
+  --dat-quaternary-background: #4d4d4d;
+  --dat-border-color: #343434;
+  transition: 1s;
+
+  @include mat.core-color($dark-theme);
+  @include mat.button-color($dark-theme);
+  @include mat.all-component-colors($dark-theme);
+
+  .mat-dialog-container {
+    background: var(--secondary-background-color);
+  }
+}
+.theme-text {
+  color: var(--text-color) !important; /* Добавляем !important, чтобы перекрыть наследуемые стили */
+}
+
+html,
+body {
+  background-color: var(--background-color);
+}
+
+/* Scroll bar styles */
+::-webkit-scrollbar {
+  width: 0.3em;
+  height: 0.3em;
+}
+
+::-webkit-scrollbar-track {
+  opacity: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: var(--scroll-color);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.048);
+}
+
+::-webkit-scrollbar-corner {
+  display: none;
+  opacity: 0;
+}
+
+.btn.btn-primary {
+  border: none;
+  background-color: var(--primary-color);
+}
+
+[data-theme='dark'] .btn.btn-primary:hover,
+[data-theme='dark'] .btn.btn-primary:not(:disabled):not(.disabled):active {
+  background-color: #0f5f74;
+}
+
+[data-theme='light'] .btn.btn-primary:hover,
+[data-theme='light'] .btn.btn-primary:not(:disabled):not(.disabled):active {
+  background-color: #145d7b;
+}
+
+.theme-button {
+  background-color: var(--button-background) !important;
+  color: var(--button-text-color) !important;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+[data-theme='dark'] .theme-button:hover {
+  background-color: #0f5f74;
+}
+
+[data-theme='light'] .theme-button:hover {
+  background-color: #145d7b;
+}
+
+select {
+  border-radius: 30px;
+  padding: 0.125rem 0.25rem;
+  background-color: var(--tertiary-background-color);
+  color: var(--secondary-text-color);
+  border: none;
+}
+
+label {
+  margin: 0;
+}
+
+#eventDisplay {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.form-control,
+.form-control:focus {
+  color: var(--text-color);
+  background-color: var(--tertiary-background-color);
+  border: 1px solid var(--border-color);
+}
+
+
+

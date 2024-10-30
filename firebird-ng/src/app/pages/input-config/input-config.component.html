@@ -1,23 +1,12 @@
 <!-- event-display-source.component.html -->
-<nav class="navbar navbar-expand-lg navbar-dark" id="main-top-navbar">
-  <a class="navbar-brand" href="#"><img src="assets/firebird/firebird-simplified-circle.png" width="32" height="32" alt="App Logo"></a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-  <div class="top_nav collapse navbar-collapse" id="navbarNavDropdown">
-    <ul class="navbar-nav">
-      <li class="nav-item"><a [routerLink]="['/config']" class="nav-link">Configure</a></li>
-      <li class="nav-item"><a [routerLink]="['/display']" class="nav-link">Display</a></li>
-    </ul>
-  </div>
-</nav>
-<router-outlet></router-outlet>
+<app-nav-config></app-nav-config>
 <div class="container mt-3">
   <h2 class="card-title">Configure geometry pipeline</h2>
 
-  <img src="../../../assets/diagrams/geometry-pipeline.svg" alt="geometry-pipeline">
+  <!-- Geometry Pipeline diagram -->
+  <img src="../assets/diagrams/geometry-pipeline.svg" alt="geometry-pipeline">
 
-  <form >
+  <form>
 
   <div class="card mt-4">
     <div class="card-body">
@@ -97,11 +86,11 @@
         <h5 class="card-title">Server API Configuration</h5>
         <div class="form-check custom-control custom-switch mt-4">
           <input class="custom-control-input" type="checkbox" id="serverUseApiCheckbox" [formControl]="serverUseApi">
-          <label class="custom-control-label" for="serverUseApiCheckbox">Use local backend</label>
+          <label class="custom-control-label" for="serverUseApiCheckbox">Use specific backend</label>
         </div>
         <div class="form-row align-items-center">
           <div class="col-auto">
-            <h6 class="mb-0">API URL:</h6>
+            <h6 class="mb-0">Base API URL:</h6>
           </div>
           <div class="col">
             <input class="form-control" type="text" placeholder="Enter API URL: http://localhost:5454" [formControl]="serverApiUrl" [disabled]="!serverUseApi.value">
@@ -109,21 +98,6 @@
         </div>
       </div>
     </div>
-
-
-    <!--    <div class="card mt-4">-->
-<!--      <div class="card-body">-->
-<!--        <h5 class="card-title">Rendering</h5>-->
-<!--        <div class="mt-4">-->
-<!--          <h6>Debug menu</h6>-->
-<!--          <a href="https://discourse.threejs.org/t/webgl-drawcalls/24476">drawcalls</a> significantly improving the performance.-->
-<!--          <div class="form-check custom-control custom-switch">-->
-<!--            <input class="custom-control-input" type="checkbox" checked="checked" disabled>-->
-<!--            <label class="custom-control-label" for="geoPostEnabled">Enabled</label>-->
-<!--          </div>-->
-<!--        </div>-->
-<!--      </div>-->
-<!--    </div>-->
 
     <div class="mt-4 text-center">
       <button type="button" class="btn btn-lg btn-primary" [routerLink]="['/display']">DISPLAY</button>

@@ -14,14 +14,11 @@
   flex-direction: row;
   align-items: center;
   min-height: 50px;
-  background-color: #2e2e2e;
-  border-bottom: 1px solid #ddd;
-
+  box-sizing: border-box;
 }
 
 .main-content {
   box-sizing: border-box;
-  border-top: 1px solid #ddd;
   display: flex;
   flex: 1;
   overflow: hidden;
@@ -33,23 +30,22 @@
 }
 
 .left-pane {
-  background-color: #2e2e2e;
+  //background-color: #2e2e2e;
 }
 
 .right-pane {
-  background-color: #2e2e2e;
+  //background-color: #2e2e2e;
 }
 
 .central-pane {
   flex: 1;
-  background-color: #424242;
   overflow: auto;
 }
 
 .divider {
   width: 5px;
   cursor: col-resize;
-  background-color: #cccccc;
+  background-color: #000000;
   user-select: none;
 }
 

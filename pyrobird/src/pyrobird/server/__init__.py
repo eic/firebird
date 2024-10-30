@@ -37,13 +37,15 @@ compress.init_app(flask_app)
 
 # Config KEYS
 
-CFG_DOWNLOAD_IS_UNRESTRICTED = "DOWNLOAD_IS_UNRESTRICTED"
-CFG_DOWNLOAD_IS_DISABLED = "DOWNLOAD_IS_DISABLED"
-CFG_DOWNLOAD_PATH = "DOWNLOAD_PATH"
-CFG_CORS_IS_ALLOWED = "DOWNLOAD_ALLOW_CORS"
-CFG_API_BASE_URL = "API_BASE_URL"
-CFG_FIREBIRD_CONFIG_PATH = "FIREBIRD_CONFIG_PATH"
+CFG_DOWNLOAD_IS_UNRESTRICTED = "PYROBIRD_DOWNLOAD_IS_UNRESTRICTED"
+CFG_DOWNLOAD_IS_DISABLED = "PYROBIRD_DOWNLOAD_IS_DISABLED"
+CFG_DOWNLOAD_PATH = "PYROBIRD_DOWNLOAD_PATH"
+CFG_CORS_IS_ALLOWED = "PYROBIRD_CORS_IS_ALLOWED"
+CFG_API_BASE_URL = "PYROBIRD_API_BASE_URL"
+CFG_FIREBIRD_CONFIG_PATH = "PYROBIRD_FIREBIRD_CONFIG_PATH"
 
+# Get
+flask_app.config[CFG_CORS_IS_ALLOWED] = str(os.environ.get(CFG_CORS_IS_ALLOWED, '')).lower() in ('1', 'true')
 
 
 class ExcludeAPIConverter(BaseConverter):
@@ -90,10 +92,10 @@ def _can_user_download_file(filename):
    - bool: True if the file can be downloaded, False otherwise.
 
    Process:
-   - If downloading is globally disabled (DOWNLOAD_IS_DISABLED=True), returns False.
-   - If unrestricted downloads are allowed (DOWNLOAD_IS_UNRESTRICTED=True), returns True.
+   - If downloading is globally disabled (PYROBIRD_DOWNLOAD_IS_DISABLED=True), returns False.
+   - If unrestricted downloads are allowed (PYROBIRD_DOWNLOAD_IS_UNRESTRICTED=True), returns True.
    - For relative paths, assumes that the download is allowable.
-   - For absolute paths, checks that the file resides within the configured DOWNLOAD_PATH.
+   - For absolute paths, checks that the file resides within the configured PYROBIRD_DOWNLOAD_PATH.
    - Logs a warning and returns False if the file is outside the allowed download path or if downloading is disabled.
    """
 
@@ -101,7 +103,7 @@ def _can_user_download_file(filename):
 
     # If any downloads are disabled
     if app.config.get(CFG_DOWNLOAD_IS_DISABLED) is True:
-        logger.warning("Can't download file. DOWNLOAD_IS_DISABLED=True")
+        logger.warning("Can't download file. PYROBIRD_DOWNLOAD_IS_DISABLED=True")
         return False
 
     # If we allow any download
@@ -110,7 +112,7 @@ def _can_user_download_file(filename):
         return True
 
     # if allowed/disable checks are done, and we are here,
-    # if relative path is given, it will be joined with DOWNLOAD_PATH
+    # if relative path is given, it will be joined with PYROBIRD_DOWNLOAD_PATH
     if not os.path.isabs(filename):
         return True
 
@@ -123,7 +125,7 @@ def _can_user_download_file(filename):
     # Check file will be downloaded from safe folder
     can_download = os.path.realpath(filename).startswith(os.path.realpath(allowed_path))
     if not can_download:
-        logger.warning("Can't download file. File is not in DOWNLOAD_PATH")
+        logger.warning("Can't download file. File is not in PYROBIRD_DOWNLOAD_PATH")
         return False
 
     # All is fine!
@@ -146,7 +148,7 @@ def download_file(filename=None):
     if not _can_user_download_file(filename):
         abort(404)
 
-    # If it is relative, combine it with DOWNLOAD_PATH
+    # If it is relative, combine it with PYROBIRD_DOWNLOAD_PATH
     if not os.path.isabs(filename):
         download_path = flask.current_app.config.get(CFG_DOWNLOAD_PATH)
         if not download_path:
@@ -355,26 +357,33 @@ def shutdown():
     return 'Server shutting down...'
 
 
-def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
-    """Runs flask server"""
+def configure_flask_app(config=None):
+    """Returns"""
     if config:
-        if isinstance(config, flask.Config) or isinstance(config, map):
+        if isinstance(config, flask.Config) or isinstance(config, map) or isinstance(config, dict):
             flask_app.config.from_mapping(config)
         else:
             flask_app.config.from_object(config)
 
-    if flask_app.config and flask_app.config.get(CFG_CORS_IS_ALLOWED) is True:
-        from flask_cors import CORS
+    if flask_app.config:
+        cfg_cors_allowed = flask_app.config.get(CFG_CORS_IS_ALLOWED)
+        if cfg_cors_allowed:
+            logger.info("flask_app.config.get(CFG_CORS_IS_ALLOWED) is True")
+            from flask_cors import CORS
 
-        # Enable CORS for all routes and specify the domains and settings
-        CORS(flask_app, resources={
-            r"/download/*": {"origins": "*"},
-            r"/api/v1/*": {"origins": "*"},
-            r"/assets/config.jsonc": {"origins": "*"},
-        })
+            # Enable CORS for all routes and specify the domains and settings
+            CORS(flask_app, resources={
+                r"/download/*": {"origins": "*"},
+                r"/api/v1/*": {"origins": "*"},
+                r"/assets/config.jsonc": {"origins": "*"},
+            })
 
     logger.debug("Serve path:")
     logger.debug("  Server dir :", server_dir)
     logger.debug("  Static dir :", static_dir)
+    return flask_app
 
+
+def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
+    configure_flask_app(config)
     flask_app.run(host=host, port=port, debug=debug, load_dotenv=load_dotenv)

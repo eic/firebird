@@ -3,18 +3,15 @@
   padding: 0;
 }
 
-.navbar{
 
-  display: flex;
-  left: 10px;
-  flex-wrap: nowrap;
-}
+
 .phoenix-menu{
   flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #2e2e2e;
+  color: var(--text-color);
+  //background-color: #2e2e2e;
   flex-wrap: wrap;
 }
 
@@ -27,17 +24,27 @@
 
 .toggle-btn {
   position: absolute;
-  top: 64px;
-  color: white;
+  top: 50px;
+  //color: white;
   padding-top: 8px;
   z-index: 10;
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+.toggle-btn:hover {
+  background-color: var(--secondary-background-color);
+  color: var(--accent-color);
 }
 
 .toggle-btn1 {
   color: white;
-
 }
 
+.phoenix-toggle-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
 
 .tcontrol {
   width: 40px;
@@ -51,14 +58,14 @@
 .time-controls {
   flex: 1 1 auto;
   display: flex;
-  background-color: #424242;
+  //background-color: #424242;
   padding: 2px;
   gap: 3px;
   align-items: center;
   justify-content: center;
   height: 50px;
   bottom: 0;
-  color: white;
+  //color: white;
   //border-top: 1px solid #ddd;
 }
 
@@ -67,18 +74,6 @@ mat-slider{
   width: 200px;
 }
 
-//.phoenix-menu-toggle {
-//  display: none;
-//
-//  @media (max-width: 767.98px) {
-//    display: inline-block;
-//  }
-//}
-//
-//.phoenix-menu {
-//  @media (max-width: 767.98px) {
-//    display: none;
-//  }
-//}
+
 
 

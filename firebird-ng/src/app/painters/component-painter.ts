@@ -10,7 +10,7 @@ export type ComponentPainterConstructor = new (node: Object3D, component: EntryC
 export abstract class ComponentPainter {
 
   /** Constructor is public since we can instantiate directly */
-  constructor(protected node: Object3D, protected component: EntryComponent) {}
+  constructor(protected parentNode: Object3D, protected component: EntryComponent) {}
 
   /** Gets the `type` identifier for the component this class works with */
   public get componentType() {
@@ -26,8 +26,8 @@ export abstract class ComponentPainter {
   /** Dispose method to clean up resources */
   public dispose(): void {
     // Remove node from the scene
-    if (this.node) {
-      disposeNode(this.node);
+    if (this.parentNode) {
+      disposeNode(this.parentNode);
     }
   }
 }
