@@ -1,0 +1,50 @@
+/* src/material-themes.scss */
+
+@use '@angular/material' as mat;
+
+// 1. Define Custom Palettes
+
+// Modify the pink palette to be less aggressive for the black theme
+$custom-pink: mat.define-palette(mat.$pink-palette, 500, 300, 700);
+
+// Define a new Azure palette for the white theme
+$azure: mat.define-palette(mat.$blue-palette, 600, 400, 800, (
+  'A100': #80d8ff,
+  'A200': #40c4ff,
+  'A400': #00b0ff,
+  'A700': #0091ea,
+));
+
+// 2. Define the Black Theme
+$black-theme: mat.define-dark-theme((
+  color: (
+    primary: mat.define-palette(mat.$indigo-palette),
+    accent: $custom-pink,
+    warn: mat.define-palette(mat.$red-palette),
+  ),
+  typography: mat.define-typography-config(),
+));
+
+// 3. Define the White Theme
+$white-theme: mat.define-light-theme((
+  color: (
+    primary: $azure,
+    accent: mat.define-palette(mat.$amber-palette),
+    warn: mat.define-palette(mat.$red-palette),
+  ),
+  typography: mat.define-typography-config(),
+));
+
+// 4. Include Theme Styles
+
+// Black Theme Styles
+.black-theme {
+  @include mat.all-component-themes($black-theme);
+  /* Optional: Custom styles for black theme */
+}
+
+// White Theme Styles
+.white-theme {
+  @include mat.all-component-themes($white-theme);
+  /* Optional: Custom styles for white theme */
+}

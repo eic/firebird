@@ -109,7 +109,7 @@ export class IOOptionsDialogComponent implements OnInit {
 
   handleGLTFInput(files: FileList) {
     const callback = (content: any) => {
-      this.eventDisplay.parseGLTFGeometry(content, files[0].name);
+      this.eventDisplay.parseGLTFGeometry(files[0]);
     };
     this.readTextFile(files[0], callback);
   }
