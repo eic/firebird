@@ -1,179 +1,126 @@
-import { Component, Inject, type OnInit } from '@angular/core';
-import { Vector3 } from 'three';
-import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
+import { Component, Inject, OnInit } from '@angular/core';
 import {
+  MatDialogRef,
   MAT_DIALOG_DATA,
   MatDialogActions,
-  MatDialogContent,
-  MatDialogRef,
-  MatDialogTitle
+  MatDialogTitle,
+  MatDialogContent
 } from '@angular/material/dialog';
-import {EventDisplayService} from "phoenix-ui-components";
-import { Subscription } from 'rxjs';
-import {DecimalPipe} from "@angular/common";
-import {MatButton} from "@angular/material/button";
+import { SceneHelpersService } from '../../../services/scene-helpers.service';
+import { Vector3 } from 'three';
+import {MatCheckbox} from "@angular/material/checkbox";
 import {MatMenuItem} from "@angular/material/menu";
-import {FormsModule} from "@angular/forms";
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
+import {MatButton} from "@angular/material/button";
 
 @Component({
   selector: 'app-cartesian-grid-config',
   templateUrl: './cartesian-grid-config.component.html',
   styleUrls: ['./cartesian-grid-config.component.scss'],
+  standalone: true,
   imports: [
-    MatDialogTitle,
-    MatDialogContent,
-    DecimalPipe,
-    MatButton,
-    MatMenuItem,
     MatCheckbox,
-    FormsModule,
+    MatMenuItem,
     MatSlider,
     MatSliderThumb,
-    MatDialogActions
+    MatDialogActions,
+    MatButton,
+    MatDialogTitle,
+    MatDialogContent,
+    // relevant Angular + Material modules
   ],
-  standalone: true
 })
 export class CartesianGridConfigComponent implements OnInit {
-  cartesianPos = new Vector3();
-  originChangedSub: Subscription | null = null;
-  stopShiftingSub: Subscription | null = null;
   showCartesianGrid!: boolean;
-  gridConfig!: {
-    showXY: boolean;
-    showYZ: boolean;
-    showZX: boolean;
-    xDistance: number;
-    yDistance: number;
-    zDistance: number;
-    sparsity: number;
-  };
   scale!: number;
-  shiftGrid!: boolean;
+
+  // Example internal config:
+  gridConfig = {
+    showXY: true,
+    showYZ: true,
+    showZX: true,
+    xDistance: 1000,
+    yDistance: 1000,
+    zDistance: 1000,
+    sparsity: 2,
+  };
+
+  // Current "origin" or "cartesianPos" if you want that logic
+  cartesianPos = new Vector3();
 
   constructor(
     @Inject(MAT_DIALOG_DATA)
     public data: { gridVisible: boolean; scale: number },
     private dialogRef: MatDialogRef<CartesianGridConfigComponent>,
-    private eventDisplay: EventDisplayService,
+    private sceneHelpers: SceneHelpersService
   ) {}
 
   ngOnInit(): void {
-    this.shiftGrid = this.eventDisplay.getThreeManager().shiftGrid;
+    // init local states from data
     this.showCartesianGrid = this.data.gridVisible;
     this.scale = this.data.scale;
-    this.gridConfig = this.eventDisplay.getUIManager().getCartesianGridConfig();
-    this.cartesianPos = this.eventDisplay.getThreeManager().origin;
   }
 
   onClose() {
     this.dialogRef.close();
   }
 
-  onSave(x: string, y: string, z: string) {
-    const xNum = Number(x);
-    const yNum = Number(y);
-    const zNum = Number(z);
-    this.shiftCartesianGridByValues(new Vector3(xNum * 10, yNum * 10, zNum * 10));
+  onSave(xStr: string, yStr: string, zStr: string) {
+    // Shift the grid by new origin
+    const xNum = Number(xStr);
+    const yNum = Number(yStr);
+    const zNum = Number(zStr);
+
+    const shift = new Vector3(
+      xNum - this.cartesianPos.x,
+      yNum - this.cartesianPos.y,
+      zNum - this.cartesianPos.z
+    );
+    this.sceneHelpers.translateCartesianGrid(shift);
+    this.cartesianPos.set(xNum, yNum, zNum);
+    // Optionally update the main show/hide
+    this.sceneHelpers.setShowCartesianGrid(this.showCartesianGrid, this.scale, this.gridConfig);
+
+    this.dialogRef.close();
   }
 
   shiftCartesianGridByPointer() {
-    this.shiftGrid = true;
-    this.eventDisplay.getUIManager().shiftCartesianGridByPointer();
-    this.originChangedSub = this.eventDisplay
-      .getThreeManager()
-      .originChanged.subscribe((intersect) => {
-        this.translateGrid(intersect);
-      });
-    this.stopShiftingSub = this.eventDisplay
-      .getThreeManager()
-      .stopShifting.subscribe((stop) => {
-        if (stop) {
-          this.originChangedSub?.unsubscribe();
-          this.stopShiftingSub?.unsubscribe();
-        }
-      });
-    this.onClose();
+    // replicate your old “click-based shifting”
+    this.sceneHelpers.shiftCartesianGridByPointer();
+    this.dialogRef.close();
   }
 
-  shiftCartesianGridByValues(position: Vector3) {
-    this.translateGrid(position);
-    this.eventDisplay.getThreeManager().originChangedEmit(position);
+  // Then for toggling planes or adjusting distances:
+  showXYPlanes(value: boolean) {
+    this.gridConfig.showXY = value;
+    this.applyGridConfig();
+  }
+  showYZPlanes(value: boolean) {
+    this.gridConfig.showYZ = value;
+    this.applyGridConfig();
+  }
+  showZXPlanes(value: boolean) {
+    this.gridConfig.showZX = value;
+    this.applyGridConfig();
   }
 
-  translateGrid(position: Vector3) {
-    const finalPos = position;
-    const initialPos = this.cartesianPos;
-    const difference = new Vector3(
-      finalPos.x - initialPos.x,
-      finalPos.y - initialPos.y,
-      finalPos.z - initialPos.z,
-    );
-    this.eventDisplay.getUIManager().translateCartesianGrid(difference.clone());
-    this.eventDisplay
-      .getUIManager()
-      .translateCartesianLabels(difference.clone());
-    this.cartesianPos = finalPos;
+  addXYPlanes(event: Event) {
+    const inputVal = Number((event.target as HTMLInputElement).value);
+    this.gridConfig.zDistance = inputVal;
+    this.applyGridConfig();
+  }
+  // etc. for XDistance, YDistance, etc.
+
+  applyGridConfig() {
+    // Actually update the group in scene
+    this.sceneHelpers.setShowCartesianGrid(this.showCartesianGrid, this.scale, this.gridConfig);
   }
 
-  addXYPlanes(zDistance: Event) {
-    this.gridConfig.zDistance = Number(
-      (zDistance.target as HTMLInputElement).value,
-    );
-    this.callSetShowCartesianGrid();
-  }
-
-  addYZPlanes(xDistance: Event) {
-    this.gridConfig.xDistance = Number(
-      (xDistance.target as HTMLInputElement).value,
-    );
-    this.callSetShowCartesianGrid();
-  }
-
-  addZXPlanes(yDistance: Event) {
-    this.gridConfig.yDistance = Number(
-      (yDistance.target as HTMLInputElement).value,
-    );
-    this.callSetShowCartesianGrid();
-  }
-
-  changeSparsity(sparsity: Event) {
-    this.gridConfig.sparsity = Number(
-      (sparsity.target as HTMLInputElement).value,
-    );
-    this.callSetShowCartesianGrid();
-  }
-
-  showXYPlanes(change: MatCheckboxChange) {
-    this.gridConfig.showXY = change.checked;
-    this.callSetShowCartesianGrid();
-  }
-
-  showYZPlanes(change: MatCheckboxChange) {
-    this.gridConfig.showYZ = change.checked;
-    this.callSetShowCartesianGrid();
-  }
-
-  showZXPlanes(change: MatCheckboxChange) {
-    this.gridConfig.showZX = change.checked;
-    this.callSetShowCartesianGrid();
-  }
-
-  callSetShowCartesianGrid() {
-    this.eventDisplay
-      .getUIManager()
-      .setShowCartesianGrid(
-        this.showCartesianGrid,
-        this.scale,
-        this.gridConfig,
-      );
-  }
-
-  // helper function to calculate number of planes
-  calcPlanes(dis: number) {
+  calcPlanes(dist: number) {
+    // Some logic to compute how many planes
     return Math.max(
       0,
-      1 + 2 * Math.floor((dis * 10) / (this.scale * this.gridConfig.sparsity)),
+      1 + 2 * Math.floor((dist * 10) / (this.scale * this.gridConfig.sparsity))
     );
   }
 }

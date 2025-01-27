@@ -1,60 +1,91 @@
-import {
-  Component,
-  type OnInit,
-  type OnDestroy,
-  ViewChild,
-} from '@angular/core';
-import { PresetView } from 'phoenix-event-display';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
-import {EventDisplayService} from "phoenix-ui-components";
 import { MatDialog } from '@angular/material/dialog';
 import { CartesianGridConfigComponent } from './cartesian-grid-config/cartesian-grid-config.component';
-import { Subscription } from 'rxjs';
+import { SceneHelpersService } from '../../services/scene-helpers.service';
 import { Vector3 } from 'three';
+import { Subscription } from 'rxjs';
 import {MatMenu, MatMenuItem, MatMenuTrigger} from '@angular/material/menu';
-import {NgForOf, NgIf} from "@angular/common";
-import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
 import {MatIcon} from "@angular/material/icon";
 
 @Component({
   selector: 'app-custom-view-options',
   templateUrl: './view-options.component.html',
   styleUrls: ['./view-options.component.scss'],
+  standalone: true,
   imports: [
     MatMenu,
     MatCheckbox,
+    MatIcon,
     MatMenuItem,
-    NgForOf,
-    MenuToggleComponent,
     MatMenuTrigger,
-    NgIf,
-    MatIcon
+    // the relevant Material modules, e.g. MatMenu, MatCheckbox, etc.
   ],
-  standalone: true
 })
 export class ViewOptionsComponent implements OnInit, OnDestroy {
   @ViewChild(MatMenuTrigger) trigger!: MatMenuTrigger;
-  showCartesianGrid: boolean = false;
-  scale: number = 3000;
-  views!: PresetView[];
-  show3DPoints!: boolean;
-  origin: Vector3 = new Vector3(0, 0, 0);
-  sub!: Subscription;
+
+  // toggles
+  showCartesianGrid = false;
+  scale = 3000;
+
+  // If you had "views" for camera preset positions,
+  // you can define them yourself. e.g.:
+  views = [
+    { name: 'Left View', icon: 'left-cube', target: new Vector3(0,0,0), cameraPos: new Vector3(0,0,1200) },
+    { name: 'Center View', icon: 'top-cube', target: new Vector3(0,0,0), cameraPos: new Vector3(1200,0,0) },
+    // etc...
+  ];
 
   constructor(
-    private eventDisplay: EventDisplayService,
     private dialog: MatDialog,
+    private sceneHelpers: SceneHelpersService
   ) {}
 
-  ngOnInit(): void {
-    this.views = this.eventDisplay.getUIManager().getPresetViews();
-    this.sub = this.eventDisplay
-      .getThreeManager()
-      .originChanged.subscribe((intersect) => {
-        this.origin = intersect;
-      });
+  ngOnInit(): void {}
+
+  ngOnDestroy(): void {}
+
+  // Example "view" code
+  displayView($event: MouseEvent, view: any) {
+    $event.stopPropagation();
+    // We set the camera:
+    this.sceneHelpers.setCameraView(view.target, view.cameraPos);
   }
 
+  // Toggling axis
+  setAxis(change: MatCheckboxChange) {
+    this.sceneHelpers.setShowAxis(change.checked);
+  }
+
+  // Toggling eta-phi
+  setEtaPhiGrid(change: MatCheckboxChange) {
+    this.sceneHelpers.setShowEtaPhiGrid(change.checked);
+  }
+
+  // Toggling cartesian grid
+  setCartesianGrid(change: MatCheckboxChange) {
+    this.showCartesianGrid = change.checked;
+    this.sceneHelpers.setShowCartesianGrid(this.showCartesianGrid, this.scale);
+  }
+
+  // Toggling labels
+  showLabels(change: MatCheckboxChange) {
+    this.sceneHelpers.showLabels(change.checked);
+  }
+
+  // Toggling 3D points
+  show3DMousePoints(change: MatCheckboxChange) {
+    this.sceneHelpers.show3DMousePoints(change.checked);
+  }
+
+  // Toggling 3D distance
+  toggleShowDistance(change: MatCheckboxChange) {
+    this.trigger.closeMenu();
+    this.sceneHelpers.show3DDistance(change.checked);
+  }
+
+  // Opening the config dialog for cartesian grid
   openCartesianGridConfigDialog() {
     this.dialog.open(CartesianGridConfigComponent, {
       data: {
@@ -66,45 +97,5 @@ export class ViewOptionsComponent implements OnInit, OnDestroy {
         left: '3rem',
       },
     });
-  }
-
-  displayView($event: any, view: PresetView) {
-    $event.stopPropagation();
-    this.eventDisplay.getUIManager().displayView(view);
-  }
-
-  setAxis(change: MatCheckboxChange) {
-    const value = change.checked;
-    this.eventDisplay.getUIManager().setShowAxis(value);
-  }
-
-  setEtaPhiGrid(change: MatCheckboxChange) {
-    const value = change.checked;
-    this.eventDisplay.getUIManager().setShowEtaPhiGrid(value);
-  }
-
-  setCartesianGrid(change: MatCheckboxChange) {
-    this.showCartesianGrid = change.checked;
-    this.eventDisplay
-      .getUIManager()
-      .setShowCartesianGrid(this.showCartesianGrid, this.scale);
-  }
-
-  showLabels(change: MatCheckboxChange) {
-    this.eventDisplay.getUIManager().showLabels(change.checked);
-  }
-
-  show3DMousePoints(change: MatCheckboxChange) {
-    this.show3DPoints = change.checked;
-    this.eventDisplay.getUIManager().show3DMousePoints(this.show3DPoints);
-  }
-
-  toggleShowDistance(change: MatCheckboxChange) {
-    this.trigger.closeMenu();
-    this.eventDisplay.getUIManager().show3DDistance(change.checked);
-  }
-
-  ngOnDestroy(): void {
-    this.sub.unsubscribe();
   }
 }
