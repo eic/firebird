@@ -31,8 +31,7 @@
               "src/assets"
             ],
             "styles": [
-              "src/styles.scss",
-              "src/material-themes.scss"
+              "src/styles.scss"
             ],
             "scripts": [],
             "customWebpackConfig": {

@@ -1,30 +1,15 @@
-/* You can add global styles to this file, and also import other style files */
-//@import 'phoenix-ui-components/theming';
-
 @use '@angular/material' as mat;
+@use './m3-theme' as m3; // import your generated M3 theme file
+
+// Load the Material "core" styles once globally
 @include mat.core();
 
-/* Определяем светлую и тёмную темы */
-$primary: mat.define-palette(mat.$teal-palette);
-$accent: mat.define-palette(mat.$cyan-palette);
-$warn: mat.define-palette(mat.$yellow-palette);
-
-$colors: (
-  color: (
-    primary: $primary,
-    accent: $accent,
-    warn: $warn,
-  ),
-);
-
-$dark-theme: mat.define-dark-theme($colors);
-$light-theme: mat.define-light-theme($colors);
-
-@include mat.core-theme($light-theme);
-@include mat.button-theme($light-theme);
-@include mat.all-component-themes($light-theme);
-
+// Then apply your M3 light theme by default to :root
 :root {
+  // Include all Material component themes for the light theme
+  @include mat.all-component-themes(m3.$light-theme);
+
+  /* Put all your light-theme custom CSS variables here */
   --primary-color: #33899f;
   --secondary-color: #f1e833;
   --background-color: #ffffff;
@@ -51,6 +36,10 @@ $light-theme: mat.define-light-theme($colors);
 
 /* Dark theme */
 [data-theme='dark'] {
+  // Include all Material component themes for the dark theme
+  @include mat.all-component-themes(m3.$dark-theme);
+
+  /* Your custom dark-theme variables: */
   --background-color: #2e2e2e;
   --secondary-background-color: #292929;
   --tertiary-background-color: #3f3f3f;
@@ -70,18 +59,17 @@ $light-theme: mat.define-light-theme($colors);
   --dat-tertiary-background: #363636;
   --dat-quaternary-background: #4d4d4d;
   --dat-border-color: #343434;
-  transition: 1s;
+  transition: 1s;  // your custom transition
 
-  @include mat.core-color($dark-theme);
-  @include mat.button-color($dark-theme);
-  @include mat.all-component-colors($dark-theme);
-
+  /* Example of customizing a component container with your variable: */
   .mat-dialog-container {
     background: var(--secondary-background-color);
   }
 }
+
+/* Any additional custom global CSS you want to keep */
 .theme-text {
-  color: var(--text-color) !important; /* Добавляем !important, чтобы перекрыть наследуемые стили */
+  color: var(--text-color) !important;
 }
 
 html,
@@ -94,17 +82,14 @@ body {
   width: 0.3em;
   height: 0.3em;
 }
-
 ::-webkit-scrollbar-track {
   opacity: 0;
 }
-
 ::-webkit-scrollbar-thumb {
   border-radius: 10px;
   background: var(--scroll-color);
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.048);
 }
-
 ::-webkit-scrollbar-corner {
   display: none;
   opacity: 0;
@@ -162,6 +147,3 @@ label {
   background-color: var(--tertiary-background-color);
   border: 1px solid var(--border-color);
 }
-
-
-
