@@ -2,7 +2,8 @@
 @use './m3-theme' as m3; // import your generated M3 theme file
 
 // Load the Material "core" styles once globally
-@include mat.core();
+@include mat.elevation-classes();
+@include mat.app-background();
 
 // Then apply your M3 light theme by default to :root
 :root {
