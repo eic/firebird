@@ -30,6 +30,7 @@ export class SceneHelpersService {
     // If we haven't created it yet, do so
     if (!this.axisHelper) {
       this.axisHelper = new THREE.AxesHelper(2000);
+      this.axisHelper.name = "Axis";
       this.threeService.scene.add(this.axisHelper);
     }
     this.axisHelper.visible = show;
@@ -56,6 +57,7 @@ export class SceneHelpersService {
       const grid = new THREE.GridHelper(scale, 20, 0xffffff, 0xffffff);
       grid.rotation.x = Math.PI / 2; // to show XZ?
       this.cartesianGridGroup.add(grid);
+      this.cartesianGridGroup.name = "CartesianGrid"
       // add YZ plane, XY plane, etc., if needed...
       this.threeService.scene.add(this.cartesianGridGroup);
     }
@@ -85,7 +87,7 @@ export class SceneHelpersService {
   showLabels(show: boolean) {
     if (!this.labelsGroup) {
       this.labelsGroup = new THREE.Group();
-      this.labelsGroup.name = 'LabelsGroup';
+      this.labelsGroup.name = 'Labels';
       this.threeService.scene.add(this.labelsGroup);
       // Add text mesh or sprites as needed.
     }

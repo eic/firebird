@@ -28,6 +28,7 @@ import { EicAnimationsManager } from '../../utils/eic-animation-manager';
 import { ThreeGeometryProcessor } from '../../data-pipelines/three-geometry.processor';
 import { ThreeEventProcessor, ProcessTrackInfo } from '../../data-pipelines/three-event.processor';
 import { DataModelPainter } from '../../painters/data-model-painter';
+import { PhoenixThreeFacade } from "../../utils/phoenix-three-facade";
 
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
@@ -43,6 +44,8 @@ import { AngularSplitModule } from 'angular-split';
 
 import * as THREE from 'three';
 import * as TWEEN from '@tweenjs/tween.js';
+import {EventDisplay} from "phoenix-event-display";
+
 
 /**
  * This MainDisplayComponent:
@@ -125,6 +128,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   private eventsArray: any[] = [];
   selectedEventKey: string | undefined;
 
+  // Phoenix API
+  private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
+
   // For referencing child components
   @ViewChild(DisplayShellComponent)
   displayShellComponent!: DisplayShellComponent;
@@ -147,7 +153,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     this.threeService.init('eventDisplay');
     this.threeService.startRendering();
 
-    // Setup the EIC Animations Manager
+    // The facade will be initialized in three.service
+    this.facade.initializeScene()
+
+    // Setup the EicAnimationsManager Animations Manager
     this.animationManager = new EicAnimationsManager(
       this.threeService.scene,
       this.threeService.camera,
@@ -254,6 +263,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     });
     // Initial resize
     this.onRendererElementResize();
+
   }
 
   // 3) UI - Toggling panes
@@ -518,7 +528,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
       if (scene.children[1]) scene.children[1].name = 'Direct. light';
     }
     if (this.geometryTreeComponent) {
-      this.geometryTreeComponent.refreshScheneTree();
+      this.geometryTreeComponent.refreshSceneTree();
     }
   }
 }

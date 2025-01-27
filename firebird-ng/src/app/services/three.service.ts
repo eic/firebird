@@ -2,11 +2,9 @@
 import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { HemisphereLight, DirectionalLight, AmbientLight, PointLight, SpotLight } from 'three';
+import Stats from 'three/examples/jsm/libs/stats.module.js';
 
-/**
- * This service sets up a Three.js scene, camera, renderer, and OrbitControls.
- * It also manages a single animation loop with user-defined callbacks.
- */
 @Injectable({
   providedIn: 'root',
 })
@@ -20,7 +18,6 @@ export class ThreeService implements OnDestroy {
   private perspectiveCamera!: THREE.PerspectiveCamera;
   private orthographicCamera!: THREE.OrthographicCamera;
   public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
-  // Track which camera is active
   private isOrthographic: boolean = false;
 
   /** Animation loop control */
@@ -43,12 +40,22 @@ export class ThreeService implements OnDestroy {
   /** Reference to the container element used for rendering */
   private containerElement!: HTMLElement;
 
+  /** Lights */
+  private ambientLight!: AmbientLight;
+  private hemisphereLight!: HemisphereLight;
+  private directionalLight!: DirectionalLight;
+  private pointLight!: PointLight; // Optional
+  private spotLight!: SpotLight; // Optional
+
+  /** Performance stats */
+  private stats = new Stats();
+
   constructor(private ngZone: NgZone) {
-    // Constructor is empty to avoid premature initialization
+    // Constructor remains empty to avoid premature initialization
   }
 
   /**
-   * Initializes the Three.js scene, camera, renderer, and controls.
+   * Initializes the Three.js scene, camera, renderer, controls, and lights.
    * Must be called before any other method.
    * @param containerId The ID of the HTML element where the renderer will attach.
    */
@@ -68,26 +75,24 @@ export class ThreeService implements OnDestroy {
 
     // 1) Create scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x3f3f3f);
+    this.scene.background = new THREE.Color(0x3f3f3f); // Dark grey background
 
     // 2) Create cameras
-    // Initial size will be set via setSize
     this.perspectiveCamera = new THREE.PerspectiveCamera(
-      75,
-      1, // temporary aspect, to be updated
+      60, // FOV
+      1, // aspect ratio (temporary)
       0.1,
-      20000
+      10000
     );
-    this.perspectiveCamera.position.set(0, 0, 1000); // Example default position
+    this.perspectiveCamera.position.set(0, 100, 200); // Example default position
 
-    // Orthographic Camera
     this.orthographicCamera = new THREE.OrthographicCamera(
       -1,
       1,
       1,
       -1,
       0.1,
-      20000
+      10000
     );
     this.orthographicCamera.position.copy(this.perspectiveCamera.position);
     this.orthographicCamera.lookAt(this.scene.position);
@@ -100,11 +105,17 @@ export class ThreeService implements OnDestroy {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.localClippingEnabled = false; // Enable if using clipping
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+
+    // Append renderer to the container
     this.containerElement.appendChild(this.renderer.domElement);
 
     // 4) Create OrbitControls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 0, 0);
+    this.controls.enableDamping = true; // Smooth camera movements
+    this.controls.dampingFactor = 0.05;
     this.controls.update();
 
     // 5) Set initial size
@@ -112,12 +123,97 @@ export class ThreeService implements OnDestroy {
     const height = this.containerElement.clientHeight;
     this.setSize(width, height);
 
+    // 6) Setup lights
+    this.setupLights();
+
+    // 7) Add default objects or load your geometry here
+    this.addDefaultObjects();
+
+    // Initialize Stats
+    this.stats = new Stats();
+    this.stats.showPanel(0); // 0: fps
+    this.containerElement.appendChild(this.stats.dom); // Append to container or document body
+
+
     // Set initialized flag
     this.initialized = true;
+
+    // Start rendering
+    this.startRendering();
   }
 
   /**
-   * Starts the rendering loop. Ensures that the service is initialized before starting.
+   * Sets up the lighting for the scene.
+   */
+  private setupLights(): void {
+    // 1. Ambient Light: Soft global illumination
+    this.ambientLight = new AmbientLight(0xffffff, 0.4); // Color, Intensity
+    this.ambientLight.name = "Light-Ambient";
+    this.scene.add(this.ambientLight);
+
+    // 2. Hemisphere Light: Simulates the sky and ground light
+    this.hemisphereLight = new HemisphereLight(0xffffff, 0x444444, 0.6);
+    this.hemisphereLight.position.set(0, 200, 0);
+    this.hemisphereLight.name = "Light-Hemisphere";
+    this.scene.add(this.hemisphereLight);
+
+    // 3. Directional Light: Primary light source, simulating sunlight
+    this.directionalLight = new DirectionalLight(0xffffff, 0.8);
+    this.directionalLight.position.set(100, 200, 100);
+    this.directionalLight.name = "Light-Directional";
+    this.directionalLight.castShadow = true;
+
+    // Configure shadow properties for better quality
+    this.directionalLight.shadow.mapSize.width = 512; // Default is 512
+    this.directionalLight.shadow.mapSize.height = 512;
+    this.directionalLight.shadow.camera.near = 0.5;
+    this.directionalLight.shadow.camera.far = 1000;
+
+    this.scene.add(this.directionalLight);
+
+    // 4. Optional: Point Light for localized illumination
+    this.pointLight = new PointLight(0xffffff, 0.5, 500);
+    this.pointLight.position.set(-100, 100, -100);
+    this.pointLight.castShadow = true;
+    this.pointLight.name = "Light-Point";
+    this.scene.add(this.pointLight);
+
+    // 5. Optional: Spot Light for focused lighting effects
+    this.spotLight = new SpotLight(0xffffff, 0.5);
+    this.spotLight.position.set(0, 300, 0);
+    this.spotLight.angle = Math.PI / 6;
+    this.spotLight.penumbra = 0.2;
+    this.spotLight.decay = 2;
+    this.spotLight.distance = 1000;
+    this.spotLight.castShadow = true;
+    this.spotLight.name = "Light-Spot";
+    this.scene.add(this.spotLight);
+  }
+
+  /**
+   * Adds default objects to the scene for demonstration purposes.
+   * Replace or extend this method based on your application needs.
+   */
+  private addDefaultObjects(): void {
+    // Example: Adding a grid helper
+    const gridHelper = new THREE.GridHelper(1000, 100);
+    this.scene.add(gridHelper);
+
+    // Example: Adding an axes helper
+    const axesHelper = new THREE.AxesHelper(500);
+    this.scene.add(axesHelper);
+
+    // Example: Adding a simple mesh
+    const geometry = new THREE.BoxGeometry(100, 100, 100);
+    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+    const cube = new THREE.Mesh(geometry, material);
+    cube.castShadow = true;
+    cube.receiveShadow = true;
+    this.scene.add(cube);
+  }
+
+  /**
+   * Starts the rendering loop.
    */
   startRendering(): void {
     this.ensureInitialized('startRendering');
@@ -161,6 +257,7 @@ export class ThreeService implements OnDestroy {
     this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
 
     try {
+      this.stats.begin();   // Performance monitoring
       // 1) Run user-defined callbacks
       for (const cb of this.frameCallbacks) {
         cb();
@@ -171,6 +268,7 @@ export class ThreeService implements OnDestroy {
 
       // 3) Render the scene
       this.renderer.render(this.scene, this.camera);
+      this.stats.end();
     } catch (error) {
       console.error('(!!!) ThreeService Render Loop Error:', error);
       // Optionally stop the loop if an error occurs
@@ -234,7 +332,7 @@ export class ThreeService implements OnDestroy {
 
     // Update Orthographic Camera
     if (this.isOrthographic && this.camera === this.orthographicCamera) {
-      const frustumSize = 2000;
+      const frustumSize = 1000;
       const aspect = width / height;
       this.orthographicCamera.left = (-frustumSize * aspect) / 2;
       this.orthographicCamera.right = (frustumSize * aspect) / 2;
