@@ -5,15 +5,14 @@ import {NgForOf, NgIf} from "@angular/common";
 
 
 @Component({
-  selector: 'app-custom-event-selector',
-  templateUrl: './event-selector.component.html',
-  styleUrls: ['./event-selector.component.scss'],
-  imports: [
-    MatTooltip,
-    NgForOf,
-    NgIf
-  ],
-  standalone: true
+    selector: 'app-custom-event-selector',
+    templateUrl: './event-selector.component.html',
+    styleUrls: ['./event-selector.component.scss'],
+    imports: [
+        MatTooltip,
+        NgForOf,
+        NgIf
+    ]
 })
 export class EventSelectorComponent implements OnInit {
   // Array containing the keys of the multiple loaded events

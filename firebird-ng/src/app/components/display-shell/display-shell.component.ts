@@ -9,11 +9,10 @@ import {
 import { CommonModule } from '@angular/common'; // Add this import
 
 @Component({
-  selector: 'app-display-shell',
-  templateUrl: './display-shell.component.html',
-  styleUrls: ['./display-shell.component.scss'],
-  imports: [CommonModule],
-  standalone: true,
+    selector: 'app-display-shell',
+    templateUrl: './display-shell.component.html',
+    styleUrls: ['./display-shell.component.scss'],
+    imports: [CommonModule]
 })
 export class DisplayShellComponent {
 

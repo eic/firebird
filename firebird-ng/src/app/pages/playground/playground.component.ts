@@ -3,11 +3,10 @@ import * as THREE from "three"
 import * as TWEEN from '@tweenjs/tween.js';
 
 @Component({
-  selector: 'app-playground',
-  standalone: true,
-  imports: [],
-  templateUrl: './playground.component.html',
-  styleUrl: './playground.component.scss'
+    selector: 'app-playground',
+    imports: [],
+    templateUrl: './playground.component.html',
+    styleUrl: './playground.component.scss'
 })
 export class PlaygroundComponent implements OnInit, AfterViewInit {
   @ViewChild('rendererContainer') rendererContainer!: ElementRef;

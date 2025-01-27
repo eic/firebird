@@ -4,13 +4,12 @@ import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
 import * as THREE from 'three';
 
 @Component({
-  selector: 'app-custom-dark-theme',
-  templateUrl: './dark-theme.component.html',
-  styleUrls: ['./dark-theme.component.scss'],
-  imports: [
-    MenuToggleComponent
-  ],
-  standalone: true
+    selector: 'app-custom-dark-theme',
+    templateUrl: './dark-theme.component.html',
+    styleUrls: ['./dark-theme.component.scss'],
+    imports: [
+        MenuToggleComponent
+    ]
 })
 export class DarkThemeComponent implements OnInit {
   darkTheme = false;

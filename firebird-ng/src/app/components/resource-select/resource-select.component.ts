@@ -10,22 +10,21 @@ import {MatInput, MatLabel} from "@angular/material/input";
 
 
 @Component({
-  selector: 'firebird-resource-select',
-  standalone: true,
-  imports: [
-    MatFormField,
-    MatAutocompleteTrigger,
-    MatAutocomplete,
-    MatOption,
-    AsyncPipe,
-    NgForOf,
-    MatTooltip,
-    MatInput,
-    MatLabel,
-    ReactiveFormsModule
-  ],
-  templateUrl: './resource-select.component.html',
-  styleUrl: './resource-select.component.scss'
+    selector: 'firebird-resource-select',
+    imports: [
+        MatFormField,
+        MatAutocompleteTrigger,
+        MatAutocomplete,
+        MatOption,
+        AsyncPipe,
+        NgForOf,
+        MatTooltip,
+        MatInput,
+        MatLabel,
+        ReactiveFormsModule
+    ],
+    templateUrl: './resource-select.component.html',
+    styleUrl: './resource-select.component.scss'
 })
 export class ResourceSelectComponent implements OnInit {
 

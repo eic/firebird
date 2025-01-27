@@ -5,15 +5,14 @@ import { ViewOptionsComponent } from '../view-options/view-options.component';
 import { ThreeService } from '../../services/three.service';
 
 @Component({
-  selector: 'app-tool-panel',
-  standalone: true,
-  imports: [
-    NgIf,
-    MatIcon,
-    ViewOptionsComponent
-  ],
-  templateUrl: './tool-panel.component.html',
-  styleUrls: ['./tool-panel.component.scss']
+    selector: 'app-tool-panel',
+    imports: [
+        NgIf,
+        MatIcon,
+        ViewOptionsComponent
+    ],
+    templateUrl: './tool-panel.component.html',
+    styleUrls: ['./tool-panel.component.scss']
 })
 export class ToolPanelComponent {
   isCollapsed = false;

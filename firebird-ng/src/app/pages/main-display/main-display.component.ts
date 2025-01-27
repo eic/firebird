@@ -57,38 +57,37 @@ import {EventDisplay} from "phoenix-event-display";
  *  - Has *no* references to phoenix-event-display or EventDisplayService.
  */
 @Component({
-  standalone: true,
-  selector: 'app-main-display',
-  templateUrl: './main-display.component.html',
-  styleUrls: ['./main-display.component.scss'],
-  imports: [
-    // Angular
-    DecimalPipe,
-    NgIf,
-    NgForOf,
-    NgClass,
-    // Material
-    MatSlider,
-    MatSliderThumb,
-    MatIcon,
-    MatButton,
-    MatTooltip,
-    MatFormField,
-    MatSelect,
-    MatOption,
-    MatIconButton,
-    // 3rd party
-    AngularSplitModule,
-    // Custom components
-    SceneTreeComponent,
-    DisplayShellComponent,
-    ToolPanelComponent,
-    NavConfigComponent,
-    EventSelectorComponent,
-    AutoRotateComponent,
-    DarkThemeComponent,
-    ObjectClippingComponent
-  ]
+    selector: 'app-main-display',
+    templateUrl: './main-display.component.html',
+    styleUrls: ['./main-display.component.scss'],
+    imports: [
+        // Angular
+        DecimalPipe,
+        NgIf,
+        NgForOf,
+        NgClass,
+        // Material
+        MatSlider,
+        MatSliderThumb,
+        MatIcon,
+        MatButton,
+        MatTooltip,
+        MatFormField,
+        MatSelect,
+        MatOption,
+        MatIconButton,
+        // 3rd party
+        AngularSplitModule,
+        // Custom components
+        SceneTreeComponent,
+        DisplayShellComponent,
+        ToolPanelComponent,
+        NavConfigComponent,
+        EventSelectorComponent,
+        AutoRotateComponent,
+        DarkThemeComponent,
+        ObjectClippingComponent
+    ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit {
   @Input()

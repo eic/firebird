@@ -9,18 +9,17 @@ import {MatMenu, MatMenuItem, MatMenuTrigger} from '@angular/material/menu';
 import {MatIcon} from "@angular/material/icon";
 
 @Component({
-  selector: 'app-custom-view-options',
-  templateUrl: './view-options.component.html',
-  styleUrls: ['./view-options.component.scss'],
-  standalone: true,
-  imports: [
-    MatMenu,
-    MatCheckbox,
-    MatIcon,
-    MatMenuItem,
-    MatMenuTrigger,
-    // the relevant Material modules, e.g. MatMenu, MatCheckbox, etc.
-  ],
+    selector: 'app-custom-view-options',
+    templateUrl: './view-options.component.html',
+    styleUrls: ['./view-options.component.scss'],
+    imports: [
+        MatMenu,
+        MatCheckbox,
+        MatIcon,
+        MatMenuItem,
+        MatMenuTrigger,
+        // the relevant Material modules, e.g. MatMenu, MatCheckbox, etc.
+    ]
 })
 export class ViewOptionsComponent implements OnInit, OnDestroy {
   @ViewChild(MatMenuTrigger) trigger!: MatMenuTrigger;

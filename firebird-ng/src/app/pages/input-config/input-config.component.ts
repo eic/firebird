@@ -21,11 +21,10 @@ import {NavConfigComponent} from "../../components/nav-config/nav-config.compone
 
 
 @Component({
-  selector: 'app-input-config',
-  standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf, ResourceSelectComponent, MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader, RouterOutlet, NavConfigComponent],
-  templateUrl: './input-config.component.html',
-  styleUrl: './input-config.component.scss'
+    selector: 'app-input-config',
+    imports: [ReactiveFormsModule, RouterLink, MatCard, MatCardContent, MatCardTitle, MatSlideToggle, MatFormField, MatInput, MatLabel, MatAutocompleteTrigger, MatAutocomplete, MatOption, AsyncPipe, MatTooltip, NgForOf, ResourceSelectComponent, MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader, RouterOutlet, NavConfigComponent],
+    templateUrl: './input-config.component.html',
+    styleUrl: './input-config.component.scss'
 })
 export class InputConfigComponent implements OnInit, AfterViewInit {
 

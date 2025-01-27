@@ -4,11 +4,10 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {BehaviorSubject, Subject} from "rxjs";
 import {PhoenixUIModule} from "phoenix-ui-components";
 @Component({
-  selector: 'app-root',
-  standalone: true,
+    selector: 'app-root',
     imports: [RouterOutlet, RouterModule, PhoenixUIModule],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+    templateUrl: './app.component.html',
+    styleUrl: './app.component.scss'
 })
 export class AppComponent {
   title = 'Firebird';

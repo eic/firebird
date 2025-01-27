@@ -14,21 +14,20 @@ import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 import {MatButton} from "@angular/material/button";
 
 @Component({
-  selector: 'app-cartesian-grid-config',
-  templateUrl: './cartesian-grid-config.component.html',
-  styleUrls: ['./cartesian-grid-config.component.scss'],
-  standalone: true,
-  imports: [
-    MatCheckbox,
-    MatMenuItem,
-    MatSlider,
-    MatSliderThumb,
-    MatDialogActions,
-    MatButton,
-    MatDialogTitle,
-    MatDialogContent,
-    // relevant Angular + Material modules
-  ],
+    selector: 'app-cartesian-grid-config',
+    templateUrl: './cartesian-grid-config.component.html',
+    styleUrls: ['./cartesian-grid-config.component.scss'],
+    imports: [
+        MatCheckbox,
+        MatMenuItem,
+        MatSlider,
+        MatSliderThumb,
+        MatDialogActions,
+        MatButton,
+        MatDialogTitle,
+        MatDialogContent,
+        // relevant Angular + Material modules
+    ]
 })
 export class CartesianGridConfigComponent implements OnInit {
   showCartesianGrid!: boolean;

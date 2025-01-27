@@ -24,26 +24,24 @@ interface TreeNodeFlat {
 }
 
 @Component({
-  selector: 'app-geometry-tree',
-  standalone: true,
-  imports: [
-    // Material tree and node imports
-    MatTree,
-    MatTreeNode,
-    MatNestedTreeNode,
-    MatTreeNodeToggle,
-    MatTreeNodeDef,
-    MatTreeNodeOutlet,
-    MatTreeNodePadding,
-
-    // Material UI components
-    MatIcon,
-    MatButton,
-    MatTooltip,
-    MatIconButton
-  ],
-  templateUrl: './scene-tree.component.html',
-  styleUrls: ['./scene-tree.component.scss'],
+    selector: 'app-geometry-tree',
+    imports: [
+        // Material tree and node imports
+        MatTree,
+        MatTreeNode,
+        MatNestedTreeNode,
+        MatTreeNodeToggle,
+        MatTreeNodeDef,
+        MatTreeNodeOutlet,
+        MatTreeNodePadding,
+        // Material UI components
+        MatIcon,
+        MatButton,
+        MatTooltip,
+        MatIconButton
+    ],
+    templateUrl: './scene-tree.component.html',
+    styleUrls: ['./scene-tree.component.scss']
 })
 export class SceneTreeComponent implements OnInit {
   /** Whether highlighting is enabled or not. */

@@ -5,16 +5,15 @@ import { SceneTreeComponent } from "../../pages/geometry-tree/scene-tree.compone
 import { NgIf } from "@angular/common";
 
 @Component({
-  selector: 'geometry-tree-window',
-  templateUrl: 'geometry-tree-window.component.html',
-  styleUrls: ['geometry-tree-window.component.scss'],
-  imports: [
-    MatIconButton,
-    MatIcon,
-    SceneTreeComponent,
-    NgIf
-  ],
-  standalone: true
+    selector: 'geometry-tree-window',
+    templateUrl: 'geometry-tree-window.component.html',
+    styleUrls: ['geometry-tree-window.component.scss'],
+    imports: [
+        MatIconButton,
+        MatIcon,
+        SceneTreeComponent,
+        NgIf
+    ]
 })
 export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   // windowOpenState = false;

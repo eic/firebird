@@ -6,19 +6,18 @@ import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
 
 @Component({
-  selector: 'app-custom-object-clipping',
-  templateUrl: './object-clipping.component.html',
-  styleUrls: ['./object-clipping.component.scss'],
-  imports: [
-    MatMenu,
-    MatCheckbox,
-    MatMenuItem,
-    MatSlider,
-    MatSliderThumb,
-    MenuToggleComponent,
-    MatMenuTrigger
-  ],
-  standalone: true
+    selector: 'app-custom-object-clipping',
+    templateUrl: './object-clipping.component.html',
+    styleUrls: ['./object-clipping.component.scss'],
+    imports: [
+        MatMenu,
+        MatCheckbox,
+        MatMenuItem,
+        MatSlider,
+        MatSliderThumb,
+        MenuToggleComponent,
+        MatMenuTrigger
+    ]
 })
 export class ObjectClippingComponent {
   clippingEnabled!: boolean;

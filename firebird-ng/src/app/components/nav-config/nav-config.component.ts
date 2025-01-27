@@ -10,21 +10,20 @@ import { DomSanitizer } from '@angular/platform-browser';
 import packageInfo from '../../../../package.json';
 
 @Component({
-  selector: 'app-nav-config',
-  standalone: true,
-  imports: [
-    RouterOutlet,
-    RouterLink,
-    MatIcon,
-    NgIf,
-    MatIconButton,
-    MatTooltip,
-    MatMenu,
-    MatMenuItem,
-    MatMenuTrigger
-  ],
-  templateUrl: './nav-config.component.html',
-  styleUrl: './nav-config.component.scss'
+    selector: 'app-nav-config',
+    imports: [
+        RouterOutlet,
+        RouterLink,
+        MatIcon,
+        NgIf,
+        MatIconButton,
+        MatTooltip,
+        MatMenu,
+        MatMenuItem,
+        MatMenuTrigger
+    ],
+    templateUrl: './nav-config.component.html',
+    styleUrl: './nav-config.component.scss'
 })
 export class NavConfigComponent {
   isNavConfigOpen: boolean = false;
