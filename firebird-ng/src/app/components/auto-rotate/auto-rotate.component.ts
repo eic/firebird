@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
-import {EventDisplayService} from "phoenix-ui-components";
 import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
+import {ThreeService} from "../../services/three.service";
 
 @Component({
     selector: 'app-custom-auto-rotate',
@@ -13,10 +13,10 @@ import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
 export class AutoRotateComponent {
   autoRotate = false;
 
-  constructor(private eventDisplay: EventDisplayService) {}
+  constructor(private threeService: ThreeService) {}
 
   toggleAutoRotate() {
     this.autoRotate = !this.autoRotate;
-    this.eventDisplay.getUIManager().setAutoRotate(this.autoRotate);
+    // TODO this.threeService.getUIManager().setAutoRotate(this.autoRotate);
   }
 }

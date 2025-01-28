@@ -2,7 +2,6 @@
 
 import * as THREE from "three";
 import { EventDisplay, RendererManager } from "phoenix-event-display";
-import { EventDisplayService } from "phoenix-ui-components";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 /**

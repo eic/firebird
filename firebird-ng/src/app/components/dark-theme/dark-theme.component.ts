@@ -1,41 +1,40 @@
-import { Component, type OnInit } from '@angular/core';
-import {EventDisplayService} from "phoenix-ui-components";
-import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
+// dark-theme.component.ts
+import { Component, OnInit } from '@angular/core';
 import * as THREE from 'three';
+import { ThreeService } from '../../services/three.service';
+import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
 
 @Component({
-    selector: 'app-custom-dark-theme',
-    templateUrl: './dark-theme.component.html',
-    styleUrls: ['./dark-theme.component.scss'],
-    imports: [
-        MenuToggleComponent
-    ]
+  selector: 'app-custom-dark-theme',
+  templateUrl: './dark-theme.component.html',
+  styleUrls: ['./dark-theme.component.scss'],
+  imports: [
+    MenuToggleComponent
+  ]
 })
 export class DarkThemeComponent implements OnInit {
   darkTheme = false;
-  threeDarkBackground = new THREE.Color( 0x3F3F3F );
-  threeLightBackground = new THREE.Color( 0xF3F3F3 );
+  threeDarkBackground = new THREE.Color(0x3f3f3f);
+  threeLightBackground = new THREE.Color(0xf3f3f3);
 
-  constructor(private eventDisplay: EventDisplayService) { }
+  constructor(private threeService: ThreeService) {}
 
   ngOnInit(): void {
-    this.darkTheme = this.eventDisplay.getUIManager().getDarkTheme();
+    this.darkTheme = false;
+    this.updateSceneBackground();
   }
 
-  setDarkTheme() {
+  toggleTheme(): void {
     this.darkTheme = !this.darkTheme;
-    const scene = this.eventDisplay.getThreeManager().getSceneManager().getScene();
+    document.documentElement.setAttribute('data-theme', this.darkTheme ? 'dark' : 'light');
+    this.updateSceneBackground();
+  }
 
-    this.eventDisplay.getUIManager().setDarkTheme(this.darkTheme);
-
-    // Switch three.js background
-    if(scene && this.darkTheme) {
-      scene.background = this.threeDarkBackground;
-    } else {
-      scene.background = this.threeLightBackground;
+  private updateSceneBackground(): void {
+    if (this.threeService?.scene) {
+      this.threeService.scene.background = this.darkTheme
+        ? this.threeDarkBackground
+        : this.threeLightBackground;
     }
-
-    const theme = this.darkTheme ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', theme);
   }
 }
