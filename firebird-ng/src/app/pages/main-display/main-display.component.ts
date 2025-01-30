@@ -21,7 +21,7 @@ import { ToolPanelComponent } from '../../components/tool-panel/tool-panel.compo
 import { NavConfigComponent } from '../../components/nav-config/nav-config.component';
 import { EventSelectorComponent } from '../../components/event-selector/event-selector.component';
 import { AutoRotateComponent } from '../../components/auto-rotate/auto-rotate.component';
-import { DarkThemeComponent } from '../../components/dark-theme/dark-theme.component';
+import { ThemeSwitcherComponent } from '../../components/theme-switcher/theme-switcher.component';
 import { ObjectClippingComponent } from '../../components/object-clipping/object-clipping.component';
 import { EicAnimationsManager } from '../../utils/eic-animation-manager';
 
@@ -85,7 +85,7 @@ import {EventDisplay} from "phoenix-event-display";
         NavConfigComponent,
         EventSelectorComponent,
         AutoRotateComponent,
-        DarkThemeComponent,
+        ThemeSwitcherComponent,
         ObjectClippingComponent
     ]
 })

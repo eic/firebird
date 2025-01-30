@@ -1,12 +1,16 @@
 <div
   class="eventSelector mx-2"
-  *ngIf="events != null"
-  matTooltip="Event selector"
+  *ngIf="entries().length > 0"
+  matTooltip="Entry selector"
   matTooltipPosition="above"
 >
-  <select name="event" (change)="changeEvent($event)">
-    <option *ngFor="let event of events" [value]="event">
-      {{ event }}
+  <select (change)="changeEntry($event)">
+    <option
+      *ngFor="let entry of entries()"
+      [value]="entry"
+      [selected]="entry === currentEntry()"
+    >
+      {{ entry }}
     </option>
   </select>
 </div>

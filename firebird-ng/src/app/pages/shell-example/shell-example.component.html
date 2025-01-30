@@ -1,3 +1,4 @@
+<!-- shell-example.component.html -->
 <app-display-shell>
   <div header>
     <!-- Header content -->
@@ -10,7 +11,89 @@
   <div centralPane>
     <!-- Central content area -->
     <h2>Main Content</h2>
-    <p>Welcome to the central panel of the application.</p>
+
+    <!-- colors-demo.component.html -->
+    <div class="colors-demo">
+      <!-- Surface Colors -->
+      <div class="color-box" style="background-color: var(--sys-color-surface); color: var(--sys-color-on-surface);">
+        Surface
+      </div>
+      <div class="color-box" style="background-color: var(--sys-color-surface-variant); color: var(--sys-color-on-surface);">
+        Surface Variant
+      </div>
+
+      <!-- Background Colors -->
+      <div class="color-box" style="background-color: var(--sys-color-background); color: var(--sys-color-on-background);">
+        Background
+      </div>
+
+      <!-- Primary Colors -->
+      <div class="color-box" style="background-color: var(--sys-color-primary); color: var(--sys-color-on-primary);">
+        Primary
+      </div>
+      <div class="color-box" style="background-color: var(--sys-color-primary-container); color: var(--sys-color-on-primary-container);">
+        Primary Container
+      </div>
+
+      <!-- Secondary Colors -->
+      <div class="color-box" style="background-color: var(--sys-color-secondary); color: var(--sys-color-on-secondary);">
+        Secondary
+      </div>
+      <div class="color-box" style="background-color: var(--sys-color-secondary-container); color: var(--sys-color-on-secondary-container);">
+        Secondary Container
+      </div>
+
+      <!-- Tertiary Colors -->
+      <div class="color-box" style="background-color: var(--sys-color-tertiary); color: var(--sys-color-on-tertiary);">
+        Tertiary
+      </div>
+      <div class="color-box" style="background-color: var(--sys-color-tertiary-container); color: var(--sys-color-on-tertiary-container);">
+        Tertiary Container
+      </div>
+
+      <!-- Error Colors -->
+      <div class="color-box" style="background-color: var(--sys-color-error); color: var(--sys-color-on-error);">
+        Error
+      </div>
+      <div class="color-box" style="background-color: var(--sys-color-error-container); color: var(--sys-color-on-error-container);">
+        Error Container
+      </div>
+
+      <!-- Header -->
+      <header class="top-menu">
+        <span class="title">Application Header</span>
+        <button mat-icon-button>
+          <mat-icon>menu</mat-icon>
+        </button>
+      </header>
+
+      <!-- Buttons -->
+      <div class="buttons-section">
+        <button mat-raised-button color="primary">Primary Button</button>
+        <button mat-raised-button color="secondary">Secondary Button</button>
+        <button mat-raised-button color="warn">Error Button</button>
+      </div>
+
+      <!-- Form -->
+      <div class="form-section">
+        <form>
+          <mat-form-field appearance="fill">
+            <mat-label>First Name</mat-label>
+            <input matInput type="text" placeholder="Enter your first name" />
+          </mat-form-field>
+
+          <mat-form-field appearance="fill">
+            <mat-label>Email</mat-label>
+            <input matInput type="email" placeholder="Enter your email" />
+          </mat-form-field>
+
+          <button mat-raised-button color="primary" type="submit">
+            Submit
+          </button>
+        </form>
+      </div>
+    </div>
+
     <div footer>
       <!-- Footer content -->
       <p>Application Footer</p>
@@ -19,5 +102,4 @@
   <div rightPane>
     <!-- Optional content for right pane -->
   </div>
-
 </app-display-shell>

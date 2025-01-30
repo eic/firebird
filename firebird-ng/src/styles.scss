@@ -1,9 +1,50 @@
-@use './m3-theme.scss' as m3Theme;
+@use "@angular/material" as mat;
 
-:root {
-  @include m3Theme.theme(m3Theme.$light-theme);
+@include mat.core();
+
+// create color configurations for light and dark themes
+$light-theme: mat.define-theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$blue-palette,
+      ),
+    )
+);
+
+$dark-theme: mat.define-theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$blue-palette,
+      ),
+    )
+);
+
+// base styles
+html {
+  color-scheme: light dark;
 }
 
-:root[data-theme='dark'] {
-  @include m3Theme.theme(m3Theme.$dark-theme);
+// default (light) theme
+:root,
+html:not(.dark-theme) {
+  @include mat.all-component-themes($light-theme);
+  & {
+    color-scheme: light;
+  }
+}
+
+// dark theme styles
+html.dark-theme {
+  // @include mat.all-component-themes($dark-theme);
+  @include mat.all-component-colors($dark-theme);
+  & {
+    color-scheme: dark;
+  }
+}
+
+body {
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
 }

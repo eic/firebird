@@ -1,4 +1,4 @@
-import {Injectable} from "@angular/core";
+import {Injectable, signal} from "@angular/core";
 import {UserConfigService} from "./user-config.service";
 import {Object3D} from "three";
 import {defaultFirebirdConfig, ServerConfigService} from "./server-config.service";
@@ -14,7 +14,12 @@ import {fetchTextFile, loadJSONFileEvents, loadZipFileEvents} from "../utils/dat
 })
 export class DataModelService {
 
-  public currentEvent: Entry|null = null;
+  // Signal to store the list of entries
+  public entries = signal<Entry[]>([]);
+
+  // Signal to store the currently selected entry
+  public currentEntry = signal<Entry | null>(null);
+
 
   constructor(private userConfig: UserConfigService,
               private serverConfig: ServerConfigService,
@@ -100,8 +105,16 @@ export class DataModelService {
       }
 
       let data = DataExchange.fromDexObj(dexData);
-
       console.log(data)
+
+      const entryNames = data.entries.map(entry => entry.id); // Adjust based on your DataExchange structure
+      if (dexData) {
+        this.entries.set(data.entries); // Update the signal with the loaded entries
+        if(this.entries().length > 0) {
+          this.setCurrentEntry(this.entries()[0]);
+        }
+      }
+
       return data;
     } catch (error) {
       console.error(`Failed to load data: ${error}`);
@@ -110,4 +123,15 @@ export class DataModelService {
     }
     return null;
   }
+
+  // Method to set the current entry
+  setCurrentEntry(entry: Entry): void {
+    this.currentEntry.set(entry);
+  }
+
+  setCurrentEntryByName(name: string): void {
+
+  }
+
+
 }

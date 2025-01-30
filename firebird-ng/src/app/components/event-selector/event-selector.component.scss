@@ -1,11 +1,21 @@
+@use '@angular/material' as mat;
+
 .eventSelector {
   select {
-    width: 9rem;
+    min-width: 9rem;
     padding: 5px 10px;
-    font-size: 12px;
-    border: 1px solid rgba(88, 88, 88, 0.08);
-    box-shadow: var(--icon-shadow);
-    background-color: var(--tertiary-background-color);
-    color: var(--secondary-text-color);
+    font-size: 0.875rem; // ~14px
+    border: 1px solid var(--sys-color-outline);
+    background-color: var(--sys-color-surface-variant);
+    color: var(--sys-color-on-surface-variant);
+    border-radius: 4px;
+    appearance: none;
+    cursor: pointer;
+
+    /* Add focus styles */
+    &:focus {
+      outline: 2px solid var(--sys-color-primary);
+      outline-offset: 2px;
+    }
   }
 }

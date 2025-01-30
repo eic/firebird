@@ -521,25 +521,6 @@ export class PhoenixThreeFacade {
   }
 
   /**
-   * Adds a custom event listener to the scene.
-   * @param event The event name.
-   * @param callback The callback function to execute when the event occurs.
-   */
-  public addEventListener(event: string, callback: (...args: any[]) => void): void {
-    this.getScene().addEventListener(event, callback);
-  }
-
-  /**
-   * Removes a custom event listener from the scene.
-   * @param event The event name.
-   * @param callback The callback function to remove.
-   */
-  public removeEventListener(event: string, callback: (...args: any[]) => void): void {
-    this.getScene().removeEventListener(event, callback);
-  }
-
-
-  /**
    * Initializes the scene with default settings.
    */
   public initializeScene(): void {

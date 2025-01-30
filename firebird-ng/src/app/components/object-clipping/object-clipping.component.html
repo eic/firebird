@@ -1,4 +1,5 @@
 <mat-menu class="mat-menu" #menu>
+  <!-- Toggle Clipping -->
   <button
     mat-menu-item
     (click)="
@@ -15,12 +16,20 @@
       Clipping
     </mat-checkbox>
   </button>
+
+  <!-- Start Angle Slider -->
   <button
     class="slider-btn"
     mat-menu-item
     (focus)="startingAngleSlider.focus()"
+    [disabled]="!clippingEnabled"
   >
-    <mat-slider min="0" max="360" step="1" thumbLabel>
+    <mat-slider
+      min="0"
+      max="360"
+      step="1"
+      thumbLabel
+    >
       <input
         #startingAngleSlider
         matSliderThumb
@@ -30,8 +39,20 @@
     </mat-slider>
     Start Angle
   </button>
-  <button class="slider-btn" mat-menu-item (focus)="openingAngleSlider.focus()">
-    <mat-slider min="0" max="360" step="1" thumbLabel>
+
+  <!-- Opening Angle Slider -->
+  <button
+    class="slider-btn"
+    mat-menu-item
+    (focus)="openingAngleSlider.focus()"
+    [disabled]="!clippingEnabled"
+  >
+    <mat-slider
+      min="0"
+      max="360"
+      step="1"
+      thumbLabel
+    >
       <input
         #openingAngleSlider
         matSliderThumb
