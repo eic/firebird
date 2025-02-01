@@ -1,0 +1,105 @@
+<div class="display-shell">
+  <!-- TOP BAR / HEADER -->
+  <mat-toolbar class="mat-elevation-z4 top-toolbar">
+    <!-- Logo -->
+    <button mat-icon-button [routerLink]="['/']" class="logo-button" aria-label="App Logo" >
+      <img src="assets/firebird/firebird-simplified-circle.png" width="32" height="32" alt="App Logo" />
+    </button>
+
+    <!-- Always visible nav items on desktop -->
+    <div class="nav-items visible-nav hide-mobile">
+      <ng-container *ngFor="let item of navItems">
+        <button
+          mat-button
+          *ngIf="item.alwaysVisible"
+          (click)="onNavItemClick(item)"
+          [attr.aria-label]="item.label"
+        >
+          <mat-icon *ngIf="item.icon">{{ item.icon }}</mat-icon>
+          {{ item.label }}
+        </button>
+      </ng-container>
+    </div>
+
+    <!-- Middle section for page-specific controls -->
+    <div class="middle-section">
+      <ng-content select="[header]"></ng-content>
+    </div>
+
+    <!-- Spacer to push the theme toggle to the far right -->
+    <span class="flex-spacer"></span>
+
+    <!-- Theme toggle (desktop) -->
+    <app-theme-switcher class="theme-toggle hide-mobile"></app-theme-switcher>
+
+    <!-- Hamburger menu button (mobile only) -->
+    <button
+      mat-icon-button
+      class="hamburger-btn hide-desktop"
+      (click)="toggleNavConfig()"
+      aria-label="Toggle navigation menu"
+    >
+      <mat-icon>{{ navOpen ? 'close' : 'menu' }}</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  <!-- Mobile menu overlay -->
+  <div class="mobile-menu" [class.open]="navOpen">
+    <ng-container *ngFor="let item of navItems">
+      <!-- On mobile, show all items in the hamburger -->
+      <button
+        mat-button
+        (click)="onNavItemClick(item)"
+        [attr.aria-label]="item.label"
+      >
+        <mat-icon *ngIf="item.icon">{{ item.icon }}</mat-icon>
+        {{ item.label }}
+      </button>
+    </ng-container>
+    <!-- Theme toggle inside mobile menu -->
+    <app-theme-switcher class="theme-toggle-mobile"></app-theme-switcher>
+  </div>
+
+  <!-- MAIN CONTENT AREA (split into leftPane, center, rightPane) -->
+  <div class="main-content">
+    <!-- LEFT PANE -->
+    <div
+      *ngIf="isLeftPaneVisible"
+      class="pane left-pane"
+      [style]="{ 'flex-basis': leftPaneWidth + 'px' }"
+    >
+      <ng-content select="[leftPane]"></ng-content>
+      <ng-template #leftPaneContainer></ng-template>
+    </div>
+    <div
+      *ngIf="isLeftPaneVisible"
+      class="divider left-divider"
+      (mousedown)="onMouseDownLeft($event)"
+    ></div>
+
+    <!-- CENTER PANE -->
+    <div class="central-pane">
+      <ng-content select="[centralPane]"></ng-content>
+    </div>
+
+    <!-- RIGHT PANE -->
+    <div
+      *ngIf="isRightPaneVisible"
+      class="divider right-divider"
+      (mousedown)="onMouseDownRight($event)"
+    ></div>
+    <div
+      *ngIf="isRightPaneVisible"
+      class="pane right-pane"
+      [style]="{ 'flex-basis': rightPaneWidth + 'px' }"
+    >
+      <ng-content select="[rightPane]"></ng-content>
+      <ng-template #rightPaneContainer></ng-template>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <ng-content select="[footer]"></ng-content>
+  </div>
+</div>

@@ -1,50 +1,39 @@
-@use "@angular/material" as mat;
+@use '@angular/material' as mat;
+@use '@angular/cdk';
 
-@include mat.core();
 
-// create color configurations for light and dark themes
-$light-theme: mat.define-theme(
-    (
-      color: (
-        theme-type: light,
-        primary: mat.$blue-palette,
-      ),
-    )
-);
 
-$dark-theme: mat.define-theme(
-    (
-      color: (
-        theme-type: dark,
-        primary: mat.$blue-palette,
-      ),
-    )
-);
-
-// base styles
 html {
   color-scheme: light dark;
+  @include mat.theme((
+    color: (
+      primary: mat.$violet-palette,
+      tertiary: mat.$rose-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+
+  @include cdk.a11y-visually-hidden();
 }
 
-// default (light) theme
-:root,
-html:not(.dark-theme) {
-  @include mat.all-component-themes($light-theme);
-  & {
-    color-scheme: light;
-  }
-}
-
-// dark theme styles
-html.dark-theme {
-  // @include mat.all-component-themes($dark-theme);
-  @include mat.all-component-colors($dark-theme);
-  & {
-    color-scheme: dark;
-  }
-}
-
+html, body { height: 100%; }
 body {
-  background: var(--mat-sys-surface);
+  margin: 0;
+  background-color: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
+}
+
+/* In styles.scss, at the end of the file */
+.cdk-overlay-container, .cdk-overlay-pane {
+  z-index: 10000 !important;
+}
+
+
+/* For pages content which has to stay fixed width, like config */
+.fixed-width-page-content {
+  margin: 0 auto;       // Centers the container horizontally
+  padding: 16px;        // Some padding for smaller screens
+  width: 100%;          // Full width by default
+  max-width: 1200px;    // Maximum width on large displays (adjust as needed)
 }

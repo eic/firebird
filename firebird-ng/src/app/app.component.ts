@@ -5,7 +5,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 @Component({
     selector: 'app-root',
-    imports: [RouterOutlet, RouterModule],
+  imports: [RouterOutlet, RouterModule],
     templateUrl: './app.component.html',
     styleUrl: './app.component.scss'
 })

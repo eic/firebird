@@ -1,50 +1,46 @@
-// theme-switcher.component.ts
-import { Component, OnInit } from '@angular/core';
-import * as THREE from 'three';
-import { ThreeService } from '../../services/three.service';
-import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
+import { Component, computed } from '@angular/core';
+import { ThemeService, Theme } from '../../services/theme.service';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
-  selector: 'app-custom-dark-theme',
+  selector: 'app-theme-switcher',
   templateUrl: './theme-switcher.component.html',
   styleUrls: ['./theme-switcher.component.scss'],
-  imports: [
-    MenuToggleComponent
-  ]
+  standalone: true,
+  imports: [MatMenuModule, MatIconModule, MatButtonModule]
 })
-export class ThemeSwitcherComponent implements OnInit {
-  darkTheme = false;
-  threeDarkBackground = new THREE.Color(0x3f3f3f);
-  threeLightBackground = new THREE.Color(0xf3f3f3);
+export class ThemeSwitcherComponent {
+  /**
+   * A computed signal that returns the appropriate Material icon name
+   * based on the current theme stored in ThemeService.
+   */
+  public currentIcon = computed(() => {
+    const theme = this.themeService.currentTheme();
+    // Return the corresponding icon name based on the theme value.
 
-  constructor(private threeService: ThreeService) {}
-
-  ngOnInit(): void {
-    this.darkTheme = false;
-    this.updateSceneBackground();
-  }
-
-  toggleTheme(): void {
-    this.darkTheme = !this.darkTheme;
-    // toggle theme-specific classes
-    if (this.darkTheme) {
-      console.log('Adding dark-theme class');
-      document?.documentElement?.classList.add('dark-theme');
-      document?.documentElement?.classList.remove('light-theme');
-    } else {
-      console.log('Adding light-theme class');
-      document?.documentElement?.classList.add('light-theme');
-      document?.documentElement?.classList.remove('dark-theme');
+    if(theme === 'system') {
+      return 'settings_brightness';
     }
+    return theme === "dark" ? 'dark_mode' : 'light_mode';
+  });
 
-    this.updateSceneBackground();
-  }
+  public systemIcon = computed(()=>
+    this.themeService.getSystemTheme()=== "dark" ? 'dark_mode' : 'light_mode');
 
-  private updateSceneBackground(): void {
-    if (this.threeService?.scene) {
-      this.threeService.scene.background = this.darkTheme
-        ? this.threeDarkBackground
-        : this.threeLightBackground;
-    }
+  /**
+   * Creates an instance of ThemeSwitcherComponent.
+   * @param themeService The ThemeService managing theme state via signals.
+   */
+  constructor(public themeService: ThemeService) {}
+
+  /**
+   * Handles user selection of a new theme from the menu.
+   * This updates the global theme using ThemeService.
+   * @param theme The new theme selected by the user.
+   */
+  selectTheme(theme: Theme): void {
+    this.themeService.setTheme(theme);
   }
 }

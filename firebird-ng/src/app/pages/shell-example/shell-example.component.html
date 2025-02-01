@@ -1,105 +1,115 @@
-<!-- shell-example.component.html -->
-<app-display-shell>
+<app-shell>
+  <!-- HEADER SLOT -->
   <div header>
     <!-- Header content -->
-    <button (click)="toggleLeftPane()">Toggle Left Pane</button>
-    <button (click)="toggleRightPane()">Toggle Right Pane</button>
+    <button mat-button (click)="toggleLeftPane()">Toggle Left Pane</button>
+    <button mat-button (click)="toggleRightPane()">Toggle Right Pane</button>
   </div>
+
+  <!-- LEFT PANE SLOT (Optional) -->
   <div leftPane>
-    <!-- Optional content for left pane -->
+    <!-- Extra content for the left pane -->
+    <mat-card>
+      <mat-card-title>Left Pane</mat-card-title>
+      <mat-card-content>
+        <p>Extra left pane content goes here.</p>
+      </mat-card-content>
+    </mat-card>
   </div>
+
+  <!-- CENTRAL PANE SLOT -->
   <div centralPane>
-    <!-- Central content area -->
+    <!-- Main Content -->
     <h2>Main Content</h2>
 
-    <!-- colors-demo.component.html -->
-    <div class="colors-demo">
-      <!-- Surface Colors -->
-      <div class="color-box" style="background-color: var(--sys-color-surface); color: var(--sys-color-on-surface);">
-        Surface
-      </div>
-      <div class="color-box" style="background-color: var(--sys-color-surface-variant); color: var(--sys-color-on-surface);">
-        Surface Variant
-      </div>
+    <!-- Colors Demo using a Material grid and cards -->
+    <section class="colors-demo">
+      <mat-card>
+        <mat-card-title>Color Palette</mat-card-title>
+        <mat-card-content>
+          <mat-grid-list cols="3" rowHeight="120px" gutterSize="16px">
+            <mat-grid-tile *ngFor="let swatch of colorSwatches">
+              <mat-card class="swatch-card" [ngStyle]="{'background-color': swatch.color}">
+                <mat-card-content>
+                  <div class="swatch-label">
+                    {{ swatch.label }}
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </mat-grid-tile>
+          </mat-grid-list>
+        </mat-card-content>
+      </mat-card>
+    </section>
 
-      <!-- Background Colors -->
-      <div class="color-box" style="background-color: var(--sys-color-background); color: var(--sys-color-on-background);">
-        Background
-      </div>
+    <!-- Typography Demo using a Material card -->
+    <section class="typography-demo" style="margin-top: 24px;">
+      <mat-card>
+        <mat-card-title>Typography</mat-card-title>
+        <mat-card-content>
+          <p class="display-1">Display 1</p>
+          <p class="headline">Headline</p>
+          <p class="title">Title</p>
+          <p class="body-1">Body 1 - Lorem ipsum dolor sit amet.</p>
+          <p class="body-2">Body 2 - Consectetur adipiscing elit.</p>
+        </mat-card-content>
+      </mat-card>
+    </section>
 
-      <!-- Primary Colors -->
-      <div class="color-box" style="background-color: var(--sys-color-primary); color: var(--sys-color-on-primary);">
-        Primary
-      </div>
-      <div class="color-box" style="background-color: var(--sys-color-primary-container); color: var(--sys-color-on-primary-container);">
-        Primary Container
-      </div>
+    <!-- Buttons Section -->
+    <section class="buttons-section" style="margin-top: 24px;">
+      <mat-card>
+        <mat-card-title>Buttons</mat-card-title>
+        <mat-card-content>
+          <button mat-raised-button color="primary">Primary Button</button>
+          <button mat-raised-button color="accent">Accent Button</button>
+          <button mat-raised-button color="warn">Warn Button</button>
+        </mat-card-content>
+      </mat-card>
+    </section>
 
-      <!-- Secondary Colors -->
-      <div class="color-box" style="background-color: var(--sys-color-secondary); color: var(--sys-color-on-secondary);">
-        Secondary
-      </div>
-      <div class="color-box" style="background-color: var(--sys-color-secondary-container); color: var(--sys-color-on-secondary-container);">
-        Secondary Container
-      </div>
-
-      <!-- Tertiary Colors -->
-      <div class="color-box" style="background-color: var(--sys-color-tertiary); color: var(--sys-color-on-tertiary);">
-        Tertiary
-      </div>
-      <div class="color-box" style="background-color: var(--sys-color-tertiary-container); color: var(--sys-color-on-tertiary-container);">
-        Tertiary Container
-      </div>
-
-      <!-- Error Colors -->
-      <div class="color-box" style="background-color: var(--sys-color-error); color: var(--sys-color-on-error);">
-        Error
-      </div>
-      <div class="color-box" style="background-color: var(--sys-color-error-container); color: var(--sys-color-on-error-container);">
-        Error Container
-      </div>
-
-      <!-- Header -->
-      <header class="top-menu">
-        <span class="title">Application Header</span>
-        <button mat-icon-button>
-          <mat-icon>menu</mat-icon>
-        </button>
-      </header>
-
-      <!-- Buttons -->
-      <div class="buttons-section">
-        <button mat-raised-button color="primary">Primary Button</button>
-        <button mat-raised-button color="secondary">Secondary Button</button>
-        <button mat-raised-button color="warn">Error Button</button>
-      </div>
-
-      <!-- Form -->
-      <div class="form-section">
-        <form>
-          <mat-form-field appearance="fill">
-            <mat-label>First Name</mat-label>
-            <input matInput type="text" placeholder="Enter your first name" />
-          </mat-form-field>
-
-          <mat-form-field appearance="fill">
-            <mat-label>Email</mat-label>
-            <input matInput type="email" placeholder="Enter your email" />
-          </mat-form-field>
-
-          <button mat-raised-button color="primary" type="submit">
-            Submit
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <div footer>
-      <!-- Footer content -->
-      <p>Application Footer</p>
-    </div>
+    <!-- Form Section -->
+    <section class="form-section" style="margin-top: 24px;">
+      <mat-card>
+        <mat-card-title>Form Demo</mat-card-title>
+        <mat-card-content>
+          <form>
+            <mat-form-field appearance="fill" style="width: 100%;">
+              <mat-label>First Name</mat-label>
+              <input matInput type="text" placeholder="Enter your first name" />
+            </mat-form-field>
+            <mat-form-field appearance="fill" style="width: 100%;">
+              <mat-label>Email</mat-label>
+              <input matInput type="email" placeholder="Enter your email" />
+            </mat-form-field>
+            <button mat-raised-button color="primary" type="submit">
+              Submit
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </section>
   </div>
+
+  <!-- RIGHT PANE SLOT (Optional) -->
   <div rightPane>
-    <!-- Optional content for right pane -->
+    <!-- Extra content for the right pane -->
+    <mat-card>
+      <mat-card-title>Right Pane</mat-card-title>
+      <mat-card-content>
+        <p>Right pane extra content.</p>
+      </mat-card-content>
+    </mat-card>
   </div>
-</app-display-shell>
+
+  <!-- FOOTER SLOT -->
+  <div footer>
+    <mat-card>
+      <mat-card-content>
+        <p style="margin: 0; padding: 8px; text-align: center;">
+          Application Footer
+        </p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</app-shell>

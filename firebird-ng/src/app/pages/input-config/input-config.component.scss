@@ -1,9 +1,63 @@
-.card {
-  background-color: var(--phoenix-background-color-secondary); /* Using theme variables */
-  color: var(--phoenix-text-color);
+/* input-config.component.scss */
+
+/* Use a contrasting background for the card itself vs. the header */
+.config-card {
+  background-color: var(--mat-sys-surface);         /* Use a slightly different surface than the header */
+  color: var(--mat-sys-on-surface);
+  margin: 16px 0;
+  border-radius: 8px;                                 /* Rounded corners */
+  overflow: hidden;                                   /* Ensure content doesn’t bleed outside rounded corners */
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);         /* Subtle elevation */
+  font-family: 'Roboto', sans-serif;                /* Consistent typography */
 }
 
-.full-width-field {
-  display: block;
+/* Card header: separate background and proper padding */
+.config-card mat-card-title {
+  background-color: var(--mat-sys-surface-container); /* A container color that differs from the card content */
+  padding: 16px;
+  font-family: inherit;                              /* Inherit from .config-card */
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* Card content: ensure consistent padding and typography */
+.config-card mat-card-content {
+  padding: 16px;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.section {
+  margin-bottom: 16px;
+}
+
+.api-url {
+  margin-top: 16px;
+}
+
+/* Remove unneeded utility class; full-width is now handled by Material's layout */
+.full-width {
   width: 100%;
+}
+
+.action-buttons {
+  margin: 24px 0;
+  text-align: center;
+}
+
+.details-accordion {
+  margin-top: 24px;
+}
+
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--mat-sys-outline);
+  }
 }

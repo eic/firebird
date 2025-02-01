@@ -17,7 +17,7 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/geometry-tree/scene-tree.component').then(m => m.SceneTreeComponent)
   },
   {
-    path: 'testdp',
+    path: 'shell',
     loadComponent: () => import('./pages/shell-example/shell-example.component').then(m => m.ShellExampleComponent)
   },
   {

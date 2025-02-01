@@ -4,7 +4,7 @@ import {
   AfterViewInit,
   HostListener,
   Input,
-  ViewChild
+  ViewChild, OnDestroy, TemplateRef
 } from '@angular/core';
 import { DecimalPipe, NgIf, NgForOf, NgClass } from '@angular/common';
 
@@ -16,12 +16,11 @@ import { DataModelService } from '../../services/data-model.service';
 import { UrlService } from '../../services/url.service';
 
 import { SceneTreeComponent } from '../geometry-tree/scene-tree.component';
-import { DisplayShellComponent } from '../../components/display-shell/display-shell.component';
+import { ShellComponent } from '../../components/shell/shell.component';
 import { ToolPanelComponent } from '../../components/tool-panel/tool-panel.component';
-import { NavConfigComponent } from '../../components/nav-config/nav-config.component';
 import { EventSelectorComponent } from '../../components/event-selector/event-selector.component';
 import { AutoRotateComponent } from '../../components/auto-rotate/auto-rotate.component';
-import { ThemeSwitcherComponent } from '../../components/theme-switcher/theme-switcher.component';
+import {ThemeSwitcherComponent} from "../../components/theme-switcher/theme-switcher.component";
 import { ObjectClippingComponent } from '../../components/object-clipping/object-clipping.component';
 import { EicAnimationsManager } from '../../utils/eic-animation-manager';
 
@@ -45,6 +44,7 @@ import { AngularSplitModule } from 'angular-split';
 import * as THREE from 'three';
 import * as TWEEN from '@tweenjs/tween.js';
 import {EventDisplay} from "phoenix-event-display";
+import {HeaderService} from "../../services/header.service";
 
 
 /**
@@ -80,18 +80,21 @@ import {EventDisplay} from "phoenix-event-display";
         AngularSplitModule,
         // Custom components
         SceneTreeComponent,
-        DisplayShellComponent,
+        ShellComponent,
         ToolPanelComponent,
-        NavConfigComponent,
         EventSelectorComponent,
         AutoRotateComponent,
         ThemeSwitcherComponent,
         ObjectClippingComponent
     ]
 })
-export class MainDisplayComponent implements OnInit, AfterViewInit {
+export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input()
   eventDataImportOptions: string[] = []; // example, if you used them in UI
+
+  @ViewChild('displayHeaderControls', { static: true }) displayHeaderControls!: TemplateRef<any>;
+
+
 
   // Some old UI properties
   currentTime = 0;
@@ -131,8 +134,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
   private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
 
   // For referencing child components
-  @ViewChild(DisplayShellComponent)
-  displayShellComponent!: DisplayShellComponent;
+  @ViewChild(ShellComponent)
+  displayShellComponent!: ShellComponent;
   @ViewChild(SceneTreeComponent)
   geometryTreeComponent: SceneTreeComponent | null | undefined;
 
@@ -143,7 +146,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     private settings: UserConfigService,
     private dataService: DataModelService,
     private urlService: UrlService,
-    private _snackBar: MatSnackBar
+    private _snackBar: MatSnackBar,
+    private headerService: HeaderService
   ) {}
 
   // 1) MAIN INIT
@@ -241,6 +245,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
       }
       console.log(e.key);
     });
+
+    // Set the custom controls in the header
+    this.headerService.setMiddleControls(this.displayHeaderControls);
   }
 
   // 2) AFTER VIEW INIT => handle resizing with DisplayShell or window
@@ -284,6 +291,11 @@ export class MainDisplayComponent implements OnInit, AfterViewInit {
     if (!this.isSmallScreen) {
       this.isPhoenixMenuOpen = true;
     }
+  }
+
+  ngOnDestroy(): void {
+    // Clear the custom controls when leaving the page
+    this.headerService.setMiddleControls(null);
   }
 
   // 5) EX-GEOMETRY STUFF

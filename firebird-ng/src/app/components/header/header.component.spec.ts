@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { DisplayShellComponent } from './display-shell.component';
+import { HeaderComponent } from './header.component';
 
-describe('DisplayShellComponent', () => {
-  let component: DisplayShellComponent;
-  let fixture: ComponentFixture<DisplayShellComponent>;
+describe('HeaderComponent', () => {
+  let component: HeaderComponent;
+  let fixture: ComponentFixture<HeaderComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DisplayShellComponent]
+      imports: [HeaderComponent]
     })
     .compileComponents();
-    
-    fixture = TestBed.createComponent(DisplayShellComponent);
+
+    fixture = TestBed.createComponent(HeaderComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

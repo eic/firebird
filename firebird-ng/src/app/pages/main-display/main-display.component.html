@@ -1,52 +1,12 @@
-<!--<div id="controls">-->
-<!--  <input type="range" id="timeSlider" min="0" [max]="maxTime" step="1" [value]="currentTime" (input)="changeCurrentTime($event)" />-->
-<!--  <div>{{currentTime}} {{message}}</div>-->
-<!--  <button (click)="timeStep($event)">  step </button>-->
-<!--  <button (click)="animateTime()">  play </button>-->
-<!--  <button (click)="stopAnimation()">stop</button>-->
-<!--</div>-->
-
-<!--  <div class="box main">-->
-<!--&lt;!&ndash;    <app-loader [loaded]="loaded" [progress]="loadingProgress"></app-loader>&ndash;&gt;-->
-<!--&lt;!&ndash;    &lt;!&ndash;<app-nav></app-nav>&ndash;&gt;&ndash;&gt;-->
-<!--&lt;!&ndash;    &lt;!&ndash; UI menu at the bottom &ndash;&gt;&ndash;&gt;-->
-<!--&lt;!&ndash;    &lt;!&ndash;<app-ui-menu></app-ui-menu>&ndash;&gt;&ndash;&gt;-->
-<!--&lt;!&ndash;    <app-experiment-info experiment="ePIC" experimentTagline="EPIC experiment at EIC"></app-experiment-info>&ndash;&gt;-->
-<!--&lt;!&ndash;    &lt;!&ndash; Phoenix menu at the top right &ndash;&gt;&ndash;&gt;-->
-<!--&lt;!&ndash;    <app-phoenix-menu [rootNode]="phoenixMenuRoot"></app-phoenix-menu>&ndash;&gt;-->
-
-
-
-<!--      &lt;!&ndash;      <mat-select [(value)]="selectedEventKey" (selectionChange)="onUserSelectedEvent()">&ndash;&gt;-->
-<!--      &lt;!&ndash;        <mat-option *ngFor="let key of eventsByName.keys()" [value]="key">&ndash;&gt;-->
-<!--      &lt;!&ndash;          {{ key }}&ndash;&gt;-->
-<!--      &lt;!&ndash;        </mat-option>&ndash;&gt;-->
-<!--      &lt;!&ndash;      </mat-select>&ndash;&gt;-->
-
-<!--  </div>-->
-<!--</div>-->
-
-
-<app-display-shell>
+<app-shell>
   <ng-container header>
-    <!-- Header content -->
-<!--    <button mat-icon-button matTooltip="Toggle nav config" (click)="toggleNavConfig()" class="toggle-btn d-md-none">-->
-<!--      <mat-icon>{{ isNavConfigOpen ? 'close' : 'menu' }}</mat-icon>-->
-<!--    </button>-->
-    <app-nav-config></app-nav-config>
 
-    <button mat-icon-button matTooltip="Toggle phoenix menu" (click)="togglePhoenixMenu()" class="toggle-btn d-md-none phoenix-toggle-btn">
-      <mat-icon>{{ isPhoenixMenuOpen ? 'close' : 'menu' }}</mat-icon>
-    </button>
-    <div class="phoenix-menu theme-button" *ngIf="isPhoenixMenuOpen || !isSmallScreen">
+
 
       <!-- Event selector -->
       <app-custom-event-selector></app-custom-event-selector>
 
       <app-custom-auto-rotate></app-custom-auto-rotate>
-
-      <!-- Dark theme toggle -->
-      <app-custom-dark-theme></app-custom-dark-theme>
 
       <!-- Toggle for clipping geometries -->
       <app-custom-object-clipping></app-custom-object-clipping>
@@ -54,16 +14,9 @@
       <!-- Extra options -->
       <ng-content></ng-content>
 
-
-    </div>
-
     <button mat-icon-button matTooltip="Toggle geometry" (click)="toggleLeftPane()" class="toggle-btn">
       <mat-icon>{{ isLeftPaneOpen ? 'close' : 'account_tree' }}</mat-icon>
     </button>
-
-<!--    <button mat-icon-button matTooltip="Toggle phoenix menu" (click)="togglePhoenixMenu()" class="toggle-btn1 phoenix-menu-toggle d-md-none">-->
-<!--      <mat-icon>{{ isPhoenixMenuOpen ? 'close' : 'menu' }}</mat-icon>-->
-<!--    </button>-->
 
   </ng-container>
 
@@ -128,4 +81,4 @@
   </div>
 
 
-</app-display-shell>
+</app-shell>

@@ -12,10 +12,10 @@ export class UserConfigService {
   public localServerUseApi: ConfigProperty<boolean>;
   public localServerUrl: ConfigProperty<string>;
 
-  // NEW: Clipping configs
   public clippingEnabled: ConfigProperty<boolean>;
   public clippingStartAngle: ConfigProperty<number>;
   public clippingOpeningAngle: ConfigProperty<number>;
+  public uiSelectedTheme: ConfigProperty<string>;
 
   constructor() {
     this.selectedGeometry = new ConfigProperty('geometry.selectedGeometry', 'epic-central-optimized');
@@ -25,19 +25,17 @@ export class UserConfigService {
     this.localServerUseApi = new ConfigProperty('server.useApi', false);
     this.localServerUrl = new ConfigProperty('server.url', 'http://localhost:5454');
     this.clippingEnabled = new ConfigProperty<boolean>('geometry.clippingEnabled', false);
+    this.uiSelectedTheme = new ConfigProperty('ui.theme', 'system', undefined,
+      /* validator */ (val) => val === 'dark' || val === 'light' || val === 'system'
+      );
 
-    // Store start angle in degrees. Default = 0
-    // Provide an optional validator ensuring 0 <= angle <= 360
-    this.clippingStartAngle = new ConfigProperty<number>('geometry.clippingStartAngle', 0,
-      /* saveCallback */ undefined,
-      /* validator */ (val) => val >= 0 && val <= 360
+
+    this.clippingStartAngle = new ConfigProperty<number>('geometry.clippingStartAngle', 0, undefined,
+      /* validator */ (val) => val >= 0 && val <= 360 // Provide an optional validator ensuring 0 <= angle <= 360
     );
 
-    // Store opening angle in degrees. Default = 180
-    // Provide an optional validator ensuring 0 <= angle <= 360
-    this.clippingOpeningAngle = new ConfigProperty<number>('clipping.openingAngle', 180,
-      /* saveCallback */ undefined,
-      /* validator */ (val) => val >= 0 && val <= 360
+    this.clippingOpeningAngle = new ConfigProperty<number>('clipping.openingAngle', 180, undefined,
+      /* validator */ (val) => val >= 0 && val <= 360 // Provide an optional validator ensuring 0 <= angle <= 360
     );
   }
 }

@@ -1,123 +1,109 @@
-<!-- event-display-source.component.html -->
-<app-nav-config></app-nav-config>
-<div class="container mt-3">
-  <h2 class="card-title">Configure geometry pipeline</h2>
+<app-shell>
+  <div centralPane class="fixed-width-page-content">
+    <mat-card class="config-card">
+      <mat-card-title>Configure Geometry Pipeline</mat-card-title>
+      <mat-card-content>
+        <img src="assets/diagrams/geometry-pipeline.svg" alt="Geometry Pipeline" style="width:100%;"/>
+      </mat-card-content>
+    </mat-card>
 
-  <!-- Geometry Pipeline diagram -->
-  <img src="../assets/diagrams/geometry-pipeline.svg" alt="geometry-pipeline">
+    <form>
 
-  <form>
-
-  <div class="card mt-4">
-    <div class="card-body">
-      <h4 class="card-title">Data Sources</h4>
-
-      <div class="form-group">
-        <div class="mt-4">
-          <h5>Geometry</h5>
-          Select file with the geometry
-          <div class="mt-4">
-            <firebird-resource-select #geometrySelect [options]="geometryOptions" label="Geometry source" class="full-width-field"></firebird-resource-select>
+      <mat-card class="config-card">
+        <mat-card-title>Data Sources</mat-card-title>
+        <mat-card-content>
+          <div class="section">
+            <h3>Geometry</h3>
+            <p>Select file with the geometry</p>
+            <firebird-resource-select
+              #geometrySelect
+              [options]="geometryOptions"
+              label="Geometry source">
+            </firebird-resource-select>
           </div>
-        </div>
+
+          <div class="section">
+            <h3>Trajectories Event Source</h3>
+            <firebird-resource-select
+              #trajectorySelect
+              [options]="trajectoryOptions"
+              label="Trajectories event source file">
+            </firebird-resource-select>
+          </div>
+
+          <div class="section">
+            <h3>Edm4Eic Event Source</h3>
+            <p>Select file with EDM4EIC data</p>
+            <firebird-resource-select
+              #edm4eicSelect
+              [options]="edm4eicOptions"
+              label="EDM4EIC file">
+            </firebird-resource-select>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="config-card">
+        <mat-card-title>ROOT Geometry Optimization</mat-card-title>
+        <mat-card-content>
+          <div class="section">
+            <h4>Leave only central detector</h4>
+            <p>(Remove Beamline, Far Forward and Backward)</p>
+            <mat-slide-toggle [formControl]="onlyCentralDetector">Enabled</mat-slide-toggle>
+          </div>
+          <div class="section">
+            <h4>Optimize detectors</h4>
+            <p>(Remove parts such as glue, pixels, some layers, etc)</p>
+            <!-- Disabled toggle -->
+            <mat-slide-toggle checked disabled>Enabled</mat-slide-toggle>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="config-card">
+        <mat-card-title>WebGL Geometry Optimization</mat-card-title>
+        <mat-card-content>
+          <div class="section">
+            <h4>Merge geometries if possible</h4>
+            <p>
+              Merging geometries significantly improves performance by reducing the number of
+              <a href="https://discourse.threejs.org/t/webgl-drawcalls/24476" target="_blank">drawcalls</a>.
+            </p>
+            <mat-slide-toggle checked disabled>Enabled</mat-slide-toggle>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="config-card">
+        <mat-card-title>Server API Configuration</mat-card-title>
+        <mat-card-content>
+          <mat-slide-toggle [formControl]="serverUseApi">Use specific backend</mat-slide-toggle>
+          <div class="api-url">
+            <mat-form-field appearance="fill" class="full-width">
+              <mat-label>Base API URL</mat-label>
+              <input matInput type="text" placeholder="Enter API URL: http://localhost:5454"
+                     [formControl]="serverApiUrl" [disabled]="!serverUseApi.value">
+            </mat-form-field>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <div class="action-buttons">
+        <button mat-raised-button color="primary" [routerLink]="['/display']">DISPLAY</button>
       </div>
 
-      <div class="form-group">
-        <div class="mt-4">
-          <h5>Trajectories Event Source</h5>
-          <div class="mt-4">
-            <firebird-resource-select #trajectorySelect [options]="trajectoryOptions" label="Trajectories event source file" class="full-width-field"></firebird-resource-select>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <div class="mt-4">
-          <h5>Edm4Eic Event Source</h5>
-          Select file with EDM4EIC data
-          <div class="mt-4">
-            <firebird-resource-select #edm4eicSelect [options]="edm4eicOptions" label="EDM4EIC file" class="full-width-field"></firebird-resource-select>
-          </div>
-        </div>
-      </div>
-
-
-    </div>
-  </div>
-
-    <div class="card mt-4">
-      <div class="card-body">
-        <h5 class="card-title">ROOT Geometry optimization</h5>
-        <div class="mt-4">
-          <h6>Leave only central detector (Remove Beamline, Far Froward and Backward)</h6>
-          <div class="form-check custom-control custom-switch">
-            <input class="custom-control-input" type="checkbox" id="geoPostEnabled" [formControl]="onlyCentralDetector">
-            <label class="custom-control-label" for="geoPostEnabled">Enabled</label>
-          </div>
-        </div>
-        <div class="mt-4">
-          <h6>Optimize detectors (remove parts such as glue, pixels, some layers, etc)</h6>
-          <div class="form-check custom-control custom-switch">
-            <input class="custom-control-input" type="checkbox" checked="checked" disabled>
-            <label class="custom-control-label" for="geoPostEnabled">Enabled</label>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card mt-4">
-      <div class="card-body">
-        <h5 class="card-title">WebGL Geometry optimization</h5>
-        <div class="mt-4">
-          <h6>Merge geometries if possible</h6>
-          Merging geometries allows to significantly improve the performance by reducing the number of
-          <a href="https://discourse.threejs.org/t/webgl-drawcalls/24476">drawcalls</a>.
-          <div class="form-check custom-control custom-switch">
-            <input class="custom-control-input" type="checkbox" checked="checked" disabled>
-            <label class="custom-control-label" for="geoPostEnabled">Enabled</label>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- USE LOCAL API -->
-    <div class="card mt-4">
-      <div class="card-body">
-        <h5 class="card-title">Server API Configuration</h5>
-        <div class="form-check custom-control custom-switch mt-4">
-          <input class="custom-control-input" type="checkbox" id="serverUseApiCheckbox" [formControl]="serverUseApi">
-          <label class="custom-control-label" for="serverUseApiCheckbox">Use specific backend</label>
-        </div>
-        <div class="form-row align-items-center">
-          <div class="col-auto">
-            <h6 class="mb-0">Base API URL:</h6>
-          </div>
-          <div class="col">
-            <input class="form-control" type="text" placeholder="Enter API URL: http://localhost:5454" [formControl]="serverApiUrl" [disabled]="!serverUseApi.value">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="mt-4 text-center">
-      <button type="button" class="btn btn-lg btn-primary" [routerLink]="['/display']">DISPLAY</button>
-    </div>
-
-    <br><br>
-
-    <mat-accordion class="mt-4">
-      <mat-expansion-panel>
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            Backend details
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-        <div>
-          <table class="table">
+      <mat-accordion class="details-accordion">
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              Backend Details
+            </mat-panel-title>
+          </mat-expansion-panel-header>
+          <table class="details-table">
             <thead>
             <tr>
-              <th scope="col">Property</th>
-              <th scope="col">Value</th>
+              <th>Property</th>
+              <th>Value</th>
             </tr>
             </thead>
             <tbody>
@@ -139,10 +125,9 @@
             </tr>
             </tbody>
           </table>
-        </div>
-      </mat-expansion-panel>
-    </mat-accordion>
-    <br>
+        </mat-expansion-panel>
+      </mat-accordion>
 
-  </form>
-</div>
+    </form>
+  </div>
+</app-shell>
