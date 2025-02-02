@@ -63,7 +63,6 @@
 
 /** Left and right panes */
 .pane {
-
   position: relative;
   z-index: 10;
   overflow: auto;
@@ -73,12 +72,12 @@
 .left-pane {
   box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.2);
   background-color: var(--mat-sys-surface-container);
-  padding: 5px 5px 5px 10px;
+  // (!) Padding messes up all changing dimension! padding: 5px 5px 5px 10px;
 }
 .right-pane {
   background-color: var(--mat-sys-surface-container);
   box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.2);
-  padding: 5px 10px 5px 5px;
+  // (!) Padding messes up all changing dimension! padding: 5px 10px 5px 5px;
 }
 
 .central-pane {

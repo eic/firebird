@@ -7,8 +7,9 @@ html {
   color-scheme: light dark;
   @include mat.theme((
     color: (
-      primary: mat.$violet-palette,
-      tertiary: mat.$rose-palette,
+      primary: mat.$blue-palette
+      //primary: mat.$violet-palette,
+      //tertiary: mat.$rose-palette,
     ),
     typography: Roboto,
     density: 0,
@@ -36,4 +37,24 @@ body {
   padding: 16px;        // Some padding for smaller screens
   width: 100%;          // Full width by default
   max-width: 1200px;    // Maximum width on large displays (adjust as needed)
+}
+
+/* Used for all icon based buttons on button panels on header and footer. They are elevated */
+.panel-button {
+  //background-color: var(--mat-sys-surface-container-low);
+  background-color: var(--mat-sys-surface-container-low);
+  box-shadow: var(--mat-sys-level2);
+  align-content: center;
+  margin-left: 3px;
+  margin-right: 3px;
+}
+
+/* . The .mat-mdc-icon-button styles, which are part of Angular Material's styling for icon buttons,
+    have higher specificity than .panel-button class.
+    This means the Material styles are overriding .panel-button background color setting.
+    So we create a more specific selector that targets these buttons
+ */
+.panel-button.mat-mdc-icon-button {
+  background-color: var(--mat-sys-surface-container-low)!important;
+  box-shadow: var(--mat-sys-level2)!important;
 }

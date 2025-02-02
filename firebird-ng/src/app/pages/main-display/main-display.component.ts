@@ -20,7 +20,7 @@ import { ShellComponent } from '../../components/shell/shell.component';
 import { ToolPanelComponent } from '../../components/tool-panel/tool-panel.component';
 import { EventSelectorComponent } from '../../components/event-selector/event-selector.component';
 import { AutoRotateComponent } from '../../components/auto-rotate/auto-rotate.component';
-import {ThemeSwitcherComponent} from "../../components/theme-switcher/theme-switcher.component";
+import { ThemeSwitcherComponent } from "../../components/theme-switcher/theme-switcher.component";
 import { ObjectClippingComponent } from '../../components/object-clipping/object-clipping.component';
 import { EicAnimationsManager } from '../../utils/eic-animation-manager';
 
@@ -267,9 +267,16 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     window.addEventListener('resize', () => {
       this.onRendererElementResize();
     });
-    // Initial resize
-    this.onRendererElementResize();
 
+    // When sidebar is collapsed/opened, the main container, i.e. #eventDisplay offsetWidth is not yet updated.
+    // This leads to a not proper resize  processing. We add 100ms delay before calling a function
+    const this_obj = this
+    const resizeInvoker = function(){
+      setTimeout(() => {
+        this_obj.onRendererElementResize();
+      }, 100);  // 100 milliseconds = 0.1 seconds
+    };
+    resizeInvoker();
   }
 
   // 3) UI - Toggling panes
@@ -314,15 +321,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log(info.programs);
   }
 
-  // Called when we want to recalc the size of the canvas
+  // Called when we want to recalculate the size of the canvas
   private onRendererElementResize() {
-    // Reference the container element
-    const container = document.getElementById('eventDisplay') as HTMLElement;
-    if (!container) return;
-
-    // Calculate available width and height
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    let {width, height} = this.displayShellComponent.getMainAreaVisibleDimensions();
+    console.log(`[RendererResize] New size: ${width}x${height} px`);
 
     // Delegate resizing to ThreeService
     this.threeService.setSize(width, height);
@@ -332,7 +334,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   changeCurrentTime(event: Event) {
     if (!event) return;
     const input = event.target as HTMLInputElement;
-    const value = parseInt(input.value, 10);
+    const value: number = parseInt(input.value, 10);
     this.currentTime = value;
     this.processCurrentTimeChange();
   }

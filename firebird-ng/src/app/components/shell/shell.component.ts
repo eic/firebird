@@ -6,7 +6,7 @@ import {
   ComponentRef,
   Type,
   EventEmitter,
-  Output,
+  Output, ElementRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {Router, RouterLink} from '@angular/router';
@@ -51,6 +51,9 @@ export class ShellComponent {
   /** The reference to the right container, for programmatic component creation */
   @ViewChild('rightPaneContainer', { read: ViewContainerRef, static: true })
   rightPaneContainer!: ViewContainerRef;
+
+  /** The reference to main content container */
+  @ViewChild('mainContent', { static: true }) mainContent!: ElementRef<HTMLElement>;
 
   /** Event emitted when the resizing of the left pane ends. Emits the new width. */
   @Output() onEndResizeLeft = new EventEmitter<number>();
@@ -165,10 +168,37 @@ export class ShellComponent {
     this.navOpen = !this.navOpen;
   }
 
-  /** Toggle light/dark theme */
-  toggleTheme() {
-    this.isDarkTheme = !this.isDarkTheme;
-    document.documentElement.setAttribute('data-theme', this.isDarkTheme ? 'dark' : 'light');
+  /**
+   * Returns the visible dimensions of the main content area.
+   * Uses clientWidth/clientHeight to exclude scrollbars,
+   * and subtracts side panel widths if they are visible.
+   */
+  getMainAreaVisibleDimensions(): { width: number; height: number } {
+
+
+    const visibleWidth = this.mainContent.nativeElement.clientWidth -
+      (this.isLeftPaneVisible ? this.leftPaneWidth : 0) -
+      (this.isRightPaneVisible ? this.rightPaneWidth : 0);
+    const visibleHeight = this.mainContent.nativeElement.clientHeight;
+
+
+    console.log("Shell resize information: ")
+    console.log("  mainContent.clientWidth:", this.mainContent.nativeElement.clientWidth);
+    console.log("  mainContent.clientHeight:", this.mainContent.nativeElement.clientHeight);
+    console.log("  isLeftPaneVisible:", this.isLeftPaneVisible);
+    if(this.isLeftPaneVisible)
+    {
+      console.log("  leftPaneWidth:", this.leftPaneWidth);
+    }
+    console.log("  isRightPaneVisible:", this.isRightPaneVisible);
+    if(this.isRightPaneVisible)
+    {
+      console.log("  rightPaneWidth:", this.rightPaneWidth);
+    }
+    console.log("  visibleWidth:", visibleWidth);
+    console.log("  visibleHeight:", visibleHeight);
+
+    return { width: visibleWidth, height: visibleHeight };
   }
 
   /** Clicking a nav item => external link or internal route */

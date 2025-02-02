@@ -325,21 +325,15 @@ export class ThreeService implements OnDestroy {
     this.renderer.setSize(width, height);
 
     // Update Perspective Camera
-    if (!this.isOrthographic && this.camera === this.perspectiveCamera) {
-      this.perspectiveCamera.aspect = width / height;
-      this.perspectiveCamera.updateProjectionMatrix();
-    }
+    this.perspectiveCamera.aspect = width / height;
+    this.perspectiveCamera.updateProjectionMatrix();
 
     // Update Orthographic Camera
-    if (this.isOrthographic && this.camera === this.orthographicCamera) {
-      const frustumSize = 1000;
-      const aspect = width / height;
-      this.orthographicCamera.left = (-frustumSize * aspect) / 2;
-      this.orthographicCamera.right = (frustumSize * aspect) / 2;
-      this.orthographicCamera.top = frustumSize / 2;
-      this.orthographicCamera.bottom = -frustumSize / 2;
-      this.orthographicCamera.updateProjectionMatrix();
-    }
+    this.orthographicCamera.left = width / -2;
+    this.orthographicCamera.right = width / 2;
+    this.orthographicCamera.top = height / 2;
+    this.orthographicCamera.bottom = height / -2;
+    this.orthographicCamera.updateProjectionMatrix();
 
     // Update OrbitControls
     this.controls.update();

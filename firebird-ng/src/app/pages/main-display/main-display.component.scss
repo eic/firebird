@@ -1,24 +1,14 @@
-* {
-  margin: 0;
-  padding: 0;
-}
+//* {
+//  margin: 0;
+//  padding: 0;
+//}
 
-
-
-.phoenix-menu{
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-color);
-  //background-color: #2e2e2e;
-  flex-wrap: wrap;
-}
 
 
 #eventDisplay {
   padding-top: 105px;
   margin-top: -105px;
+  overflow: hidden;
 }
 
 

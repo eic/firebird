@@ -1,22 +1,23 @@
 <app-shell>
   <ng-container header>
-
-
-
-      <!-- Event selector -->
-      <app-custom-event-selector></app-custom-event-selector>
-
-      <app-custom-auto-rotate></app-custom-auto-rotate>
-
-      <!-- Toggle for clipping geometries -->
-      <app-custom-object-clipping></app-custom-object-clipping>
-
-      <!-- Extra options -->
-      <ng-content></ng-content>
-
-    <button mat-icon-button matTooltip="Toggle geometry" (click)="toggleLeftPane()" class="toggle-btn">
+    <button mat-icon-button matTooltip="Toggle scene tree pane" (click)="toggleLeftPane()" class="panel-button">
       <mat-icon>{{ isLeftPaneOpen ? 'close' : 'account_tree' }}</mat-icon>
     </button>
+
+    <button mat-icon-button class="panel-button">
+      <mat-icon>dark_mode</mat-icon>
+    </button>
+
+    <!-- Event selector -->
+    <app-custom-event-selector></app-custom-event-selector>
+
+    <app-custom-auto-rotate></app-custom-auto-rotate>
+
+    <!-- Toggle for clipping geometries -->
+    <app-custom-object-clipping></app-custom-object-clipping>
+
+    <!-- Extra options -->
+    <ng-content></ng-content>
 
   </ng-container>
 
