@@ -1,9 +1,7 @@
-// three.service.ts
 import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { HemisphereLight, DirectionalLight, AmbientLight, PointLight, SpotLight } from 'three';
-import Stats from 'three/examples/jsm/libs/stats.module.js';
 
 @Injectable({
   providedIn: 'root',
@@ -14,10 +12,17 @@ export class ThreeService implements OnDestroy {
   public renderer!: THREE.WebGLRenderer;
   public controls!: OrbitControls;
 
+  /** Camera that is actually used */
+  public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+
+  /** Functions callbacks that help organize performance */
+  public profileBeginFunc: (() => void) | null = null;
+  public profileEndFunc: (() => void) | null = null;
+
   /** Cameras */
   private perspectiveCamera!: THREE.PerspectiveCamera;
   private orthographicCamera!: THREE.OrthographicCamera;
-  public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+
   private isOrthographic: boolean = false;
 
   /** Animation loop control */
@@ -47,53 +52,42 @@ export class ThreeService implements OnDestroy {
   private pointLight!: PointLight; // Optional
   private spotLight!: SpotLight; // Optional
 
-  /** Performance stats */
-  private stats = new Stats();
-
   constructor(private ngZone: NgZone) {
-    // Constructor remains empty to avoid premature initialization
+    // Empty constructor – initialization happens in init()
   }
 
   /**
    * Initializes the Three.js scene, camera, renderer, controls, and lights.
    * Must be called before any other method.
-   * @param containerId The ID of the HTML element where the renderer will attach.
+   * @param container A string representing the ID of the HTML element,
+   *                  or the actual HTMLElement where the renderer will attach.
    */
-  init(containerId: string): void {
+  init(container: string | HTMLElement): void {
     if (this.initialized) {
       console.warn('ThreeService has already been initialized.');
       return;
     }
 
-    const container = document.getElementById(containerId);
-    if (!container) {
-      throw new Error(
-        `ThreeService Initialization Error: Container element #${containerId} not found.`
-      );
+    // Allow passing either a container ID or an element directly
+    if (typeof container === 'string') {
+      const el = document.getElementById(container);
+      if (!el) {
+        throw new Error(`ThreeService Initialization Error: Container element #${container} not found.`);
+      }
+      this.containerElement = el;
+    } else {
+      this.containerElement = container;
     }
-    this.containerElement = container as HTMLElement;
 
     // 1) Create scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x3f3f3f); // Dark grey background
 
     // 2) Create cameras
-    this.perspectiveCamera = new THREE.PerspectiveCamera(
-      60, // FOV
-      1, // aspect ratio (temporary)
-      0.1,
-      10000
-    );
-    this.perspectiveCamera.position.set(0, 100, 200); // Example default position
+    this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 10000);
+    this.perspectiveCamera.position.set(0, 100, 200);
 
-    this.orthographicCamera = new THREE.OrthographicCamera(
-      -1,
-      1,
-      1,
-      -1,
-      0.1,
-      10000
-    );
+    this.orthographicCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10000);
     this.orthographicCamera.position.copy(this.perspectiveCamera.position);
     this.orthographicCamera.lookAt(this.scene.position);
 
@@ -104,9 +98,9 @@ export class ThreeService implements OnDestroy {
     // 3) Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.localClippingEnabled = false; // Enable if using clipping
+    this.renderer.localClippingEnabled = false;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     // Append renderer to the container
     this.containerElement.appendChild(this.renderer.domElement);
@@ -114,7 +108,7 @@ export class ThreeService implements OnDestroy {
     // 4) Create OrbitControls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 0, 0);
-    this.controls.enableDamping = true; // Smooth camera movements
+    this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
     this.controls.update();
 
@@ -126,19 +120,10 @@ export class ThreeService implements OnDestroy {
     // 6) Setup lights
     this.setupLights();
 
-    // 7) Add default objects or load your geometry here
+    // 7) Add default objects
     this.addDefaultObjects();
 
-    // Initialize Stats
-    this.stats = new Stats();
-    this.stats.showPanel(0); // 0: fps
-    this.containerElement.appendChild(this.stats.dom); // Append to container or document body
-
-
-    // Set initialized flag
     this.initialized = true;
-
-    // Start rendering
     this.startRendering();
   }
 
@@ -146,39 +131,31 @@ export class ThreeService implements OnDestroy {
    * Sets up the lighting for the scene.
    */
   private setupLights(): void {
-    // 1. Ambient Light: Soft global illumination
-    this.ambientLight = new AmbientLight(0xffffff, 0.4); // Color, Intensity
+    this.ambientLight = new AmbientLight(0xffffff, 0.4);
     this.ambientLight.name = "Light-Ambient";
     this.scene.add(this.ambientLight);
 
-    // 2. Hemisphere Light: Simulates the sky and ground light
     this.hemisphereLight = new HemisphereLight(0xffffff, 0x444444, 0.6);
     this.hemisphereLight.position.set(0, 200, 0);
     this.hemisphereLight.name = "Light-Hemisphere";
     this.scene.add(this.hemisphereLight);
 
-    // 3. Directional Light: Primary light source, simulating sunlight
     this.directionalLight = new DirectionalLight(0xffffff, 0.8);
     this.directionalLight.position.set(100, 200, 100);
     this.directionalLight.name = "Light-Directional";
     this.directionalLight.castShadow = true;
-
-    // Configure shadow properties for better quality
-    this.directionalLight.shadow.mapSize.width = 512; // Default is 512
+    this.directionalLight.shadow.mapSize.width = 512;
     this.directionalLight.shadow.mapSize.height = 512;
     this.directionalLight.shadow.camera.near = 0.5;
     this.directionalLight.shadow.camera.far = 1000;
-
     this.scene.add(this.directionalLight);
 
-    // 4. Optional: Point Light for localized illumination
     this.pointLight = new PointLight(0xffffff, 0.5, 500);
     this.pointLight.position.set(-100, 100, -100);
     this.pointLight.castShadow = true;
     this.pointLight.name = "Light-Point";
     this.scene.add(this.pointLight);
 
-    // 5. Optional: Spot Light for focused lighting effects
     this.spotLight = new SpotLight(0xffffff, 0.5);
     this.spotLight.position.set(0, 300, 0);
     this.spotLight.angle = Math.PI / 6;
@@ -191,19 +168,15 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * Adds default objects to the scene for demonstration purposes.
-   * Replace or extend this method based on your application needs.
+   * Adds default objects to the scene.
    */
   private addDefaultObjects(): void {
-    // Example: Adding a grid helper
     const gridHelper = new THREE.GridHelper(1000, 100);
     this.scene.add(gridHelper);
 
-    // Example: Adding an axes helper
     const axesHelper = new THREE.AxesHelper(500);
     this.scene.add(axesHelper);
 
-    // Example: Adding a simple mesh
     const geometry = new THREE.BoxGeometry(100, 100, 100);
     const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
     const cube = new THREE.Mesh(geometry, material);
@@ -219,25 +192,21 @@ export class ThreeService implements OnDestroy {
     this.ensureInitialized('startRendering');
 
     if (this.animationFrameId !== null) {
-      // Already running
-      console.warn('ThreeService: Rendering loop is already running.');
+      console.warn('[ThreeService]: Rendering loop is already running.');
       return;
     }
 
     this.shouldRender = true;
-
-    // Run outside Angular to prevent unnecessary change detection
     this.ngZone.runOutsideAngular(() => {
       this.renderLoop();
     });
   }
 
   /**
-   * Stop the render loop if it's running.
+   * Stops the rendering loop.
    */
   stopRendering(): void {
     this.shouldRender = false;
-
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
@@ -245,33 +214,25 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * The core render loop: updates controls, runs callbacks, renders the scene,
-   * then schedules the next frame if shouldRender is still true.
+   * The render loop: updates controls, executes frame callbacks, renders the scene, and schedules the next frame.
    */
   private renderLoop(): void {
     if (!this.shouldRender) {
       return;
     }
 
-    // Schedule the next frame before performing operations
     this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
 
     try {
-      this.stats.begin();   // Performance monitoring
-      // 1) Run user-defined callbacks
+      this.profileBeginFunc?.();
       for (const cb of this.frameCallbacks) {
         cb();
       }
-
-      // 2) Update controls
       this.controls.update();
-
-      // 3) Render the scene
       this.renderer.render(this.scene, this.camera);
-      this.stats.end();
+      this.profileEndFunc?.();
     } catch (error) {
       console.error('(!!!) ThreeService Render Loop Error:', error);
-      // Optionally stop the loop if an error occurs
       this.stopRendering();
     }
   }
@@ -283,13 +244,10 @@ export class ThreeService implements OnDestroy {
    */
   addFrameCallback(callback: () => void): void {
     this.ensureInitialized('addFrameCallback');
-
     if (!this.frameCallbacks.includes(callback)) {
       this.frameCallbacks.push(callback);
     } else {
-      console.warn(
-        'ThreeService: Attempted to add a duplicate frame callback.'
-      );
+      console.warn('ThreeService: Attempted to add a duplicate frame callback.');
     }
   }
 
@@ -299,20 +257,16 @@ export class ThreeService implements OnDestroy {
    */
   removeFrameCallback(callback: () => void): void {
     this.ensureInitialized('removeFrameCallback');
-
     const index = this.frameCallbacks.indexOf(callback);
     if (index !== -1) {
       this.frameCallbacks.splice(index, 1);
     } else {
-      console.warn(
-        'ThreeService: Attempted to remove a non-existent frame callback.'
-      );
+      console.warn('ThreeService: Attempted to remove a non-existent frame callback.');
     }
   }
 
   /**
-   * Sets the size of the renderer and updates the camera projections accordingly.
-   * Should be called whenever the available size for the canvas changes.
+   * Sets the size of the renderer and updates the camera projections.
    * @param width The new width in pixels.
    * @param height The new height in pixels.
    */
@@ -321,67 +275,53 @@ export class ThreeService implements OnDestroy {
       console.error('ThreeService: setSize called before initialization.');
       return;
     }
-
     this.renderer.setSize(width, height);
 
-    // Update Perspective Camera
     this.perspectiveCamera.aspect = width / height;
     this.perspectiveCamera.updateProjectionMatrix();
 
-    // Update Orthographic Camera
     this.orthographicCamera.left = width / -2;
     this.orthographicCamera.right = width / 2;
     this.orthographicCamera.top = height / 2;
     this.orthographicCamera.bottom = height / -2;
     this.orthographicCamera.updateProjectionMatrix();
 
-    // Update OrbitControls
     this.controls.update();
   }
 
-  /* ---------------------------
-   * CLIPPING LOGIC (optional)
-   * ---------------------------
-   * If you want 2-plane clipping from your old Phoenix usage:
+  /**
+   * Enables or disables local clipping.
+   * @param enable Whether clipping should be enabled.
    */
-
-  enableClipping(enable: boolean) {
+  enableClipping(enable: boolean): void {
     this.renderer.localClippingEnabled = enable;
   }
 
   /**
-   * Two-plane clipping logic. Rotates two planes around Z axis by start + opening angles.
+   * Sets two-plane clipping by rotating the clipping planes.
+   * @param startAngleDeg The starting angle in degrees.
+   * @param openingAngleDeg The opening angle in degrees.
    */
-  setClippingAngle(startAngleDeg: number, openingAngleDeg: number) {
+  setClippingAngle(startAngleDeg: number, openingAngleDeg: number): void {
     const planeA = this.clipPlanes[0];
     const planeB = this.clipPlanes[1];
 
     this.clipIntersection = openingAngleDeg < 180;
-
-    // Convert degrees to radians
     const startAngle = (startAngleDeg * Math.PI) / 180;
     const openingAngle = (openingAngleDeg * Math.PI) / 180;
 
-    // Rotate planeA
     const quatA = new THREE.Quaternion();
     quatA.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle);
     planeA.normal.set(0, -1, 0).applyQuaternion(quatA);
 
-    // Rotate planeB
     const quatB = new THREE.Quaternion();
-    quatB.setFromAxisAngle(
-      new THREE.Vector3(0, 0, 1),
-      startAngle + openingAngle
-    );
+    quatB.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle + openingAngle);
     planeB.normal.set(0, 1, 0).applyQuaternion(quatB);
 
-    // Optionally update materials
     this.scene.traverse((child) => {
       const mesh = child as THREE.Mesh;
       if (mesh.material) {
-        const matArray = Array.isArray(mesh.material)
-          ? mesh.material
-          : [mesh.material];
+        const matArray = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         matArray.forEach((mat: THREE.Material) => {
           mat.clippingPlanes = this.clipPlanes;
           mat.clipIntersection = this.clipIntersection;
@@ -392,33 +332,29 @@ export class ThreeService implements OnDestroy {
 
   /**
    * Toggles between perspective and orthographic cameras.
+   * @param useOrtho Whether to use the orthographic camera.
    */
   toggleOrthographicView(useOrtho: boolean): void {
     this.isOrthographic = useOrtho;
-
-    // Switch camera reference
     this.camera = useOrtho ? this.orthographicCamera : this.perspectiveCamera;
-
-    // Update OrbitControls to use the new camera
     this.controls.object = this.camera;
     this.controls.update();
   }
 
   /**
-   * Ensures that the service has been initialized before performing operations.
-   * Logs an error and optionally throws an exception if not initialized.
-   * @param methodName Name of the method performing the check.
+   * Ensures the service has been initialized before performing operations.
+   * @param methodName The name of the method performing the check.
    */
   private ensureInitialized(methodName: string): void {
     if (!this.initialized) {
-      const errorMsg = `ThreeService Error: Method '${methodName}' called before initialization. Call 'init(containerId)' first.`;
+      const errorMsg = `ThreeService Error: Method '${methodName}' called before initialization. Call 'init(container)' first.`;
       console.error(errorMsg);
       throw new Error(errorMsg);
     }
   }
 
   /**
-   * On service destroy, stop the render loop and perform any necessary cleanup.
+   * Cleans up resources when the service is destroyed.
    */
   ngOnDestroy(): void {
     this.stopRendering();

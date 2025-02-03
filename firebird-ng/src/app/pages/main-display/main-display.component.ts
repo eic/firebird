@@ -4,7 +4,7 @@ import {
   AfterViewInit,
   HostListener,
   Input,
-  ViewChild, OnDestroy, TemplateRef
+  ViewChild, OnDestroy, TemplateRef, ElementRef
 } from '@angular/core';
 import { DecimalPipe, NgIf, NgForOf, NgClass } from '@angular/common';
 
@@ -45,6 +45,9 @@ import * as THREE from 'three';
 import * as TWEEN from '@tweenjs/tween.js';
 import {EventDisplay} from "phoenix-event-display";
 import {HeaderService} from "../../services/header.service";
+
+import Stats from 'three/examples/jsm/libs/stats.module.js';
+
 
 
 /**
@@ -94,13 +97,23 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild('displayHeaderControls', { static: true }) displayHeaderControls!: TemplateRef<any>;
 
+  @ViewChild('eventDisplay')
+  eventDisplayDiv!: ElementRef;
 
+  // For referencing child components
+  @ViewChild(ShellComponent)
+  displayShellComponent!: ShellComponent;
+
+  @ViewChild(SceneTreeComponent)
+  geometryTreeComponent: SceneTreeComponent | null | undefined;
 
   // Some old UI properties
   currentTime = 0;
   maxTime = 200;
   minTime = 0;
   message = '';
+
+  private stats = new Stats();
 
   loaded: boolean = false;
   loadingProgress: number = 0;
@@ -118,7 +131,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // UI toggles
   isLeftPaneOpen: boolean = false;
-  isDarkTheme = false;
   isPhoenixMenuOpen: boolean = false; // formerly Phoenix menu, now just a UI toggle
   isSmallScreen: boolean = window.innerWidth < 768;
 
@@ -133,11 +145,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   // Phoenix API
   private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
 
-  // For referencing child components
-  @ViewChild(ShellComponent)
-  displayShellComponent!: ShellComponent;
-  @ViewChild(SceneTreeComponent)
-  geometryTreeComponent: SceneTreeComponent | null | undefined;
+
 
   constructor(
     private threeService: ThreeService,
@@ -267,6 +275,19 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     window.addEventListener('resize', () => {
       this.onRendererElementResize();
     });
+
+    // Initialize Stats
+     //this.eventDisplayDiv.nativeElement.appendChild(this.stats.dom); // Add stats to your container
+
+    // Position the stats panel (example: bottom-left)
+    const statsStyle = this.stats.dom.style;
+    statsStyle.position = 'absolute'; // Essential for positioning
+    statsStyle.bottom = '10px';      // Adjust as needed
+    statsStyle.left = '10px';       // Adjust as needed
+    // If you want to make it always on top:
+    statsStyle.zIndex = '100'; // Or some other high value
+    this.threeService.profileBeginFunc = this.stats.begin;
+    this.threeService.profileEndFunc = this.stats.end;
 
     // When sidebar is collapsed/opened, the main container, i.e. #eventDisplay offsetWidth is not yet updated.
     // This leads to a not proper resize  processing. We add 100ms delay before calling a function
