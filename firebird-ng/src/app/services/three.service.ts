@@ -9,11 +9,20 @@ import { HemisphereLight, DirectionalLight, AmbientLight, PointLight, SpotLight 
 export class ThreeService implements OnDestroy {
   /** Three.js core components */
   public scene!: THREE.Scene;
+  public sceneGeometry!: THREE.Group;
+  public sceneEvent!: THREE.Group;
+  public sceneHelpers!: THREE.Group;
   public renderer!: THREE.WebGLRenderer;
   public controls!: OrbitControls;
 
   /** Camera that is actually used */
   public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+
+  /** Optional clipping planes and logic. */
+  public clipPlanes = [
+    new THREE.Plane(new THREE.Vector3(0, -1, 0), 0),
+    new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+  ];
 
   /** Functions callbacks that help organize performance */
   public profileBeginFunc: (() => void) | null = null;
@@ -32,11 +41,7 @@ export class ThreeService implements OnDestroy {
   /** Callbacks to run each frame before rendering. */
   private frameCallbacks: Array<() => void> = [];
 
-  /** Optional clipping planes and logic. */
-  private clipPlanes = [
-    new THREE.Plane(new THREE.Vector3(0, -1, 0), 0),
-    new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
-  ];
+
   private clipIntersection: boolean = false;
 
   /** Initialization flag */
@@ -82,6 +87,21 @@ export class ThreeService implements OnDestroy {
     // 1) Create scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x3f3f3f); // Dark grey background
+
+    // Geometry scene tree
+    this.sceneGeometry = new THREE.Group();
+    this.sceneGeometry.name = 'Geometry';
+    this.scene.add(this.sceneGeometry);
+
+    // Event scene tree
+    this.sceneEvent = new THREE.Group();
+    this.sceneEvent.name = 'Event';
+    this.scene.add(this.sceneEvent);
+
+    // Lights scene tree
+    this.sceneHelpers = new THREE.Group();
+    this.sceneHelpers.name = 'Helpers';
+    this.scene.add(this.sceneHelpers);
 
     // 2) Create cameras
     this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 10000);
@@ -133,12 +153,12 @@ export class ThreeService implements OnDestroy {
   private setupLights(): void {
     this.ambientLight = new AmbientLight(0xffffff, 0.4);
     this.ambientLight.name = "Light-Ambient";
-    this.scene.add(this.ambientLight);
+    this.sceneHelpers.add(this.ambientLight);
 
     this.hemisphereLight = new HemisphereLight(0xffffff, 0x444444, 0.6);
     this.hemisphereLight.position.set(0, 200, 0);
     this.hemisphereLight.name = "Light-Hemisphere";
-    this.scene.add(this.hemisphereLight);
+    this.sceneHelpers.add(this.hemisphereLight);
 
     this.directionalLight = new DirectionalLight(0xffffff, 0.8);
     this.directionalLight.position.set(100, 200, 100);
@@ -148,13 +168,13 @@ export class ThreeService implements OnDestroy {
     this.directionalLight.shadow.mapSize.height = 512;
     this.directionalLight.shadow.camera.near = 0.5;
     this.directionalLight.shadow.camera.far = 1000;
-    this.scene.add(this.directionalLight);
+    this.sceneHelpers.add(this.directionalLight);
 
     this.pointLight = new PointLight(0xffffff, 0.5, 500);
     this.pointLight.position.set(-100, 100, -100);
     this.pointLight.castShadow = true;
     this.pointLight.name = "Light-Point";
-    this.scene.add(this.pointLight);
+    this.sceneHelpers.add(this.pointLight);
 
     this.spotLight = new SpotLight(0xffffff, 0.5);
     this.spotLight.position.set(0, 300, 0);
@@ -164,7 +184,7 @@ export class ThreeService implements OnDestroy {
     this.spotLight.distance = 1000;
     this.spotLight.castShadow = true;
     this.spotLight.name = "Light-Spot";
-    this.scene.add(this.spotLight);
+    this.sceneHelpers.add(this.spotLight);
   }
 
   /**
@@ -172,17 +192,20 @@ export class ThreeService implements OnDestroy {
    */
   private addDefaultObjects(): void {
     const gridHelper = new THREE.GridHelper(1000, 100);
-    this.scene.add(gridHelper);
+    gridHelper.name = "Grid";
+    this.sceneHelpers.add(gridHelper);
 
     const axesHelper = new THREE.AxesHelper(500);
-    this.scene.add(axesHelper);
+    axesHelper.name = "Axes";
+    this.sceneHelpers.add(axesHelper);
 
     const geometry = new THREE.BoxGeometry(100, 100, 100);
     const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
     const cube = new THREE.Mesh(geometry, material);
+    cube.name = "TestCube"
     cube.castShadow = true;
     cube.receiveShadow = true;
-    this.scene.add(cube);
+    this.sceneGeometry.add(cube);
   }
 
   /**
