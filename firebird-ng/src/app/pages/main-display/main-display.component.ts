@@ -48,6 +48,7 @@ import {EventDisplay} from "phoenix-event-display";
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {PerfStatsComponent} from "../../components/perf-stats/perf-stats.component";
 import {PerfService} from "../../services/perf.service";
+import {EventDisplayService} from "../../services/event-display.service";
 
 
 
@@ -156,11 +157,12 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     private settings: UserConfigService,
     private dataService: DataModelService,
     private urlService: UrlService,
-    private _snackBar: MatSnackBar,
+    private snackBar: MatSnackBar,
     private perfService: PerfService,
+    private eventDisplayService: EventDisplayService
   ) {}
 
-  // 1) MAIN INIT
+
   async ngOnInit() {
     // Initialize the ThreeService scene/camera/renderer/controls
     this.threeService.init('eventDisplay');
@@ -201,27 +203,36 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    // 2) LOAD GEOMETRY
-    try {
-      const { rootGeometry, threeGeometry } = await this.geomService.loadGeometry();
-      if (threeGeometry) {
-        // Optionally, attach geometry to a group "Geometries"
-        let geoGroup = this.threeService.scene.getObjectByName('Geometries') as THREE.Group;
-        if (!geoGroup) {
-          geoGroup = new THREE.Group();
-          geoGroup.name = 'Geometries';
-          this.threeService.scene.add(geoGroup);
-        }
-        geoGroup.add(threeGeometry);
+    // // 2) LOAD GEOMETRY
+    // try {
+    //   const { rootGeometry, threeGeometry } = await this.geomService.loadGeometry();
+    //   if (threeGeometry) {
+    //     // Optionally, attach geometry to a group "Geometries"
+    //     let geoGroup = this.threeService.scene.getObjectByName('Geometries') as THREE.Group;
+    //     if (!geoGroup) {
+    //       geoGroup = new THREE.Group();
+    //       geoGroup.name = 'Geometries';
+    //       this.threeService.scene.add(geoGroup);
+    //     }
+    //     geoGroup.add(threeGeometry);
+    //
+    //     // Process geometry if needed
+    //     this.threeGeometryProcessor.process(this.geomService.subdetectors);
+    //
+    //     this.loaded = true;
+    //   }
+    // } catch (err) {
+    //   console.error('ERROR LOADING GEOMETRY', err);
+    // }
 
-        // Process geometry if needed
-        this.threeGeometryProcessor.process(this.geomService.subdetectors);
+    this.eventDisplayService.loadGeometry().catch(error=>{
+      const msg = `Error loading geometry: ${error}`;
+      console.error(msg);
+      this.showError(msg);
+    }).then(value=>{
+      console.log("[main-display] Geometry loaded");
+    })
 
-        this.loaded = true;
-      }
-    } catch (err) {
-      console.error('ERROR LOADING GEOMETRY', err);
-    }
 
     // 3) LOAD DEX or other event data
     // example: load Dex data, then attach to an "EventData" group
@@ -275,16 +286,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       this.onRendererElementResize();
     });
 
-    // Initialize Stats
-     //this.eventDisplayDiv.nativeElement.appendChild(this.stats.dom); // Add stats to your container
-
-    // Position the stats panel (example: bottom-left)
-    const statsStyle = this.stats.dom.style;
-    statsStyle.position = 'absolute'; // Essential for positioning
-    statsStyle.bottom = '10px';      // Adjust as needed
-    statsStyle.left = '10px';       // Adjust as needed
-    // If you want to make it always on top:
-    statsStyle.zIndex = '100'; // Or some other high value
+    // Include performance stats:
     let this_obj = this;
     this.threeService.profileBeginFunc = ()=>this_obj.perfService.updateStats(this_obj.threeService.renderer);
     this.threeService.profileEndFunc = this.stats.end;
@@ -305,11 +307,22 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.displayShellComponent?.toggleLeftPane();
     this.isLeftPaneOpen = !this.isLeftPaneOpen;
   }
+
   toggleRightPane() {
     this.displayShellComponent?.toggleRightPane();
   }
+
   togglePhoenixMenu() {
     this.isPhoenixMenuOpen = !this.isPhoenixMenuOpen;
+  }
+
+  // Example function to show an error
+  showError(message: string) {
+    this.snackBar.open(message, 'Dismiss', {
+      duration: 5000, // Auto-dismiss after 5 seconds
+      verticalPosition: 'top', // Place at the top of the screen
+      panelClass: ['mat-mdc-snack-bar-error'] // Optional: Custom styling (MD3)
+    });
   }
 
   // 4) UI - window resize detection
@@ -496,7 +509,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
         trackInfo.trackNode.visible = false;
       }
     }
-    this._snackBar.open(`Showing event: ${eventName}`, 'Dismiss', {
+    this.snackBar.open(`Showing event: ${eventName}`, 'Dismiss', {
       duration: 2000,
       horizontalPosition: 'right',
       verticalPosition: 'top'

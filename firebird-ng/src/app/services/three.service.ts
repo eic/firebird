@@ -104,7 +104,7 @@ export class ThreeService implements OnDestroy {
     this.scene.add(this.sceneHelpers);
 
     // 2) Create cameras
-    this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 0.1, 10000);
+    this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 1, 40000);
     this.perspectiveCamera.position.set(0, 100, 200);
 
     this.orthographicCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10000);

@@ -8,7 +8,7 @@ import { DataModelService } from './data-model.service';
 import { UserConfigService } from './user-config.service';
 import { UrlService } from './url.service';
 
-import { getColorOrDefault } from '../utils/three.utils';
+import {disposeHierarchy, disposeNode, getColorOrDefault} from '../utils/three.utils';
 import { ThreeGeometryProcessor } from '../data-pipelines/three-geometry.processor';
 import { ThreeEventProcessor } from '../data-pipelines/three-event.processor';
 import { DataModelPainter } from '../painters/data-model-painter';
@@ -36,7 +36,7 @@ export class EventDisplayService {
 
   // Geometry
   private threeGeometryProcessor = new ThreeGeometryProcessor();
-  private defaultColor: Color = new Color(0x2fd691);
+  private defaultColor: Color = new Color(0x68698D);
   currentGeometry: string = 'All';
   private animateEventAfterLoad: boolean = false;
   private trackInfos: any | null = null; // Replace 'any' with the actual type
@@ -100,7 +100,7 @@ export class EventDisplayService {
     );
   }
 
-  stopAnimation(): void {
+  stopTimeAnimation(): void {
     if (this.tween) {
       this.tween.stop(); // Stops the tween if it is running
       this.tween = null; // Remove reference
@@ -113,7 +113,7 @@ export class EventDisplayService {
 
   animateCurrentTime(targetTime: number, duration: number): void {
     if (this.tween) {
-      this.stopAnimation();
+      this.stopTimeAnimation();
     }
     this.tween = new TWEEN.Tween({ currentTime: this.eventTime() })
       .to({ currentTime: targetTime }, duration)
@@ -125,7 +125,7 @@ export class EventDisplayService {
   }
 
   animateWithCollision() {
-    this.stopAnimation();
+    this.stopTimeAnimation();
     this.rewindTime();
     if (this.trackInfos) {
       for (let trackInfo of this.trackInfos) {
@@ -155,7 +155,7 @@ export class EventDisplayService {
   }
 
   exitTimedDisplay() {
-    this.stopAnimation();
+    this.stopTimeAnimation();
     this.rewindTime();
     this.painter.paint(null);
     this.animateEventAfterLoad = false;
@@ -173,25 +173,28 @@ export class EventDisplayService {
 
   /**
    * Load geometry
-   * @param initiallyVisible
    * @param scale
    */
-  async loadGeometry(initiallyVisible = true, scale = 10) {
-    let { rootGeometry, threeGeometry } =
-      await this.geomService.loadGeometry();
+  async loadGeometry(scale = 10, clearGeometry=true) {
+    let { rootGeometry, threeGeometry } = await this.geomService.loadGeometry();
     if (!threeGeometry) return;
-
-    const sceneGeometry = this.three.sceneGeometry;
 
     // Set geometry scale
     if (scale) {
       threeGeometry.scale.setScalar(scale);
     }
 
-    sceneGeometry.add(threeGeometry);
+    const sceneGeo = this.three.sceneGeometry;
 
-    // Now we want to change the materials
-    sceneGeometry.traverse((child: any) => {
+    // There should be only one geometry if clearGeometry=true
+    if(clearGeometry && sceneGeo.children.length > 0) {
+      disposeHierarchy(sceneGeo, /* disposeSelf= */ false);
+    }
+
+    sceneGeo.add(threeGeometry);
+
+    // Now we want to set default materials
+    sceneGeo.traverse((child: any) => {
       if (child.type !== 'Mesh' || !child?.material?.isMaterial) {
         return;
       }
@@ -200,7 +203,6 @@ export class EventDisplayService {
       child.userData['size'] = 1; //this.importManager.getObjectSize(child);
 
       // Handle the material of the child
-
       const color = getColorOrDefault(child.material, this.defaultColor);
       const side = DoubleSide;
 
@@ -239,7 +241,7 @@ export class EventDisplayService {
     this.threeGeometryProcessor.process(this.geomService.subdetectors);
 
     // Now we want to change the materials
-    sceneGeometry.traverse((child: any) => {
+    sceneGeo.traverse((child: any) => {
       if (!child?.material?.isMaterial) {
         return;
       }
@@ -288,7 +290,7 @@ export class EventDisplayService {
     if (typeof Worker !== 'undefined') {
       // Create a new
       const worker = new Worker(
-        new URL('../../workers/event-loader.worker.ts', import.meta.url)
+        new URL('../workers/event-loader.worker.ts', import.meta.url)
       );
       worker.onmessage = ({ data }) => {
         for (let key in data) {
