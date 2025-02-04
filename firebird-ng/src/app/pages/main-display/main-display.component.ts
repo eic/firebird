@@ -44,9 +44,10 @@ import { AngularSplitModule } from 'angular-split';
 import * as THREE from 'three';
 import * as TWEEN from '@tweenjs/tween.js';
 import {EventDisplay} from "phoenix-event-display";
-import {HeaderService} from "../../services/header.service";
 
 import Stats from 'three/examples/jsm/libs/stats.module.js';
+import {PerfStatsComponent} from "../../components/perf-stats/perf-stats.component";
+import {PerfService} from "../../services/perf.service";
 
 
 
@@ -63,33 +64,34 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
     selector: 'app-main-display',
     templateUrl: './main-display.component.html',
     styleUrls: ['./main-display.component.scss'],
-    imports: [
-        // Angular
-        DecimalPipe,
-        NgIf,
-        NgForOf,
-        NgClass,
-        // Material
-        MatSlider,
-        MatSliderThumb,
-        MatIcon,
-        MatButton,
-        MatTooltip,
-        MatFormField,
-        MatSelect,
-        MatOption,
-        MatIconButton,
-        // 3rd party
-        AngularSplitModule,
-        // Custom components
-        SceneTreeComponent,
-        ShellComponent,
-        ToolPanelComponent,
-        EventSelectorComponent,
-        AutoRotateComponent,
-        ThemeSwitcherComponent,
-        ObjectClippingComponent
-    ]
+  imports: [
+    // Angular
+    DecimalPipe,
+    NgIf,
+    NgForOf,
+    NgClass,
+    // Material
+    MatSlider,
+    MatSliderThumb,
+    MatIcon,
+    MatButton,
+    MatTooltip,
+    MatFormField,
+    MatSelect,
+    MatOption,
+    MatIconButton,
+    // 3rd party
+    AngularSplitModule,
+    // Custom components
+    SceneTreeComponent,
+    ShellComponent,
+    ToolPanelComponent,
+    EventSelectorComponent,
+    AutoRotateComponent,
+    ThemeSwitcherComponent,
+    ObjectClippingComponent,
+    PerfStatsComponent
+  ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input()
@@ -155,7 +157,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     private dataService: DataModelService,
     private urlService: UrlService,
     private _snackBar: MatSnackBar,
-    private headerService: HeaderService
+    private perfService: PerfService,
   ) {}
 
   // 1) MAIN INIT
@@ -253,9 +255,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       console.log(e.key);
     });
-
-    // Set the custom controls in the header
-    this.headerService.setMiddleControls(this.displayHeaderControls);
   }
 
   // 2) AFTER VIEW INIT => handle resizing with DisplayShell or window
@@ -286,12 +285,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     statsStyle.left = '10px';       // Adjust as needed
     // If you want to make it always on top:
     statsStyle.zIndex = '100'; // Or some other high value
-    this.threeService.profileBeginFunc = this.stats.begin;
+    let this_obj = this;
+    this.threeService.profileBeginFunc = ()=>this_obj.perfService.updateStats(this_obj.threeService.renderer);
     this.threeService.profileEndFunc = this.stats.end;
 
     // When sidebar is collapsed/opened, the main container, i.e. #eventDisplay offsetWidth is not yet updated.
     // This leads to a not proper resize  processing. We add 100ms delay before calling a function
-    const this_obj = this
+
     const resizeInvoker = function(){
       setTimeout(() => {
         this_obj.onRendererElementResize();
@@ -323,10 +323,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     // Clear the custom controls when leaving the page
-    this.headerService.setMiddleControls(null);
   }
 
-  // 5) EX-GEOMETRY STUFF
+
 
   logRendererInfo() {
     // Access the THREE.WebGLRenderer from threeService

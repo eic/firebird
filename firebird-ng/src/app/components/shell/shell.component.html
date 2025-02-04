@@ -113,7 +113,21 @@
   </div>
 
   <!-- FOOTER -->
+  <!-- FOOTER -->
   <div class="footer">
-    <ng-content select="[footer]"></ng-content>
+    <!-- Left part of footer -->
+    <div class="footer-left">
+      <ng-content select="[footer-left]"></ng-content>
+    </div>
+
+    <!-- Center part of footer (existing 'footer' slot) -->
+    <div class="footer-center">
+      <ng-content select="[footer]"></ng-content>
+    </div>
+
+    <!-- Right part of footer -->
+    <div class="footer-right">
+      <ng-content select="[footer-right]"></ng-content>
+    </div>
   </div>
 </div>

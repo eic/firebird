@@ -1,0 +1,25 @@
+<!-- performance-stats.component.html -->
+<div class="perf-counter-wrapper">
+  <table class="perf-table">
+    <tr>
+      <td class="perf-item">
+        <span class="perf-label" title="Frames Per Second">FPS</span>
+        <span class="perf-value">{{ perf.fps | number:'1.0-0' }}</span>
+      </td>
+      <td class="perf-item">
+        <span class="perf-label" title="Average Frame Time (ms)">CPU</span>
+        <span class="perf-value">{{ perf.cpu | number:'1.0-2' }}</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="perf-item">
+        <span class="perf-label" title="Draw Calls">DC</span>
+        <span class="perf-value">{{ perf.calls }}</span>
+      </td>
+      <td class="perf-item">
+        <span class="perf-label" title="Triangles">Tris</span>
+        <span class="perf-value">{{ perf.triangles }}</span>
+      </td>
+    </tr>
+  </table>
+</div>
