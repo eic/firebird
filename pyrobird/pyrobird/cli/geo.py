@@ -59,16 +59,8 @@ def _load_rules(rule_file):
 @click.pass_context
 def geo(ctx):
     """
-    Operations with database (create tables, erase everything, etc)
+    Operations with geometry
     """
-
-    # assert isinstance(ctx, click.Context)
-    # context = ctx.obj
-    # assert isinstance(context, CasdmAppContext)
-    # if not context.connection_str:
-    #     ctx.fail("ERROR(!) Connection string is not set. Needs it to connect to BD")
-    #     # click.echo(, err=True)
-    #     # click.echo(ctx.get_help())
 
     if ctx.invoked_subcommand is None:
         print("No command was specified")

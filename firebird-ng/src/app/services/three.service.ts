@@ -2,6 +2,7 @@ import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { HemisphereLight, DirectionalLight, AmbientLight, PointLight, SpotLight } from 'three';
+import {PerfService} from "./perf.service";
 
 @Injectable({
   providedIn: 'root',
@@ -57,7 +58,9 @@ export class ThreeService implements OnDestroy {
   private pointLight!: PointLight; // Optional
   private spotLight!: SpotLight; // Optional
 
-  constructor(private ngZone: NgZone) {
+  constructor(
+    private ngZone: NgZone,
+    private perfService: PerfService) {
     // Empty constructor – initialization happens in init()
   }
 
@@ -248,11 +251,14 @@ export class ThreeService implements OnDestroy {
 
     try {
       this.profileBeginFunc?.();
+      this.perfService.updateStats(this.renderer);
       for (const cb of this.frameCallbacks) {
         cb();
       }
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
+
+      //TODO this.perfService.profileEnd(this.renderer);
       this.profileEndFunc?.();
     } catch (error) {
       console.error('(!!!) ThreeService Render Loop Error:', error);
@@ -382,5 +388,19 @@ export class ThreeService implements OnDestroy {
   ngOnDestroy(): void {
     this.stopRendering();
     // Additional cleanup if necessary
+  }
+
+  logRendererInfo() {
+    // Access the THREE.WebGLRenderer from threeService
+    const renderer = this.renderer;
+    const info = renderer.info;
+    console.log('Draw calls:', info.render.calls);
+    console.log('Triangles:', info.render.triangles);
+    console.log('Points:', info.render.points);
+    console.log('Lines:', info.render.lines);
+    console.log('Geometries in memory:', info.memory.geometries);
+    console.log('Textures in memory:', info.memory.textures);
+    console.log('Programs:', info.programs?.length);
+    console.log(info.programs);
   }
 }

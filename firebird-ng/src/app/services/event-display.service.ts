@@ -27,8 +27,8 @@ export class EventDisplayService {
   // Time
   private eventTime: WritableSignal<number> = signal(0);
   public readonly eventTime$: Signal<number> = this.eventTime.asReadonly();
-  private maxTime = 200;
-  private minTime = 0;
+  public maxTime = 200;
+  public minTime = 0;
 
   // Time animation
   private tween: TWEEN.Tween<any> | null = null;
@@ -48,7 +48,7 @@ export class EventDisplayService {
   private animationManager: AnimationManager;
 
   constructor(
-    private three: ThreeService,
+    public three: ThreeService,
     private geomService: GeometryService,
     private settings: UserConfigService,
     private dataService: DataModelService,
@@ -71,9 +71,10 @@ export class EventDisplayService {
    * Initialize the default three.js scene
    * @param container
    */
-  initThree(container: HTMLElement) {
+  initThree(container: string|HTMLElement) {
     this.three.init(container);
     this.painter.setThreeSceneParent(this.three.sceneEvent);
+    this.three.startRendering();
   }
 
 
