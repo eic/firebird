@@ -21,45 +21,28 @@ export class DataModelService {
   public currentEntry = signal<Entry | null>(null);
 
 
-  constructor(private userConfig: UserConfigService,
-              private serverConfig: ServerConfigService,
-              private urlService: UrlService,
+  constructor(private urlService: UrlService,
               private http: HttpClient
               ) {
   }
 
 
-  async loadEdm4EicData(entryNames: string = "0"): Promise<DataExchange|null> {
+  async loadEdm4EicData(url:string, entryNames: string = "0"): Promise<DataExchange|null> {
     try {
-
-      let userInput = this.userConfig.edm4eicEventSource.value;
       // TODO url aliases if(this.serverConfig.config.)
       // resolveProtocolAlias()
 
-      if(!userInput) {
-        console.log("[DataModelService] No data source specified. I.e. !this.userConfig.edm4eicEventSource.value");
+      if(!url) {
+        console.log("[DataModelService.loadEdm4EicData] No data source specified. I.e. !this.userConfig.edm4eicEventSource.value");
         return null;
       }
 
       // If we were able to get baseURL, we use it with endpoint
       // Otherwise we just open whatever...
-      let url = this.urlService.resolveConvertUrl(userInput, "edm4eic", entryNames);
+      let finalUrl = this.urlService.resolveConvertUrl(url, "edm4eic", entryNames);
 
-
-      // // if no protocol specified, assume local
-      // if(!userInput.includes('://')) {
-      //   userInput = "local://" + userInput;
-      // }
-      //
-      // if(userInput.startsWith("local://")) {
-      //   userInput = this.urlService.resolveLocalhostUrl(userInput);
-      // }
-
-      const jsonData = await fetchTextFile(url);
-      //   //this.http.get(url, { responseType: 'text' })
-      // );
-
-
+      console.log(`[DataModelService.loadDexData] Fetching: ${finalUrl}`);
+      const jsonData = await fetchTextFile(finalUrl);
 
       const dexData = JSON.parse(jsonData);
       let data = DataExchange.fromDexObj(dexData);
@@ -67,7 +50,7 @@ export class DataModelService {
       console.log(data)
       return data;
     } catch (error) {
-      console.error(`Failed to load data: ${error}`);
+      console.error(`[DataModelService.loadEdm4EicData] Failed to load data: ${error}`);
       console.log(`Default config will be used`);
     } finally {
     }
@@ -75,35 +58,44 @@ export class DataModelService {
   }
 
 
-  async loadDexData(): Promise<DataExchange|null> {
+  async loadDexData(url: string): Promise<DataExchange|null> {
     try {
 
-      let userInput = this.userConfig.trajectoryEventSource.value;
-      // TODO url aliases if(this.serverConfig.config.)
-      // resolveProtocolAlias()
+      //let userInput = this.userConfig.dexJsonEventSource.value;
 
-      if(!userInput) {
-        console.log("[DataModelService] No data source specified. I.e. !this.userConfig.edm4eicEventSource.value");
+
+
+      if(!url) {
+        console.log("[DataModelService.loadDexData] No data source specified. I.e. !this.userConfig.edm4eicEventSource.value");
         return null;
       }
 
-      if(!userInput.endsWith("firebird.json") &&
-         !userInput.endsWith("firebird.json.zip") &&
-         !userInput.endsWith("firebird.zip"))
+      if(!url.endsWith("firebird.json") &&
+         !url.endsWith("firebird.json.zip") &&
+         !url.endsWith("firebird.zip"))
       {
         console.log("[DataModelService.loadDexData] Wrong extension. I.e. !this.userConfig.edm4eicEventSource.value");
       }
 
-      let url = this.urlService.resolveDownloadUrl(userInput);
+      // TODO better way to resolve url aliases if(this.serverConfig.config.)
+      let finalUrl = url;
+      if(url.startsWith("asset://")) {
+        finalUrl = "/assets/" + url.substring("asset://".length);
+      }
+      else if(!url.startsWith("http://") && !url.startsWith("https://")) {
+        finalUrl = this.urlService.resolveDownloadUrl(url);
+      }
 
       let dexData = {};
 
-      if(url.endsWith("zip")) {
-        dexData = await loadZipFileEvents(url);
+      console.log(`[DataModelService.loadDexData] Loading: ${finalUrl}`);
+      if(finalUrl.endsWith("zip")) {
+        dexData = await loadZipFileEvents(finalUrl);
       } else {
-        dexData = await loadJSONFileEvents(url);
+        dexData = await loadJSONFileEvents(finalUrl);
       }
 
+      console.log(`[DataModelService.loadDexData] Deserializing from DEX`);
       let data = DataExchange.fromDexObj(dexData);
       console.log(data)
 
@@ -117,8 +109,8 @@ export class DataModelService {
 
       return data;
     } catch (error) {
-      console.error(`Failed to load data: ${error}`);
-      console.log(`Default config will be used`);
+      console.error(`[DataModelService.loadDexData] Failed to load data: ${error}`);
+      console.log(`[DataModelService.loadDexData] Default config will be used`);
     } finally {
     }
     return null;

@@ -7,19 +7,22 @@ import { Vector3 } from 'three';
 import { Subscription } from 'rxjs';
 import {MatMenu, MatMenuItem, MatMenuTrigger} from '@angular/material/menu';
 import {MatIcon} from "@angular/material/icon";
+import {NgForOf, NgIf} from "@angular/common";
 
 @Component({
     selector: 'app-custom-view-options',
     templateUrl: './view-options.component.html',
     styleUrls: ['./view-options.component.scss'],
-    imports: [
-        MatMenu,
-        MatCheckbox,
-        MatIcon,
-        MatMenuItem,
-        MatMenuTrigger,
-        // the relevant Material modules, e.g. MatMenu, MatCheckbox, etc.
-    ]
+  imports: [
+    MatMenu,
+    MatCheckbox,
+    MatIcon,
+    MatMenuItem,
+    MatMenuTrigger,
+    NgForOf,
+    NgIf,
+    // the relevant Material modules, e.g. MatMenu, MatCheckbox, etc.
+  ]
 })
 export class ViewOptionsComponent implements OnInit, OnDestroy {
   @ViewChild(MatMenuTrigger) trigger!: MatMenuTrigger;

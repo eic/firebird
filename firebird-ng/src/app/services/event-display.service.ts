@@ -174,10 +174,9 @@ export class EventDisplayService {
 
   /**
    * Load geometry
-   * @param scale
    */
-  async loadGeometry(scale = 10, clearGeometry=true) {
-    let { rootGeometry, threeGeometry } = await this.geomService.loadGeometry();
+  async loadGeometry(url:string, scale = 10, clearGeometry=true) {
+    let { rootGeometry, threeGeometry } = await this.geomService.loadGeometry(url);
     if (!threeGeometry) return;
 
     // Set geometry scale
@@ -272,7 +271,7 @@ export class EventDisplayService {
    * @private
    */
   private loadEvents() {
-    let eventSource = this.settings.trajectoryEventSource.value;
+    let eventSource = this.settings.dexJsonEventSource.value;
     eventSource = this.urlService.resolveDownloadUrl(eventSource);
     let eventConfig = {
       eventFile:
@@ -312,32 +311,9 @@ export class EventDisplayService {
     }
   }
 
-  /**
-   * Load data from EDM4HEP
-   */
-  async loadEdm4hepData() {
-    const data = await this.dataService.loadEdm4EicData();
 
-    if (data == null) {
-      console.warn(
-        'DataService.loadEdm4EicData() Received data is null or undefined'
-      );
-      return;
-    }
-
-    if (data.entries?.length ?? 0 > 0) {
-      this.painter.setEntry(data.entries[0]);
-      this.painter.paint(this.eventTime());
-    } else {
-      console.warn(
-        'DataService.loadEdm4EicData() Received data had no entries'
-      );
-      console.log(data);
-    }
-  }
-
-  async loadDexData() {
-    const data = await this.dataService.loadDexData();
+  async loadDexData(url:string) {
+    const data = await this.dataService.loadDexData(url);
     if (data == null) {
       console.warn(
         'DataService.loadDexData() Received data is null or undefined'

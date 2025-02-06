@@ -7,7 +7,7 @@ import { ConfigProperty } from '../utils/config-property';
 export class UserConfigService {
   public selectedGeometry: ConfigProperty<string>;
   public onlyCentralDetector: ConfigProperty<boolean>;
-  public trajectoryEventSource: ConfigProperty<string>;
+  public dexJsonEventSource: ConfigProperty<string>;
   public edm4eicEventSource: ConfigProperty<string>;
   public localServerUseApi: ConfigProperty<boolean>;
   public localServerUrl: ConfigProperty<string>;
@@ -20,7 +20,7 @@ export class UserConfigService {
   constructor() {
     this.selectedGeometry = new ConfigProperty('geometry.selectedGeometry', 'epic-central-optimized');
     this.onlyCentralDetector = new ConfigProperty('geometry.onlyCentralDetector', true);
-    this.trajectoryEventSource = new ConfigProperty('events.trajectoryEventsSource', '');
+    this.dexJsonEventSource = new ConfigProperty('events.trajectoryEventsSource', '');
     this.edm4eicEventSource = new ConfigProperty('events.edm4eicEventsSource', '');
     this.localServerUseApi = new ConfigProperty('server.useApi', false);
     this.localServerUrl = new ConfigProperty('server.url', 'http://localhost:5454');

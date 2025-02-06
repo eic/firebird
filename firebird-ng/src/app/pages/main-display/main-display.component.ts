@@ -50,6 +50,7 @@ import {PerfStatsComponent} from "../../components/perf-stats/perf-stats.compone
 import {PerfService} from "../../services/perf.service";
 import {EventDisplayService} from "../../services/event-display.service";
 import {EventTimeControlComponent} from "../../components/event-time-control/event-time-control.component";
+import {ServerConfigService} from "../../services/server-config.service";
 
 
 
@@ -132,10 +133,11 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
 
   constructor(
-
     private controller: GameControllerService,
     private snackBar: MatSnackBar,
-    public eventDisplay: EventDisplayService
+    public eventDisplay: EventDisplayService,
+    private userConfig: UserConfigService,
+    private serverConfig: ServerConfigService,
   ) {}
 
 
@@ -154,15 +156,40 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
 
-    // Load geometry
-    this.eventDisplay.loadGeometry().catch(error=>{
-      const msg = `Error loading geometry: ${error}`;
-      console.error(`[main-display]: ${msg}`);
-      this.showError(msg);
-    }).then(value=>{
-      console.log("[main-display]: Geometry loaded");
-      this.updateSceneTreeComponent();
-    })
+    this.userConfig.dexJsonEventSource.subject.subscribe(url => {
+      if(!url || url.trim().length === 0) {
+        console.log("[main-display]: No data source specified. Skip loadDexData ");
+        return;
+      }
+
+      this.eventDisplay.loadDexData(url).catch(error=>{
+        const msg = `Error loading events: ${error}`;
+        console.error(`[main-display]: ${msg}`);
+        this.showError(msg);
+      }).then(value=>{
+        console.log("[main-display]: Event loaded");
+        this.updateSceneTreeComponent();
+      });
+    });
+
+    this.userConfig.selectedGeometry.subject.subscribe(url =>{
+      if(!url || url.trim().length === 0) {
+        console.log("[main-display]: No data source specified. Skip loadGeometry ");
+        return;
+      }
+      // Load geometry
+      this.eventDisplay.loadGeometry(url).catch(error=>{
+        const msg = `Error loading geometry: ${error}`;
+        console.error(`[main-display]: ${msg}`);
+        this.showError(msg);
+      }).then(value=>{
+        console.log("[main-display]: Geometry loaded");
+        this.updateSceneTreeComponent();
+      });
+    });
+
+
+
 
 
 

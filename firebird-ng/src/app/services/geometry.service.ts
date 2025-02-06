@@ -45,8 +45,7 @@ export class GeometryService {
 
   public groupsByDetName: Map<string, string>;
 
-  constructor(private settings: UserConfigService,
-              private urlService: UrlService) {
+  constructor(private urlService: UrlService) {
     this.groupsByDetName = new Map<string,string> ([
       ["SolenoidBarrel_assembly_0", GROUP_MAGNETS],
       ["SolenoidEndcapP_1", GROUP_MAGNETS],
@@ -99,7 +98,7 @@ export class GeometryService {
   }
 
 
-  async loadGeometry(): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
+  async loadGeometry(url:string): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
 
     this.subdetectors = [];
     //let url: string = 'assets/epic_pid_only.root';
@@ -107,15 +106,18 @@ export class GeometryService {
     // let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
     // >oO let objectName = 'default';
 
-    let url = this.settings.selectedGeometry.value !== DEFAULT_GEOMETRY ? this.settings.selectedGeometry.value:
-      'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
-    url = this.urlService.resolveDownloadUrl(url);
+    if(url === DEFAULT_GEOMETRY) {
+      url = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
+    }
+    // TODO check aliases
+
+    const finalUrl = this.urlService.resolveDownloadUrl(url);
 
     console.time('[GeometryService]: Total load geometry time');
-    console.log(`[GeometryService]: Loading file ${url}`)
+    console.log(`[GeometryService]: Loading file ${finalUrl}`)
 
     console.time('[GeometryService]: Open root file');
-    const file = await openFile(url);
+    const file = await openFile(finalUrl);
     // >oO debug console.log(file);
     console.timeEnd('[GeometryService]: Open root file');
 

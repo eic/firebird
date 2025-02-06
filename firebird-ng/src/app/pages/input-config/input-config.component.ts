@@ -48,6 +48,15 @@ import {ShellComponent} from "../../components/shell/shell.component";
 })
 export class InputConfigComponent implements OnInit, AfterViewInit {
 
+  @ViewChild('geometrySelect')
+  geometrySelect!: ResourceSelectComponent;
+
+  @ViewChild('edm4eicSelect')
+  edm4eicSelect!: ResourceSelectComponent;
+
+  @ViewChild('dexJsonSelect')
+  dexJsonSelect!: ResourceSelectComponent;
+
   selectedEventSource = new FormControl('');
   onlyCentralDetector: FormControl<boolean | null> = new FormControl(true);
   serverUseApi: FormControl<boolean | null> = new FormControl(false);
@@ -131,7 +140,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     // Now that the resource selects are available
     this.bindConfigToControl(this.geometrySelect.value, this.userConfigService.selectedGeometry);
     this.bindConfigToControl(this.edm4eicSelect.value, this.userConfigService.edm4eicEventSource);
-    this.bindConfigToControl(this.trajectorySelect.value, this.userConfigService.trajectoryEventSource);
+    this.bindConfigToControl(this.dexJsonSelect.value, this.userConfigService.dexJsonEventSource);
   }
 
   ngOnInit(): void {
@@ -141,13 +150,4 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
 
     this.firebirdConfig = this.firebirdConfigService.config;
   }
-
-  @ViewChild('geometrySelect')
-  geometrySelect!: ResourceSelectComponent;
-
-  @ViewChild('edm4eicSelect')
-  edm4eicSelect!: ResourceSelectComponent;
-
-  @ViewChild('trajectorySelect')
-  trajectorySelect!: ResourceSelectComponent;
 }

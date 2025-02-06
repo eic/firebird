@@ -23,21 +23,21 @@
           </div>
 
           <div class="section">
-            <h3>Trajectories Event Source</h3>
+            <h3>Event Source: JSON</h3>
             <firebird-resource-select
-              #trajectorySelect
+              #dexJsonSelect
               [options]="trajectoryOptions"
-              label="Trajectories event source file">
+              label="Load events from JSON files. Such files can be generated with 'pyrobird convert', merge or other tools">
             </firebird-resource-select>
           </div>
 
           <div class="section">
-            <h3>Edm4Eic Event Source</h3>
+            <h3>Event Source: EDM4EIC</h3>
             <p>Select file with EDM4EIC data</p>
             <firebird-resource-select
               #edm4eicSelect
               [options]="edm4eicOptions"
-              label="EDM4EIC file">
+              label="Load EDM4EIC .root Edm4Eic (this operation requires backend to be running)">
             </firebird-resource-select>
           </div>
         </mat-card-content>
