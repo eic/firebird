@@ -42,9 +42,14 @@ def guess_output_name(input_entry, output_extension='.firebird.json'):
     "-e", "--entries", "entries_str",  default="0",
     help="Entry/event number to convert. Could be value, comma separated list or range. E.g '--entry=1,3-5,8'"
 )
+@click.option(
+    "-c", "--collections", "collections_str", default="",
+    help="Comma-separated list of collection types to convert. "
+         "For example: 'tracker_hits,tracks'."
+)
 # TODO @click.option("-t", "--type", "input_type", default=None, help="Input file type. Currently only edm4eic supported")
 @click.argument("filename", required=True)
-def convert(filename, output_file, entries_str):
+def convert(filename, output_file, entries_str, collections_str):
     """
     Converts an input EDM4eic ROOT file to a Firebird-compatible JSON file.
 
@@ -59,7 +64,12 @@ def convert(filename, output_file, entries_str):
     Use `-o -` or `--output -` to output the JSON data to stdout instead of a file.
     This allows the command to be used in pipelines.
 
+    Use `-c` or `--collections` to specify specific collections to convert:
+      - tracker_hits  - edm4eic::TrackerHitData
+      - tracks        - edm4eic::TrackSegmentData with associated tracks
+
     Currently, only EDM4eic format is supported.
+
 
     **Example usage:**
 
@@ -67,6 +77,7 @@ def convert(filename, output_file, entries_str):
         convert mydata.root
         convert mydata.root --output output.firebird.json
         convert mydata.root --output - | less
+        convert mydata.root --collections=tracks
     """
     import uproot
 
@@ -84,6 +95,11 @@ def convert(filename, output_file, entries_str):
     # Parse use entries input
     entries = parse_entry_numbers(entries_str)
 
+    # Parse collections string
+    collections = None
+    if collections_str:
+        collections = [x.strip() for x in collections_str.split(',') if x.strip()]
+
     # Do we have valid entries?
     for entry_index in entries:
         if entry_index > num_entries - 1:
@@ -91,9 +107,13 @@ def convert(filename, output_file, entries_str):
                        f"but entry index={entry_index} is outside of total num_entries={num_entries}"
             raise ValueError(err_msg)
 
-
     # Extract the first event from the tree
-    event = edm4eic_to_dict(tree, entries, origin_info={"file": filename})
+    origin_info = {
+        "file": filename,
+        "entries_count": num_entries
+    }
+
+    event = edm4eic_to_dict(tree, entries, origin_info, collections=collections)
 
     # Convert the event data to JSON format
     json_data = json.dumps(event)
