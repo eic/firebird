@@ -256,14 +256,20 @@ export class ThreeService implements OnDestroy {
     this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
 
     try {
+      // Profiling start
       this.profileBeginFunc?.();
       this.perfService.updateStats(this.renderer);
+
+      // Run all custom/users callbacks
       for (const cb of this.frameCallbacks) {
         cb();
       }
+
+      // Update three components
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
 
+      // Profiling end
       //TODO this.perfService.profileEnd(this.renderer);
       this.profileEndFunc?.();
     } catch (error) {
@@ -278,7 +284,6 @@ export class ThreeService implements OnDestroy {
    * @param callback Function to execute each frame.
    */
   addFrameCallback(callback: () => void): void {
-    this.ensureInitialized('addFrameCallback');
     if (!this.frameCallbacks.includes(callback)) {
       this.frameCallbacks.push(callback);
     } else {
@@ -291,7 +296,6 @@ export class ThreeService implements OnDestroy {
    * @param callback The callback function to remove.
    */
   removeFrameCallback(callback: () => void): void {
-    this.ensureInitialized('removeFrameCallback');
     const index = this.frameCallbacks.indexOf(callback);
     if (index !== -1) {
       this.frameCallbacks.splice(index, 1);

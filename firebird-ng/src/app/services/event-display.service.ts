@@ -1,7 +1,7 @@
 import { Injectable, signal, effect, Signal, WritableSignal } from '@angular/core';
 
 import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Scene, Vector3} from 'three';
-import * as TWEEN from '@tweenjs/tween.js';
+import { Group as TweenGroup, Tween, Easing } from '@tweenjs/tween.js';
 import { ThreeService } from './three.service';
 import { GeometryService } from './geometry.service';
 import { DataModelService } from './data-model.service';
@@ -33,7 +33,8 @@ export class EventDisplayService {
   public minTime = 0;
 
   // Time animation
-  private tween: TWEEN.Tween<any> | null = null;
+  private tweenGroup = new TweenGroup();
+  private tween: Tween<any> | null = null;
   private beamAnimationTime: number = 1000;
 
   // Geometry
@@ -101,6 +102,11 @@ export class EventDisplayService {
     this.three.init(container);
     this.painter.setThreeSceneParent(this.three.sceneEvent);
     this.three.startRendering();
+
+    // We need this to update the animation group
+    this.three.addFrameCallback(()=> {
+      this.tweenGroup.update();
+    })
   }
 
 
@@ -142,9 +148,10 @@ export class EventDisplayService {
     if (this.tween) {
       this.stopTimeAnimation();
     }
-    this.tween = new TWEEN.Tween({ currentTime: this.eventTime() })
+    this.tween = new Tween({ currentTime: this.eventTime() }, this.tweenGroup)
       .to({ currentTime: targetTime }, duration)
       .onUpdate((obj) => {
+        console.log(obj.currentTime);
         this.updateEventTime(obj.currentTime);
       })
       // .easing(TWEEN.Easing.Quadratic.In) // This can be changed to other easing functions
