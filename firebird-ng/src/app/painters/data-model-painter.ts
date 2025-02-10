@@ -10,7 +10,14 @@ import {ComponentPainter, ComponentPainterConstructor} from "./component-painter
 import {BoxTrackerHitComponent} from "../model/box-tracker-hit.component";
 import {BoxTrackerHitPainter} from "./box-tracker-hit.painter";
 import {BoxTrackerHitSimplePainter} from "./box-tracker-hit-simple.painter";
+import {PointTrajectoryComponent} from "../model/point-trajectory.event-component";
+import {PointTrajectoryPainter} from "./point-trajectory.painter";
 
+export enum DisplayMode
+{
+  Timed = "timed",
+  Timeless = "timeless"
+}
 
 export class DataModelPainter {
   private threeParentNode: Object3D | null = null;
@@ -23,6 +30,7 @@ export class DataModelPainter {
     // Register builtin painters
     //this.registerPainter(BoxTrackerHitComponent.type, BoxTrackerHitPainter);
     this.registerPainter(BoxTrackerHitComponent.type, BoxTrackerHitSimplePainter);
+    this.registerPainter(PointTrajectoryComponent.type, PointTrajectoryPainter);
 
   }
 
@@ -35,6 +43,10 @@ export class DataModelPainter {
       painter.dispose();
     }
     this.painters = [];
+  }
+
+  public getEntry(): Entry|null {
+    return this.entry;
   }
 
   public setEntry(entry: Entry): void {

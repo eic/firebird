@@ -122,11 +122,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   private geometryGroupSwitchingIndex = ALL_GROUPS.length;
   currentGeometry: string = 'All';
 
-
   // UI toggles
   isLeftPaneOpen: boolean = false;
-  isPhoenixMenuOpen: boolean = false; // formerly Phoenix menu, now just a UI toggle
-  isSmallScreen: boolean = window.innerWidth < 768;
 
 
   // Phoenix API
@@ -189,11 +186,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
 
-
-
-
-
-
     // // 3) LOAD DEX or other event data
     // // example: load Dex data, then attach to an "EventData" group
     // const dexData = await this.dataService.loadDexData();
@@ -251,9 +243,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.displayShellComponent?.toggleRightPane();
   }
 
-  togglePhoenixMenu() {
-    this.isPhoenixMenuOpen = !this.isPhoenixMenuOpen;
-  }
 
   // Example function to show an error
   showError(message: string) {
@@ -264,14 +253,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  // 4) UI - window resize detection
-  @HostListener('window:resize', ['$event'])
-  onResize(event: any) {
-    this.isSmallScreen = event.target.innerWidth < 768;
-    if (!this.isSmallScreen) {
-      this.isPhoenixMenuOpen = true;
-    }
-  }
 
   ngOnDestroy(): void {
     // Clear the custom controls when leaving the page
@@ -332,10 +313,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   private updateSceneTreeComponent() {
     // Example: rename lights
     const scene = this.eventDisplay.three.scene;
-    if (scene && scene.children.length > 2) {
-      if (scene.children[0]) scene.children[0].name = 'Ambient light';
-      if (scene.children[1]) scene.children[1].name = 'Direct. light';
-    }
     if (this.geometryTreeComponent) {
       this.geometryTreeComponent.refreshSceneTree();
     }

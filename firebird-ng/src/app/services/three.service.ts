@@ -118,7 +118,7 @@ export class ThreeService implements OnDestroy {
     this.camera = this.perspectiveCamera;
     this.isOrthographic = false;
 
-    // 3) Create renderer
+    // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.localClippingEnabled = false;
@@ -128,25 +128,31 @@ export class ThreeService implements OnDestroy {
     // Append renderer to the container
     this.containerElement.appendChild(this.renderer.domElement);
 
-    // 4) Create OrbitControls
+    // Create OrbitControls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 0, 0);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
     this.controls.update();
 
-    // 5) Set initial size
+    // Setup lights
+    this.setupLights();
+
+    // Add default objects
+    this.addDefaultObjects();
+
+    // (!) We set initialized here, as at this point all main objects are created and configured
+    // It is important not to set this flag at the function end as functions, such as setSize will check the flag
+    this.initialized = true;
+
+    // ----------- POST INIT ------------------
+
+    // Set initial size
     const width = this.containerElement.clientWidth;
     const height = this.containerElement.clientHeight;
     this.setSize(width, height);
 
-    // 6) Setup lights
-    this.setupLights();
-
-    // 7) Add default objects
-    this.addDefaultObjects();
-
-    this.initialized = true;
+    // Start rendering
     this.startRendering();
   }
 

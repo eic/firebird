@@ -184,6 +184,7 @@ export class DataModelService {
    * @param entry - The Entry object to be marked as current.
    */
   setCurrentEntry(entry: Entry): void {
+    console.log(`[DataModelService.setCurrentEntry] Setting event: ${entry.id}`);
     this.currentEntry.set(entry);
   }
 

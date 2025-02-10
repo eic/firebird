@@ -16,16 +16,16 @@ Run `ng serve` in `firebird-ng` for a dev server. Navigate to `http://localhost:
 
 Data exchange is both JSON and Javascript object compatible.
 
-It starts with version, any custom origin info and a list of entries.
+It starts with `"type":"firebird-dex-json"` and the version, any custom origin info and a list of entries.
 In HENP physics `entry` may correspond to `event` data.
 
 ```json
-{    
-        "version": "0.01",
-        "origin": {any custom origin info here"},
-        "entries": [
-          entry1, entry2, ...
-        ]
+{
+  "type":"firebird-dex-json",
+  "version": "0.01",
+  "origin": {any custom origin info here"},"entries": [
+    entry1, entry2, ...
+  ]
 }
 ```
 

@@ -40,7 +40,7 @@ interface InternalLineData {
  */
 export class PointTrajectoryPainter extends ComponentPainter {
   /** A small array to store each line's data and references. */
-  private linesData: InternalLineData[] = [];
+  private trajectories: InternalLineData[] = [];
 
   /** Base materials that we clone for each line. */
   private baseSolidMaterial: LineMaterial;
@@ -105,7 +105,7 @@ export class PointTrajectoryPainter extends ComponentPainter {
       this.parentNode.add(line2);
 
       // Keep the data
-      this.linesData.push({
+      this.trajectories.push({
         lineObj: line2,
         points: lineSegment.points,
         lineMaterial
@@ -246,7 +246,7 @@ export class PointTrajectoryPainter extends ComponentPainter {
   public override paint(time: number | null): void {
     // If time===null => show all lines fully
     if (time === null) {
-      for (const ld of this.linesData) {
+      for (const ld of this.trajectories) {
         // Rebuild geometry with *all* points
         const fullPositions = this.generateFlatXYZ(ld.points);
         const geom = ld.lineObj.geometry as LineGeometry;
@@ -261,7 +261,7 @@ export class PointTrajectoryPainter extends ComponentPainter {
     }
 
     // Otherwise, partial or none
-    for (const ld of this.linesData) {
+    for (const ld of this.trajectories) {
       // Rebuild geometry up to time
       const partialPositions = this.buildPartialXYZ(ld.points, time);
       if (partialPositions.length < 2 * 3) {
@@ -285,7 +285,7 @@ export class PointTrajectoryPainter extends ComponentPainter {
    * Dispose all line objects, geometry, materials
    */
   public override dispose(): void {
-    for (const ld of this.linesData) {
+    for (const ld of this.trajectories) {
       const geom = ld.lineObj.geometry as LineGeometry;
       geom.dispose();
       ld.lineMaterial.dispose();
@@ -294,7 +294,7 @@ export class PointTrajectoryPainter extends ComponentPainter {
         this.parentNode.remove(ld.lineObj);
       }
     }
-    this.linesData = [];
+    this.trajectories = [];
     super.dispose();
   }
 }

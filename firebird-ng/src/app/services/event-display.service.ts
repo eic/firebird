@@ -11,8 +11,9 @@ import { UrlService } from './url.service';
 import {disposeHierarchy, disposeNode, getColorOrDefault} from '../utils/three.utils';
 import { ThreeGeometryProcessor } from '../data-pipelines/three-geometry.processor';
 import { ThreeEventProcessor } from '../data-pipelines/three-event.processor';
-import { DataModelPainter } from '../painters/data-model-painter';
+import {DataModelPainter, DisplayMode} from '../painters/data-model-painter';
 import {AnimationManager} from "../animation/animation-manager";
+import {initComponentFactories} from "../model/default-components-init";
 
 
 @Injectable({
@@ -25,6 +26,7 @@ export class EventDisplayService {
   selectedEventKey: string | undefined;
 
   // Time
+  private eventDisplayMode: WritableSignal<DisplayMode> = signal(DisplayMode.Timeless);
   private eventTime: WritableSignal<number> = signal(0);
   public readonly eventTime$: Signal<number> = this.eventTime.asReadonly();
   public maxTime = 200;
@@ -37,7 +39,6 @@ export class EventDisplayService {
   // Geometry
   private threeGeometryProcessor = new ThreeGeometryProcessor();
   private defaultColor: Color = new Color(0x68698D);
-  currentGeometry: string = 'All';
   private animateEventAfterLoad: boolean = false;
   private trackInfos: any | null = null; // Replace 'any' with the actual type
 
@@ -54,13 +55,38 @@ export class EventDisplayService {
     private dataService: DataModelService,
     private urlService: UrlService
   ) {
-    // Effect to update when eventTime changes
-    effect(() => {
-      this.processCurrentTimeChange(this.eventTime());
-      this.painter.paint(this.eventTime());
-    });
 
+    // Add event model factories (things that decode json to objects)
+    initComponentFactories();
+
+    // Connect painter to its scene place
+    this.painter.setThreeSceneParent(this.three.sceneEvent);
+
+    // Connect animation manager with threejs components
     this.animationManager = new AnimationManager(this.three.scene, this.three.camera, this.three.renderer);
+
+    // On time change
+    effect(() => {
+      //this.processCurrentTimeChange(this.eventTime());
+      const mode = this.eventDisplayMode();
+      if(mode === DisplayMode.Timeless) {
+        this.painter.paint(null);
+      }
+      else {
+        this.painter.paint(this.eventTime());
+      }
+
+
+    }, {debugName: "EventDisplayService.OnTimeChange"});
+
+    // On current entry change
+    effect(() => {
+      let event = this.dataService.currentEntry();
+      if(event === null || this.painter.getEntry() == event) return;
+      this.painter.setEntry(event);
+      this.eventTime.set(0);
+      this.eventDisplayMode.set(DisplayMode.Timeless);  // First we set timeless mode
+    }, {debugName: "EventDisplayService.OnEventChange"});
   }
 
   // ****************************************************
@@ -339,41 +365,41 @@ export class EventDisplayService {
    * @param value
    * @private
    */
-  private processCurrentTimeChange(value: number) {
+  private processCurrentTimeChange(value: number|null) {
     let partialTracks: any[] = []; // Replace 'any' with the actual type
-    if (this.trackInfos) {
-      for (let trackInfo of this.trackInfos) {
-        if (trackInfo.startTime > value) {
-          trackInfo.trackNode.visible = false;
-        } else {
-          trackInfo.trackNode.visible = true;
-          trackInfo.newLine.geometry.instanceCount = trackInfo.positions.length;
-
-          if (trackInfo.endTime > value) {
-            partialTracks.push(trackInfo);
-          } else {
-            // track should be visible fully
-            trackInfo.newLine.geometry.instanceCount = Infinity;
-          }
-        }
-      }
-    }
-
-    if (partialTracks.length > 0) {
-      for (let trackInfo of partialTracks) {
-        let geometryPosCount = trackInfo.positions.length;
-
-        //if (!geometryPosCount || geometryPosCount < 10) continue;
-
-        let trackProgress =
-          (value - trackInfo.startTime) /
-          (trackInfo.endTime - trackInfo.startTime);
-        let roundedProgress = Math.round(geometryPosCount * trackProgress * 2) / 2; // *2/2 to stick to 0.5 rounding
-
-        //(trackInfo.newLine.geometry as InstancedBufferGeometry). = drawCount;(0, roundedProgress);
-        trackInfo.newLine.geometry.instanceCount = roundedProgress;
-      }
-    }
+    // if (this.trackInfos) {
+    //   for (let trackInfo of this.trackInfos) {
+    //     if (trackInfo.startTime > value) {
+    //       trackInfo.trackNode.visible = false;
+    //     } else {
+    //       trackInfo.trackNode.visible = true;
+    //       trackInfo.newLine.geometry.instanceCount = trackInfo.positions.length;
+    //
+    //       if (trackInfo.endTime > value) {
+    //         partialTracks.push(trackInfo);
+    //       } else {
+    //         // track should be visible fully
+    //         trackInfo.newLine.geometry.instanceCount = Infinity;
+    //       }
+    //     }
+    //   }
+    // }
+    //
+    // if (partialTracks.length > 0) {
+    //   for (let trackInfo of partialTracks) {
+    //     let geometryPosCount = trackInfo.positions.length;
+    //
+    //     //if (!geometryPosCount || geometryPosCount < 10) continue;
+    //
+    //     let trackProgress =
+    //       (value - trackInfo.startTime) /
+    //       (trackInfo.endTime - trackInfo.startTime);
+    //     let roundedProgress = Math.round(geometryPosCount * trackProgress * 2) / 2; // *2/2 to stick to 0.5 rounding
+    //
+    //     //(trackInfo.newLine.geometry as InstancedBufferGeometry). = drawCount;(0, roundedProgress);
+    //     trackInfo.newLine.geometry.instanceCount = roundedProgress;
+    //   }
+    // }
   }
 
   public buildEventDataFromJSON(eventData: any) {
