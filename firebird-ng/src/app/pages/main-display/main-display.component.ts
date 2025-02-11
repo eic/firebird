@@ -2,56 +2,32 @@ import {
   Component,
   OnInit,
   AfterViewInit,
-  HostListener,
   Input,
   ViewChild, OnDestroy, TemplateRef, ElementRef
 } from '@angular/core';
-import { DecimalPipe, NgIf, NgForOf, NgClass } from '@angular/common';
 
-import { ThreeService } from '../../services/three.service';
-import { GeometryService, ALL_GROUPS } from '../../services/geometry.service';
+import {ALL_GROUPS } from '../../services/geometry.service';
 import { GameControllerService } from '../../services/game-controller.service';
 import { UserConfigService } from '../../services/user-config.service';
-import { DataModelService } from '../../services/data-model.service';
-import { UrlService } from '../../services/url.service';
 
 import { SceneTreeComponent } from '../geometry-tree/scene-tree.component';
 import { ShellComponent } from '../../components/shell/shell.component';
 import { ToolPanelComponent } from '../../components/tool-panel/tool-panel.component';
 import { EventSelectorComponent } from '../../components/event-selector/event-selector.component';
 import { AutoRotateComponent } from '../../components/auto-rotate/auto-rotate.component';
-import { ThemeSwitcherComponent } from "../../components/theme-switcher/theme-switcher.component";
 import { ObjectClippingComponent } from '../../components/object-clipping/object-clipping.component';
-import { EicAnimationsManager } from '../../utils/eic-animation-manager';
-
-import { ThreeGeometryProcessor } from '../../data-pipelines/three-geometry.processor';
-import { ThreeEventProcessor, ProcessTrackInfo } from '../../data-pipelines/three-event.processor';
-import { DataModelPainter } from '../../painters/data-model-painter';
 import { PhoenixThreeFacade } from "../../utils/phoenix-three-facade";
 
 import { MatSnackBar } from '@angular/material/snack-bar';
-import {
-  MatSlider,
-  MatSliderThumb
-} from '@angular/material/slider';
 import { MatIcon } from '@angular/material/icon';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
-import { MatFormField } from '@angular/material/form-field';
-import { MatOption, MatSelect } from '@angular/material/select';
-import { AngularSplitModule } from 'angular-split';
-
-import * as THREE from 'three';
-import * as TWEEN from '@tweenjs/tween.js';
 import {EventDisplay} from "phoenix-event-display";
 
-import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {PerfStatsComponent} from "../../components/perf-stats/perf-stats.component";
-import {PerfService} from "../../services/perf.service";
 import {EventDisplayService} from "../../services/event-display.service";
 import {EventTimeControlComponent} from "../../components/event-time-control/event-time-control.component";
 import {ServerConfigService} from "../../services/server-config.service";
-
 
 
 /**
@@ -68,30 +44,15 @@ import {ServerConfigService} from "../../services/server-config.service";
     templateUrl: './main-display.component.html',
     styleUrls: ['./main-display.component.scss'],
   imports: [
-    // Angular
-    DecimalPipe,
-    NgIf,
-    NgForOf,
-    NgClass,
-    // Material
-    MatSlider,
-    MatSliderThumb,
     MatIcon,
     MatButton,
     MatTooltip,
-    MatFormField,
-    MatSelect,
-    MatOption,
     MatIconButton,
-    // 3rd party
-    AngularSplitModule,
-    // Custom components
     SceneTreeComponent,
     ShellComponent,
     ToolPanelComponent,
     EventSelectorComponent,
     AutoRotateComponent,
-    ThemeSwitcherComponent,
     ObjectClippingComponent,
     PerfStatsComponent,
     EventTimeControlComponent
