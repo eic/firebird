@@ -4,12 +4,68 @@ import {CalorimetryGeometryPrettifier} from "./calorimetry.prettifier";
 import {editThreeNodeContent, EditThreeNodeRule} from "../utils/three-geometry-editor";
 import {Subdetector} from "../model/subdetector";
 
-
+/**
+ * A typed object that associates a name (or multiple names) with an array of edit rules.
+ * E.g. { name: "DIRC_14", rules: [ { patterns: [...], ... } ] }
+ */
 export interface DetectorThreeRuleSet {
   names?: string[];
   name?: string;
   rules: EditThreeNodeRule[];
 }
+
+/**
+ * Converts a raw JSON/JSONC array into typed DetectorThreeRuleSet objects.
+ * If an EditThreeNodeRule has "materialJson", we parse it using THREE.MaterialLoader.
+ */
+export function ruleSetsFromObj(obj: any): DetectorThreeRuleSet[] {
+  // Not an array => return empty
+  if (!Array.isArray(obj)) {
+    console.warn('ruleSetsFromObj: top-level object is not an array. Returning empty.');
+    return [];
+  }
+
+  // Create a single MaterialLoader we can reuse for all materialJson objects
+  const materialLoader = new THREE.MaterialLoader();
+
+  return obj.map((item: any) => {
+    // Ensure we have a rules array
+    if (!item.rules || !Array.isArray(item.rules)) {
+      console.warn('ruleSetsFromObj: missing or invalid "rules" array in item:', item);
+      return { rules: [] };
+    }
+
+    // Convert each rule
+    const convertedRules: EditThreeNodeRule[] = item.rules.map((r: any) => {
+      const rule: EditThreeNodeRule = { ...r };
+
+      // 1) Convert a color from string hex "0xabcdef" => number
+      if (typeof rule.color === 'string') {
+        rule.color = parseInt(rule.color, 16);
+      }
+
+      // 2) If there's "materialJson", parse it using THREE.MaterialLoader
+      if (r.materialJson && typeof r.materialJson === 'object') {
+        try {
+          // Convert raw JSON to real material
+          const loadedMaterial = materialLoader.parse(r.materialJson);
+          rule.material = loadedMaterial;
+        } catch (err) {
+          console.error('Failed to parse materialJson:', err, r.materialJson);
+        }
+      }
+
+      return rule;
+    });
+
+    return {
+      names: item.names,
+      name: item.name,
+      rules: convertedRules,
+    };
+  });
+}
+
 
 /**
  * Matches which set of rules should be applied to which detectors
