@@ -7,6 +7,9 @@ import { UserConfigService } from '../../services/user-config.service';
 import {MatMenu, MatMenuItem, MatMenuTrigger} from "@angular/material/menu";
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
+import {MatButton} from "@angular/material/button";
+import {MatIcon} from "@angular/material/icon";
+import {MatTooltip} from "@angular/material/tooltip";
 
 @Component({
   selector: 'app-custom-object-clipping',
@@ -19,7 +22,10 @@ import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
     MatSliderThumb,
     MenuToggleComponent,
     MatMenuTrigger,
-    MatCheckbox
+    MatCheckbox,
+    MatButton,
+    MatIcon,
+    MatTooltip
   ]
 })
 export class ObjectClippingComponent implements OnInit, OnDestroy {

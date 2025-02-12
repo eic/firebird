@@ -13,6 +13,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/playground/playground.component').then(m => m.PlaygroundComponent)
   },
   {
+    path: 'help',
+    loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
+  },
+  {
     path: 'geometry',
     loadComponent: () => import('./pages/geometry-tree/scene-tree.component').then(m => m.SceneTreeComponent)
   },

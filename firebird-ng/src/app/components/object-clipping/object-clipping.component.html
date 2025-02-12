@@ -47,12 +47,7 @@
     (focus)="openingAngleSlider.focus()"
     [disabled]="!clippingEnabled"
   >
-    <mat-slider
-      min="0"
-      max="360"
-      step="1"
-      thumbLabel
-    >
+    <mat-slider min="0" max="360" step="1">
       <input
         #openingAngleSlider
         matSliderThumb
@@ -64,10 +59,7 @@
   </button>
 </mat-menu>
 
-<app-custom-menu-toggle
-  [matMenuTriggerFor]="menu"
-  tooltip="Geometry clipping"
-  icon="incomplete_circle"
-  [active]="clippingEnabled"
->
-</app-custom-menu-toggle>
+
+<button mat-raised-button [matMenuTriggerFor]="menu" matTooltip="Clipping configuration">
+  <mat-icon>crop</mat-icon>
+</button>

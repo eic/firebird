@@ -357,7 +357,7 @@ export class ThreeService implements OnDestroy {
     quatB.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle + openingAngle);
     planeB.normal.set(0, 1, 0).applyQuaternion(quatB);
 
-    this.scene.traverse((child) => {
+    this.sceneGeometry.traverse((child) => {
       const mesh = child as THREE.Mesh;
       if (mesh.material) {
         const matArray = Array.isArray(mesh.material) ? mesh.material : [mesh.material];

@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { EventTimeControlComponent } from './event-time-control.component';
+import {provideHttpClientTesting} from "@angular/common/http/testing";
+import {HttpClient, HttpClientModule} from "@angular/common/http";
 
 describe('EventTimeControlComponent', () => {
   let component: EventTimeControlComponent;
@@ -8,7 +10,8 @@ describe('EventTimeControlComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [EventTimeControlComponent]
+      imports: [EventTimeControlComponent,  HttpClientModule],
+      providers: [provideHttpClientTesting()]
     })
     .compileComponents();
 

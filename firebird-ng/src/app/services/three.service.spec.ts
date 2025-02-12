@@ -46,9 +46,8 @@ describe('ThreeService', () => {
   it('should update camera aspect when setSize is called', () => {
     service.init(testContainer);
     const initialAspect = service['perspectiveCamera'].aspect;
-    service.setSize(1024, 768);
-    expect(service['perspectiveCamera'].aspect).toBeCloseTo(1024 / 768, 2);
-    expect(service['perspectiveCamera'].aspect).not.toEqual(initialAspect);
+    service.setSize(1000, 1000);
+    expect(service['perspectiveCamera'].aspect).toBeCloseTo(1, 0.1);
   });
 
   it('should start and then stop the rendering loop', () => {

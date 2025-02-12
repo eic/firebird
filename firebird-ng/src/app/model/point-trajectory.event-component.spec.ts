@@ -1,11 +1,15 @@
 // point-trajectory.component.spec.ts
 import { PointTrajectoryComponent, TrackerLinePointTrajectoryComponentFactory } from './point-trajectory.event-component';
 import { getComponentFactory } from './entry-component';
+import {initComponentFactories} from "./default-components-init";
 
 /**
  * Example test suite for PointTrajectoryComponent and its factory.
  */
 describe('PointTrajectoryComponent', () => {
+  beforeEach(()=>{
+    initComponentFactories();
+  });
 
   it('should be registered in the component factory registry', () => {
     const factory = getComponentFactory(PointTrajectoryComponent.type);

@@ -250,65 +250,7 @@ export class ThreeGeometryProcessor {
   }
 
   public process(detectors: Subdetector[]) {
-
     this.processRuleSets(this.rules, detectors);
-
-    //
-    // // Add top nodes to menu
-    // let topDetectorNodes = detectors.map(det=>det.geometry as THREE.Mesh);
-    //
-    // // for(let i= topLevelObj3dNodes.length - 1; i >= 0; i--) {
-    // //   console.log(`${i} : ${topLevelObj3dNodes[i].name}`);
-    // // }
-    //
-    //
-    // console.log("DISPOSING");
-    // for(let i= topDetectorNodes.length - 1; i >= 0; i--){
-    //   let detNode = topDetectorNodes[i];
-    //   console.log(`${i} : ${topDetectorNodes[i].name}`);
-    //   detNode.name = detNode.userData["name"] = detNode.name;
-    //   // Add geometry
-    //   // uiManager.addGeometry(obj3dNode, obj3dNode.name);
-    //
-    //   if(detNode.name == "EcalEndcapN_21") {
-    //     this.calorimetry.doEndcapEcalN(detNode);
-    //   } else if(detNode.name == "DRICH_16") {
-    //     this.calorimetry.doDRICH(detNode);
-    //   } else if(detNode.name.startsWith("DIRC")) {
-    //     this.calorimetry.doDIRC(detNode);
-    //   } else{
-    //
-    //     // try {
-    //     //   detNode.removeFromParent();
-    //     // }
-    //     // catch (e) {
-    //     //   console.error(e);
-    //     // }
-    //     //
-    //     // try {
-    //     //   // console.log("disposeHierarchy: ", detNode.name,  detNode);
-    //     //   disposeHierarchy(detNode);
-    //     // } catch (e) {
-    //     //   console.error(e);
-    //     // }
-    //
-    //     let result = mergeBranchGeometries(detNode, detNode.name + "_merged");
-    //     createOutline(result.mergedMesh);
-    //     (result.mergedMesh.material as any).onBeforeCompile = (shader: any) => {
-    //
-    //       shader.fragmentShader = shader.fragmentShader.replace(
-    //
-    //         '#include <output_fragment>',
-    //
-    //         `
-    //     vec3 backfaceColor = vec3( 0.4, 0.4, 0.4 );
-    //     gl_FragColor = ( gl_FrontFacing ) ? vec4( outgoingLight, diffuseColor.a ) : vec4( backfaceColor, opacity );
-    //     `
-    //       )
-    //     };
-    //     pruneEmptyNodes(detNode);
-    //   }
-    // }
   }
 
   public processRuleSets(ruleSets: DetectorThreeRuleSet[], detectors: Subdetector[]) {

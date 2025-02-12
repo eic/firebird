@@ -1,8 +1,11 @@
 // box-tracker-hit.component.spec.ts
 
 import { BoxTrackerHitComponent, BoxTrackerHit } from './box-tracker-hit.component';
+import {initComponentFactories} from "./default-components-init";
 
 describe('BoxTrackerHitComponent', () => {
+  initComponentFactories();
+
   it('should create an instance with given name', () => {
     const component = new BoxTrackerHitComponent('TestComponent');
 

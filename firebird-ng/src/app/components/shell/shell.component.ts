@@ -6,7 +6,7 @@ import {
   ComponentRef,
   Type,
   EventEmitter,
-  Output, ElementRef,
+  Output, ElementRef, Input,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {Router, RouterLink} from '@angular/router';
@@ -67,13 +67,21 @@ export class ShellComponent {
   /** Event emitted when the visibility of the left panel is changed. */
   @Output() onVisibilityChangeLeft = new EventEmitter<boolean>();
 
+  /** Is left Pane visible by default */
+  @Input()
+  isLeftPaneVisible = false;
+
+  /** Is right Pane visible by default */
+  @Input()
+  isRightPaneVisible = false;
+
   /** Shell resizing logic */
   private isResizingLeft = false;
   private isResizingRight = false;
   leftPaneWidth = 250;
   rightPaneWidth = 250;
-  isLeftPaneVisible = false;
-  isRightPaneVisible = false;
+
+
 
   /** Top bar: whether the mobile menu is open */
   navOpen = false;
