@@ -8,8 +8,11 @@ import {build} from 'jsroot/geom';
 import {RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
 import {UserConfigService} from "./user-config.service";
 import {Subdetector} from "../model/subdetector";
-import {Object3D} from "three";
+import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, Plane} from "three";
 import {UrlService} from "./url.service";
+import {DetectorThreeRuleSet, ThreeGeometryProcessor} from "../data-pipelines/three-geometry.processor";
+import * as THREE from "three";
+import {disposeHierarchy, getColorOrDefault} from "../utils/three.utils";
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -22,6 +25,122 @@ export const ALL_GROUPS = [
   GROUP_PID,
   GROUP_MAGNETS,
   GROUP_SUPPORT,
+]
+
+export const defaultRules: DetectorThreeRuleSet[] = [
+  {
+    names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_28"],
+    rules: [
+      {
+        color: 0x373766,
+
+      }
+    ]
+  },
+  {
+    name: "EcalEndcapN*",
+    rules: [
+      {
+        patterns: ["**/crystal_vol_0"],
+        color: 0xffef8b,
+        material: new THREE.MeshStandardMaterial({
+          color: 0xffef8b,
+          roughness: 0.7,
+          metalness: 0.869,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide
+        })
+      },
+      {
+        patterns: ["**/inner_support*", "**/ring*"],
+        material: new THREE.MeshStandardMaterial({
+          color: 0x19a5f5,
+          roughness: 0.7,
+          metalness: 0.869,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide
+        })
+      }
+
+    ]
+  },
+  {
+    name: "InnerTrackerSupport_assembly_13",
+    rules: [
+      {
+        material: new THREE.MeshStandardMaterial({
+          color: 0xEEEEEE,
+          roughness: 0.7,
+          metalness: 0.3,
+          transparent: true,
+          opacity: 0.8,
+          blending: THREE.NormalBlending,
+          // premultipliedAlpha: true,
+          depthWrite: false, // Ensures correct blending
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          side: THREE.DoubleSide
+        }),
+        outline: true,
+        outlineColor: 0x666666,
+        merge: true,
+        newName: "InnerTrackerSupport"
+      }
+    ]
+  },
+  {
+    name: "DIRC_14",
+    rules: [
+      {
+        patterns:     ["**/*box*", "**/*prism*"],
+        material: new THREE.MeshPhysicalMaterial({
+          color: 0xe5ba5d,
+          metalness: .9,
+          roughness: .05,
+          envMapIntensity: 0.9,
+          clearcoat: 1,
+          transparent: true,
+          //transmission: .60,
+          opacity: .6,
+          reflectivity: 0.2,
+          //refr: 0.985,
+          ior: 0.9,
+          side: THREE.DoubleSide,
+        }),
+        newName: "DIRC_barAndPrisms"
+      },
+      {
+        patterns: ["**/*rail*"],
+        newName: "DIRC_rails",
+        color: 0xAAAACC
+      },
+      {
+        patterns: ["**/*mcp*"],
+        newName: "DIRC_mcps"
+      }
+    ]
+
+  },
+  {
+    name: "VertexBarrelSubAssembly_3",
+    rules: [
+      {
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+  {
+    name: "*",
+    rules: [
+      {
+        merge: true,
+        outline: true
+      }
+    ]
+  }
 ]
 
 // constants.ts
@@ -44,6 +163,11 @@ export class GeometryService {
   public geometry: Object3D|null = null;
 
   public groupsByDetName: Map<string, string>;
+
+  /** for geometry post-processing */
+  private threeGeometryProcessor = new ThreeGeometryProcessor();
+
+  private defaultColor: Color = new Color(0x68698D);
 
   constructor(private urlService: UrlService) {
     this.groupsByDetName = new Map<string,string> ([
@@ -190,6 +314,63 @@ export class GeometryService {
 
     console.timeEnd('[GeometryService]: Total load geometry time');
     return {rootGeometry: this.rootGeometry, threeGeometry: this.geometry};
+  }
+
+  public postProcessing(geometry: Object3D, clippingPlanes: Plane[]) {
+    let threeGeometry  = this.geometry;
+    if (!threeGeometry) return;
+
+
+    // Now we want to set default materials
+    threeGeometry.traverse((child: any) => {
+      if (child.type !== 'Mesh' || !child?.material?.isMaterial) {
+        return;
+      }
+
+      // Assuming `getObjectSize` is correctly typed and available
+      child.userData['size'] = 1; //this.importManager.getObjectSize(child);
+
+      // Handle the material of the child
+      const color = getColorOrDefault(child.material, this.defaultColor);
+      const side = DoubleSide;
+
+      let opacity = threeGeometry.userData['opacity'] ?? 1;
+
+      child.material = new MeshLambertMaterial({
+        color: color,
+        side: side,
+        transparent: true,
+        opacity: 0.7,
+        blending: NormalBlending,
+        depthTest: true,
+        depthWrite: true,
+        clippingPlanes: clippingPlanes,
+        clipIntersection: true,
+        clipShadows: false,
+      });
+    });
+
+    // HERE WE DO POSTPROCESSING STEP
+    this.threeGeometryProcessor.processRuleSets(defaultRules, this.subdetectors);
+
+    // Now we want to change the materials
+    threeGeometry.traverse((child: any) => {
+      if (!child?.material?.isMaterial) {
+        return;
+      }
+
+      if (child.material?.clippingPlanes !== undefined) {
+        child.material.clippingPlanes = clippingPlanes;
+      }
+
+      if (child.material?.clipIntersection !== undefined) {
+        child.material.clipIntersection = true;
+      }
+
+      if (child.material?.clipShadows !== undefined) {
+        child.material.clipShadows = false;
+      }
+    });
   }
 
   private stripIdFromName(name: string) {

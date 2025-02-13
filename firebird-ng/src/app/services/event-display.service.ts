@@ -38,8 +38,6 @@ export class EventDisplayService {
   private beamAnimationTime: number = 1000;
 
   // Geometry
-  private threeGeometryProcessor = new ThreeGeometryProcessor();
-  private defaultColor: Color = new Color(0x68698D);
   private animateEventAfterLoad: boolean = false;
   private trackInfos: any | null = null; // Replace 'any' with the actual type
 
@@ -224,79 +222,9 @@ export class EventDisplayService {
       disposeHierarchy(sceneGeo, /* disposeSelf= */ false);
     }
 
-    sceneGeo.add(threeGeometry);
+    this.geomService.postProcessing(threeGeometry, this.three.clipPlanes);
 
-    // Now we want to set default materials
-    sceneGeo.traverse((child: any) => {
-      if (child.type !== 'Mesh' || !child?.material?.isMaterial) {
-        return;
-      }
 
-      // Assuming `getObjectSize` is correctly typed and available
-      child.userData['size'] = 1; //this.importManager.getObjectSize(child);
-
-      // Handle the material of the child
-      const color = getColorOrDefault(child.material, this.defaultColor);
-      const side = DoubleSide;
-
-      let opacity = threeGeometry.userData['opacity'] ?? 1;
-
-      child.material = new MeshLambertMaterial({
-        color: color,
-        side: side,
-        transparent: true,
-        opacity: 0.7,
-        blending: NormalBlending,
-        depthTest: true,
-        depthWrite: true,
-        clippingPlanes: this.three.clipPlanes,
-        clipIntersection: true,
-        clipShadows: false,
-      });
-
-      // Material
-      let name: string = child.name;
-
-      if (!child.material?.clippingPlanes !== undefined) {
-        child.material.clippingPlanes = this.three.clipPlanes;
-      }
-
-      if (!child.material?.clipIntersection !== undefined) {
-        child.material.clipIntersection = true;
-      }
-
-      if (!child.material?.clipShadows !== undefined) {
-        child.material.clipShadows = false;
-      }
-    });
-
-    // HERE WE DO POSTPROCESSING STEP
-    this.threeGeometryProcessor.process(this.geomService.subdetectors);
-
-    // Now we want to change the materials
-    sceneGeo.traverse((child: any) => {
-      if (!child?.material?.isMaterial) {
-        return;
-      }
-
-      if (child.material?.clippingPlanes !== undefined) {
-        child.material.clippingPlanes = this.three.clipPlanes;
-      }
-
-      if (child.material?.clipIntersection !== undefined) {
-        child.material.clipIntersection = true;
-      }
-
-      if (child.material?.clipShadows !== undefined) {
-        child.material.clipShadows = false;
-      }
-    });
-
-    // TODO do we need it?
-    //this.three.renderer.sortObjects = false;
-
-    // FIXME This needs to be fixed, it causes a crash
-    // produceRenderOrder(this.scene, this.camera.position, 'ray');
   }
 
   /**
