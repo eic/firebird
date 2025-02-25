@@ -140,3 +140,5 @@ pyrobird/requirements.lock
 pyrobird/src/pyrobird/server/static/
 
 firebird-ng/.yarn/
+
+**/repomix-output.*

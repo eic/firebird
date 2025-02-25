@@ -1,0 +1,18 @@
+# Add patterns to ignore here, one per line
+# Example:
+# *.log
+# tmp/
+
+.angular/
+.yarn/
+dist./
+node_modules/
+.editorconfig
+.gitignore
+.pnp*
+package-lock.json
+webpack*
+tsconfig*
+src/assets/
+src/app/utils/phoenix-three-facade.ts
+src/app/animation/default-animations.ts
