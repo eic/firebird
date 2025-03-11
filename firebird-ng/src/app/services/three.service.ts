@@ -71,21 +71,28 @@ export class ThreeService implements OnDestroy {
    *                  or the actual HTMLElement where the renderer will attach.
    */
   init(container: string | HTMLElement): void {
-    if (this.initialized) {
-      console.warn('ThreeService has already been initialized.');
-      return;
-    }
 
-    // Allow passing either a container ID or an element directly
+    let containerElement: HTMLElement;
+
+    // Figure out the container
     if (typeof container === 'string') {
       const el = document.getElementById(container);
       if (!el) {
         throw new Error(`ThreeService Initialization Error: Container element #${container} not found.`);
       }
-      this.containerElement = el;
+      containerElement = el;
     } else {
-      this.containerElement = container;
+      containerElement = container;
     }
+
+    // If already initialized once, warn but still re-attach the canvas.
+    if (this.initialized) {
+      console.warn('ThreeService has already been initialized. Re-attaching renderer...');
+      this.attachRenderer(containerElement);
+      return;
+    }
+
+    this.containerElement = containerElement;
 
     // 1) Create scene
     this.scene = new THREE.Scene();
@@ -155,6 +162,34 @@ export class ThreeService implements OnDestroy {
     // Start rendering
     this.startRendering();
   }
+
+  /**
+   * If the service is already initialized (scene, camera, renderer exist),
+   * you can re-attach the <canvas> to a container if it was removed or changed.
+   */
+  private attachRenderer(elem: HTMLElement): void {
+    this.containerElement = elem;
+
+    // If the canvas is not already in the DOM, re-append it.
+    if (this.renderer?.domElement) {
+      this.containerElement.appendChild(this.renderer.domElement);
+    }
+  }
+
+  /**
+   * When You Do Want to Recreate the Entire Scene
+   * If sometimes you genuinely need to start fresh (e.g. user changed geometry drastically)
+   */
+  public reset(): void {
+    this.stopRendering();
+    // remove old scene from memory
+    // e.g. dispose geometries, empty the scene, etc.
+    this.renderer.domElement.parentNode?.removeChild(this.renderer.domElement);
+
+    this.initialized = false;
+    // next time `init` is called, it will do full creation again.
+  }
+
 
   /**
    * Sets up the lighting for the scene.
@@ -260,14 +295,15 @@ export class ThreeService implements OnDestroy {
       this.profileBeginFunc?.();
       this.perfService.updateStats(this.renderer);
 
-      // Run all custom/users callbacks
-      for (const cb of this.frameCallbacks) {
-        cb();
-      }
 
       // Update three components
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
+
+      // Run all custom/users callbacks
+      for (const cb of this.frameCallbacks) {
+        cb();
+      }
 
       // Profiling end
       //TODO this.perfService.profileEnd(this.renderer);

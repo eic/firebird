@@ -1,4 +1,4 @@
-import {Injectable} from '@angular/core';
+import {Injectable, signal, WritableSignal} from '@angular/core';
 import {openFile} from 'jsroot';
 import {
   analyzeGeoNodes,
@@ -160,7 +160,7 @@ export class GeometryService {
   public rootGeometry: any|null = null;
 
   /** Main/entry/root THREEJS geometry tree node with the whole geometry */
-  public geometry: Object3D|null = null;
+  // public geometry:
 
   public groupsByDetName: Map<string, string>;
 
@@ -168,6 +168,8 @@ export class GeometryService {
   private threeGeometryProcessor = new ThreeGeometryProcessor();
 
   private defaultColor: Color = new Color(0x68698D);
+
+  public geometry:WritableSignal<Object3D|null> = signal(null)
 
   constructor(private urlService: UrlService) {
     this.groupsByDetName = new Map<string,string> ([
@@ -260,9 +262,10 @@ export class GeometryService {
 
     analyzeGeoNodes(this.rootGeometry, 1);
 
+
     //
     console.time('[GeometryService]: Build geometry');
-    this.geometry = build(this.rootGeometry,
+    const geometry = build(this.rootGeometry,
       {
         numfaces: 5000000000,
         numnodes: 5000000000,
@@ -275,21 +278,21 @@ export class GeometryService {
     console.timeEnd('[GeometryService]: Build geometry');
 
     // Validate the geometry
-    if(!this.geometry) {
+    if(!geometry) {
       throw new Error("Geometry is null or undefined after TGeoPainter.build");
     }
 
-    if(!this.geometry.children.length) {
+    if(!geometry.children.length) {
       throw new Error("Geometry is converted but empty. Anticipated 'world_volume' but got nothing");
     }
 
-    if(!this.geometry.children[0].children.length) {
+    if(!geometry.children[0].children.length) {
       throw new Error("Geometry is converted but empty. Anticipated array of top level nodes (usually subdetectors) but got nothing");
     }
 
     // We now know it is not empty array
     console.time('[GeometryService]: Map root geometry to threejs geometry');
-    let topDetectorNodes = this.geometry.children[0].children;
+    let topDetectorNodes = geometry.children[0].children;
     for(const topNode of topDetectorNodes) {
 
       // Process name
@@ -311,13 +314,15 @@ export class GeometryService {
     }
     console.timeEnd('[GeometryService]: Map root geometry to threejs geometry');
 
-
     console.timeEnd('[GeometryService]: Total load geometry time');
-    return {rootGeometry: this.rootGeometry, threeGeometry: this.geometry};
+
+    this.geometry.set(geometry);
+
+    return {rootGeometry: this.rootGeometry, threeGeometry: geometry};
   }
 
   public postProcessing(geometry: Object3D, clippingPlanes: Plane[]) {
-    let threeGeometry  = this.geometry;
+    let threeGeometry  = this.geometry();
     if (!threeGeometry) return;
 
 

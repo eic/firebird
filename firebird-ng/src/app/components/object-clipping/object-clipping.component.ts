@@ -1,13 +1,15 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import {Component, OnInit, OnDestroy, ViewChild, TemplateRef} from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
 import { Subscription } from 'rxjs';
 
 import { ThreeService } from '../../services/three.service';
 import { UserConfigService } from '../../services/user-config.service';
-import {MatMenu, MatMenuItem, MatMenuTrigger} from "@angular/material/menu";
+import {MatMenuItem} from "@angular/material/menu";
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
-import {MenuToggleComponent} from "../menu-toggle/menu-toggle.component";
-import {MatButton} from "@angular/material/button";
+
+import {MatButton, MatIconButton} from "@angular/material/button";
+
+import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog";
 import {MatIcon} from "@angular/material/icon";
 import {MatTooltip} from "@angular/material/tooltip";
 
@@ -16,15 +18,14 @@ import {MatTooltip} from "@angular/material/tooltip";
   templateUrl: './object-clipping.component.html',
   styleUrls: ['./object-clipping.component.scss'],
   imports: [
-    MatMenu,
     MatSlider,
     MatMenuItem,
     MatSliderThumb,
-    MenuToggleComponent,
-    MatMenuTrigger,
     MatCheckbox,
     MatButton,
     MatIcon,
+    MatDialogClose,
+    MatIconButton,
     MatTooltip
   ]
 })
@@ -36,9 +37,13 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
 
   private subscriptions: Subscription[] = [];
 
+  @ViewChild('dialogTemplate') dialogTemplate!: TemplateRef<any>;
+  dialogRef: MatDialogRef<any> | null = null;
+
   constructor(
     private threeService: ThreeService,
-    private config: UserConfigService
+    private config: UserConfigService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -122,5 +127,25 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
    */
   changeOpeningClippingAngle(angle: number): void {
     this.config.clippingOpeningAngle.value = angle;
+  }
+
+
+  openDialog(): void {
+    if (this.dialogRef) {
+      this.dialogRef.close();
+    } else {
+      this.dialogRef = this.dialog.open(this.dialogTemplate, {
+        position: {
+          top: '63px',
+          left: '200px'
+        },
+        disableClose: true,
+        hasBackdrop: false
+      });
+
+      this.dialogRef.afterClosed().subscribe(() => {
+        this.dialogRef = null;
+      });
+    }
   }
 }

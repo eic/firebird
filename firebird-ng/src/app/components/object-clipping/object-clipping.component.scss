@@ -6,3 +6,74 @@ mat-slider {
   margin-left: 0.75rem;
   margin-right: 0.75rem;
 }
+
+.close-round-btn {
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  border-radius: 50%;
+  z-index: 10;
+  border: none;
+  background: none;
+  box-shadow: var(--mat-sys-level2);
+}
+
+.close-round-btn:hover{
+  color: #bec2ff;
+}
+
+.close-btn{
+  height: 30px;
+  border: none;
+}
+
+.preset-buttons {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 8px;
+  margin-top: -8px;
+
+  .angle-value {
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.87);
+  }
+}
+
+
+
+button[disabled] .angle-presets {
+  opacity: 0.5;
+}
+
+
+.clipping-buttons {
+  display: flex;
+  align-items: center; /* Vertically center items */
+  gap: 8px; /* Space between items */
+}
+
+.clipping-toggle {
+  flex-shrink: 0; /* Prevent the toggle button from shrinking */
+}
+
+.angle-presets {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+button[mat-icon-button] {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+

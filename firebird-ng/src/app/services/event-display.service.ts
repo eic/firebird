@@ -47,6 +47,12 @@ export class EventDisplayService {
   // Animation manager
   private animationManager: AnimationManager;
 
+  /** The last successfully loaded Event Data url. Switches to null on every new load attempt */
+  public lastLoadedDexUrl:string|null = "";
+
+  /** The last successfully loaded Geometry url. Switches to null on every new load attempt */
+  public lastLoadedGeometryUrl:string|null = "";
+
   constructor(
     public three: ThreeService,
     private geomService: GeometryService,
@@ -67,13 +73,19 @@ export class EventDisplayService {
     // On time change
     effect(() => {
       //this.processCurrentTimeChange(this.eventTime());
+      const time = this.eventTime();
       const mode = this.eventDisplayMode();
       if(mode === DisplayMode.Timeless) {
         this.painter.paint(null);
       }
       else {
-        this.painter.paint(this.eventTime());
+        this.painter.paint(time);
       }
+    }, {debugName: "EventDisplayService.OnTimeChange"});
+
+    effect(() => {
+      //this.processCurrentTimeChange(this.eventTime());
+      const geometry = this.geomService.geometry();
 
 
     }, {debugName: "EventDisplayService.OnTimeChange"});
@@ -207,6 +219,7 @@ export class EventDisplayService {
    * Load geometry
    */
   async loadGeometry(url:string, scale = 10, clearGeometry=true) {
+    this.lastLoadedGeometryUrl = null;
     let { rootGeometry, threeGeometry } = await this.geomService.loadGeometry(url);
     if (!threeGeometry) return;
 
@@ -224,7 +237,8 @@ export class EventDisplayService {
 
     this.geomService.postProcessing(threeGeometry, this.three.clipPlanes);
 
-
+    sceneGeo.children.push(threeGeometry);
+    this.lastLoadedGeometryUrl = url;
   }
 
   /**
@@ -274,6 +288,7 @@ export class EventDisplayService {
 
 
   async loadDexData(url:string) {
+    this.lastLoadedDexUrl = null;
     const data = await this.dataService.loadDexData(url);
     if (data == null) {
       console.warn(
@@ -285,6 +300,7 @@ export class EventDisplayService {
     if (data.entries?.length ?? 0 > 0) {
       this.painter.setEntry(data.entries[0]);
       this.painter.paint(this.eventTime());
+      this.lastLoadedDexUrl = url;
     } else {
       console.warn('DataService.loadDexData() Received data had no entries');
       console.log(data);

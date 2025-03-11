@@ -3,7 +3,7 @@ import {
   OnInit,
   AfterViewInit,
   Input,
-  ViewChild, OnDestroy, TemplateRef, ElementRef
+  ViewChild, OnDestroy, TemplateRef, ElementRef, effect
 } from '@angular/core';
 
 import {ALL_GROUPS } from '../../services/geometry.service';
@@ -28,6 +28,9 @@ import {PerfStatsComponent} from "../../components/perf-stats/perf-stats.compone
 import {EventDisplayService} from "../../services/event-display.service";
 import {EventTimeControlComponent} from "../../components/event-time-control/event-time-control.component";
 import {ServerConfigService} from "../../services/server-config.service";
+import {Object3D} from "three";
+import {DisplayMode} from "../../painters/data-model-painter";
+import {CubeViewportControlComponent} from "../../components/cube-viewport-control/cube-viewport-control.component";
 
 
 /**
@@ -55,7 +58,8 @@ import {ServerConfigService} from "../../services/server-config.service";
     AutoRotateComponent,
     ObjectClippingComponent,
     PerfStatsComponent,
-    EventTimeControlComponent
+    EventTimeControlComponent,
+    CubeViewportControlComponent
   ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -74,6 +78,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild(SceneTreeComponent)
   geometryTreeComponent: SceneTreeComponent | null | undefined;
+
+  @ViewChild(CubeViewportControlComponent)
+  private cubeControl!: CubeViewportControlComponent;
 
   message = "";
 
@@ -96,7 +103,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     public eventDisplay: EventDisplayService,
     private userConfig: UserConfigService,
     private serverConfig: ServerConfigService,
-  ) {}
+  )
+  {
+
+  }
 
 
   async ngOnInit() {
@@ -120,6 +130,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
+      // Check if we have the same data
+      if(this.eventDisplay.lastLoadedDexUrl === url) {
+        console.log(`[main-display]: Event data (DEX) url is the same as before: '${url}', skip loading`);
+        return;
+      }
+
+      // Try to load
       this.eventDisplay.loadDexData(url).catch(error=>{
         const msg = `Error loading events: ${error}`;
         console.error(`[main-display]: ${msg}`);
@@ -135,6 +152,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log("[main-display]: No data source specified. Skip loadGeometry ");
         return;
       }
+
+      // Check if we have the same data
+      if(this.eventDisplay.lastLoadedGeometryUrl === url) {
+        console.log(`[main-display]: Geometry url is the same as before: '${url}', skip loading`);
+        return;
+      }
+
       // Load geometry
       this.eventDisplay.loadGeometry(url).catch(error=>{
         const msg = `Error loading geometry: ${error}`;
@@ -142,27 +166,11 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
         this.showError(msg);
       }).then(value=>{
         console.log("[main-display]: Geometry loaded");
+        console.log(value)
         this.updateSceneTreeComponent();
       });
     });
 
-
-    // // 3) LOAD DEX or other event data
-    // // example: load Dex data, then attach to an "EventData" group
-    // const dexData = await this.dataService.loadDexData();
-    // if (dexData && dexData.entries?.length) {
-    //   let eventGroup = this.threeService.scene.getObjectByName('EventData') as THREE.Group;
-    //   if (!eventGroup) {
-    //     eventGroup = new THREE.Group();
-    //     eventGroup.name = 'EventData';
-    //     this.threeService.scene.add(eventGroup);
-    //   }
-    //   // Paint it
-    //   this.painter.setThreeSceneParent(eventGroup);
-    //   this.painter.setEntry(dexData.entries[0]);
-    //   this.painter.paint(this.currentTime);
-    //   this.updateSceneTreeComponent();
-    // }
   }
 
   // 2) AFTER VIEW INIT => handle resizing with DisplayShell or window
@@ -179,6 +187,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       this.displayShellComponent.onEndResizeRight.subscribe(() => this.onRendererElementResize());
     }
 
+    this.initCubeViewportControl();
+
     window.addEventListener('resize', () => {
       this.onRendererElementResize();
     });
@@ -192,6 +202,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       }, 100);  // 100 milliseconds = 0.1 seconds
     };
     resizeInvoker();
+
+
+
+    // this.startAnimationLoop();
   }
 
   // 3) UI - Toggling panes
@@ -203,6 +217,24 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   toggleRightPane() {
     this.displayShellComponent?.toggleRightPane();
   }
+
+  // 4) Method to initialize CubeViewportControl with the existing Three.js objects
+  private initCubeViewportControl(): void {
+    const { scene, camera, renderer } = this.eventDisplay.three;
+    if (this.cubeControl && scene && camera && renderer) {
+      // Pass the external scene, camera, and renderer to the cube control
+      this.cubeControl.initWithExternalScene(scene, camera, renderer);
+      this.cubeControl.gizmo.attachControls(this.eventDisplay.three.controls);
+    }
+
+    const thisPointer = this;
+    this.eventDisplay.three.addFrameCallback(()=>{
+      if (thisPointer.cubeControl?.gizmo) {
+        thisPointer.cubeControl.gizmo.render();
+      }
+    });
+  }
+
 
 
   // Example function to show an error
@@ -227,6 +259,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Delegate resizing to ThreeService
     this.eventDisplay.three.setSize(width, height);
+    if (this.cubeControl?.gizmo) {
+      this.cubeControl.gizmo.update();
+    }
   }
 
 
