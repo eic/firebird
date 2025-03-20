@@ -1,21 +1,50 @@
 @use '@angular/material' as mat;
 
 .eventSelector {
+  display: inline-flex;
+  position: relative;
+
   select {
     min-width: 9rem;
-    padding: 5px 10px;
+    padding: 8px 32px 8px 12px; // Increased padding for better touch area
     font-size: 0.875rem; // ~14px
     border: 1px solid var(--sys-color-outline);
-    background-color: var(--sys-color-surface-variant);
+    background-color: var(--mat-sys-surface-container-low);
     color: var(--sys-color-on-surface-variant);
     border-radius: 4px;
     appearance: none;
     cursor: pointer;
+    box-shadow: var(--mat-sys-level2);
+    margin-left: 3px;
+    margin-right: 3px;
+    transition: box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
 
-    /* Add focus styles */
+    /* Add arrow for dropdown */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+
+    /* Focus and hover styles */
     &:focus {
       outline: 2px solid var(--sys-color-primary);
       outline-offset: 2px;
     }
+
+    &:hover {
+      box-shadow: var(--mat-sys-level3);
+      background-color: var(--mat-sys-surface-container);
+    }
   }
+
+  /* Style for the select when dropdown is open */
+  select:active {
+    box-shadow: var(--mat-sys-level1);
+  }
+}
+
+/* Add the following class if you want to use this component in your header/toolbar */
+.header-event-selector {
+  align-self: center;
+  margin: 0 6px;
 }

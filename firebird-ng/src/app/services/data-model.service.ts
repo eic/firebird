@@ -1,4 +1,4 @@
-import { Injectable, signal } from "@angular/core";
+import {Injectable, linkedSignal, signal} from "@angular/core";
 import { Entry } from "../model/entry";
 import { HttpClient } from "@angular/common/http";
 import { UrlService } from "./url.service";
@@ -27,7 +27,12 @@ export class DataModelService {
   /**
    * Signal holding the currently selected entry (event).
    */
-  public currentEntry = signal<Entry | null>(null);
+  public currentEntry = linkedSignal(() => {
+    if(this.entries().length > 0 ) {
+      return this.entries()[0]
+    }
+    return null;
+  });
 
   /**
    * Constructor that injects services needed for resolving URLs and making HTTP requests.

@@ -41,7 +41,7 @@ import {ShellComponent} from "../../components/shell/shell.component";
     MatExpansionPanelTitle,
     MatExpansionPanelHeader,
     RouterOutlet,
-    ShellComponent
+    ShellComponent,
   ],
   templateUrl: './input-config.component.html',
   styleUrls: ['./input-config.component.scss']

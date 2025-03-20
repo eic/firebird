@@ -16,6 +16,8 @@
     <!-- Toggle for clipping geometries -->
     <app-custom-object-clipping></app-custom-object-clipping>
 
+    <app-legend-window></app-legend-window>
+
     <!-- Extra options -->
     <ng-content></ng-content>
 
@@ -43,7 +45,6 @@
   </div>
   <div footer-right id="footerRight">
     <div class="theme-text">{{message}}</div>
-
   </div>
   <div footer>
     <div class="time-controls" id="bottom-controls">
@@ -52,24 +53,23 @@
       <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="eventDisplay.rewindTime()">
         <mat-icon>first_page</mat-icon>
       </button>
-      <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="eventDisplay.animateWithCollision()">
-        <mat-icon>close_fullscreen</mat-icon>
-      </button>
+<!--      <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="eventDisplay.animateWithCollision()">-->
+<!--        <mat-icon>close_fullscreen</mat-icon>-->
+<!--      </button>-->
       <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="eventDisplay.animateTime()">
         <mat-icon>play_arrow</mat-icon>
-      </button>
-      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="eventDisplay.timeStepBack()" class="tcontrol">
-        <mat-icon>chevron_left</mat-icon>
-      </button>
-
-      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="eventDisplay.timeStep()" class="tcontrol">
-        <mat-icon>chevron_right</mat-icon>
       </button>
       <button mat-raised-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="eventDisplay.stopTimeAnimation()" >
         <mat-icon>pause</mat-icon>
       </button>
       <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="eventDisplay.exitTimedDisplay()" >
         <mat-icon>stop</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="eventDisplay. timeStepBack()" class="tcontrol">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="eventDisplay.timeStep()" class="tcontrol">
+        <mat-icon>chevron_right</mat-icon>
       </button>
 <!--      <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">-->
 <!--        <mat-icon>last_page</mat-icon>-->
@@ -82,6 +82,4 @@
       <div class="theme-text">{{currentGeometry}}</div>
     </div>
   </div>
-
-
 </app-shell>

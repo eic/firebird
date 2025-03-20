@@ -2,7 +2,7 @@
   <!-- Current Time (left side) -->
   <div class="time-label">
     <!-- If you're using a signal-based approach, eventTime() is how you read the signal -->
-    {{ eventDisplayService.eventTime$() | number:'1.1-1' }}
+    {{ shownTime() | number:'1.1-1' }}
   </div>
 
   <!-- The Slider -->
@@ -17,7 +17,7 @@
     (input)="changeCurrentTime($event)"
   >
     <!-- Slider thumb with direct binding to the current time -->
-    <input matSliderThumb [value]="eventDisplayService.eventTime$()" />
+    <input matSliderThumb [value]="shownTime()" />
   </mat-slider>
 
   <!-- Max Time (right side) -->

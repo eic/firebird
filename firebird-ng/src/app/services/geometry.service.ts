@@ -13,6 +13,9 @@ import {UrlService} from "./url.service";
 import {DetectorThreeRuleSet, ThreeGeometryProcessor} from "../data-pipelines/three-geometry.processor";
 import * as THREE from "three";
 import {disposeHierarchy, getColorOrDefault} from "../utils/three.utils";
+import {modernRules} from "../theme/geometry-ruleset";
+import {coolColorRules} from "../theme/cool-geometry-ruleset";
+import {cool2ColorRules} from "../theme/cool2-geometry-ruleset";
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -143,6 +146,8 @@ export const defaultRules: DetectorThreeRuleSet[] = [
   }
 ]
 
+
+
 // constants.ts
 export const DEFAULT_GEOMETRY = 'builtin://epic-central-optimized';
 
@@ -251,17 +256,15 @@ export class GeometryService {
     console.time('[GeometryService]: Reading geometry from file');
     this.rootGeometry = await findGeoManager(file) // await file.readObject(objectName);
     // >oO
-    console.log("Got TGeoManager. For inspection:")
-    console.log(this.rootGeometry);
+    // console.log("Got TGeoManager. For inspection:")
+    // console.log(this.rootGeometry);
     console.timeEnd('[GeometryService]: Reading geometry from file');
-
 
     console.time('[GeometryService]: Root geometry pre-processing');
     this.rootGeometryProcessor.process(this.rootGeometry);
-    console.time('[GeometryService]: Root geometry pre-processing');
+    console.timeEnd('[GeometryService]: Root geometry pre-processing');
 
-    analyzeGeoNodes(this.rootGeometry, 1);
-
+    // analyzeGeoNodes(this.rootGeometry, 1);
 
     //
     console.time('[GeometryService]: Build geometry');
@@ -309,7 +312,7 @@ export class GeometryService {
         name: this.stripIdFromName(originalName),
         groupName: this.groupsByDetName.get(originalName) || ""
       }
-      console.log(subdetector.sourceGeometryName);
+      // console.log(subdetector.sourceGeometryName);
       this.subdetectors.push(subdetector);
     }
     console.timeEnd('[GeometryService]: Map root geometry to threejs geometry');
@@ -356,7 +359,9 @@ export class GeometryService {
     });
 
     // HERE WE DO POSTPROCESSING STEP
-    this.threeGeometryProcessor.processRuleSets(defaultRules, this.subdetectors);
+    // TODO this.threeGeometryProcessor.processRuleSets(defaultRules, this.subdetectors);
+    this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
+
 
     // Now we want to change the materials
     threeGeometry.traverse((child: any) => {

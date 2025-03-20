@@ -148,4 +148,13 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
       });
     }
   }
+
+  toggleRaycast() {
+    this.threeService.toggleRaycast();
+  }
+
+  get isRaycastEnabled(): boolean {
+    return this.threeService.isRaycastEnabledState();
+  }
+
 }

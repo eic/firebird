@@ -31,6 +31,7 @@ import {ServerConfigService} from "../../services/server-config.service";
 import {Object3D} from "three";
 import {DisplayMode} from "../../painters/data-model-painter";
 import {CubeViewportControlComponent} from "../../components/cube-viewport-control/cube-viewport-control.component";
+import {LegendWindowComponent} from "../../components/legend-window/legend-window.component";
 
 
 /**
@@ -59,7 +60,8 @@ import {CubeViewportControlComponent} from "../../components/cube-viewport-contr
     ObjectClippingComponent,
     PerfStatsComponent,
     EventTimeControlComponent,
-    CubeViewportControlComponent
+    CubeViewportControlComponent,
+    LegendWindowComponent
   ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -202,9 +204,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       }, 100);  // 100 milliseconds = 0.1 seconds
     };
     resizeInvoker();
-
-
-
     // this.startAnimationLoop();
   }
 
@@ -225,6 +224,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       // Pass the external scene, camera, and renderer to the cube control
       this.cubeControl.initWithExternalScene(scene, camera, renderer);
       this.cubeControl.gizmo.attachControls(this.eventDisplay.three.controls);
+      this.cubeControl.gizmo.camera
     }
 
     const thisPointer = this;

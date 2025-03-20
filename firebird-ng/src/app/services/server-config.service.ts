@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as jsoncParser from 'jsonc-parser';
 import {deepCopy} from "../utils/deep-copy";
-import {BehaviorSubject, Observable, catchError, map, of, firstValueFrom} from "rxjs";
+import {firstValueFrom} from "rxjs";
 
 
 export interface ServerConfig {
@@ -10,13 +10,15 @@ export interface ServerConfig {
   apiAvailable: boolean;
   apiBaseUrl: string;
   logLevel: string;
+  configs: any[];
 }
 
 export const defaultFirebirdConfig: ServerConfig = {
   apiAvailable: false,
   apiBaseUrl: "",
   servedByPyrobird: false,
-  logLevel: 'info'
+  logLevel: 'info',
+  configs: []
 };
 
 
@@ -26,7 +28,6 @@ export const defaultFirebirdConfig: ServerConfig = {
 export class ServerConfigService {
   private configUrl = 'assets/config.jsonc'; // URL to the JSONC config file
   private _config = deepCopy(defaultFirebirdConfig);
-
   private triedLoading = false;
 
   constructor(private http: HttpClient) {}
@@ -49,7 +50,8 @@ export class ServerConfigService {
 
       // Merge loadedConfig over default config
       this._config = { ...defaultFirebirdConfig, ...loadedConfig };
-      console.log("[ServerConfigService] Server config loaded file")
+      console.log("[ServerConfigService] Server config loaded file");
+      console.log(`[ServerConfigService] Subsystems configs loaded: ${this._config?.configs?.length}`);
     } catch (error) {
       console.error(`Failed to load config: ${error}`);
       console.log(`[ServerConfigService] Default config will be used`);

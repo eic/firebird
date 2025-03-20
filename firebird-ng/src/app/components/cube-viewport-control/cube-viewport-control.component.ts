@@ -54,6 +54,16 @@ export class CubeViewportControlComponent implements OnInit {
         color: 0x333333,
         hover: {color: 0x4bac84},
       },
+       // Define axis configurations (customize these as needed)
+    // x: { scale: 5 },       // Original "right" axis (X+)
+    // z: { color: 0x00ff00 },       // Original "front" axis (Z+)
+    // nx: { color: 0x0000ff },      // Original "left" axis (X-)
+    // nz: { color: 0xffff00 },      // Original "back" axis (Z-)
+    //     front: {nx},  // Original left (nx) becomes new front
+    //     right: z,   // Original front (z) becomes new right
+    //     back: x,    // Original right (x) becomes new back
+    //     left: nz,   // Original back (nz) becomes new left
+
       front: { label: "Right" },   // Original left face
       left: { label: "Front" },    // Original back face
       back: { label: "Left" },   // Original right face

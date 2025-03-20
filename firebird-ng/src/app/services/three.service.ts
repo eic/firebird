@@ -1,8 +1,9 @@
-import { Injectable, NgZone, OnDestroy } from '@angular/core';
+import {EventEmitter, Injectable, NgZone, OnDestroy} from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { HemisphereLight, DirectionalLight, AmbientLight, PointLight, SpotLight } from 'three';
 import {PerfService} from "./perf.service";
+import {BehaviorSubject} from "rxjs";
 
 @Injectable({
   providedIn: 'root',
@@ -18,6 +19,7 @@ export class ThreeService implements OnDestroy {
 
   /** Camera that is actually used */
   public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  public cameraMode$ = new BehaviorSubject<boolean>(true);
 
   /** Optional clipping planes and logic. */
   public clipPlanes = [
@@ -33,7 +35,6 @@ export class ThreeService implements OnDestroy {
   private perspectiveCamera!: THREE.PerspectiveCamera;
   private orthographicCamera!: THREE.OrthographicCamera;
 
-  private isOrthographic: boolean = false;
 
   /** Animation loop control */
   private animationFrameId: number | null = null;
@@ -57,6 +58,24 @@ export class ThreeService implements OnDestroy {
   private directionalLight!: DirectionalLight;
   private pointLight!: PointLight; // Optional
   private spotLight!: SpotLight; // Optional
+
+  private raycaster = new THREE.Raycaster();
+  private pointer = new THREE.Vector2();
+  private isRaycastEnabled: boolean = false;
+
+
+  private onPointerDownHandler!: (event: PointerEvent) => void;
+
+  //Raycasting point for sceneEvent
+  private hoverPoint: THREE.Mesh | null = null;
+
+  private initHoverPoint() {
+    const sphereGeom = new THREE.SphereGeometry(30, 160, 160);
+    const sphereMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    this.hoverPoint = new THREE.Mesh(sphereGeom, sphereMat);
+    this.hoverPoint.visible = false;
+    this.sceneEvent.add(this.hoverPoint);
+  }
 
   constructor(
     private ngZone: NgZone,
@@ -94,6 +113,8 @@ export class ThreeService implements OnDestroy {
 
     this.containerElement = containerElement;
 
+
+
     // 1) Create scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x3f3f3f); // Dark grey background
@@ -114,16 +135,22 @@ export class ThreeService implements OnDestroy {
     this.scene.add(this.sceneHelpers);
 
     // 2) Create cameras
-    this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 1, 40000);
+    this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 10, 40000);
     this.perspectiveCamera.position.set(0, 100, 200);
+    this.perspectiveCamera.position.set(-7000, 0 , 0);
 
-    this.orthographicCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10000);
+    // Better orthographic camera initialization
+    const orthoSize = 1000; // Start with a large enough size to see the detector
+    this.orthographicCamera = new THREE.OrthographicCamera(
+      -orthoSize, orthoSize,
+      orthoSize, -orthoSize,
+      -10000, 40000 // Critical change: Allow negative near plane to see objects behind camera position
+    );
     this.orthographicCamera.position.copy(this.perspectiveCamera.position);
     this.orthographicCamera.lookAt(this.scene.position);
 
     // Default camera is perspective
     this.camera = this.perspectiveCamera;
-    this.isOrthographic = false;
 
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -131,6 +158,22 @@ export class ThreeService implements OnDestroy {
     this.renderer.localClippingEnabled = false;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    //Raycasting
+    // this.onPointerDownHandler = (event) => {
+    //     const rect = this.renderer.domElement.getBoundingClientRect();
+    //     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    //     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    //
+    //     this.raycaster.setFromCamera(this.pointer, this.camera);
+    //     const intersects = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
+    //     if (intersects.length > 0) {
+    //       const firstHit = intersects[0].object;
+    //       console.log('Clicked object:', intersects[0].object.name || 'Unnamed object');
+    //     }
+    // };
+    //
+    // this.renderer.domElement.addEventListener('pointerdown', this.onPointerDownHandler);
 
     // Append renderer to the container
     this.containerElement.appendChild(this.renderer.domElement);
@@ -158,6 +201,9 @@ export class ThreeService implements OnDestroy {
     const width = this.containerElement.clientWidth;
     const height = this.containerElement.clientHeight;
     this.setSize(width, height);
+
+    this.raycastHandler();
+    this.initHoverPoint();
 
     // Start rendering
     this.startRendering();
@@ -235,21 +281,21 @@ export class ThreeService implements OnDestroy {
    * Adds default objects to the scene.
    */
   private addDefaultObjects(): void {
-    const gridHelper = new THREE.GridHelper(1000, 100);
-    gridHelper.name = "Grid";
-    this.sceneHelpers.add(gridHelper);
+    // const gridHelper = new THREE.GridHelper(1000, 100);
+    // gridHelper.name = "Grid";
+    // this.sceneHelpers.add(gridHelper);
 
-    const axesHelper = new THREE.AxesHelper(500);
+    const axesHelper = new THREE.AxesHelper(1500);
     axesHelper.name = "Axes";
     this.sceneHelpers.add(axesHelper);
 
-    const geometry = new THREE.BoxGeometry(100, 100, 100);
-    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    cube.name = "TestCube"
-    cube.castShadow = true;
-    cube.receiveShadow = true;
-    this.sceneGeometry.add(cube);
+    // const geometry = new THREE.BoxGeometry(100, 100, 100);
+    // const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+    // const cube = new THREE.Mesh(geometry, material);
+    // cube.name = "TestCube"
+    // cube.castShadow = true;
+    // cube.receiveShadow = true;
+    // this.sceneGeometry.add(cube);
   }
 
   /**
@@ -400,7 +446,18 @@ export class ThreeService implements OnDestroy {
         matArray.forEach((mat: THREE.Material) => {
           mat.clippingPlanes = this.clipPlanes;
           mat.clipIntersection = this.clipIntersection;
+
+          // Add these properties to prevent z-fighting and flickering
+          if (mat instanceof THREE.MeshBasicMaterial ||
+            mat instanceof THREE.MeshLambertMaterial ||
+            mat instanceof THREE.MeshPhongMaterial ||
+            mat instanceof THREE.MeshStandardMaterial) {
+            mat.polygonOffset = true;
+            mat.polygonOffsetFactor = 1;
+            mat.polygonOffsetUnits = 1;
+          }
         });
+
       }
     });
   }
@@ -410,10 +467,47 @@ export class ThreeService implements OnDestroy {
    * @param useOrtho Whether to use the orthographic camera.
    */
   toggleOrthographicView(useOrtho: boolean): void {
-    this.isOrthographic = useOrtho;
-    this.camera = useOrtho ? this.orthographicCamera : this.perspectiveCamera;
+
+    if (useOrtho) {
+      // When switching to orthographic, sync position and target from perspective
+      this.orthographicCamera.position.copy(this.perspectiveCamera.position);
+
+      // Get the current target from OrbitControls
+      const target = this.controls.target.clone();
+
+      // Compute the direction vector from camera to target
+      const direction = new THREE.Vector3().subVectors(target, this.orthographicCamera.position).normalize();
+
+      // Update orthographic camera to look in the same direction
+      this.orthographicCamera.lookAt(target);
+
+      // Calculate suitable frustum size based on distance to target
+      const distance = this.orthographicCamera.position.distanceTo(target);
+      const orthoSize = distance * Math.tan(THREE.MathUtils.degToRad(this.perspectiveCamera.fov / 2));
+
+      // Update orthographic frustum based on aspect ratio
+      const aspect = this.renderer.domElement.width / this.renderer.domElement.height;
+      this.orthographicCamera.left = -orthoSize * aspect;
+      this.orthographicCamera.right = orthoSize * aspect;
+      this.orthographicCamera.top = orthoSize;
+      this.orthographicCamera.bottom = -orthoSize;
+
+      // Set a generous near/far plane range to ensure all geometry is visible
+      this.orthographicCamera.near = -10000;
+      this.orthographicCamera.far = 40000;
+
+      this.orthographicCamera.updateProjectionMatrix();
+      this.camera = this.orthographicCamera;
+    } else {
+      // Switch back to perspective camera
+      this.camera = this.perspectiveCamera;
+    }
+
+    // Update the controls to use the current camera
     this.controls.object = this.camera;
     this.controls.update();
+
+    this.cameraMode$.next(!useOrtho);
   }
 
   /**
@@ -434,6 +528,9 @@ export class ThreeService implements OnDestroy {
   ngOnDestroy(): void {
     this.stopRendering();
     // Additional cleanup if necessary
+    if (this.renderer?.domElement) {
+      this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDownHandler);
+    }
   }
 
   logRendererInfo() {
@@ -449,4 +546,79 @@ export class ThreeService implements OnDestroy {
     console.log('Programs:', info.programs?.length);
     console.log(info.programs);
   }
+
+  toggleRaycast(): void {
+    this.isRaycastEnabled = !this.isRaycastEnabled;
+    console.log(`Raycast is now ${this.isRaycastEnabled ? 'ENABLED' : 'DISABLED'}`);
+  }
+
+  isRaycastEnabledState(): boolean {
+    return this.isRaycastEnabled;
+  }
+
+
+  private raycastHandler(): void {
+
+    this.renderer.domElement.addEventListener('mousedown', (event) => {
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+
+      // const allObjects = [
+      //   ...this.sceneGeometry.children,
+      //   ...this.sceneEvent.children
+      // ];
+
+      const intersects = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
+
+      if (intersects.length > 0) {
+        console.log('Geometry intersected objects under cursor:');
+        intersects.forEach((intersection) => {
+          const hitObj = intersection.object;
+          console.log('–', hitObj.name || 'Unnamed object');
+        });
+      } else {
+        console.log('No intersection');
+      }
+
+    });
+
+        // ==== Add after existing mousedown: ====
+    this.renderer.domElement.addEventListener('pointermove', (event) => {
+      if (!this.isRaycastEnabled) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+
+      const intersectsEvent = this.raycaster.intersectObjects(this.sceneEvent.children, true);
+
+      if (intersectsEvent.length > 0) {
+        const closest = intersectsEvent[0];
+        const hitTrack = closest.object;
+        if (this.hoverPoint) {
+          this.hoverPoint.visible = true;
+          this.hoverPoint.position.copy(closest.point);
+        }
+        console.log(`Hovered track: ${hitTrack.name || 'Unnamed track'}`, hitTrack);
+      } else {
+        if (this.hoverPoint) {
+          this.hoverPoint.visible = false;
+        }
+      }
+    });
+
+  }
+
 }

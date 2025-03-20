@@ -29,9 +29,13 @@ export enum NeonTrackColors {
  * We'll keep each line's full data in a small structure so we can rebuild partial geometry.
  */
 interface InternalLineData {
-  lineObj: Line2;                // the Line2 object in the scene
-  points: number[][];            // the raw array of [x, y, z, t, dx, dy, dz, dt]
-  lineMaterial: LineMaterial;    // the material used
+  lineObj: Line2;                    // the Line2 object in the scene
+  points: number[][];                // the raw array of [x, y, z, t, dx, dy, dz, dt]
+  lineMaterial: LineMaterial;        // the material used
+  startTime: number;                 // The time of the first point
+  endTime: number;                   // The end of the last point
+  params: Record<string, any>;       // Track parameters
+  lastPaintIndex: number;            // This is needed for partial track draw optimization
 }
 
 /**
@@ -41,6 +45,7 @@ interface InternalLineData {
 export class PointTrajectoryPainter extends ComponentPainter {
   /** A small array to store each line's data and references. */
   private trajectories: InternalLineData[] = [];
+  private timeColumnIndex = 3;         // TODO check that line has time column
 
   /** Base materials that we clone for each line. */
   private baseSolidMaterial: LineMaterial;
@@ -56,7 +61,7 @@ export class PointTrajectoryPainter extends ComponentPainter {
     // Create base materials
     this.baseSolidMaterial = new LineMaterial({
       color: 0xffffff,
-      linewidth: 20,   // in world units
+      linewidth: 10,   // in world units
       worldUnits: true,
       dashed: false,
       alphaToCoverage: true
@@ -64,7 +69,7 @@ export class PointTrajectoryPainter extends ComponentPainter {
 
     this.baseDashedMaterial = new LineMaterial({
       color: 0xffffff,
-      linewidth: 20,
+      linewidth: 10,
       worldUnits: true,
       dashed: true,
       dashSize: 100,
@@ -81,19 +86,49 @@ export class PointTrajectoryPainter extends ComponentPainter {
    * Initially, we set them fully visible (or we could set them invisible).
    */
   private initLines() {
-    const comp = this.component as PointTrajectoryComponent;
+    const component = this.component as PointTrajectoryComponent;
 
     // Let us see if paramColumns includes "pdg" or "charge" or something.
-    const pdgIndex = comp.paramColumns.indexOf("pdg");
-    const chargeIndex = comp.paramColumns.indexOf("charge");
+    const pdgIndex = component.paramColumns.indexOf("pdg");
+    const chargeIndex = component.paramColumns.indexOf("charge");
+    let paramsToColumnsMismatchWarned = false;
+    let noPointsWarned = 0;
 
-    for (const lineSegment of comp.lines) {
+    for (const lineSegment of component.lines) {
+
+      // Copy params
+      const paramColumns = component.paramColumns;
+      const params = lineSegment.params;
+      if(params.length != paramColumns.length && !paramsToColumnsMismatchWarned) {
+        // We do the warning only once!
+        console.error(`params.length(${params.length})  != paramColumns.length(${paramColumns.length}) at '${component.name}'. This should never happen!`);
+        paramsToColumnsMismatchWarned = true;
+      }
+
+      // We intentionally use the very dumb method but this method allows us do at least something if they mismatch
+      const paramArrLen = Math.min(paramColumns.length, params.length);
+      const paramsDict: Record<string, any> = {};
+      for (let i = 0; i < paramArrLen; i++) {
+        paramsDict[paramColumns[i]] = params[i];
+      }
+
+      // Check we have enough points to build at least something!
+      if(lineSegment.points.length <= 1) {
+        if(noPointsWarned < 10) {
+          const result = Object.entries(paramsDict)
+            .map(([key, value]) => `${key}:${value}`)
+            .join(", ");
+          console.warn(`Line has ${lineSegment.points.length} points. This can't be. Track parameters: ${result}`);
+          noPointsWarned++;
+        }
+        continue;   // Skip this line!
+      }
+
+      // Create proper material
       const { lineMaterial } = this.createLineMaterial(lineSegment, pdgIndex, chargeIndex);
 
-      // We'll start by building a geometry with *all* points, or we can build empty geometry
-      // and rely on paint() to do partial logic. For simplicity, let's build full geometry now.
+      // We'll start by building a geometry with *all* points, and rely on paint() to do partial logic.
       // We'll store the full set of points in linesData, then paint() can rebuild partial geometry.
-
       const geometry = new LineGeometry();
       const fullPositions = this.generateFlatXYZ(lineSegment.points);
       geometry.setPositions(fullPositions);
@@ -104,12 +139,29 @@ export class PointTrajectoryPainter extends ComponentPainter {
       // Add to the scene
       this.parentNode.add(line2);
 
-      // Keep the data
-      this.trajectories.push({
+      let startTime = 0;
+      let endTime = 0;
+      if(lineSegment.points[0].length > this.timeColumnIndex) {
+        startTime = lineSegment.points[0][this.timeColumnIndex];
+        endTime = lineSegment.points[lineSegment.points.length-1][this.timeColumnIndex]
+      }
+
+      const trajData: InternalLineData = {
         lineObj: line2,
+        lineMaterial: lineMaterial,
         points: lineSegment.points,
-        lineMaterial
-      });
+        startTime: startTime,
+        endTime: endTime,
+        params: paramsDict,
+        lastPaintIndex: 0,
+      }
+
+      trajData.lineObj.name = this.getNodeName(trajData);
+      trajData.lineObj.userData["track_params"] = trajData.params;
+
+      // Keep the data
+      this.trajectories.push(trajData);
+
     }
   }
 
@@ -246,21 +298,23 @@ export class PointTrajectoryPainter extends ComponentPainter {
   public override paint(time: number | null): void {
     // If time===null => show all lines fully
     if (time === null) {
-      for (const ld of this.trajectories) {
-        // Rebuild geometry with *all* points
-        const fullPositions = this.generateFlatXYZ(ld.points);
-        const geom = ld.lineObj.geometry as LineGeometry;
-        // Dispose old geometry
-        geom.dispose();
-        // Build new
-        geom.setPositions(fullPositions);
-        ld.lineObj.computeLineDistances();
-        ld.lineObj.visible = true;
-      }
+      this.paintNoTime();
       return;
     }
 
     // Otherwise, partial or none
+    this.fastPaint(time);
+  }
+
+  private paintNoTime() {
+    for (const track of this.trajectories) {
+      // Rebuild geometry with *all* points
+      track.lineObj.visible = true;
+      track.lineObj.geometry.instanceCount=Infinity;
+    }
+  }
+
+  public paintAtTime(time:number) {
     for (const ld of this.trajectories) {
       // Rebuild geometry up to time
       const partialPositions = this.buildPartialXYZ(ld.points, time);
@@ -281,6 +335,60 @@ export class PointTrajectoryPainter extends ComponentPainter {
     }
   }
 
+  public fastPaint(time: number) {
+
+    // pass1 select fully visible, partial and fully hidden tracks
+
+    let partialTracks: InternalLineData[] = []; // Replace 'any' with the actual type
+
+    for (const track of this.trajectories) {
+      if (track.startTime > time) {
+        track.lineObj.visible = false;
+      } else {
+        track.lineObj.visible = true;
+        track.lineObj.geometry.instanceCount = track.points.length;
+
+        if (track.endTime > time) {
+          partialTracks.push(track);
+        } else {
+          // track should be visible fully
+          track.lineObj.geometry.instanceCount = Infinity;
+        }
+      }
+    }
+
+     if (partialTracks.length > 0) {
+       for (let track of partialTracks) {
+         let geometryPosCount = track.points.length;
+
+         //if (!geometryPosCount || geometryPosCount < 10) continue;
+         //let trackProgress = (time - track.startTime) / (track.endTime - track.startTime);
+         //let roundedProgress = Math.round(geometryPosCount * trackProgress * 2) / 2; // *2/2 to stick to 0.5 rounding
+
+         if(track.lastPaintIndex<0 || track.lastPaintIndex>=track.points.length) {
+           // In case of emergency set lastPointIndex to the center of array
+           track.lastPaintIndex=track.points.length/2;
+         }
+
+         if(track.points[track.lastPaintIndex][this.timeColumnIndex] < time) {
+           // Seek the correct point of time forward
+           while(track.points[track.lastPaintIndex][this.timeColumnIndex] < time && track.lastPaintIndex<track.points.length) {
+             track.lastPaintIndex++;
+           }
+         }
+         else {
+           // Seek the correct point of time backward
+           while(track.points[track.lastPaintIndex][this.timeColumnIndex] > time && track.lastPaintIndex>=0) {
+             track.lastPaintIndex--;
+           }
+         }
+
+         track.lineObj.geometry.instanceCount = track.lastPaintIndex;
+       }
+     }
+
+  }
+
   /**
    * Dispose all line objects, geometry, materials
    */
@@ -296,5 +404,41 @@ export class PointTrajectoryPainter extends ComponentPainter {
     }
     this.trajectories = [];
     super.dispose();
+  }
+
+  private getNodeName(trajData: InternalLineData) {
+
+    let name = "track"
+    if("type" in trajData.params) {
+      name = trajData.params["type"]
+    } else if ("pdg" in trajData.params) {
+      name = trajData.params["pdg"]
+    } else if ("charge" in trajData.params) {
+      const charge = parseFloat(trajData.params["cahrge"]);
+      if(Math.abs(charge) < 0.00001) {
+        name = "NeuTrk";
+      }
+      if(charge>0) {
+        name = "PosTrk";
+      } else if (charge < 0) {
+        name = "NegTrk";
+      }
+    }
+    name="["+name+"]"
+
+    let time = "no-t"
+    if(Math.abs(trajData.startTime) > 0.000001 ||  Math.abs(trajData.endTime) > 0.000001) {
+      time = `t:${trajData.startTime.toFixed(1)}-${trajData.endTime.toFixed(1)}`;
+    }
+
+    let momentum = "no-p"
+    if("px" in trajData.params && "py" in trajData.params && "pz" in trajData.params) {
+      let px = parseFloat(trajData.params["px"]);
+      let py = parseFloat(trajData.params["py"]);
+      let pz = parseFloat(trajData.params["pz"]);
+      momentum = "p:"+(Math.sqrt(px*px+py*py+pz*pz)/1000.0).toFixed(3);
+    }
+
+    return `${name} ${momentum} ${time}`;
   }
 }

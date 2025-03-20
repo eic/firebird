@@ -45,7 +45,7 @@ export class RootGeometryProcessor {
    * Detectors (top level TGeo nodes) to be removed.
    * (!) startsWith function is used for filtering (aka: detector.fName.startsWith(removeDetectorNames[i]) ... )
    */
-  removeDetectorNames: string[] = [
+  public removeDetectorNames: string[] = [
     "Lumi",
     //"Magnet",
     //"B0",
@@ -150,25 +150,26 @@ export class RootGeometryProcessor {
   public process(rootGeoManager:any):any {
     // Getting main detector nodes
     let result = pruneTopLevelDetectors(rootGeoManager, this.removeDetectorNames);
-    console.log("Filtered top level detectors: ", result);
-
+    console.log("[RootGeometryProcessor] Filtered top level detectors: ", result);
+    console.time(`[RootGeometryProcessor] Processing time`);
 
     // >oO analyzeGeoNodes(rootGeoManager, 1);
     // Now we go with the fine-tuning of each detector
     for(let detector of this.subDetectorsRules) {
       let topDetNode = findSingleGeoNode(rootGeoManager, detector.namePattern, 1);
-      console.log(`Processing ${topDetNode}`);
+      // console.log(`Processing ${topDetNode}`);
       if(!topDetNode) {
         continue;
       }
-      console.time(`Process sub-detector: ${detector.namePattern}`);
+      // console.time(`[RootGeometryProcessor] Process sub-detector: ${detector.namePattern}`);
       for(let rule of detector.editRules) {
 
         editGeoNodes(topDetNode, [rule])
       }
-      console.timeEnd(`Process sub-detector: ${detector.namePattern}`);
+      // console.timeEnd(`[RootGeometryProcessor] Process sub-detector: ${detector.namePattern}`);
     }
 
-    console.log(`Done processing ${this.subDetectorsRules.length} detectors`);
+    console.timeEnd(`[RootGeometryProcessor] Processing time`);
+    console.log(`[RootGeometryProcessor] Done processing ${this.subDetectorsRules.length} detectors`);
   }
 }

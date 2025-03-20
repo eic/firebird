@@ -1,5 +1,5 @@
 <div
-  class="eventSelector mx-2"
+  class="eventSelector"
   *ngIf="entries().length > 0"
   matTooltip="Entry selector"
   matTooltipPosition="above"
@@ -7,10 +7,10 @@
   <select (change)="changeEntry($event)">
     <option
       *ngFor="let entry of entries()"
-      [value]="entry"
+      [value]="entry.id"
       [selected]="entry === currentEntry()"
     >
-      {{ entry }}
+      {{ entry.id }}
     </option>
   </select>
 </div>

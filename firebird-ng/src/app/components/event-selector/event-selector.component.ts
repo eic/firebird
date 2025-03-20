@@ -1,4 +1,3 @@
-// event-selector.component.ts
 import { Component } from '@angular/core';
 import { DataModelService } from '../../services/data-model.service';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -9,6 +8,7 @@ import { NgForOf, NgIf } from '@angular/common';
   templateUrl: './event-selector.component.html',
   styleUrls: ['./event-selector.component.scss'],
   imports: [MatTooltip, NgForOf, NgIf],
+  standalone: true,
 })
 export class EventSelectorComponent {
   constructor(private dataModelService: DataModelService) {}
@@ -18,7 +18,12 @@ export class EventSelectorComponent {
   currentEntry = this.dataModelService.currentEntry;
 
   changeEntry(evt: Event) {
-    const newEntry = (evt.target as HTMLSelectElement).value;
-    this.dataModelService.setCurrentEntryByName(newEntry);
+    const select = evt.target as HTMLSelectElement;
+    const selectedIndex = select.selectedIndex;
+    const selectedEntry = this.entries()[selectedIndex];
+
+    if (selectedEntry) {
+      this.dataModelService.setCurrentEntryByName(selectedEntry.id);
+    }
   }
 }

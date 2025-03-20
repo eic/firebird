@@ -1,6 +1,12 @@
-<button mat-raised-button (click)="openDialog()">
-  <mat-icon>crop</mat-icon>
-</button>
+<div style="display: flex; margin-left: 3px; align-items: center; gap: 6px;">
+  <button mat-icon-button matTooltip="Clipping Geometry" style="box-shadow: var(--mat-sys-level1)" (click)="openDialog()">
+    <mat-icon>crop</mat-icon>
+  </button>
+
+  <button mat-icon-button matTooltip="Enable Raycast" style="box-shadow: var(--mat-sys-level1)" (click)="toggleRaycast()">
+    <mat-icon>{{ isRaycastEnabled ? 'visibility' : 'visibility_off' }}</mat-icon>
+  </button>
+</div>
 
 <ng-template #dialogTemplate>
   <button mat-dialog-close aria-label="Close dialog" class="close-round-btn">

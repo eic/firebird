@@ -1,16 +1,14 @@
-import { Injectable, signal, effect, Signal, WritableSignal } from '@angular/core';
+import {computed, effect, Injectable, linkedSignal, Signal, signal, WritableSignal} from '@angular/core';
+import {Group as TweenGroup, Tween} from '@tweenjs/tween.js';
+import {ThreeService} from './three.service';
+import {GeometryService} from './geometry.service';
+import {DataModelService} from './data-model.service';
+import {UserConfigService} from './user-config.service';
+import {UrlService} from './url.service';
 
-import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Scene, Vector3} from 'three';
-import { Group as TweenGroup, Tween, Easing } from '@tweenjs/tween.js';
-import { ThreeService } from './three.service';
-import { GeometryService } from './geometry.service';
-import { DataModelService } from './data-model.service';
-import { UserConfigService } from './user-config.service';
-import { UrlService } from './url.service';
 
-import {disposeHierarchy, disposeNode, getColorOrDefault} from '../utils/three.utils';
-import { ThreeGeometryProcessor } from '../data-pipelines/three-geometry.processor';
-import { ThreeEventProcessor } from '../data-pipelines/three-event.processor';
+import {disposeHierarchy} from '../utils/three.utils';
+import {ThreeEventProcessor} from '../data-pipelines/three-event.processor';
 import {DataModelPainter, DisplayMode} from '../painters/data-model-painter';
 import {AnimationManager} from "../animation/animation-manager";
 import {initComponentFactories} from "../model/default-components-init";
@@ -26,9 +24,10 @@ export class EventDisplayService {
   selectedEventKey: string | undefined;
 
   // Time
-  private eventDisplayMode: WritableSignal<DisplayMode> = signal(DisplayMode.Timeless);
-  private eventTime: WritableSignal<number> = signal(0);
-  public readonly eventTime$: Signal<number> = this.eventTime.asReadonly();
+  //private eventDisplayMode: WritableSignal<DisplayMode> = signal(DisplayMode.Timeless);
+  public eventTime: WritableSignal<number|null> = signal(0);
+
+
   public maxTime = 200;
   public minTime = 0;
 
@@ -72,31 +71,30 @@ export class EventDisplayService {
 
     // On time change
     effect(() => {
-      //this.processCurrentTimeChange(this.eventTime());
+      console.log("[eventDisplay] Time change effect start")
       const time = this.eventTime();
-      const mode = this.eventDisplayMode();
-      if(mode === DisplayMode.Timeless) {
-        this.painter.paint(null);
-      }
-      else {
-        this.painter.paint(time);
-      }
+      this.painter.paint(time);
+      console.log("[eventDisplay] Time change effect end")
     }, {debugName: "EventDisplayService.OnTimeChange"});
 
     effect(() => {
       //this.processCurrentTimeChange(this.eventTime());
       const geometry = this.geomService.geometry();
-
-
     }, {debugName: "EventDisplayService.OnTimeChange"});
 
     // On current entry change
     effect(() => {
+      console.log("[eventDisplay] Entry change effect start")
       let event = this.dataService.currentEntry();
+
+      // Make sure to clean-up even if event is null
+      // this.painter.cleanupCurrentEntry();
+
       if(event === null || this.painter.getEntry() == event) return;
       this.painter.setEntry(event);
-      this.eventTime.set(0);
-      this.eventDisplayMode.set(DisplayMode.Timeless);  // First we set timeless mode
+      this.painter.paint(null);
+
+      console.log("[eventDisplay] Entry change effect end")
     }, {debugName: "EventDisplayService.OnEventChange"});
   }
 
@@ -137,9 +135,11 @@ export class EventDisplayService {
   }
 
   animateTime() {
+
+    let time = this.eventTime() ?? this.minTime;
     this.animateCurrentTime(
       this.maxTime,
-      (this.maxTime - this.eventTime()) * 200
+      (this.maxTime - time) * 200
     );
   }
 
@@ -158,11 +158,12 @@ export class EventDisplayService {
     if (this.tween) {
       this.stopTimeAnimation();
     }
-    this.tween = new Tween({ currentTime: this.eventTime() }, this.tweenGroup)
+
+    this.tween = new Tween({ currentTime: this.eventTime() ?? this.minTime }, this.tweenGroup)
       .to({ currentTime: targetTime }, duration)
       .onUpdate((obj) => {
         console.log(obj.currentTime);
-        this.updateEventTime(obj.currentTime);
+        this.eventTime.set(obj.currentTime);
       })
       // .easing(TWEEN.Easing.Quadratic.In) // This can be changed to other easing functions
       .start();
@@ -189,19 +190,28 @@ export class EventDisplayService {
   }
 
   timeStepBack() {
-    if (this.eventTime() > this.minTime) this.updateEventTime(this.eventTime() - 1);
-    if (this.eventTime() < this.minTime) this.updateEventTime(this.minTime);
+    // Check if we need to switch to timed display mode
+
+    const time = this.eventTime() ?? this.minTime;
+
+    if (time > this.minTime) this.updateEventTime(time - 1);
+    if (time <= this.minTime) this.updateEventTime(this.minTime);
   }
 
   timeStep() {
-    if (this.eventTime() < this.maxTime) this.updateEventTime(this.eventTime() + 1);
-    if (this.eventTime() > this.maxTime) this.updateEventTime(this.maxTime);
+    // Check if we need to switch to timed display mode
+
+    const time = this.eventTime();
+    if(time === null) return;
+
+    if (time < this.maxTime) this.updateEventTime(time + 1);
+    if (time > this.maxTime) this.updateEventTime(this.maxTime);
   }
 
   exitTimedDisplay() {
+
     this.stopTimeAnimation();
-    this.rewindTime();
-    this.painter.paint(null);
+    this.eventTime.set(null);
     this.animateEventAfterLoad = false;
     if (this.trackInfos) {
       for (let trackInfo of this.trackInfos) {
@@ -317,40 +327,7 @@ export class EventDisplayService {
    * @private
    */
   private processCurrentTimeChange(value: number|null) {
-    let partialTracks: any[] = []; // Replace 'any' with the actual type
-    // if (this.trackInfos) {
-    //   for (let trackInfo of this.trackInfos) {
-    //     if (trackInfo.startTime > value) {
-    //       trackInfo.trackNode.visible = false;
-    //     } else {
-    //       trackInfo.trackNode.visible = true;
-    //       trackInfo.newLine.geometry.instanceCount = trackInfo.positions.length;
-    //
-    //       if (trackInfo.endTime > value) {
-    //         partialTracks.push(trackInfo);
-    //       } else {
-    //         // track should be visible fully
-    //         trackInfo.newLine.geometry.instanceCount = Infinity;
-    //       }
-    //     }
-    //   }
-    // }
-    //
-    // if (partialTracks.length > 0) {
-    //   for (let trackInfo of partialTracks) {
-    //     let geometryPosCount = trackInfo.positions.length;
-    //
-    //     //if (!geometryPosCount || geometryPosCount < 10) continue;
-    //
-    //     let trackProgress =
-    //       (value - trackInfo.startTime) /
-    //       (trackInfo.endTime - trackInfo.startTime);
-    //     let roundedProgress = Math.round(geometryPosCount * trackProgress * 2) / 2; // *2/2 to stick to 0.5 rounding
-    //
-    //     //(trackInfo.newLine.geometry as InstancedBufferGeometry). = drawCount;(0, roundedProgress);
-    //     trackInfo.newLine.geometry.instanceCount = roundedProgress;
-    //   }
-    // }
+
   }
 
   public buildEventDataFromJSON(eventData: any) {

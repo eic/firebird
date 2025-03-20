@@ -38,7 +38,7 @@ export class DataModelPainter {
     this.threeParentNode = parentNode;
   }
 
-  protected cleanupCurrentEntry() {
+  public cleanupCurrentEntry() {
     for (let painter of this.painters) {
       painter.dispose();
     }
