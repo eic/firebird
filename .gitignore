@@ -142,3 +142,6 @@ pyrobird/src/pyrobird/server/static/
 firebird-ng/.yarn/
 
 **/repomix-output.*
+pyrobird/pyrobird/server/static/assets/
+
+pyrobird/pyrobird/server/static/
