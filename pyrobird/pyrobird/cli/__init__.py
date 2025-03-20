@@ -10,6 +10,7 @@ from pyrobird.cli.geo import geo as geo_group
 from pyrobird.cli.serve import serve as serve_group
 from pyrobird.cli.convert import convert as convert_cmd
 from pyrobird.cli.screenshot import screenshot as screenshot_cmd
+from pyrobird.cli.merge import merge as merge_cmd
 
 
 def setup_logging(is_verbose):
@@ -42,7 +43,7 @@ def setup_logging(is_verbose):
 @click.pass_context
 def cli_app(ctx, verbose):
     """
-    fbd - Firebird command provides command line interface to backend for the Firebird Event Display and Data Visualizer
+    pyrobird - Firebird command provides command line interface (CLI) to backend for the Firebird Event Display and Data Visualizer
     """
 
     setup_logging(verbose)
@@ -56,3 +57,4 @@ cli_app.add_command(geo_group)
 cli_app.add_command(serve_group)
 cli_app.add_command(convert_cmd)
 cli_app.add_command(screenshot_cmd)
+cli_app.add_command(merge_cmd)

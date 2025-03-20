@@ -24,6 +24,9 @@ Development installation
 
 ```bash
 python -m pip install --editable .[test,batch]
+
+# with xrootd
+python -m pip install --editable .[test,batch,xrootd]
 ```
 
 Running with Gunicorn (development mode)
@@ -59,6 +62,7 @@ pytest
 # To stop immediately on error and enter debugging mode
 pytest -x --pdb 
 ```
+
 
 ## Development install
 
@@ -250,8 +254,8 @@ curl "http://localhost:5454/assets/config.jsonc"
 ### Publishing
 
 ```bash
-hatch build
-hatch publish
+pip install --upgrade build twine
+python -m build && python -m twine upload dist/* 
 
 # You will have to setup your pip authentication key
 ```

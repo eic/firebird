@@ -1,21 +1,24 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = [
+  "setuptools>=61.0",
+  "wheel"
+]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyrobird"
 dynamic = ["version"]
-description = ''
+description = "pyrobird is a python backend for Firebird HENP event display"
 readme = "README.md"
 requires-python = ">=3.8"
-license = "LGPL-3.0-or-later"
+license = { file = "LICENSE" }
 keywords = []
 authors = [
-  { name = "Dmitry Romanov", email = "romanovda@gmail.com" },
+  { name = "Dmitry Romanov", email = "romanovda@gmail.com" }
 ]
-packages = [{ include = "pyrobird" }]
 classifiers = [
   "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
@@ -23,86 +26,36 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
+  "Programming Language :: Python :: Implementation :: PyPy"
 ]
 dependencies = [
-  "click", "rich", "pyyaml", "flask", "flask-cors", "flask-compress>=1.8.0", "json5", "uproot"
+  "click",
+  "rich",
+  "pyyaml",
+  "flask",
+  "flask-cors",
+  "flask-compress>=1.8.0",
+  "json5",
+  "uproot"
 ]
 
 [project.optional-dependencies]
 test = ["pytest"]
 batch = ["pyppeteer"]
 xrootd = ["fsspec-xrootd", "xrootd"]
-
-#[project.urls]
-#Documentation = "https://github.com/eic/firebird"
-#Issues = "https://github.com/eic/firebird/issues"
-#Source = "https://github.com/eic/firebird"
+dev = [
+  "build>=0.10.0",
+  "twine>=4.0.0",
+  "pytest>=7.0.0",
+  "coverage>=6.5.0"
+]
 
 [project.scripts]
 fbd = "pyrobird.cli:cli_app"
 pyrobird = "pyrobird.cli:cli_app"
 
-[tool.hatch.version]
-path = "pyrobird/__about__.py"
+[tool.setuptools]
+packages = ["pyrobird"]
 
-[tool.hatch.envs.default]
-dependencies = [
-  "coverage[toml]>=6.5",
-  "pytest",
-]
-
-[tool.hatch.envs.default.scripts]
-test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-cov-report = [
-  "- coverage combine",
-  "coverage report",
-]
-cov = [
-  "test-cov",
-  "cov-report",
-]
-
-[[tool.hatch.envs.all.matrix]]
-python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
-
-[tool.coverage.run]
-source_pkgs = ["pyrobird", "tests"]
-branch = true
-parallel = true
-omit = [
-  "pyrobird/__about__.py",
-]
-
-[tool.coverage.paths]
-pyrobird = ["pyrobird", "*/pyrobird/pyrobird"]
-tests = ["tests", "*/pyrobird/tests"]
-
-[tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
-
-[tool.hatch.build]
-packages = [
-  "pyrobird"
-]
-
-[tool.hatch.publish.index]
-disable = true
-repository = "https://upload.pypi.org/legacy/"
-username = "__token__"
-
-[tool.hatch.publish.index.repos.main]
-url = "https://upload.pypi.org/legacy/"
-
-[tool.hatch.build.targets.wheel]
-include = [
-  "pyrobird/data/*.yaml",
-  "pyrobird/server/static/**/*",
-  "pyrobird/server/templates/**/*"
-]
-
+[tool.setuptools.dynamic]
+version = { attr = "pyrobird.__version__" }
