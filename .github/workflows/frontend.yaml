@@ -16,6 +16,8 @@ jobs:
         working-directory: ./firebird-ng
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -37,6 +39,8 @@ jobs:
         working-directory: ./firebird-ng
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -66,6 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Download Artifacts
         uses: actions/download-artifact@v4
@@ -84,19 +90,18 @@ jobs:
           echo "--- ls ./dist/firebird"
           ls -latrh ./dist/firebird
 
-        # Make dynamic routing work after reload or going directly to page
-        # See issue #6 or https://angular.io/guide/deployment#deploy-to-github-pages
       - name: Fix dynamic routing
-        run: |          
+        run: |
           cp ./dist/firebird/index.html ./dist/firebird/404.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
           path: './dist/firebird'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
