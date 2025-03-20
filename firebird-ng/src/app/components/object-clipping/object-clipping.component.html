@@ -1,52 +1,160 @@
-<mat-menu class="mat-menu" #menu>
-  <button
-    mat-menu-item
-    (click)="
-      $event.stopPropagation();
-      clippingCheckbox._inputElement.nativeElement.click()
-    "
-  >
-    <mat-checkbox
-      #clippingCheckbox
-      [checked]="clippingEnabled"
-      (click)="$event.stopPropagation()"
-      (change)="toggleClipping($event)"
-    >
-      Clipping
-    </mat-checkbox>
+<div style="display: flex; margin-left: 3px; align-items: center; gap: 6px;">
+  <button mat-icon-button matTooltip="Clipping Geometry" style="box-shadow: var(--mat-sys-level1)" (click)="openDialog()">
+    <mat-icon>crop</mat-icon>
   </button>
-  <button
-    class="slider-btn"
-    mat-menu-item
-    (focus)="startingAngleSlider.focus()"
-  >
-    <mat-slider min="0" max="360" step="1" thumbLabel>
-      <input
-        #startingAngleSlider
-        matSliderThumb
-        [value]="startClippingAngle"
-        (valueChange)="changeStartClippingAngle($event)"
-      />
-    </mat-slider>
-    Start Angle
-  </button>
-  <button class="slider-btn" mat-menu-item (focus)="openingAngleSlider.focus()">
-    <mat-slider min="0" max="360" step="1" thumbLabel>
-      <input
-        #openingAngleSlider
-        matSliderThumb
-        [value]="openingClippingAngle"
-        (valueChange)="changeOpeningClippingAngle($event)"
-      />
-    </mat-slider>
-    Opening Angle
-  </button>
-</mat-menu>
 
-<app-custom-menu-toggle
-  [matMenuTriggerFor]="menu"
-  tooltip="Geometry clipping"
-  icon="incomplete_circle"
-  [active]="clippingEnabled"
->
-</app-custom-menu-toggle>
+  <button mat-icon-button matTooltip="Enable Raycast" style="box-shadow: var(--mat-sys-level1)" (click)="toggleRaycast()">
+    <mat-icon>{{ isRaycastEnabled ? 'visibility' : 'visibility_off' }}</mat-icon>
+  </button>
+</div>
+
+<ng-template #dialogTemplate>
+  <button mat-dialog-close aria-label="Close dialog" class="close-round-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+  <div class="mat-menu" style="padding: 45px 24px 0px 24px; position: relative;">
+    <div class="clipping-buttons">
+      <!-- Toggle Clipping -->
+      <button
+        mat-menu-item
+        (click)="
+          $event.stopPropagation();
+          clippingCheckbox._inputElement.nativeElement.click()
+        "
+      >
+        <mat-checkbox
+          #clippingCheckbox
+          [checked]="clippingEnabled"
+          (click)="$event.stopPropagation()"
+          (change)="toggleClipping($event)"
+        >
+          Clipping
+        </mat-checkbox>
+
+      </button>
+      <div class="angle-presets">
+          <button mat-icon-button style="box-shadow: var(--mat-sys-level2);"
+            (click)="changeStartClippingAngle(0); changeOpeningClippingAngle(180)"
+            [disabled]="!clippingEnabled"
+            matTooltip="Half Horizontal (0°-180°)">
+            <svg viewBox="0 0 24 24" style="width:24px;height:24px">
+              <circle cx="12" cy="12" r="10" fill="#f0f0f0" stroke="#cccccc" stroke-width="1"/>
+              <path d="M22 12 A10 10 0 0 1 2 12 L12 12 Z" fill="#bec2ff" stroke="none" stroke-width="1"/>
+            </svg>
+
+          </button>
+          <button mat-icon-button style="box-shadow: var(--mat-sys-level2);"
+            (click)=" changeStartClippingAngle(90); changeOpeningClippingAngle(180)"
+            [disabled]="!clippingEnabled"
+            matTooltip="Half Vertical (90°-180°)">
+            <svg viewBox="0 0 24 24" style="width:24px;height:24px">
+              <circle cx="12" cy="12" r="10" fill="#bec2ff" stroke="#cccccc" stroke-width="1"/>
+              <path d="M12 2 A10 10 0 0 1 12 22 L12 12 Z" fill="#f0f0f0" stroke="none" stroke-width="1"/>
+            </svg>
+          </button>
+          <button mat-icon-button style="box-shadow: var(--mat-sys-level2);"
+            (click)="changeStartClippingAngle(90); changeOpeningClippingAngle(90)"
+            [disabled]="!clippingEnabled"
+            matTooltip="Three Quarters (90°-90°)">
+            <svg viewBox="0 0 24 24" style="width:24px;height:24px">
+              <circle cx="12" cy="12" r="10" fill="#bec2ff" stroke="#cccccc" stroke-width="1"/>
+              <path d="M12 12 L12 2 A10 10 0 0 1 22 12 L12 12 Z" fill="#f0f0f0" stroke="none" stroke-width="1"/>
+            </svg>
+          </button>
+      </div>
+    </div>
+
+    <!-- Opening Angle Slider -->
+    <button
+      class="slider-btn"
+      mat-menu-item
+      (focus)="openingAngleSlider.focus()"
+      [disabled]="!clippingEnabled"
+    >
+      <mat-slider min="0" max="360" step="1">
+        <input
+          #openingAngleSlider
+          matSliderThumb
+          [value]="openingClippingAngle"
+          (valueChange)="changeOpeningClippingAngle($event)"
+        />
+      </mat-slider>
+      Opening Angle
+      <span class="angle-value">{{ openingClippingAngle }}°</span>
+    </button>
+
+    <div class="preset-buttons" [class.disabled]="!clippingEnabled">
+      <button mat-menu-item
+              (click)="changeOpeningClippingAngle(90)"
+              [disabled]="!clippingEnabled">
+        90°
+      </button>
+      <button mat-menu-item
+              (click)="changeOpeningClippingAngle(180)"
+              [disabled]="!clippingEnabled">
+        180°
+      </button>
+      <button mat-menu-item
+              (click)="changeOpeningClippingAngle(270)"
+              [disabled]="!clippingEnabled">
+        270°
+      </button>
+    </div>
+
+
+    <!-- Start Angle Slider -->
+    <button
+      class="slider-btn"
+      mat-menu-item
+      (focus)="startingAngleSlider.focus()"
+      [disabled]="!clippingEnabled"
+    >
+      <mat-slider
+        min="0"
+        max="360"
+        step="1"
+        thumbLabel
+      >
+        <input
+          #startingAngleSlider
+          matSliderThumb
+          [value]="startClippingAngle"
+          (valueChange)="changeStartClippingAngle($event)"
+        />
+      </mat-slider>
+      Start Angle
+      <span class="angle-value">{{ startClippingAngle }}°</span>
+    </button>
+
+    <div class="preset-buttons" [class.disabled]="!clippingEnabled">
+      <button mat-menu-item
+              (click)="changeStartClippingAngle(0)"
+              [disabled]="!clippingEnabled">
+        0°
+      </button>
+      <button mat-menu-item
+              (click)="changeStartClippingAngle(90)"
+              [disabled]="!clippingEnabled">
+        90°
+      </button>
+      <button mat-menu-item
+              (click)="changeStartClippingAngle(180)"
+              [disabled]="!clippingEnabled">
+        180°
+      </button>
+      <button mat-menu-item
+              (click)="changeStartClippingAngle(270)"
+              [disabled]="!clippingEnabled">
+        270°
+      </button>
+    </div>
+
+  </div>
+  <button mat-dialog-close aria-label="Close dialog" class="close-btn">
+    OK
+  </button>
+</ng-template>
+
+<!--    <button mat-raised-button [matMenuTriggerFor]="menu" matTooltip="Clipping configuration">-->
+<!--      <mat-icon>crop</mat-icon>-->
+<!--    </button>-->

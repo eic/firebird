@@ -1,54 +1,20 @@
-import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { NestedTreeControl, FlatTreeControl } from '@angular/cdk/tree';
 import {
-  MatNestedTreeNode,
-  MatTree,
-  MatTreeNode,
-  MatTreeNodeDef,
-  MatTreeNodeOutlet, MatTreeNodePadding,
-  MatTreeNodeToggle
-} from "@angular/material/tree";
-import {NestedTreeControl, FlatTreeControl, } from '@angular/cdk/tree';
-import {MatTreeFlatDataSource, MatTreeFlattener} from '@angular/material/tree';
+  MatTreeFlatDataSource,
+  MatTreeFlattener
+} from '@angular/material/tree';
+import { Mesh, MeshBasicMaterial, Object3D } from 'three';
+import { GeometryService } from '../../services/geometry.service';
+import { ThreeService } from '../../services/three.service'; // <-- Replace with the actual path
+import { MatTree, MatTreeNode, MatNestedTreeNode } from '@angular/material/tree';
+import { MatTreeNodeToggle, MatTreeNodeDef, MatTreeNodePadding, MatTreeNodeOutlet } from '@angular/material/tree';
+import { MatIcon } from '@angular/material/icon';
+import {MatButton, MatIconButton} from '@angular/material/button';
+import { MatTooltip } from '@angular/material/tooltip';
 
-import {MatIcon, MatIconModule} from '@angular/material/icon';
-import {MatButton, MatButtonModule, MatIconButton} from '@angular/material/button';
-import {GeometryService} from "../../services/geometry.service";
-import {Mesh, MeshBasicMaterial, Object3D} from "three";
-import {EventDisplayService} from "phoenix-ui-components";
-import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
-import {MatTooltip} from "@angular/material/tooltip";
-
-/**
- * Food data with nested structure.
- * Each node has a name and an optional list of children.
- */
-interface FoodNode {
-  name: string;
-  children?: FoodNode[];
-}
-
-const TREE_DATA: FoodNode[] = [
-  {
-    name: 'Fruit',
-    children: [{name: 'Apple'}, {name: 'Banana'}, {name: 'Fruit loops'}],
-  },
-  {
-    name: 'Vegetables',
-    children: [
-      {
-        name: 'Green',
-        children: [{name: 'Broccoli'}, {name: 'Brussels sprouts'}],
-      },
-      {
-        name: 'Orange',
-        children: [{name: 'Pumpkins'}, {name: 'Carrots'}],
-      },
-    ],
-  },
-];
-
-/** Flat node with expandable and level information */
-interface ExampleFlatNode {
+/** Representation of a flattened node (for display in the mat-tree). */
+interface TreeNodeFlat {
   expandable: boolean;
   name: string;
   level: number;
@@ -58,163 +24,173 @@ interface ExampleFlatNode {
 }
 
 @Component({
-  selector: 'app-geometry-tree',
-  standalone: true,
-  imports: [
-    MatTree,
-    MatTreeNode,
-    MatNestedTreeNode,
-    MatIconButton,
-    MatTreeNodeToggle,
-    MatTreeNodeDef,
-    MatIcon,
-    MatTreeNodeOutlet,
-    MatTreeNodePadding,
-    MatButton,
-    MatTooltip
-  ],
-  templateUrl: './scene-tree.component.html',
-  styleUrl: './scene-tree.component.scss'
+    selector: 'app-geometry-tree',
+    imports: [
+        // Material tree and node imports
+        MatTree,
+        MatTreeNode,
+        MatNestedTreeNode,
+        MatTreeNodeToggle,
+        MatTreeNodeDef,
+        MatTreeNodeOutlet,
+        MatTreeNodePadding,
+        // Material UI components
+        MatIcon,
+        MatButton,
+        MatTooltip,
+        MatIconButton
+    ],
+    templateUrl: './scene-tree.component.html',
+    styleUrls: ['./scene-tree.component.scss']
 })
-export class SceneTreeComponent implements OnInit{
+export class SceneTreeComponent implements OnInit {
+  /** Whether highlighting is enabled or not. */
+  public isHighlightingEnabled = false;
 
-  isHighlightingEnabled: boolean = false;
+  /** Tree Control to manage expand/collapse. */
+  public treeControl = new FlatTreeControl<TreeNodeFlat>(
+    node => node.level,
+    node => node.expandable
+  );
 
-  private _transformer = (node: Object3D, level: number) => {
-    return {
-      expandable: !!node.children && node.children.length > 0,
-      name: node.name,
-      level: level,
+  /** Tree flattener to transform hierarchical data into flat data. */
+  private treeFlattener = new MatTreeFlattener<Object3D, TreeNodeFlat>(
+    (node: Object3D, level: number): TreeNodeFlat => ({
+      expandable: node.children && node.children.length > 0,
+      name: node.name || '(untitled)',
+      level,
       type: node.type,
       object3D: node,
       visible: node.visible
-    };
-  };
-
-  treeControl = new FlatTreeControl<ExampleFlatNode>(
+    }),
     node => node.level,
     node => node.expandable,
+    node => node.children
   );
 
-  treeFlattener = new MatTreeFlattener(
-    this._transformer,
-    node => node.level,
-    node => node.expandable,
-    node => node.children,
-  );
+  /** Data source for the MatTree. */
+  public dataSource = new MatTreeFlatDataSource(this.treeControl, this.treeFlattener);
 
-  dataSource = new MatTreeFlatDataSource(this.treeControl, this.treeFlattener);
+  /** Whether a node has children. */
+  public hasChild = (_: number, node: TreeNodeFlat) => node.expandable;
 
-
-  hasChild = (_: number, node: ExampleFlatNode) => node.expandable;
-  private threeFacade: PhoenixThreeFacade;
-
-  constructor(private geomService: GeometryService,
-              private eventDisplay: EventDisplayService) {
-      //this.dataSource.data = TREE_DATA;
-      this.threeFacade = new PhoenixThreeFacade(this.eventDisplay);
-
-
-  }
+  constructor(
+    private geometryService: GeometryService,    // if you still want/need it
+    private threeService: ThreeService           // your custom Three.js service
+  ) {}
 
   ngOnInit(): void {
-
-    // if (!this.geomService.geometry) {
-    //   this.geomService.loadGeometry()
-    //     .then(result => {
-    //       if (result.threeGeometry) {
-    //         this.dataSource.data = result.threeGeometry.children;
-    //       } else {
-    //         console.error("this.geomService.loadGeometry() ! result.threeGeometry");
-    //       }
-    //     })
-    //     .catch(reason => {
-    //       console.error("ERROR LOADING GEOMETRY");
-    //       console.log(reason);
-    //     });
-    // }
-      this.dataSource.data = this.threeFacade.scene.children;
+    this.refreshSceneTree();
   }
 
-  toggleVisibility(node: ExampleFlatNode) {
-    this.geomService.toggleVisibility(node.object3D);
-    node.visible = !node.visible;
-  }
-
-  refreshScheneTree() {
+  /**
+   * Refreshes the tree data based on the current Three.js scene objects.
+   */
+  public refreshSceneTree(): void {
+    // Clear data first
     this.dataSource.data = [];
-    this.dataSource.data = this.threeFacade.scene.children;
+
+    // Retrieve the top-level scene from your ThreeService
+    const scene = this.threeService.scene;
+    if (!scene) {
+      console.warn('No scene (or null) in ThreeService.');
+      return;
+    }
+
+    // Assign the top-level scene.children directly to data
+    this.dataSource.data = scene.children;
+    // Optional: Expand or collapse certain nodes if desired
+    this.treeControl.collapseAll();
   }
 
-  toggleHighlighting(): void {
+  /**
+   * Toggles the visibility of a node/object in the scene.
+   * @param node The flattened node to toggle.
+   */
+  public toggleVisibility(node: TreeNodeFlat): void {
+    // Optionally use geometryService if you want advanced logic
+    // this.geometryService.toggleVisibility(node.object3D);
+
+    // Or simply toggle the `visible` property
+    node.object3D.visible = !node.object3D.visible;
+    node.visible = node.object3D.visible;
+  }
+
+  /**
+   * Toggles the highlight mode on/off.
+   */
+  public toggleHighlighting(): void {
     this.isHighlightingEnabled = !this.isHighlightingEnabled;
     console.log(`Highlighting is now ${this.isHighlightingEnabled ? 'enabled' : 'disabled'}`);
   }
 
-  private isEventDataNode(node: ExampleFlatNode): boolean {
-    let currentNode: ExampleFlatNode | null = node;
+  /**
+   * Called when hovering over an expandable node (mouse enter).
+   * If highlighting is enabled, recursively highlight all child meshes.
+   * @param node The node to highlight.
+   */
+  public highlightNode(node: TreeNodeFlat): void {
+    if (!this.isHighlightingEnabled) return;
 
-    while (currentNode) {
-      if (currentNode.name.includes('EventData')) {
-        return true;
-      }
-      currentNode = this.getParentNode(currentNode);
-    }
-
-    return false;
-  }
-
-  private getParentNode(node: ExampleFlatNode): ExampleFlatNode | null {
-    for (let i = 0; i < this.treeControl.dataNodes.length; i++) {
-      const currentNode = this.treeControl.dataNodes[i];
-      if (currentNode.expandable && this.treeControl.getLevel(currentNode) < node.level) {
-        const childNodes = this.treeControl.getDescendants(currentNode);
-        if (childNodes.includes(node)) {
-          return currentNode;
-        }
-      }
-    }
-    return null;
-  }
-
-  highlightNode(node: ExampleFlatNode): void {
-    if (!this.isHighlightingEnabled) {
-      return;
-    }
-
-    const isEventData = this.isEventDataNode(node);
-
-    node.object3D.traverse((child: Object3D) => {
+    // Example highlight logic
+    node.object3D.traverse(child => {
       if (child instanceof Mesh) {
+        // Save original material if not already saved
         if (!child.userData['originalMaterial']) {
           child.userData['originalMaterial'] = child.material;
         }
+        // Create a highlight material
+        const highlightMaterial = new MeshBasicMaterial({
+          color: 0xffff00,
+          wireframe: true
+        });
+        child.material = highlightMaterial;
+      }
+    });
+    console.log(`Highlighted element: ${node.name}`);
+  }
 
-        if (isEventData) {
-          const originalMaterial = child.material as any;
-          const highlightMaterial = originalMaterial.clone();
-          highlightMaterial.color.set(0xffff00);
-          highlightMaterial.wireframe = true;
+  /**
+   * Called when mouse leaves an expandable node.
+   * If highlighting is enabled, restore all child meshes to their original material.
+   * @param node The node to unhighlight.
+   */
+  public unhighlightNode(node: TreeNodeFlat): void {
+    if (!this.isHighlightingEnabled) return;
 
-          child.material = highlightMaterial;
-        } else {
-          child.material = new MeshBasicMaterial({ color: 0xffff00, wireframe: true });
+    node.object3D.traverse(child => {
+      if (child instanceof Mesh) {
+        // If there's an original material stored, restore it
+        if (child.userData['originalMaterial']) {
+          child.material = child.userData['originalMaterial'];
         }
       }
     });
-    console.log(`Element highlighted: ${node.name}`);
+    console.log(`Unhighlighted element: ${node.name}`);
   }
 
+  /**
+   * Helper method to handle mouseenter on the node row.
+   * @param node The node being hovered.
+   */
+  public onMouseEnterNode(node: TreeNodeFlat): void {
+    this.highlightNode(node);
+  }
 
-  unhighlightElement(node: ExampleFlatNode): void {
-    if (!this.isHighlightingEnabled) {
-      return;
-    }
-    node.object3D.traverse((child: Object3D) => {
-      if (child instanceof Mesh && child.userData['originalMaterial']) {
-        child.material = child.userData['originalMaterial'];
-      }
-    });
-    console.log(`Element unhighlighted: ${node.name}`);
+  /**
+   * Helper method to handle mouseleave on the node row.
+   * @param node The node being hovered out.
+   */
+  public onMouseLeaveNode(node: TreeNodeFlat): void {
+    this.unhighlightNode(node);
+  }
+
+  /**
+   * Template check to see if a node is expandable.
+   * @param _index The index of the node.
+   * @param node The node being queried.
+   */
+  public hasChildNode(_index: number, node: TreeNodeFlat): boolean {
+    return node.expandable;
   }
 }

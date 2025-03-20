@@ -13,11 +13,15 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/playground/playground.component').then(m => m.PlaygroundComponent)
   },
   {
+    path: 'help',
+    loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
+  },
+  {
     path: 'geometry',
     loadComponent: () => import('./pages/geometry-tree/scene-tree.component').then(m => m.SceneTreeComponent)
   },
   {
-    path: 'testdp',
+    path: 'shell',
     loadComponent: () => import('./pages/shell-example/shell-example.component').then(m => m.ShellExampleComponent)
   },
   {

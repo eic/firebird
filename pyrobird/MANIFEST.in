@@ -8,4 +8,6 @@ include pyrobird/data/*.yaml
 
 # Include all files in the static and templates directories
 recursive-include pyrobird/server/static *
+exclude pyrobird/server/static/assets/data/*
+exclude pyrobird/server/static/assets/test_data/*
 recursive-include pyrobird/server/templates *

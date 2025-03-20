@@ -54,6 +54,7 @@ export class ConfigProperty<T> {
     const value = this.loadValue();
     this.subject = new BehaviorSubject<T>(value);
     this.changes$ = this.subject.asObservable();
+
   }
 
 

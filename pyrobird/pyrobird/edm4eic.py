@@ -3,6 +3,7 @@ from rich.pretty import pprint
 import awkward as ak
 import numpy as np
 import json
+import math
 
 """
 We have types: 
@@ -118,6 +119,15 @@ def parse_entry_numbers(value):
 def tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None):
     """Converts vector<edm4eic::TrackerHitData> to HitBox format dictionary"""
 
+    result = {
+        "name": branch_name,
+        "type": "TrackerLinePointTrajectory",
+        "originType": ["edm4eic::TrackPoint", "edm4eic::TrackSegmentData"],
+        "paramColumns": ["px", "py", "pz", "charge", "phi", "theta", "qOverP", "chi2", "ndf"],
+        "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"],
+        "lines": []
+    }
+
     # Read only 1 event if entry_stop is not given
     if entry_stop is None:
         entry_stop = entry_start + 10
@@ -162,14 +172,167 @@ def tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None):
     }
     return group
 
+def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_stop=None):
+    """
+    Converts vector<edm4eic::TrackSegmentData> + the associated TrackPoints
+    into a Firebird 'TrackerLinePointTrajectory' component.
 
-def edm4eic_entry_to_dict(tree, entry_index, custom_name=None):
-    tracker_branches = tree.typenames(recursive=False, full_paths=True, filter_typename="vector<edm4eic::TrackerHitData>")
-    # >oO debug: pprint(type())
+    Each segment => one 'line' with an array of points from points_begin..points_end.
 
+    The code also optionally attempts to link to the main 'CentralCKFTracks' to find
+    momentum, charge, etc. This logic can be adapted or extended as needed.
+    """
+    if entry_stop is None:
+        entry_stop = entry_start + 1
+
+    result = {
+        "name": branch_name,
+        "type": "TrackerLinePointTrajectory",
+        "originType": ["edm4eic::TrackPoint", "edm4eic::TrackSegmentData"],
+        "paramColumns": [],
+        "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"],
+        "lines": []
+    }
+    # -- Grab the arrays for the main TrackSegmentData
+    seg_points_begin_index   = ak.flatten(tree[f'{branch_name}/{branch_name}.points_begin'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+    seg_points_end_index     = ak.flatten(tree[f'{branch_name}/{branch_name}.points_end'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+
+    # TODO selecting Tracks by track_objid_index  will not work because of https://github.com/eic/EICrecon/issues/1730
+    # If the file also has a one-to-one relation to Track => read the objectIDs
+    # (Many times stored in _CentralTrackSegments_track/*):
+    track_objid_index = None
+    track_objid_coll  = None
+    # These are not guaranteed to exist; so we do a safe check
+    objid_branch_base = f'_{"_".join(branch_name.split())}_track'  # e.g. _CentralTrackSegments_track
+    if objid_branch_base in tree.keys():
+        # inside that we typically have .index and .collectionID
+        track_objid_index = ak.flatten(tree[f'{objid_branch_base}/{objid_branch_base}.index'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+        track_objid_coll = ak.flatten(tree[f'{objid_branch_base}/{objid_branch_base}.collectionID'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+
+    # -- Now get the TrackPoints for "CentralTrackSegments.points"
+    # Podio names the sub-collection something like "_CentralTrackSegments_points/..."
+    # For safety, we search among keys that start with _<branch_name>_points'
+    points_collection_name = f'_{branch_name}_points'
+    if points_collection_name not in tree.keys():
+        # Possibly the file organizes them differently, or there are no points
+        # We return an empty dictionary if not found
+        return result
+
+    def get_points_field_array(field_suffix):
+        """Helper to flatten points arrays from the sub-collection."""
+        full_branch = f'{points_collection_name}/{points_collection_name}.{field_suffix}'
+        return ak.flatten(tree[full_branch].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+
+    # Grab the trackpoint fields
+    p_x         = get_points_field_array("position.x")
+    p_y         = get_points_field_array("position.y")
+    p_z         = get_points_field_array("position.z")
+    p_t         = get_points_field_array("time")
+    p_terr      = get_points_field_array("timeError")
+    p_exx       = get_points_field_array("positionError.xx")
+    p_eyy       = get_points_field_array("positionError.yy")
+    p_ezz       = get_points_field_array("positionError.zz")
+    # If you want pathlength info, add it:
+    # p_path      = get_points_field_array("pathlength")
+    # p_patherr   = get_points_field_array("pathlengthError")
+
+    # # TODO selecting Tracks by track_objid_index  will not work because of https://github.com/eic/EICrecon/issues/1730
+    # -- Optionally load track collection to get momentum, charge, etc.
+    #    We'll do a quick attempt for "CentralCKFTracks", but if that doesn't exist,
+    #    we'll skip.
+    params_branch = "CentralCKFTrackParameters"
+    params_exists = (params_branch in tree.keys())
+
+    # If present, read the relevant arrays for indexing
+    if params_exists:
+        trk_theta  = ak.flatten(tree[f'{params_branch}/{params_branch}.theta'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+        trk_phi    = ak.flatten(tree[f'{params_branch}/{params_branch}.phi'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+        trk_qoverp = ak.flatten(tree[f'{params_branch}/{params_branch}.qOverP'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+        trk_loc_a  = ak.flatten(tree[f'{params_branch}/{params_branch}.loc.a'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+        trk_loc_b  = ak.flatten(tree[f'{params_branch}/{params_branch}.loc.b'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+        trk_time   = ak.flatten(tree[f'{params_branch}/{params_branch}.time'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
+        result["paramColumns"] = [
+            "theta",
+            "phi",
+            "q_over_p",
+            "loc_a",
+            "loc_b",
+            "time"
+        ]
+    else:
+        trk_theta  = []
+        trk_phi    = []
+        trk_qoverp = []
+        trk_loc_a  = []
+        trk_loc_b  = []
+        trk_time   = []
+
+    lines = []
+    n_segments = len(seg_points_begin_index)
+
+    if params_exists and n_segments != len(trk_theta):
+        print(f"WARNING: len(CentralCKFParameters) != len({branch_name}). Might be a sign of format change or broken tree")
+
+    # Check, we should have the same number of segments and parameters
+    for seg_index in range(n_segments):
+        segment_points = []
+        for point_index in range(seg_points_begin_index[seg_index], seg_points_end_index[seg_index]):
+            # In that snippet, p_exx[point_index] is assumed to be the 𝜎^2 in the x,y,z-coordinate of point’s position.
+            # x2.0 represents “plus-or-minus one sigma” as the entire width in that direction.
+            dx = 2.0 * np.sqrt(p_exx[point_index]) if p_exx[point_index] > 0 else 0.0
+            dy = 2.0 * np.sqrt(p_eyy[point_index]) if p_eyy[point_index] > 0 else 0.0
+            dz = 2.0 * np.sqrt(p_ezz[point_index]) if p_ezz[point_index] > 0 else 0.0
+            dt = p_terr[point_index]
+            # pointColumns => [x, y, z, t, dx, dy, dz, dt]
+            point_val = [p_x[point_index], p_y[point_index], p_z[point_index], p_t[point_index], dx, dy, dz, dt]
+            segment_points.append(point_val)
+
+        # Attempt to get track params from the track reference
+        params_list = []
+        if params_exists and seg_index < len(trk_theta):
+            params_list.append(trk_theta[seg_index])
+            params_list.append(trk_phi[seg_index])
+            params_list.append(trk_qoverp[seg_index])
+            params_list.append(trk_loc_a[seg_index])
+            params_list.append(trk_loc_b[seg_index])
+            params_list.append(trk_time [seg_index])
+
+        line = {
+            "points": segment_points,
+            "params": params_list
+        }
+        lines.append(line)
+
+    result["lines"] = lines
+    return result
+
+
+def edm4eic_entry_to_dict(tree, entry_index, custom_name=None, collections=None):
+    # the result of this function
     components = []
-    for branch_name in tracker_branches.keys():
-        components.append(tracker_hits_to_box_hits(tree, branch_name, entry_index))
+
+    if not collections:
+        collections = [
+            "tracker_hits",
+            "tracks"
+        ]
+
+    # Hits:
+    if "tracker_hits" in collections:
+        tracker_branches = tree.typenames(recursive=False, full_paths=True, filter_typename="vector<edm4eic::TrackerHitData>")
+        # >oO debug: pprint(type())
+
+        for branch_name in tracker_branches.keys():
+            components.append(tracker_hits_to_box_hits(tree, branch_name, entry_index))
+
+    # Tracks
+    if "tracks" in collections:
+        # TODO selecting all TrackSegmentData will not work because of https://github.com/eic/EICrecon/issues/1730
+        # track_branches = tree.typenames(recursive=False, full_paths=True, filter_typename="vector<edm4eic::TrackSegmentData>")
+        seg_collection = "CentralTrackSegments"
+        if seg_collection in tree.keys():
+            line_comp = track_segments_to_line_trajectories(tree, seg_collection, entry_index, entry_stop=entry_index+1)
+            components.append(line_comp)
 
     entry = {
         "id": custom_name if custom_name else entry_index,
@@ -179,17 +342,17 @@ def edm4eic_entry_to_dict(tree, entry_index, custom_name=None):
     return entry
 
 
-def edm4eic_to_dict(tree, entry_ids, origin_info=None):
+def edm4eic_to_dict(tree, entry_ids, origin_info=None, collections=None):
     entries_data = []
 
     if isinstance(entry_ids, int):
         entry_ids = [entry_ids]
 
     for entry_id in entry_ids:
-        entries_data.append(edm4eic_entry_to_dict(tree, entry_id, custom_name=None))
+        entries_data.append(edm4eic_entry_to_dict(tree, entry_id, custom_name=None, collections=collections))
 
     result = {
-        "version": "0.01",
+        "version": "0.02",
         "origin": origin_info,
         "entries": entries_data
     }

@@ -1,0 +1,14 @@
+.time-slider-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.time-label {
+  min-width: 50px;
+  text-align: center;
+}
+
+.tslider {
+  flex: 1;
+}

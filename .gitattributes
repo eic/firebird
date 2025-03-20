@@ -1,0 +1,2 @@
+*.firebird.json filter=lfs diff=lfs merge=lfs -text
+*.firebird.json.zip filter=lfs diff=lfs merge=lfs -text

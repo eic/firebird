@@ -1,4 +1,4 @@
-import {Injectable} from '@angular/core';
+import {Injectable, signal, WritableSignal} from '@angular/core';
 import {openFile} from 'jsroot';
 import {
   analyzeGeoNodes,
@@ -8,8 +8,14 @@ import {build} from 'jsroot/geom';
 import {RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
 import {UserConfigService} from "./user-config.service";
 import {Subdetector} from "../model/subdetector";
-import {Object3D} from "three";
+import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, Plane} from "three";
 import {UrlService} from "./url.service";
+import {DetectorThreeRuleSet, ThreeGeometryProcessor} from "../data-pipelines/three-geometry.processor";
+import * as THREE from "three";
+import {disposeHierarchy, getColorOrDefault} from "../utils/three.utils";
+import {modernRules} from "../theme/geometry-ruleset";
+import {coolColorRules} from "../theme/cool-geometry-ruleset";
+import {cool2ColorRules} from "../theme/cool2-geometry-ruleset";
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -23,6 +29,124 @@ export const ALL_GROUPS = [
   GROUP_MAGNETS,
   GROUP_SUPPORT,
 ]
+
+export const defaultRules: DetectorThreeRuleSet[] = [
+  {
+    names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_28"],
+    rules: [
+      {
+        color: 0x373766,
+
+      }
+    ]
+  },
+  {
+    name: "EcalEndcapN*",
+    rules: [
+      {
+        patterns: ["**/crystal_vol_0"],
+        color: 0xffef8b,
+        material: new THREE.MeshStandardMaterial({
+          color: 0xffef8b,
+          roughness: 0.7,
+          metalness: 0.869,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide
+        })
+      },
+      {
+        patterns: ["**/inner_support*", "**/ring*"],
+        material: new THREE.MeshStandardMaterial({
+          color: 0x19a5f5,
+          roughness: 0.7,
+          metalness: 0.869,
+          transparent: true,
+          opacity: 0.8,
+          side: THREE.DoubleSide
+        })
+      }
+
+    ]
+  },
+  {
+    name: "InnerTrackerSupport_assembly_13",
+    rules: [
+      {
+        material: new THREE.MeshStandardMaterial({
+          color: 0xEEEEEE,
+          roughness: 0.7,
+          metalness: 0.3,
+          transparent: true,
+          opacity: 0.8,
+          blending: THREE.NormalBlending,
+          // premultipliedAlpha: true,
+          depthWrite: false, // Ensures correct blending
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          side: THREE.DoubleSide
+        }),
+        outline: true,
+        outlineColor: 0x666666,
+        merge: true,
+        newName: "InnerTrackerSupport"
+      }
+    ]
+  },
+  {
+    name: "DIRC_14",
+    rules: [
+      {
+        patterns:     ["**/*box*", "**/*prism*"],
+        material: new THREE.MeshPhysicalMaterial({
+          color: 0xe5ba5d,
+          metalness: .9,
+          roughness: .05,
+          envMapIntensity: 0.9,
+          clearcoat: 1,
+          transparent: true,
+          //transmission: .60,
+          opacity: .6,
+          reflectivity: 0.2,
+          //refr: 0.985,
+          ior: 0.9,
+          side: THREE.DoubleSide,
+        }),
+        newName: "DIRC_barAndPrisms"
+      },
+      {
+        patterns: ["**/*rail*"],
+        newName: "DIRC_rails",
+        color: 0xAAAACC
+      },
+      {
+        patterns: ["**/*mcp*"],
+        newName: "DIRC_mcps"
+      }
+    ]
+
+  },
+  {
+    name: "VertexBarrelSubAssembly_3",
+    rules: [
+      {
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+  {
+    name: "*",
+    rules: [
+      {
+        merge: true,
+        outline: true
+      }
+    ]
+  }
+]
+
+
 
 // constants.ts
 export const DEFAULT_GEOMETRY = 'builtin://epic-central-optimized';
@@ -41,12 +165,18 @@ export class GeometryService {
   public rootGeometry: any|null = null;
 
   /** Main/entry/root THREEJS geometry tree node with the whole geometry */
-  public geometry: Object3D|null = null;
+  // public geometry:
 
   public groupsByDetName: Map<string, string>;
 
-  constructor(private settings: UserConfigService,
-              private urlService: UrlService) {
+  /** for geometry post-processing */
+  private threeGeometryProcessor = new ThreeGeometryProcessor();
+
+  private defaultColor: Color = new Color(0x68698D);
+
+  public geometry:WritableSignal<Object3D|null> = signal(null)
+
+  constructor(private urlService: UrlService) {
     this.groupsByDetName = new Map<string,string> ([
       ["SolenoidBarrel_assembly_0", GROUP_MAGNETS],
       ["SolenoidEndcapP_1", GROUP_MAGNETS],
@@ -99,7 +229,7 @@ export class GeometryService {
   }
 
 
-  async loadGeometry(): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
+  async loadGeometry(url:string): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
 
     this.subdetectors = [];
     //let url: string = 'assets/epic_pid_only.root';
@@ -107,15 +237,18 @@ export class GeometryService {
     // let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
     // >oO let objectName = 'default';
 
-    let url = this.settings.selectedGeometry.value !== DEFAULT_GEOMETRY ? this.settings.selectedGeometry.value:
-      'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
-    url = this.urlService.resolveDownloadUrl(url);
+    if(url === DEFAULT_GEOMETRY) {
+      url = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
+    }
+    // TODO check aliases
+
+    const finalUrl = this.urlService.resolveDownloadUrl(url);
 
     console.time('[GeometryService]: Total load geometry time');
-    console.log(`[GeometryService]: Loading file ${url}`)
+    console.log(`[GeometryService]: Loading file ${finalUrl}`)
 
     console.time('[GeometryService]: Open root file');
-    const file = await openFile(url);
+    const file = await openFile(finalUrl);
     // >oO debug console.log(file);
     console.timeEnd('[GeometryService]: Open root file');
 
@@ -123,20 +256,19 @@ export class GeometryService {
     console.time('[GeometryService]: Reading geometry from file');
     this.rootGeometry = await findGeoManager(file) // await file.readObject(objectName);
     // >oO
-    console.log("Got TGeoManager. For inspection:")
-    console.log(this.rootGeometry);
+    // console.log("Got TGeoManager. For inspection:")
+    // console.log(this.rootGeometry);
     console.timeEnd('[GeometryService]: Reading geometry from file');
-
 
     console.time('[GeometryService]: Root geometry pre-processing');
     this.rootGeometryProcessor.process(this.rootGeometry);
-    console.time('[GeometryService]: Root geometry pre-processing');
+    console.timeEnd('[GeometryService]: Root geometry pre-processing');
 
-    analyzeGeoNodes(this.rootGeometry, 1);
+    // analyzeGeoNodes(this.rootGeometry, 1);
 
     //
     console.time('[GeometryService]: Build geometry');
-    this.geometry = build(this.rootGeometry,
+    const geometry = build(this.rootGeometry,
       {
         numfaces: 5000000000,
         numnodes: 5000000000,
@@ -149,21 +281,21 @@ export class GeometryService {
     console.timeEnd('[GeometryService]: Build geometry');
 
     // Validate the geometry
-    if(!this.geometry) {
+    if(!geometry) {
       throw new Error("Geometry is null or undefined after TGeoPainter.build");
     }
 
-    if(!this.geometry.children.length) {
+    if(!geometry.children.length) {
       throw new Error("Geometry is converted but empty. Anticipated 'world_volume' but got nothing");
     }
 
-    if(!this.geometry.children[0].children.length) {
+    if(!geometry.children[0].children.length) {
       throw new Error("Geometry is converted but empty. Anticipated array of top level nodes (usually subdetectors) but got nothing");
     }
 
     // We now know it is not empty array
     console.time('[GeometryService]: Map root geometry to threejs geometry');
-    let topDetectorNodes = this.geometry.children[0].children;
+    let topDetectorNodes = geometry.children[0].children;
     for(const topNode of topDetectorNodes) {
 
       // Process name
@@ -180,14 +312,75 @@ export class GeometryService {
         name: this.stripIdFromName(originalName),
         groupName: this.groupsByDetName.get(originalName) || ""
       }
-      console.log(subdetector.sourceGeometryName);
+      // console.log(subdetector.sourceGeometryName);
       this.subdetectors.push(subdetector);
     }
     console.timeEnd('[GeometryService]: Map root geometry to threejs geometry');
 
-
     console.timeEnd('[GeometryService]: Total load geometry time');
-    return {rootGeometry: this.rootGeometry, threeGeometry: this.geometry};
+
+    this.geometry.set(geometry);
+
+    return {rootGeometry: this.rootGeometry, threeGeometry: geometry};
+  }
+
+  public postProcessing(geometry: Object3D, clippingPlanes: Plane[]) {
+    let threeGeometry  = this.geometry();
+    if (!threeGeometry) return;
+
+
+    // Now we want to set default materials
+    threeGeometry.traverse((child: any) => {
+      if (child.type !== 'Mesh' || !child?.material?.isMaterial) {
+        return;
+      }
+
+      // Assuming `getObjectSize` is correctly typed and available
+      child.userData['size'] = 1; //this.importManager.getObjectSize(child);
+
+      // Handle the material of the child
+      const color = getColorOrDefault(child.material, this.defaultColor);
+      const side = DoubleSide;
+
+      let opacity = threeGeometry.userData['opacity'] ?? 1;
+
+      child.material = new MeshLambertMaterial({
+        color: color,
+        side: side,
+        transparent: true,
+        opacity: 0.7,
+        blending: NormalBlending,
+        depthTest: true,
+        depthWrite: true,
+        clippingPlanes: clippingPlanes,
+        clipIntersection: true,
+        clipShadows: false,
+      });
+    });
+
+    // HERE WE DO POSTPROCESSING STEP
+    // TODO this.threeGeometryProcessor.processRuleSets(defaultRules, this.subdetectors);
+    this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
+
+
+    // Now we want to change the materials
+    threeGeometry.traverse((child: any) => {
+      if (!child?.material?.isMaterial) {
+        return;
+      }
+
+      if (child.material?.clippingPlanes !== undefined) {
+        child.material.clippingPlanes = clippingPlanes;
+      }
+
+      if (child.material?.clipIntersection !== undefined) {
+        child.material.clipIntersection = true;
+      }
+
+      if (child.material?.clipShadows !== undefined) {
+        child.material.clipShadows = false;
+      }
+    });
   }
 
   private stripIdFromName(name: string) {

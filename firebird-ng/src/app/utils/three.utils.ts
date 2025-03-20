@@ -369,13 +369,17 @@ export function disposeOriginalMeshesAfterMerge(mergeResult: MergeResult): void 
  *
  * @function disposeHierarchy
  * @param {THREE.Object3D} node - The root node of the hierarchy to dispose of.
+ * @param disposeSelf - disposes this node too (if false - only children and their hierarchies will be disposed)
  */
-export function disposeHierarchy(node: THREE.Object3D): void {
+export function disposeHierarchy(node: THREE.Object3D, disposeSelf=true): void {
   // Clone the children array and iterate in reverse order
   node.children.slice().reverse().forEach(child => {
     disposeHierarchy(child);
   });
-  disposeNode(node);
+
+  if(disposeSelf) {
+    disposeNode(node);
+  }
 }
 
 /**

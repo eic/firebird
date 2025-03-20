@@ -1,0 +1,187 @@
+/* shell.component.scss */
+
+/* The overall shell layout */
+.display-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* TOP BAR (header) styling */
+.top-toolbar {
+  position: relative;
+  z-index: 20;
+  padding: 0 16px;
+  background-color: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface-container);
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/** Left and right panels separator (which is movable by mouse) */
+.divider {
+  width: 5px;
+  margin: 1px 0;
+  cursor: col-resize;
+  background-color: var(--mat-sys-outline-variant);
+  user-select: none;
+  z-index: 15;
+  // border-radius: 2px;
+
+}
+
+.left-divider {
+  cursor: col-resize;
+  background-color: var(--mat-sys-outline-variant);
+  box-shadow:  2px 0 rgba(0, 0, 0, 0.1);
+}
+.right-divider {
+  cursor: col-resize;
+  background-color: var(--mat-sys-outline-variant);
+  box-shadow:  -2px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* The main content area for left/right/center */
+.main-content {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/** Left and right panes */
+.pane {
+  position: relative;
+  z-index: 10;
+  overflow: auto;
+  min-width: 0;
+}
+
+.left-pane {
+  box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.2);
+  background-color: var(--mat-sys-surface-container);
+  // (!) Padding messes up all changing dimension! padding: 5px 5px 5px 10px;
+}
+.right-pane {
+  background-color: var(--mat-sys-surface-container);
+  box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.2);
+  // (!) Padding messes up all changing dimension! padding: 5px 10px 5px 5px;
+}
+
+.central-pane {
+  background-color: var(--mat-sys-surface);
+  flex: 1;
+  overflow: auto;
+
+}
+
+/** BOTTOM BAR (footer) styling */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* space out left & right */
+  min-height: 36px; /* or whatever height you want */
+  width: 100%;
+  position: relative;
+  z-index: 20;
+  background-color: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface-container);
+  box-shadow: 0px -2px 2px rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+}
+
+/* If you want columns, or just do standard flex children. */
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.footer-center {
+  flex: 1; /* fill space, center content if you like */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hamburger vs. desktop nav style toggles */
+.hide-desktop {
+  display: none;
+}
+
+.hide-mobile {
+  display: flex;
+}
+
+/* For the nav items row on big screens */
+.nav-items.visible-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The "middle section" is the content projected by <ng-content select="[header]"> */
+.middle-section {
+  margin-left: 24px;
+  display: flex;
+  align-items: center;
+}
+
+/* Fills space to push theme toggle or hamburger to the right */
+.flex-spacer {
+  flex: 1 1 auto;
+}
+
+/* Position of theme toggle on large screens */
+.theme-toggle {
+  margin-left: 16px;
+}
+
+/* The mobile menu container (hidden by default) */
+.mobile-menu {
+  display: none;
+  flex-direction: column;
+  position: absolute;
+  top: 56px; /* same height as .top-toolbar */
+  right: 16px;
+  background-color: var(--mat-sys-surface);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  padding: 16px;
+  border-radius: 8px;
+  transform: translateY(-20%);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  gap: 12px;
+}
+
+/* Show it if .open is set */
+.mobile-menu.open {
+  transform: translateY(0%);
+  opacity: 1;
+  visibility: visible;
+}
+
+.theme-toggle-mobile {
+  margin-top: 16px;
+}
+
+
+/* Responsive breakpoints for small screens */
+@media (max-width: 768px) {
+  .hide-desktop {
+    display: inline-flex !important;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+  .mobile-menu {
+    display: flex;
+  }
+}

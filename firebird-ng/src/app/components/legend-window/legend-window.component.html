@@ -1,0 +1,100 @@
+
+  <button mat-icon-button matTooltip="empty window" style="margin-left: 6px; box-shadow: var(--mat-sys-level1)" (click)="openDialog()">
+    <mat-icon>info</mat-icon>
+  </button>
+
+
+
+<ng-template #dialogTemplate>
+  <button mat-dialog-close aria-label="Close dialog" class="close-round-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+  <div class="mat-menu" style="padding: 45px 24px 0 24px; position: relative; font-family: Arial, sans-serif;">
+    <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 18px;">Particle Track Legend</h3>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <!-- Electron -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; background-color: #0097FF;"></div>
+        <span>Electron (e-)</span>
+      </div>
+
+      <!-- Positron -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; background-color: #FF0007;"></div>
+        <span>Positron (e+)</span>
+      </div>
+
+      <!-- Proton -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; background-color: #5400FF;"></div>
+        <span>Proton</span>
+      </div>
+
+      <!-- Neutron -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; position: relative;">
+          <div style="position: absolute; width: 10px; height: 10px; background-color: #13FF00; left: 0px;"></div>
+          <div style="position: absolute; width: 10px; height: 10px; background-color: #13FF00; left: 25px;"></div>
+          <div style="position: absolute; width: 10px; height: 10px; background-color: #13FF00; left: 50px;"></div>
+        </div>
+        <span>Neutron</span>
+      </div>
+
+      <!-- Gamma -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; position: relative;">
+          <div style="position: absolute; width: 10px; height: 10px; background-color: #FFEE00; left: 0px;"></div>
+          <div style="position: absolute; width: 10px; height: 10px; background-color: #FFEE00; left: 25px;"></div>
+          <div style="position: absolute; width: 10px; height: 10px; background-color: #FFEE00; left: 50px;"></div>
+        </div>
+        <span>Gamma</span>
+      </div>
+
+      <!-- Pi+ -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; background-color: #CF00FF;"></div>
+        <span>Pi+</span>
+      </div>
+
+      <!-- Pi- -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; background-color: #00FFD1;"></div>
+        <span>Pi-</span>
+      </div>
+
+      <!-- Positive Charge (other) -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; background-color: #FF0007;"></div>
+        <span>Positive Track (other)</span>
+      </div>
+
+      <!-- Negative Charge (other) -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; background-color: #003BFF;"></div>
+        <span>Negative Track (other)</span>
+      </div>
+
+      <!-- Neutral -->
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 60px; height: 10px; position: relative;">
+          <div style="position: absolute; width: 10px; height: 10px; background-color: #AAAAAA; left: 0px;"></div>
+          <div style="position: absolute; width: 10px; height: 10px; background-color: #AAAAAA; left: 25px;"></div>
+          <div style="position: absolute; width: 10px; height: 10px; background-color: #AAAAAA; left: 50px;"></div>
+        </div>
+        <span>Neutral Track (other)</span>
+      </div>
+    </div>
+
+    <div style="margin-top: 20px; font-size: 14px; color: #666;">
+      <p>Note: Dashed lines represent neutrals</p>
+    </div>
+  </div>
+  <button mat-dialog-close aria-label="Close dialog" class="close-btn">
+    OK
+  </button>
+</ng-template>
+
+<!--    <button mat-raised-button [matMenuTriggerFor]="menu" matTooltip="Clipping configuration">-->
+<!--      <mat-icon>crop</mat-icon>-->
+<!--    </button>-->

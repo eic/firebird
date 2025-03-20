@@ -47,11 +47,10 @@ import {Component, OnInit, ChangeDetectionStrategy, AfterViewInit, ElementRef, R
 // }
 
 @Component({
-  selector: 'app-split-window',
-  standalone: true,
-  imports: [],
-  templateUrl: './split-window.component.html',
-  styleUrl: './split-window.component.scss'
+    selector: 'app-split-window',
+    imports: [],
+    templateUrl: './split-window.component.html',
+    styleUrl: './split-window.component.scss'
 })
 export class SplitWindowComponent implements AfterViewInit {
   private isHandlerDragging = false;

@@ -1,0 +1,14 @@
+<cdk-virtual-scroll-viewport
+  [itemSize]="itemSize"
+  class="message-log-viewport"
+>
+  <div *cdkVirtualFor="let message of messages | async; trackBy: trackByFn"
+       class="message-item"
+       [class]="'message-' + message.type">
+    <div class="message-header">
+      <span class="message-type">{{ message.type | uppercase }}</span>
+      <span class="message-time">{{ message.timestamp | date:'HH:mm:ss' }}</span>
+    </div>
+    <div class="message-content">{{ message.content }}</div>
+  </div>
+</cdk-virtual-scroll-viewport>

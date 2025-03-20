@@ -1,0 +1,19 @@
+<button mat-icon-button [matMenuTriggerFor]="themeMenu" style="box-shadow: var(--mat-sys-level1)">
+  <mat-icon>{{ currentIcon() }}</mat-icon>
+</button>
+
+<mat-menu #themeMenu="matMenu">
+  <button mat-menu-item (click)="selectTheme('light')">
+    <mat-icon>light_mode</mat-icon>
+    <span>Light</span>
+  </button>
+  <button mat-menu-item (click)="selectTheme('dark')">
+    <mat-icon>dark_mode</mat-icon>
+    <span>Dark</span>
+  </button>
+  <button mat-menu-item (click)="selectTheme('system')">
+    <mat-icon>settings_brightness</mat-icon>
+    <span>System</span><br/>
+    <i>({{themeService.getSystemTheme()}})</i>
+  </button>
+</mat-menu>

@@ -1,69 +1,25 @@
-<!--<div id="controls">-->
-<!--  <input type="range" id="timeSlider" min="0" [max]="maxTime" step="1" [value]="currentTime" (input)="changeCurrentTime($event)" />-->
-<!--  <div>{{currentTime}} {{message}}</div>-->
-<!--  <button (click)="timeStep($event)">  step </button>-->
-<!--  <button (click)="animateTime()">  play </button>-->
-<!--  <button (click)="stopAnimation()">stop</button>-->
-<!--</div>-->
-
-<!--  <div class="box main">-->
-<!--&lt;!&ndash;    <app-loader [loaded]="loaded" [progress]="loadingProgress"></app-loader>&ndash;&gt;-->
-<!--&lt;!&ndash;    &lt;!&ndash;<app-nav></app-nav>&ndash;&gt;&ndash;&gt;-->
-<!--&lt;!&ndash;    &lt;!&ndash; UI menu at the bottom &ndash;&gt;&ndash;&gt;-->
-<!--&lt;!&ndash;    &lt;!&ndash;<app-ui-menu></app-ui-menu>&ndash;&gt;&ndash;&gt;-->
-<!--&lt;!&ndash;    <app-experiment-info experiment="ePIC" experimentTagline="EPIC experiment at EIC"></app-experiment-info>&ndash;&gt;-->
-<!--&lt;!&ndash;    &lt;!&ndash; Phoenix menu at the top right &ndash;&gt;&ndash;&gt;-->
-<!--&lt;!&ndash;    <app-phoenix-menu [rootNode]="phoenixMenuRoot"></app-phoenix-menu>&ndash;&gt;-->
-
-
-
-<!--      &lt;!&ndash;      <mat-select [(value)]="selectedEventKey" (selectionChange)="onUserSelectedEvent()">&ndash;&gt;-->
-<!--      &lt;!&ndash;        <mat-option *ngFor="let key of eventsByName.keys()" [value]="key">&ndash;&gt;-->
-<!--      &lt;!&ndash;          {{ key }}&ndash;&gt;-->
-<!--      &lt;!&ndash;        </mat-option>&ndash;&gt;-->
-<!--      &lt;!&ndash;      </mat-select>&ndash;&gt;-->
-
-<!--  </div>-->
-<!--</div>-->
-
-
-<app-display-shell>
+<app-shell>
   <ng-container header>
-    <!-- Header content -->
-<!--    <button mat-icon-button matTooltip="Toggle nav config" (click)="toggleNavConfig()" class="toggle-btn d-md-none">-->
-<!--      <mat-icon>{{ isNavConfigOpen ? 'close' : 'menu' }}</mat-icon>-->
-<!--    </button>-->
-    <app-nav-config></app-nav-config>
-
-    <button mat-icon-button matTooltip="Toggle phoenix menu" (click)="togglePhoenixMenu()" class="toggle-btn d-md-none phoenix-toggle-btn">
-      <mat-icon>{{ isPhoenixMenuOpen ? 'close' : 'menu' }}</mat-icon>
-    </button>
-    <div class="phoenix-menu theme-button" *ngIf="isPhoenixMenuOpen || !isSmallScreen">
-
-      <!-- Event selector -->
-      <app-custom-event-selector></app-custom-event-selector>
-
-      <app-custom-auto-rotate></app-custom-auto-rotate>
-
-      <!-- Dark theme toggle -->
-      <app-custom-dark-theme></app-custom-dark-theme>
-
-      <!-- Toggle for clipping geometries -->
-      <app-custom-object-clipping></app-custom-object-clipping>
-
-      <!-- Extra options -->
-      <ng-content></ng-content>
-
-
-    </div>
-
-    <button mat-icon-button matTooltip="Toggle geometry" (click)="toggleLeftPane()" class="toggle-btn">
+    <button mat-icon-button matTooltip="Toggle scene tree pane" (click)="toggleLeftPane()" class="panel-button">
       <mat-icon>{{ isLeftPaneOpen ? 'close' : 'account_tree' }}</mat-icon>
     </button>
 
-<!--    <button mat-icon-button matTooltip="Toggle phoenix menu" (click)="togglePhoenixMenu()" class="toggle-btn1 phoenix-menu-toggle d-md-none">-->
-<!--      <mat-icon>{{ isPhoenixMenuOpen ? 'close' : 'menu' }}</mat-icon>-->
-<!--    </button>-->
+    <button mat-icon-button class="panel-button" (click)="onDebugButton()">
+      <mat-icon>upcoming</mat-icon>
+    </button>
+
+    <!-- Event selector -->
+    <app-custom-event-selector></app-custom-event-selector>
+
+    <app-custom-auto-rotate></app-custom-auto-rotate>
+
+    <!-- Toggle for clipping geometries -->
+    <app-custom-object-clipping></app-custom-object-clipping>
+
+    <app-legend-window></app-legend-window>
+
+    <!-- Extra options -->
+    <ng-content></ng-content>
 
   </ng-container>
 
@@ -75,57 +31,55 @@
   <div centralPane>
     <!-- Central content area -->
     <div id="eventDisplay"></div>
+
     <app-tool-panel ></app-tool-panel>
+    <app-cube-viewport-control></app-cube-viewport-control>
   </div>
 
   <div rightPane>
     <!-- Optional content for right pane -->
   </div>
 
+  <div footer-left>
+    <app-perf-stats></app-perf-stats>
+  </div>
+  <div footer-right id="footerRight">
+    <div class="theme-text">{{message}}</div>
+  </div>
   <div footer>
     <div class="time-controls" id="bottom-controls">
-      <div class="theme-text" style="margin-right: 10px">{{currentTime | number:'1.1-1'}}</div>
-      <mat-slider min="0" [max]="maxTime" step="1" showTickMarks discrete [displayWith]="formatCurrentTime" (input)="changeCurrentTime($event)" class="tslider">
-        <input matSliderThumb [value]="currentTime">
-      </mat-slider>
-      <div class="theme-text">{{maxTime | number:'1.0-0'}} [ns] &nbsp;&nbsp;</div>
+      <app-event-time-control></app-event-time-control>
 
-      <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="rewindTime()">
+      <button mat-raised-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="eventDisplay.rewindTime()">
         <mat-icon>first_page</mat-icon>
       </button>
-      <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="animateWithCollision()">
-        <mat-icon>close_fullscreen</mat-icon>
-      </button>
-      <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="animateTime()">
+<!--      <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="eventDisplay.animateWithCollision()">-->
+<!--        <mat-icon>close_fullscreen</mat-icon>-->
+<!--      </button>-->
+      <button mat-raised-button aria-label="Play"  matTooltip="Play time forward" class="tcontrol" (click)="eventDisplay.animateTime()">
         <mat-icon>play_arrow</mat-icon>
       </button>
-      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="timeStepBack($event)" class="tcontrol">
-        <mat-icon>chevron_left</mat-icon>
-      </button>
-
-      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="timeStep($event)" class="tcontrol">
-        <mat-icon>chevron_right</mat-icon>
-      </button>
-      <button mat-raised-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="stopAnimation()" >
+      <button mat-raised-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="eventDisplay.stopTimeAnimation()" >
         <mat-icon>pause</mat-icon>
       </button>
-      <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="exitTimedDisplay()" >
+      <button mat-raised-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="eventDisplay.exitTimedDisplay()" >
         <mat-icon>stop</mat-icon>
       </button>
-      <div class="theme-text">{{message}}</div>
-      &nbsp;&nbsp;
-
-      <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">
-        <mat-icon>last_page</mat-icon>
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns backward" (click)="eventDisplay. timeStepBack()" class="tcontrol">
+        <mat-icon>chevron_left</mat-icon>
       </button>
-
-      <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >
-        <mat-icon>view_in_ar</mat-icon>
+      <button mat-raised-button aria-label="Step" matTooltip="Step 1ns forward" (click)="eventDisplay.timeStep()" class="tcontrol">
+        <mat-icon>chevron_right</mat-icon>
       </button>
+<!--      <button mat-raised-button aria-label="Rewind" matTooltip="Play random NEXT EVENT" class="tcontrol" (click)="nextRandomEvent()">-->
+<!--        <mat-icon>last_page</mat-icon>-->
+<!--      </button>-->
+
+<!--      <button mat-raised-button aria-label="Stop" matTooltip="Cycle through DETECTOR subsystems" class="tcontrol" (click)="cycleGeometry()" >-->
+<!--        <mat-icon>view_in_ar</mat-icon>-->
+<!--      </button>-->
 
       <div class="theme-text">{{currentGeometry}}</div>
     </div>
   </div>
-
-
-</app-display-shell>
+</app-shell>

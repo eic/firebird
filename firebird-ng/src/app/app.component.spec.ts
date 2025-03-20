@@ -5,8 +5,9 @@ import {Component, NO_ERRORS_SCHEMA} from "@angular/core";
 
 // Mock the external component
 @Component({
-  selector: 'lib-view-options',  // Replace with the actual selector
-  template: '',
+    selector: 'lib-view-options', // Replace with the actual selector
+    template: '',
+    standalone: false
 })
 class MockViewOptionsComponent {}
 

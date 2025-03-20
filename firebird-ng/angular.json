@@ -31,11 +31,20 @@
               "src/assets"
             ],
             "styles": [
-              "src/styles.scss"
+              "@angular/material/prebuilt-themes/azure-blue.css",
+              "src/styles.scss",
+              "node_modules/prismjs/themes/prism-okaidia.min.css"
             ],
-            "scripts": [],
+            "scripts": [
+              "node_modules/prismjs/prism.js",
+              "node_modules/prismjs/components/prism-markup.min.js",
+              "node_modules/prismjs/components/prism-css.min.js",
+              "node_modules/prismjs/components/prism-typescript.min.js"
+
+            ],
             "customWebpackConfig": {
-              "path": "./webpack.config.js"
+              "path": "./webpack.config.js",
+
             },
             "webWorkerTsConfig": "tsconfig.worker.json"
           },
@@ -101,6 +110,7 @@
               "src/assets"
             ],
             "styles": [
+              "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
             ],
             "scripts": [],

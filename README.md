@@ -16,16 +16,16 @@ Run `ng serve` in `firebird-ng` for a dev server. Navigate to `http://localhost:
 
 Data exchange is both JSON and Javascript object compatible.
 
-It starts with version, any custom origin info and a list of entries.
+It starts with `"type":"firebird-dex-json"` and the version, any custom origin info and a list of entries.
 In HENP physics `entry` may correspond to `event` data.
 
 ```json
-{    
-        "version": "0.01",
-        "origin": {any custom origin info here"},
-        "entries": [
-          entry1, entry2, ...
-        ]
+{
+  "type":"firebird-dex-json",
+  "version": "0.01",
+  "origin": {any custom origin info here"},"entries": [
+    entry1, entry2, ...
+  ]
 }
 ```
 
@@ -83,7 +83,7 @@ So far example of exchange format looks like (only required fields are used here
 }
 ```
 
-## HitBox component
+## BoxTrackerHit component
 
 ```json
 {
@@ -99,6 +99,60 @@ Hit has
 - "dim": box dimensions [mm] (dx, dy, dz),
 - "t": time information [ns] (time, err_time),
 - "ed": energy deposit with error [GeV] (edep, err_edep)
+
+Example
+
+```json
+"components": [
+{
+  "name": "MPGDBarrelRecHits",
+  "type": "BoxTrackerHit",
+  "originType": "edm4eic::TrackerHitData",
+  "hits": [
+    {
+      "pos": [-567, -84.1, -908],
+      "dim": [0.05,  0.04,  0.0],
+      "t":   [-10.6, 10.0],
+      "ed":  [2e-06,  0.0]
+    },
+    {
+      "pos": [368, -424, 406],
+      "dim": [0.05, 0.045, 0.0],
+      "t":   [33, 10],
+      "ed":  [9e-06, 0.0]
+    },
+...
+}]
+
+```
+
+## TrackerLinePointTrajectory component
+
+Trajectories that are built based on points. 
+
+```json
+      "components": [
+        {
+          "name": "CentralTrackSegments",
+          "type": "TrackerLinePointTrajectory",
+          "originType": ["edm4eic::TrackPoint","edm4eic::TrackSegment"],
+          "paramColumns": [".."], // Param columns should correspond to what is written in line/track params
+          "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"] 
+              
+          "lines": [
+              {
+                  points: [
+                  [x, y, z, t, dx, dy, dz, dt],
+                  [x, y, z, t, dx, dy, dz, dt],
+                  ... // all points go here
+                  ],
+                  params: [...]   // values to parameter columns here
+              },
+              ...  // other lines
+          ]
+        ...
+      ]
+```
 
 ## TypeScript Event Model
 

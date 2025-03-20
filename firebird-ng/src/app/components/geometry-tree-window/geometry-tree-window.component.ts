@@ -5,16 +5,15 @@ import { SceneTreeComponent } from "../../pages/geometry-tree/scene-tree.compone
 import { NgIf } from "@angular/common";
 
 @Component({
-  selector: 'geometry-tree-window',
-  templateUrl: 'geometry-tree-window.component.html',
-  styleUrls: ['geometry-tree-window.component.scss'],
-  imports: [
-    MatIconButton,
-    MatIcon,
-    SceneTreeComponent,
-    NgIf
-  ],
-  standalone: true
+    selector: 'geometry-tree-window',
+    templateUrl: 'geometry-tree-window.component.html',
+    styleUrls: ['geometry-tree-window.component.scss'],
+    imports: [
+        MatIconButton,
+        MatIcon,
+        SceneTreeComponent,
+        NgIf
+    ]
 })
 export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   // windowOpenState = false;
@@ -88,83 +87,79 @@ export class GeometryTreeWindowComponent implements AfterViewInit, OnDestroy {
   //   this.updateMainContentShift();
   // }
 
-
-
-
-
-  initDrag() {
-    if (!this.windowContainer || !this.isDetached) return;
-
-    const windowElement = this.windowContainer.nativeElement;
-
-    windowElement.addEventListener('mousedown', (e: MouseEvent) => {
-      if ((<HTMLElement>e.target).classList.contains('window-header')) {
-        this.isDragging = true;
-        this.lastX = e.clientX;
-        this.lastY = e.clientY;
-        e.preventDefault();
-      }
-    });
-
-    this.dragMouseMoveHandler = (e: MouseEvent) => {
-      if (this.isDragging) {
-        const dx = e.clientX - this.lastX;
-        const dy = e.clientY - this.lastY;
-
-        const rect = windowElement.getBoundingClientRect();
-        windowElement.style.left = rect.left + dx + 'px';
-        windowElement.style.top = rect.top + dy + 'px';
-
-        this.lastX = e.clientX;
-        this.lastY = e.clientY;
-      }
-    };
-
-    this.dragMouseUpHandler = () => {
-      this.isDragging = false;
-    };
-
-    document.addEventListener('mousemove', this.dragMouseMoveHandler);
-    document.addEventListener('mouseup', this.dragMouseUpHandler);
-  }
-
-  initResize() {
-    if (!this.resizeHandle || !this.windowContainer || !this.isDetached) return;
-
-    const resizeHandle = this.resizeHandle.nativeElement;
-    const windowElement = this.windowContainer.nativeElement;
-
-    resizeHandle.addEventListener('mousedown', (e: MouseEvent) => {
-      this.isResizing = true;
-      this.lastX = e.clientX;
-      this.lastY = e.clientY;
-      e.preventDefault();
-    });
-
-    this.resizeMouseMoveHandler = (e: MouseEvent) => {
-      if (this.isResizing) {
-        const dx = e.clientX - this.lastX;
-        const dy = e.clientY - this.lastY;
-
-
-        if (this.sideNavOpen) {
-          windowElement.style.width = windowElement.offsetWidth + dx + 'px';
-        } else {
-          windowElement.style.width = windowElement.offsetWidth + dx + 'px';
-          windowElement.style.height = windowElement.offsetHeight + dy + 'px';
-        }
-        this.lastX = e.clientX;
-        this.lastY = e.clientY;
-      }
-    };
-
-    this.resizeMouseUpHandler = () => {
-      this.isResizing = false;
-    };
-
-    document.addEventListener('mousemove', this.resizeMouseMoveHandler);
-    document.addEventListener('mouseup', this.resizeMouseUpHandler);
-  }
+  // initDrag() {
+  //   if (!this.windowContainer || !this.isDetached) return;
+  //
+  //   const windowElement = this.windowContainer.nativeElement;
+  //
+  //   windowElement.addEventListener('mousedown', (e: MouseEvent) => {
+  //     if ((<HTMLElement>e.target).classList.contains('window-header')) {
+  //       this.isDragging = true;
+  //       this.lastX = e.clientX;
+  //       this.lastY = e.clientY;
+  //       e.preventDefault();
+  //     }
+  //   });
+  //
+  //   this.dragMouseMoveHandler = (e: MouseEvent) => {
+  //     if (this.isDragging) {
+  //       const dx = e.clientX - this.lastX;
+  //       const dy = e.clientY - this.lastY;
+  //
+  //       const rect = windowElement.getBoundingClientRect();
+  //       windowElement.style.left = rect.left + dx + 'px';
+  //       windowElement.style.top = rect.top + dy + 'px';
+  //
+  //       this.lastX = e.clientX;
+  //       this.lastY = e.clientY;
+  //     }
+  //   };
+  //
+  //   this.dragMouseUpHandler = () => {
+  //     this.isDragging = false;
+  //   };
+  //
+  //   document.addEventListener('mousemove', this.dragMouseMoveHandler);
+  //   document.addEventListener('mouseup', this.dragMouseUpHandler);
+  // }
+  //
+  // initResize() {
+  //   if (!this.resizeHandle || !this.windowContainer || !this.isDetached) return;
+  //
+  //   const resizeHandle = this.resizeHandle.nativeElement;
+  //   const windowElement = this.windowContainer.nativeElement;
+  //
+  //   resizeHandle.addEventListener('mousedown', (e: MouseEvent) => {
+  //     this.isResizing = true;
+  //     this.lastX = e.clientX;
+  //     this.lastY = e.clientY;
+  //     e.preventDefault();
+  //   });
+  //
+  //   this.resizeMouseMoveHandler = (e: MouseEvent) => {
+  //     if (this.isResizing) {
+  //       const dx = e.clientX - this.lastX;
+  //       const dy = e.clientY - this.lastY;
+  //
+  //
+  //       if (this.sideNavOpen) {
+  //         windowElement.style.width = windowElement.offsetWidth + dx + 'px';
+  //       } else {
+  //         windowElement.style.width = windowElement.offsetWidth + dx + 'px';
+  //         windowElement.style.height = windowElement.offsetHeight + dy + 'px';
+  //       }
+  //       this.lastX = e.clientX;
+  //       this.lastY = e.clientY;
+  //     }
+  //   };
+  //
+  //   this.resizeMouseUpHandler = () => {
+  //     this.isResizing = false;
+  //   };
+  //
+  //   document.addEventListener('mousemove', this.resizeMouseMoveHandler);
+  //   document.addEventListener('mouseup', this.resizeMouseUpHandler);
+  // }
 
   removeDragListeners() {
     if (this.dragMouseMoveHandler && this.dragMouseUpHandler) {

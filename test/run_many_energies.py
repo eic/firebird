@@ -47,14 +47,12 @@ def run_command(command):
     print("\n" + "-"*50 + "\n")
 
 def get_hepmc_path(beam, minq2):
-    return f"root://dtn-eic.jlab.org//work/eic2/EPIC/EVGEN/DIS/CC/{beam}/minQ2={minq2}/pythia8CCDIS_{beam}_minQ2={minq2}_beamEffects_xAngle=-0.025_hiDiv_1.hepmc3.tree.root"
+    return f"root://dtn-eic.jlab.org//volatile/eic/EPIC/EVGEN/DIS/NC/{beam}/minQ2={minq2}/pythia8NCDIS_{beam}_minQ2={minq2}_beamEffects_xAngle=-0.025_hiDiv_1.hepmc3.tree.root
 
+def get_base_name(beam, minq2, event_num):
+    return f"py8_dis-cc_{beam}_minq2-{minq2}_minp-150mev_vtxcut-5m_nevt-{event_num}"
 
-def get_reco_path(campaign, beam, minq2):
-    return f"root://dtn-eic.jlab.org//work/eic2/EPIC/RECO/{campaign}/epic_craterlake/DIS/CC/{beam}/minQ2={minq2}/pythia8CCDIS_{beam}_minQ2={minq2}_beamEffects_xAngle=-0.025_hiDiv_1.0000.eicrecon.tree.edm4eic.root"
-
-
-def run_simulation(beam, minq2, event_num, detector_path):
+def run_simulation(beam, minq2, event_num, detector_path, steering_file):
     """
     Runs the simulation for a given beam, Q2 value, and event number, then converts the output file.
 
@@ -68,7 +66,7 @@ def run_simulation(beam, minq2, event_num, detector_path):
     url = get_hepmc_path(beam, minq2)
 
     # Construct the output file name
-    output_base = f"py8_dis-cc_{beam}_minq2-{minq2}_minp-150mev_vtxcut-5m_nevt-{event_num}"
+    output_base = get_base_name(beam, minq2, event_num)
     output_edm4hep = output_base + ".edm4hep.root"
     output_evttxt = output_base + ".evt.txt"
     event_prefix = f"CC_{beam}_minq2_{minq2}"
@@ -76,14 +74,14 @@ def run_simulation(beam, minq2, event_num, detector_path):
 
     # Command for npsim
     npsim_command = [
-        "python3", "npsim_stepping.py",
-        "--compactFile", "/opt/detector/epic-main/share/epic/epic_full.xml",
+        "npsim",
+        "--compactFile", detector_path,
         "-N", str(event_num),
         "--inputFiles", url,
         "--random.seed", "1",
         "--outputFile", output_edm4hep,
         # "-v", "WARNING",
-        "--steeringFile=steering.py"
+        "--steeringFile", steering_file
         # #"npsim",
         # "python3", "npsim_stepping.py"
         # "--compactFile", detector_path,
@@ -98,15 +96,18 @@ def run_simulation(beam, minq2, event_num, detector_path):
     run_command(npsim_command)
 
     # Command for converting the output file to JSON format
-    conversion_command = [
-        "python3",
-        "dd4hep_txt_to_json.py",
-        "--event-prefix", event_prefix,
-        output_evttxt
+    reconstruction_command = [
+    "eicrecon",
+      f"-Pjana:debug_plugin_loading=1",
+      f"-Pjana:nevents={event_num}",
+      f"-Pjana:timeout=0",
+      f"-Ppodio:output_file={output_base}.edm4eic.root",
+      f"-Pdd4hep:xml_files={detector_path}",
+      f"{output_base}.edm4hep.root"
     ]
 
     # Run the conversion
-    run_command(conversion_command)
+    run_command(reconstruction_command)
 
 setup_environment()
 
@@ -120,6 +121,6 @@ minq2s = [1, 100, 1000]
 # Iterate over each combination of beam and minq2
 for beam in beams:
     for minq2 in minq2s:
-        print("campaign file:")
-        print(get_reco_path('24.08.1', beam, minq2))
-        run_simulation(beam, minq2, 10, '/opt/detector/epic-main/share/epic/epic_full.xml')
+        print("\n---------------------------------------------------------------------------------"*5)
+        run_simulation(beam, minq2, 5, f'{DETECTOR_PATH}/epic_full.xml', '/mnt/dd4hep-plugin/firebird_steering.py')
+        print("\n/////////////////////////////////////////////////////////////////////////////////"*5)

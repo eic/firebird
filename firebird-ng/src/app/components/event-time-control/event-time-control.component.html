@@ -1,0 +1,27 @@
+<div class="time-slider-wrapper">
+  <!-- Current Time (left side) -->
+  <div class="time-label">
+    <!-- If you're using a signal-based approach, eventTime() is how you read the signal -->
+    {{ shownTime() | number:'1.1-1' }}
+  </div>
+
+  <!-- The Slider -->
+  <mat-slider
+    class="tslider"
+    [min]="eventDisplayService.minTime"
+    [max]="eventDisplayService.maxTime"
+    step="1"
+    showTickMarks
+    discrete
+    [displayWith]="formatCurrentTime"
+    (input)="changeCurrentTime($event)"
+  >
+    <!-- Slider thumb with direct binding to the current time -->
+    <input matSliderThumb [value]="shownTime()" />
+  </mat-slider>
+
+  <!-- Max Time (right side) -->
+  <div class="time-label">
+    {{ eventDisplayService.maxTime | number:'1.0-0' }} [ns]
+  </div>
+</div>
