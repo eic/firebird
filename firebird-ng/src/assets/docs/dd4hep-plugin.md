@@ -109,7 +109,7 @@ cp /mnt/phoenix-dd4hep/steering.py /mnt/data/
 # edit parameters of /mnt/data/steering.py
 
 # Copy example hepmc3 input file
-xrdcp root://dtn2001.jlab.org:1094//work/eic2/EPIC/EVGEN/CI/pythia8NCDIS_5x41_minQ2=1_beamEffects_xAngle=-0.025_hiDiv_1_20ev.hepmc3.tree.root /mnt/data/test.hepmc3.tree.root
+xrdcp root://dtn2001.jlab.org:1094//volatile/eic/EPIC/EVGEN/CI/pythia8NCDIS_5x41_minQ2=1_beamEffects_xAngle=-0.025_hiDiv_1_20ev.hepmc3.tree.root /mnt/data/test.hepmc3.tree.root
 
 # Run DDSIM 10 events
 ddsim --steeringFile=/mnt/data/steering.py --compactFile=$DETECTOR_PATH/epic.xml -N=10 --outputFile=/mnt/data/sim_output.edm4hep.root --inputFiles /mnt/data/test.hepmc3.tree.root
