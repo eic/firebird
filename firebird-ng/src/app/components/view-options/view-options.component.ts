@@ -8,6 +8,8 @@ import { Subscription } from 'rxjs';
 import {MatMenu, MatMenuItem, MatMenuTrigger} from '@angular/material/menu';
 import {MatIcon} from "@angular/material/icon";
 import {NgForOf, NgIf} from "@angular/common";
+import {MatTooltip} from "@angular/material/tooltip";
+import {MatIconButton} from "@angular/material/button";
 
 @Component({
     selector: 'app-custom-view-options',
@@ -21,6 +23,8 @@ import {NgForOf, NgIf} from "@angular/common";
     MatMenuTrigger,
     NgForOf,
     NgIf,
+    MatTooltip,
+    MatIconButton,
     // the relevant Material modules, e.g. MatMenu, MatCheckbox, etc.
   ]
 })

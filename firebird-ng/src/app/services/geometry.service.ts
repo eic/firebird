@@ -127,6 +127,42 @@ export const defaultRules: DetectorThreeRuleSet[] = [
 
   },
   {
+    // This is when DIRC geometry is standalone
+    name: "DIRC_0",
+    rules: [
+      {
+        patterns:     ["**/*box*", "**/*prism*"],
+        material: new THREE.MeshPhysicalMaterial({
+          color: 0xe5ba5d,
+          metalness: .9,
+          roughness: .05,
+          envMapIntensity: 0.9,
+          clearcoat: 1,
+          transparent: true,
+          //transmission: .60,
+          opacity: .6,
+          reflectivity: 0.2,
+          //refr: 0.985,
+          ior: 0.9,
+          side: THREE.DoubleSide,
+        }),
+        newName: "DIRC_barAndPrisms",
+        merge: false,
+        outline: true
+      },
+      {
+        patterns: ["**/*rail*"],
+        newName: "DIRC_rails",
+        color: 0xAAAACC
+      },
+      {
+        patterns: ["**/*mcp*"],
+        newName: "DIRC_mcps"
+      }
+    ]
+
+  },
+  {
     name: "VertexBarrelSubAssembly_3",
     rules: [
       {

@@ -21,7 +21,7 @@ def main():
     # Run `ng build` in script_path/../firebird-ng directory
     try:
         print("Running ng build at firebird-ng")
-        subprocess.run(['ng', 'build'], cwd=firebird_ng_path, check=True)
+        subprocess.run(['ng', 'build'], cwd=firebird_ng_path, check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error running 'ng build': {e}")
         sys.exit(1)

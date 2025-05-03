@@ -120,6 +120,41 @@ export const cool2ColorRules = [
       }
     ]
   },
+  {
+    // This is when DIRC geometry is standalone
+    name: "DIRC_0",
+    rules: [
+      {
+        patterns:     ["**/*box*", "**/*prism*"],
+        material: new THREE.MeshPhysicalMaterial({
+          color: 0xFFF8E1,
+          metalness: .2,
+          roughness: .05,
+          envMapIntensity: 0.3,
+          clearcoat: 1,
+          transparent: true,
+          //transmission: .60,
+          opacity: .7,
+          reflectivity: 0.2,
+          //refr: 0.985,
+          ior: 0.9,
+          side: THREE.DoubleSide,
+        }),
+        outline: true,
+        newName: "DIRC_barAndPrisms",
+      },
+      {
+        patterns: ["**/*rail*"],
+        newName: "DIRC_rails",
+        color: 0xAAAACC
+      },
+      {
+        patterns: ["**/*mcp*"],
+        newName: "DIRC_mcps"
+      }
+    ]
+
+  },
 
   // RICH Endcap - Very light violet-blue
   {

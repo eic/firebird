@@ -1,8 +1,3 @@
-//* {
-//  margin: 0;
-//  padding: 0;
-//}
-
 
 
 #eventDisplay {
@@ -30,48 +25,47 @@
   color: white;
 }
 
-.phoenix-toggle-btn {
-  position: absolute;
-  right: 0;
-  top: 0;
-}
-
 .tcontrol {
   width: 40px;
   align-content: center;
   min-width: 40px;
-  padding-left: 13px;
-  padding-right: 0;
+  background-color: var(--mat-sys-surface-container-low);
+  box-shadow: var(--mat-sys-level2);
 }
 
 
 .time-controls {
-  flex: 1 1 auto;
   display: flex;
-  //background-color: #424242;
-  padding: 2px;
-  gap: 3px;
   align-items: center;
-  justify-content: center;
-  height: 50px;
+  justify-content: space-between;
+  height: auto;
+  padding: 8px;
   bottom: 0;
-  //color: white;
-  //border-top: 1px solid #ddd;
+  gap: 10px;
 }
-
 
 mat-slider{
   width: 200px;
 }
 
-//app-cube-viewport-control {
-//  position: absolute;
-//  top: 30px;
-//  right: 30px;
-//  width: 300px; // Можно изменить размер, если нужно
-//  height: 300px;
-//  z-index: 15; // Выше остальных элементов
-//}
 
 
+/* Responsive breakpoints for small screens */
+@media (max-width: 768px) {
+  .time-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+}
 
+@media (max-width: 630px) {
+  .time-controls {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .time-controls app-event-time-control {
+    flex: 1 1 100%;
+  }
+}

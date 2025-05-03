@@ -1,17 +1,21 @@
 <app-shell>
   <div centralPane class="fixed-width-page-content">
-    <mat-card class="config-card">
-      <mat-card-title>Configure Geometry Pipeline</mat-card-title>
-      <mat-card-content>
-        <img src="assets/diagrams/geometry-pipeline.svg" alt="Geometry Pipeline" style="width:100%;"/>
-      </mat-card-content>
-    </mat-card>
-
     <form>
 
       <mat-card class="config-card">
-        <mat-card-title>Data Sources</mat-card-title>
+        <mat-card-title>Select Geometry and Events</mat-card-title>
         <mat-card-content>
+          <div class="section">
+            <h3>Premade configurations</h3>
+            <p>Select file with the geometry</p>
+            <firebird-resource-select
+              #premadeGeometry
+              [options]="quickLinkTitles"
+              label="Premade configurations"
+              (valueChange)="onPresetChange($event)">
+            </firebird-resource-select>
+          </div>
+
           <div class="section">
             <h3>Geometry</h3>
             <p>Select file with the geometry</p>
@@ -41,11 +45,24 @@
             </firebird-resource-select>
           </div>
         </mat-card-content>
+
+        <div class="action-buttons">
+          <button mat-raised-button color="primary" [routerLink]="['/display']">DISPLAY</button>
+        </div>
+
       </mat-card>
 
+
+
+
       <mat-card class="config-card">
-        <mat-card-title>ROOT Geometry Optimization</mat-card-title>
-        <mat-card-content>
+      <mat-card-title>Configure Geometry Pipeline</mat-card-title>
+      <mat-card-content>
+        <img src="assets/diagrams/geometry-pipeline.svg" alt="Geometry Pipeline" style="width:100%;"/>
+
+        <!-- ROOT Geometry Optimization -->
+        <div class="subsection">
+          <h3>ROOT Geometry Optimization</h3>
           <div class="section">
             <h4>Leave only central detector</h4>
             <p>(Remove Beamline, Far Forward and Backward)</p>
@@ -54,22 +71,21 @@
           <div class="section">
             <h4>Optimize detectors</h4>
             <p>(Remove parts such as glue, pixels, some layers, etc)</p>
-            <!-- Disabled toggle -->
             <mat-slide-toggle checked disabled>Enabled</mat-slide-toggle>
           </div>
-        </mat-card-content>
-      </mat-card>
+        </div>
 
-      <mat-card class="config-card">
-        <mat-card-title>Geometry Config</mat-card-title>
-        <mat-card-content>
-          Config selector placeholder
-        </mat-card-content>
-      </mat-card>
+        <!-- Geometry Config -->
+        <div class="subsection">
+          <h3>Geometry Config</h3>
+          <div class="section">
+            Config selector placeholder
+          </div>
+        </div>
 
-      <mat-card class="config-card">
-        <mat-card-title>WebGL Geometry Optimization</mat-card-title>
-        <mat-card-content>
+        <!-- WebGL Geometry Optimization -->
+        <div class="subsection">
+          <h3>WebGL Geometry Optimization</h3>
           <div class="section">
             <h4>Merge geometries if possible</h4>
             <p>
@@ -78,8 +94,9 @@
             </p>
             <mat-slide-toggle checked disabled>Enabled</mat-slide-toggle>
           </div>
-        </mat-card-content>
-      </mat-card>
+        </div>
+      </mat-card-content>
+    </mat-card>
 
       <mat-card class="config-card">
         <mat-card-title>Server API Configuration</mat-card-title>
@@ -94,10 +111,6 @@
           </div>
         </mat-card-content>
       </mat-card>
-
-      <div class="action-buttons">
-        <button mat-raised-button color="primary" [routerLink]="['/display']">DISPLAY</button>
-      </div>
 
       <mat-accordion class="details-accordion">
         <mat-expansion-panel>

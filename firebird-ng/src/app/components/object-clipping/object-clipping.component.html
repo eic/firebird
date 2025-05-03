@@ -1,18 +1,13 @@
-<div style="display: flex; margin-left: 3px; align-items: center; gap: 6px;">
-  <button mat-icon-button matTooltip="Clipping Geometry" style="box-shadow: var(--mat-sys-level1)" (click)="openDialog()">
-    <mat-icon>crop</mat-icon>
-  </button>
-
-  <button mat-icon-button matTooltip="Enable Raycast" style="box-shadow: var(--mat-sys-level1)" (click)="toggleRaycast()">
-    <mat-icon>{{ isRaycastEnabled ? 'visibility' : 'visibility_off' }}</mat-icon>
-  </button>
-</div>
+<button #openBtn mat-icon-button matTooltip="Clipping Geometry"  (click)="openDialog()" class="panel-button">
+  <mat-icon>crop</mat-icon>
+</button>
 
 <ng-template #dialogTemplate>
   <button mat-dialog-close aria-label="Close dialog" class="close-round-btn">
     <mat-icon>close</mat-icon>
   </button>
-  <div class="mat-menu" style="padding: 45px 24px 0px 24px; position: relative;">
+
+  <div class="mat-menu custom-position-dialog" >
     <div class="clipping-buttons">
       <!-- Toggle Clipping -->
       <button
@@ -148,12 +143,16 @@
         270°
       </button>
     </div>
+    <div class="dialog-actions">
+        <button mat-raised-button mat-dialog-close class="close-btn">Apply</button>
+    </div>
 
   </div>
-  <button mat-dialog-close aria-label="Close dialog" class="close-btn">
-    OK
-  </button>
+
+
 </ng-template>
+
+
 
 <!--    <button mat-raised-button [matMenuTriggerFor]="menu" matTooltip="Clipping configuration">-->
 <!--      <mat-icon>crop</mat-icon>-->

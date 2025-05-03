@@ -11,7 +11,7 @@ import {disposeHierarchy} from '../utils/three.utils';
 import {ThreeEventProcessor} from '../data-pipelines/three-event.processor';
 import {DataModelPainter, DisplayMode} from '../painters/data-model-painter';
 import {AnimationManager} from "../animation/animation-manager";
-import {initComponentFactories} from "../model/default-components-init";
+import {initGroupFactories} from "../model/default-group-init";
 
 
 @Injectable({
@@ -21,6 +21,8 @@ export class EventDisplayService {
 
   private eventsByName = new Map<string, any>();
   private eventsArray: any[] = [];
+  private _animationSpeed: number = 1.0;
+
   selectedEventKey: string | undefined;
 
   // Time
@@ -30,6 +32,7 @@ export class EventDisplayService {
 
   public maxTime = 200;
   public minTime = 0;
+
 
   // Time animation
   private tweenGroup = new TweenGroup();
@@ -61,7 +64,7 @@ export class EventDisplayService {
   ) {
 
     // Add event model factories (things that decode json to objects)
-    initComponentFactories();
+    initGroupFactories();
 
     // Connect painter to its scene place
     this.painter.setThreeSceneParent(this.three.sceneEvent);
@@ -134,14 +137,33 @@ export class EventDisplayService {
     return this.minTime;
   }
 
-  animateTime() {
-
-    let time = this.eventTime() ?? this.minTime;
-    this.animateCurrentTime(
-      this.maxTime,
-      (this.maxTime - time) * 200
-    );
+  get animationSpeed(): number {
+    return this._animationSpeed;
   }
+
+  set animationSpeed(value: number) {
+    this._animationSpeed = Math.max(0.1, value);
+  }
+
+  private get timeStepSize(): number {
+    // never allow a zero step
+    return Math.max(this._animationSpeed, 0.1);
+  }
+
+
+  animateTime() {
+  let time = this.eventTime() ?? this.minTime;
+  const timeToTravel = this.maxTime - time;
+
+    // Speed: the higher the animationSpeed, the faster (less duration)
+    const baseMsPerUnit = 200;
+    const speed = this.animationSpeed;
+
+    const duration = timeToTravel * (baseMsPerUnit / speed);
+
+    this.animateCurrentTime(this.maxTime, duration);
+  }
+
 
   stopTimeAnimation(): void {
     if (this.tween) {
@@ -189,23 +211,16 @@ export class EventDisplayService {
     // );
   }
 
-  timeStepBack() {
-    // Check if we need to switch to timed display mode
-
-    const time = this.eventTime() ?? this.minTime;
-
-    if (time > this.minTime) this.updateEventTime(time - 1);
-    if (time <= this.minTime) this.updateEventTime(this.minTime);
+  timeStepBack(): void {
+    const t = this.eventTime() ?? this.minTime;
+    this.updateEventTime(Math.max(t - this.timeStepSize, this.minTime));
   }
 
-  timeStep() {
-    // Check if we need to switch to timed display mode
 
-    const time = this.eventTime();
-    if(time === null) return;
-
-    if (time < this.maxTime) this.updateEventTime(time + 1);
-    if (time > this.maxTime) this.updateEventTime(this.maxTime);
+  timeStep(): void {
+    const t = this.eventTime();
+    if (t == null) return;
+    this.updateEventTime(Math.min(t + this.timeStepSize, this.maxTime));
   }
 
   exitTimedDisplay() {
@@ -307,10 +322,12 @@ export class EventDisplayService {
       return;
     }
 
-    if (data.entries?.length ?? 0 > 0) {
-      this.painter.setEntry(data.entries[0]);
+    if (data.events?.length ?? 0 > 0) {
+      this.painter.setEntry(data.events[0]);
+      this.eventTime.set(null);
       this.painter.paint(this.eventTime());
       this.lastLoadedDexUrl = url;
+
     } else {
       console.warn('DataService.loadDexData() Received data had no entries');
       console.log(data);

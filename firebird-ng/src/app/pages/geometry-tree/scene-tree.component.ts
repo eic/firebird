@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import {Component, EventEmitter, OnInit, Output} from '@angular/core';
 import { NestedTreeControl, FlatTreeControl } from '@angular/cdk/tree';
 import {
   MatTreeFlatDataSource,
@@ -12,6 +12,7 @@ import { MatTreeNodeToggle, MatTreeNodeDef, MatTreeNodePadding, MatTreeNodeOutle
 import { MatIcon } from '@angular/material/icon';
 import {MatButton, MatIconButton} from '@angular/material/button';
 import { MatTooltip } from '@angular/material/tooltip';
+import {TrackPainterConfig} from "../../services/track-painter-config";
 
 /** Representation of a flattened node (for display in the mat-tree). */
 interface TreeNodeFlat {
@@ -44,6 +45,7 @@ interface TreeNodeFlat {
     styleUrls: ['./scene-tree.component.scss']
 })
 export class SceneTreeComponent implements OnInit {
+  @Output() configureItem = new EventEmitter<string>();
   /** Whether highlighting is enabled or not. */
   public isHighlightingEnabled = false;
 
@@ -81,6 +83,10 @@ export class SceneTreeComponent implements OnInit {
 
   ngOnInit(): void {
     this.refreshSceneTree();
+  }
+
+  onConfigClick(type: string) {
+    this.configureItem.emit(type);
   }
 
   /**
@@ -193,4 +199,5 @@ export class SceneTreeComponent implements OnInit {
   public hasChildNode(_index: number, node: TreeNodeFlat): boolean {
     return node.expandable;
   }
+
 }

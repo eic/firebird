@@ -1,5 +1,5 @@
 import {Injectable, linkedSignal, signal} from "@angular/core";
-import { Entry } from "../model/entry";
+import { Event } from "../model/event";
 import { HttpClient } from "@angular/common/http";
 import { UrlService } from "./url.service";
 import { DataExchange } from "../model/data-exchange";
@@ -22,7 +22,7 @@ export class DataModelService {
    * Signal holding the list of loaded entries (events).
    * Each Entry corresponds to one event's data in Firebird Dex format.
    */
-  public entries = signal<Entry[]>([]);
+  public entries = signal<Event[]>([]);
 
   /**
    * Signal holding the currently selected entry (event).
@@ -161,11 +161,11 @@ export class DataModelService {
       console.log(data);
 
       // Extract entry names/IDs for debugging or usage
-      const entryNames = data.entries.map((entry) => entry.id);
+      const entryNames = data.events.map((entry) => entry.id);
 
       // Update service signals with the newly loaded entries
       if (dexData) {
-        this.entries.set(data.entries);
+        this.entries.set(data.events);
         if (this.entries().length > 0) {
           // If at least one entry is present, automatically set the first as current
           this.setCurrentEntry(this.entries()[0]);
@@ -188,7 +188,7 @@ export class DataModelService {
    *
    * @param entry - The Entry object to be marked as current.
    */
-  setCurrentEntry(entry: Entry): void {
+  setCurrentEntry(entry: Event): void {
     console.log(`[DataModelService.setCurrentEntry] Setting event: ${entry.id}`);
     this.currentEntry.set(entry);
   }

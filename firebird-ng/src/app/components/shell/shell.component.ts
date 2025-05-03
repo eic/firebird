@@ -16,6 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import {ThemeSwitcherComponent} from "../theme-switcher/theme-switcher.component";
+import {MatTooltip} from "@angular/material/tooltip";
 
 interface NavItem {
   label: string;
@@ -39,7 +40,8 @@ interface NavItem {
     MatIconModule,
     MatMenuModule,
     ThemeSwitcherComponent,
-    RouterLink
+    RouterLink,
+    MatTooltip
   ],
 })
 export class ShellComponent {

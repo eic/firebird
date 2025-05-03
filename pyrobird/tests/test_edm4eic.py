@@ -32,28 +32,44 @@ def test_edm4eic_to_dict_structure():
     assert 'id' in event, "'id' key missing in event dictionary"
     assert 'components' in event, "'components' key missing in event dictionary"
 
-    # Check that 'components' is a list
-    assert isinstance(event['components'], list), "'components' should be a list"
+    # Check that 'data' is a list
+    assert isinstance(event['components'], list), "'data' should be a list"
 
-    # Check that each item in 'components' is a dictionary with expected keys
+    # Check that each item in 'data' is a dictionary with expected keys
     for component in event['components']:
-        assert isinstance(component, dict), "Each component should be a dictionary"
-        assert 'name' in component, "'name' key missing in component"
-        assert 'type' in component, "'type' key missing in component"
-        assert 'originType' in component, "'originType' key missing in component"
+        assert isinstance(component, dict), "Each group in 'components' should be a dictionary"
+        assert 'name' in component, "'name' key missing in group"
+        assert 'type' in component, "'type' key missing in group"
+        assert 'originType' in component, "'originType' key missing in group"
+        assert 'hits' in component, "'hits' key missing in group"
 
-        # Check for appropriate data key based on component type
-        component_type = component['type']
-        if component_type == 'BoxTrackerHit' or 'Hit' in component_type:
-            assert 'hits' in component, f"'hits' key missing in component of type {component_type}"
-        elif component_type == 'TrackerLinePointTrajectory' or 'Track' in component_type:
-            assert 'lines' in component, f"'lines' key missing in component of type {component_type}"
-        else:
-            # If new component types are added, you might need to add more conditions
-            # For now, we'll ensure at least one valid data key exists
-            valid_data_keys = ['hits', 'lines', 'particles', 'clusters', 'points']
-            assert any(key in component for key in valid_data_keys), \
-                f"No valid data key found in component of type {component_type}"
+        # Check that 'hits' is a list
+        assert isinstance(component['hits'], list), "'hits' should be a list"
+
+        # Optionally, check the first hit for expected structure
+        if len(component['hits']) > 0:
+            hit = component['hits'][0]
+            assert isinstance(hit, dict), "Each hit should be a dictionary"
+            assert 'pos' in hit, "'pos' key missing in hit"
+            assert 'dim' in hit, "'dim' key missing in hit"
+            assert 't' in hit, "'t' key missing in hit"
+            assert 'ed' in hit, "'ed' key missing in hit"
+
+            # Check that 'pos' is a list of three floats
+            assert isinstance(hit['pos'], list) and len(hit['pos']) == 3, "'pos' should be a list of three elements"
+            assert all(isinstance(x, (float, int)) for x in hit['pos']), "'pos' elements should be numbers"
+
+            # Check that 'dim' is a list of three floats
+            assert isinstance(hit['dim'], list) and len(hit['dim']) == 3, "'dim' should be a list of three elements"
+            assert all(isinstance(x, (float, int)) for x in hit['dim']), "'dim' elements should be numbers"
+
+            # Check that 't' is a list of two floats
+            assert isinstance(hit['t'], list) and len(hit['t']) == 2, "'t' should be a list of two elements"
+            assert all(isinstance(x, (float, int)) for x in hit['t']), "'t' elements should be numbers"
+
+            # Check that 'ed' is a list of two floats
+            assert isinstance(hit['ed'], list) and len(hit['ed']) == 2, "'ed' should be a list of two elements"
+            assert all(isinstance(x, (float, int)) for x in hit['ed']), "'ed' elements should be numbers"
 
 def test_edm4eic_to_dict_values():
     # Open the ROOT file

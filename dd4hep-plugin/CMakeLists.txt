@@ -6,7 +6,12 @@ cmake_policy(SET CMP0074 NEW)
 PROJECT(firebird-dd4hep
   LANGUAGES CXX
   DESCRIPTION "DD4Hep data output for Firebird event display"
-  )
+)
+
+# Add RPATH settings
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
 # C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -44,6 +49,7 @@ find_package(DD4hep 1.27 REQUIRED COMPONENTS DDCore DDRec)
 find_package(fmt REQUIRED)
 find_package(Geant4 REQUIRED)
 message(STATUS "Geant4_INCLUDE_DIR ${Geant4_INCLUDE_DIR}")
+message(STATUS "fmt library: ${fmt_DIR}")
 
 #-----------------------------------------------------------------------------------
 set(LIB_FIREBIRD_DD4HEP ${PROJECT_NAME})
@@ -57,10 +63,9 @@ dd4hep_add_plugin(${LIB_FIREBIRD_DD4HEP}
         src/FirebirdTrajectoryWriterEventAction.cpp
         src/FirebirdTrajectoryWriterSteppingAction.cpp
   USES ROOT::Core ROOT::Gdml
-  )
+)
 
 target_link_libraries(${LIB_FIREBIRD_DD4HEP}
   PUBLIC DD4hep::DDCore DD4hep::DDRec DD4hep::DDG4 fmt::fmt Geant4::Interface
-  )
+)
 target_include_directories(${LIB_FIREBIRD_DD4HEP} SYSTEM PRIVATE ${Geant4_INCLUDE_DIR})
-

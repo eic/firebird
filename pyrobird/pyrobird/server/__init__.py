@@ -187,7 +187,7 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
 
     start_time = time.perf_counter()
     import uproot
-    from pyrobird.edm4eic import edm4eic_to_dict
+    from pyrobird.edm4eic import edm4eic_to_dex_dict
 
     # Decode the filename
     # Retrieve the filename from query parameters
@@ -258,7 +258,7 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
 
     try:
         # Extract the event data
-        event = edm4eic_to_dict(tree, entries_index_list)
+        event = edm4eic_to_dex_dict(tree, entries_index_list)
     except Exception as e:
         err_msg = f"Error processing events {entries} from file {filename}: {e}"
         logger.error(err_msg)

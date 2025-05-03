@@ -1,31 +1,29 @@
 // point-trajectory.component.spec.ts
-import { PointTrajectoryComponent, TrackerLinePointTrajectoryComponentFactory } from './point-trajectory.event-component';
-import { getComponentFactory } from './entry-component';
-import {initComponentFactories} from "./default-components-init";
+import { PointTrajectoryGroup, PointTrajectoryGroupFactory } from './point-trajectory.group';
+import { getEventGroupFactory } from './event-group';
+import {initGroupFactories} from "./default-group-init";
 
-/**
- * Example test suite for PointTrajectoryComponent and its factory.
- */
-describe('PointTrajectoryComponent', () => {
+
+describe('PointTrajectoryGroup', () => {
   beforeEach(()=>{
-    initComponentFactories();
+    initGroupFactories();
   });
 
   it('should be registered in the component factory registry', () => {
-    const factory = getComponentFactory(PointTrajectoryComponent.type);
+    const factory = getEventGroupFactory(PointTrajectoryGroup.type);
     expect(factory).toBeDefined();
-    expect(factory instanceof TrackerLinePointTrajectoryComponentFactory).toBeTrue();
+    expect(factory instanceof PointTrajectoryGroupFactory).toBeTrue();
   });
 
   it('should create a component from a valid Dex object', () => {
     // Prepare a mock DEX object
     const dexObj = {
       name: 'CentralTrackSegments',
-      type: 'TrackerLinePointTrajectory',
-      originType: ['edm4eic::TrackPoint','edm4eic::TrackSegmentData'],
+      type: 'PointTrajectory',
+      origin: ['edm4eic::TrackPoint','edm4eic::TrackSegmentData'],
       paramColumns: ['theta','phi','qOverP','charge','pdg'],
       pointColumns: ['x','y','z','t','dx','dy','dz','dt'],
-      lines: [
+      trajectories: [
         {
           points: [
             [0, 0, 0, 100, 0.1, 0.1, 0.1, 0.0],
@@ -41,33 +39,33 @@ describe('PointTrajectoryComponent', () => {
     };
 
     // Retrieve the factory and create the component
-    const factory = getComponentFactory(PointTrajectoryComponent.type);
+    const factory = getEventGroupFactory(PointTrajectoryGroup.type);
     expect(factory).toBeTruthy();
 
-    const component = factory?.fromDexObject(dexObj) as PointTrajectoryComponent;
+    const component = factory?.fromDexObject(dexObj) as PointTrajectoryGroup;
     expect(component).toBeDefined();
     expect(component.name).toBe('CentralTrackSegments');
     expect(component.paramColumns).toEqual(['theta','phi','qOverP','charge','pdg']);
     expect(component.pointColumns).toEqual(['x','y','z','t','dx','dy','dz','dt']);
 
     // Lines
-    expect(component.lines.length).toBe(2);
+    expect(component.trajectories.length).toBe(2);
     // First line
-    const line1 = component.lines[0];
-    expect(line1.points.length).toBe(2);
-    expect(line1.params).toEqual([1.57, 3.14, -0.0005, -1, 11]);
+    const trajectory1 = component.trajectories[0];
+    expect(trajectory1.points.length).toBe(2);
+    expect(trajectory1.params).toEqual([1.57, 3.14, -0.0005, -1, 11]);
     // Second line
-    const line2 = component.lines[1];
-    expect(line2.points.length).toBe(0);
-    expect(line2.params.length).toBe(0);
+    const trajectory2 = component.trajectories[1];
+    expect(trajectory2.points.length).toBe(0);
+    expect(trajectory2.params.length).toBe(0);
   });
 
   it('should serialize back to Dex format via toDexObject()', () => {
     // Create a component manually
-    const component = new PointTrajectoryComponent('MyTrajectory', 'testOrigin');
+    const component = new PointTrajectoryGroup('MyTrajectory', 'testOrigin');
     component.paramColumns = ['alpha','beta'];
     component.pointColumns = ['x','y','z','t'];
-    component.lines = [
+    component.trajectories = [
       {
         points: [[1,2,3,10],[4,5,6,20]],
         params: [42, 99]
@@ -79,16 +77,16 @@ describe('PointTrajectoryComponent', () => {
 
     // Check top-level
     expect(dex.name).toBe('MyTrajectory');
-    expect(dex.type).toBe('TrackerLinePointTrajectory');
-    expect(dex.originType).toBe('testOrigin');
+    expect(dex.type).toBe('PointTrajectory');
+    expect(dex.origin).toBe('testOrigin');
     expect(dex.paramColumns).toEqual(['alpha','beta']);
     expect(dex.pointColumns).toEqual(['x','y','z','t']);
 
     // Check lines
-    expect(dex.lines.length).toBe(1);
-    expect(dex.lines[0].points.length).toBe(2);
-    expect(dex.lines[0].points[0]).toEqual([1,2,3,10]);
-    expect(dex.lines[0].params).toEqual([42,99]);
+    expect(dex.trajectories.length).toBe(1);
+    expect(dex.trajectories[0].points.length).toBe(2);
+    expect(dex.trajectories[0].points[0]).toEqual([1,2,3,10]);
+    expect(dex.trajectories[0].params).toEqual([42,99]);
   });
 
 });

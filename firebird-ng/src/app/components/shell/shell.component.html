@@ -6,8 +6,8 @@
 <!--      <img src="assets/firebird/firebird-simplified-circle.png" width="32" height="32" alt="App Logo" />-->
 <!--    </button>-->
 
-    <button mat-icon-button [matMenuTriggerFor]="logoMenu" class="logo-button hide-mobile" aria-label="App Logo">
-      <img src="assets/firebird/firebird-simplified-circle.png" width="32" height="32" alt="App Logo" />
+    <button mat-icon-button [matMenuTriggerFor]="logoMenu" class="logo-button hide-mobile" matTooltip="App Logo">
+      <img src="assets/firebird/firebird-simplified-circle.png" alt="App Logo" />
     </button>
 
     <!-- Always visible nav items on desktop -->
@@ -36,7 +36,7 @@
     </div>
 
     <!-- Middle section for page-specific controls -->
-    <div class="middle-section">
+    <div class="middle-section hide-mobile">
       <ng-content select="[header]"></ng-content>
     </div>
 
@@ -70,6 +70,10 @@
         {{ item.label }}
       </button>
     </ng-container>
+
+    <div class="middle-section-mobile">
+      <ng-content select="[header]"></ng-content>
+    </div>
     <!-- Theme toggle inside mobile menu -->
     <app-theme-switcher class="theme-toggle-mobile"></app-theme-switcher>
   </div>

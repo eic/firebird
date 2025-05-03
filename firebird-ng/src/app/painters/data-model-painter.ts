@@ -4,14 +4,14 @@
  * Then responsible for correct rendering at a given time
  */
 
-import { Entry } from "../model/entry";
+import { Event } from "../model/event";
 import { Object3D, Group } from "three";
-import {ComponentPainter, ComponentPainterConstructor} from "./component-painter";
-import {BoxTrackerHitComponent} from "../model/box-tracker-hit.component";
-import {BoxTrackerHitPainter} from "./box-tracker-hit.painter";
-import {BoxTrackerHitSimplePainter} from "./box-tracker-hit-simple.painter";
-import {PointTrajectoryComponent} from "../model/point-trajectory.event-component";
-import {PointTrajectoryPainter} from "./point-trajectory.painter";
+import {EventGroupPainter, ComponentPainterConstructor} from "./event-group-painter";
+import {BoxHitGroup} from "../model/box-hit.group";
+import {BoxHitPainter} from "./box-hit.painter";
+import {BoxHitSimplePainter} from "./box-hit-simple.painter";
+import {PointTrajectoryGroup} from "../model/point-trajectory.group";
+import {TrajectoryPainter} from "./trajectory.painter";
 
 export enum DisplayMode
 {
@@ -21,16 +21,16 @@ export enum DisplayMode
 
 export class DataModelPainter {
   private threeParentNode: Object3D | null = null;
-  private entry: Entry | null = null;
-  private painters: ComponentPainter[] = [];
+  private entry: Event | null = null;
+  private painters: EventGroupPainter[] = [];
   // Create the registry
   componentPainterRegistry: { [type: string]: ComponentPainterConstructor } = {};
 
   public constructor() {
     // Register builtin painters
-    //this.registerPainter(BoxTrackerHitComponent.type, BoxTrackerHitPainter);
-    this.registerPainter(BoxTrackerHitComponent.type, BoxTrackerHitSimplePainter);
-    this.registerPainter(PointTrajectoryComponent.type, PointTrajectoryPainter);
+    //this.registerPainter(BoxHitGroup.type, BoxHitPainter);
+    this.registerPainter(BoxHitGroup.type, BoxHitSimplePainter);
+    this.registerPainter(PointTrajectoryGroup.type, TrajectoryPainter);
 
   }
 
@@ -45,11 +45,11 @@ export class DataModelPainter {
     this.painters = [];
   }
 
-  public getEntry(): Entry|null {
+  public getEntry(): Event|null {
     return this.entry;
   }
 
-  public setEntry(entry: Entry): void {
+  public setEntry(entry: Event): void {
     this.cleanupCurrentEntry();
     this.entry = entry;
 
@@ -57,7 +57,7 @@ export class DataModelPainter {
       throw new Error('Three.js parent node is not set.');
     }
 
-    for (const component of entry.components) {
+    for (const component of entry.groups) {
       const PainterClass = this.componentPainterRegistry[component.type];
       if (PainterClass) {
         let componentGroup = new Group();
@@ -77,7 +77,7 @@ export class DataModelPainter {
    * Registers a custom painter class provided by the user.
    *
    * @param componentType - The type of the component for which the painter should be used.
-   * @param painterClass - The user's custom ComponentPainter subclass.
+   * @param painterClass - The user's custom EventGroupPainter subclass.
    */
   public registerPainter(componentType: string, painterClass: ComponentPainterConstructor): void {
     if (!componentType || !painterClass) {

@@ -1,8 +1,8 @@
-import {registerComponentFactory} from "./entry-component";
-import {TrackerLinePointTrajectoryComponentFactory} from "./point-trajectory.event-component";
+import {registerEventGroupFactory} from "./event-group";
+import {PointTrajectoryGroupFactory} from "./point-trajectory.group";
 
 /**
- * Initializes and registers the default event blocks-components.
+ * Initializes and registers the default event blocks-groups.
  *
  * In Angular, files that contain only side-effectful calls like
  * `registerComponentFactory(...)` can be tree-shaken out if they are never imported directly.
@@ -15,6 +15,6 @@ import {TrackerLinePointTrajectoryComponentFactory} from "./point-trajectory.eve
  * if not referenced elsewhere. Any other factories that need to be registered
  * can be placed in here or in a similar init function.
  */
-export function initComponentFactories() {
-  registerComponentFactory(new TrackerLinePointTrajectoryComponentFactory());
+export function initGroupFactories() {
+  registerEventGroupFactory(new PointTrajectoryGroupFactory());
 }

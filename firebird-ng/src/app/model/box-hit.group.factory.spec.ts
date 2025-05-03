@@ -1,20 +1,20 @@
-// box-tracker-hit.component.factory.spec.ts
+// box-hit.group.factory.spec.ts
 
-import { BoxTrackerHitComponentFactory, BoxTrackerHitComponent } from './box-tracker-hit.component';
-import { EntryComponent } from './entry-component';
+import { BoxHitGroupFactory, BoxHitGroup } from './box-hit.group';
+import { EventGroup } from './event-group';
 
-describe('BoxTrackerHitComponentFactory', () => {
-  const factory = new BoxTrackerHitComponentFactory();
+describe('BoxHitComponentFactory', () => {
+  const factory = new BoxHitGroupFactory();
 
   it('should have the correct type', () => {
-    expect(factory.type).toBe('BoxTrackerHit');
+    expect(factory.type).toBe('BoxHit');
   });
 
-  it('should create a BoxTrackerHitComponent from DexObject', () => {
+  it('should create a BoxHitGroup from DexObject', () => {
     const dexObject = {
       name: 'TestComponent',
-      type: 'BoxTrackerHit',
-      originType: 'TestOriginType',
+      type: 'BoxHit',
+      origin: 'Testorigin',
       hits: [
         {
           pos: [1, 2, 3],
@@ -31,12 +31,12 @@ describe('BoxTrackerHitComponentFactory', () => {
       ],
     };
 
-    const component = factory.fromDexObject(dexObject) as BoxTrackerHitComponent;
+    const component = factory.fromDexObject(dexObject) as BoxHitGroup;
 
-    expect(component).toBeInstanceOf(BoxTrackerHitComponent);
+    expect(component).toBeInstanceOf(BoxHitGroup);
     expect(component.name).toBe('TestComponent');
-    expect(component.type).toBe('BoxTrackerHit');
-    expect(component.originType).toBe('TestOriginType');
+    expect(component.type).toBe('BoxHit');
+    expect(component.origin).toBe('Testorigin');
     expect(component.hits.length).toBe(2);
 
     const hit1 = component.hits[0];

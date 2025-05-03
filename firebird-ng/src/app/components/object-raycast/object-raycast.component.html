@@ -1,0 +1,46 @@
+
+<div>
+  <button #openRayBtn mat-icon-button (click)="openRaycastDialog()"
+          matTooltip="Raycast tools" class="panel-button">
+    <mat-icon>center_focus_strong</mat-icon>
+  </button>
+</div>
+
+
+<!-- object-raycast.component.html -->
+<ng-template #raycastDialogTmpl>
+  <!-- Close button -->
+  <button mat-dialog-close aria-label="Close dialog" class="close-round-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <div class="mat-menu custom-position-dialog">
+
+    <!--3‑D Coordinates -->
+    <button mat-menu-item
+            (click)="$event.stopPropagation(); coordsCb._inputElement.nativeElement.click()">
+      <mat-checkbox #coordsCb [checked]="coordsEnabled"
+                    (click)="$event.stopPropagation()"
+                    (change)="toggleShowCoords($event)">
+        Show 3‑D Coordinates
+      </mat-checkbox>
+    </button>
+
+    <!--3‑D Distance -->
+    <button mat-menu-item
+            (click)="$event.stopPropagation(); distCb._inputElement.nativeElement.click()">
+      <mat-checkbox #distCb [checked]="distanceEnabled"
+                    (click)="$event.stopPropagation()"
+                    (change)="toggleShowDistance($event)">
+        Show 3‑D Distance
+      </mat-checkbox>
+    </button>
+
+
+  </div>
+</ng-template>
+
+<div class="raycast-overlay" *ngIf="coordsEnabled || distanceEnabled">
+  <div *ngIf="coordsEnabled">{{ coordsText }}</div>
+  <div *ngIf="distanceEnabled">{{ distanceText }}</div>
+</div>

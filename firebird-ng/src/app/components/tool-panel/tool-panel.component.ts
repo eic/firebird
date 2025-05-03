@@ -3,14 +3,19 @@ import { NgIf } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { ViewOptionsComponent } from '../view-options/view-options.component';
 import { ThreeService } from '../../services/three.service';
+import {MatIconButton} from "@angular/material/button";
+import {MatTooltip} from "@angular/material/tooltip";
 
 @Component({
     selector: 'app-tool-panel',
-    imports: [
-        NgIf,
-        MatIcon,
-        ViewOptionsComponent
-    ],
+  imports: [
+    NgIf,
+    MatIcon,
+    ViewOptionsComponent,
+    MatIconButton,
+    MatTooltip,
+
+  ],
     templateUrl: './tool-panel.component.html',
     styleUrls: ['./tool-panel.component.scss']
 })

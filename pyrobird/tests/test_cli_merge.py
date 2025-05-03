@@ -230,10 +230,11 @@ def test_reset_id_flag(temp_dex_files):
 def test_conflict_detection(temp_dex_files):
     """Test detection of conflicting component names."""
     runner = CliRunner()
-    # Use pytest.raises to catch the expected ValueError with the specific error message
-    with pytest.raises(ValueError, match="Duplicate component name.*Use --ignore or --overwrite flags to handle duplicates"):
-        runner.invoke(merge, [temp_dex_files["file1"], temp_dex_files["conflict"]], catch_exceptions=False)
+    result = runner.invoke(merge, [temp_dex_files["file1"], temp_dex_files["conflict"]], catch_exceptions=False)
 
+    # Should fail due to duplicate component names
+    assert result.exit_code != 0
+    assert "Duplicate component name" in result.output or "duplicate component" in result.output.lower()
 
 
 def test_ignore_flag(temp_dex_files):

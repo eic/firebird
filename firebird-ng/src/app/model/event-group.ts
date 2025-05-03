@@ -1,7 +1,7 @@
 /**
- * The EntryComponent class is an abstract base class for all entry components.
+ * The EventGroup class is an abstract base class for all entry components.
  */
-export abstract class EntryComponent {
+export abstract class EventGroup {
 
   /**
    * The name of the component, intended to be a unique identifier in UI menus and such.
@@ -18,7 +18,9 @@ export abstract class EntryComponent {
    * An optional string indicating the origin type of the component,
    * such as the original EDM4EIC/EDM4HEP/C++ data type from which it was derived.
    */
-  originType?: string;
+  origin?: string;
+
+
 
   /**
    * The constructor is protected to prevent direct instantiation of the abstract class.
@@ -26,12 +28,12 @@ export abstract class EntryComponent {
    *
    * @param name - The name of the component.
    * @param type - The type of the component.
-   * @param originType - Optional origin type of the component.
+   * @param origin - Optional origin type of the component.
    */
-  protected constructor(name: string, type: string, originType?: string) {
+  protected constructor(name: string, type: string, origin?: any) {
     this.name = name;
     this.type = type;
-    this.originType = originType;
+    this.origin = origin;
   }
 
   /**
@@ -42,13 +44,21 @@ export abstract class EntryComponent {
    * @returns A JSON-compatible object representing the serialized component.
    */
   abstract toDexObject(): any;
+
+  /** min and max time of the EventGroup
+   * null means the component doesn't need time and shows as is
+   *
+   * @returns [min, max] range of times or null if it is not available for the component
+   *
+   * */
+  abstract get timeRange(): [number, number] | null;
 }
 
 /**
- * The EntryComponentFactory interface defines the structure for factory classes
- * that are responsible for creating instances of EntryComponent subclasses.
+ * The EventGroupFactory interface defines the structure for factory classes
+ * that are responsible for creating instances of EventGroup subclasses.
  */
-export interface EntryComponentFactory {
+export interface EventGroupFactory {
 
   /**
    * The type of the component that this factory creates.
@@ -57,14 +67,14 @@ export interface EntryComponentFactory {
   type: string;
 
   /**
-   * Method to create an instance of an EntryComponent subclass from a deserialized object.
+   * Method to create an instance of an EventGroup subclass from a deserialized object.
    * The method takes a generic object (typically parsed from JSON) and returns an instance
-   * of the corresponding EntryComponent subclass.
+   * of the corresponding EventGroup subclass.
    *
    * @param obj - The deserialized object from which to create the component.
-   * @returns An instance of an EntryComponent subclass.
+   * @returns An instance of an EventGroup subclass.
    */
-  fromDexObject(obj: any): EntryComponent;
+  fromDexObject(obj: any): EventGroup;
 }
 
 /**
@@ -72,7 +82,7 @@ export interface EntryComponentFactory {
  * It is used to look up the appropriate factory when deserializing components from JSON data.
  * This registry enables the system to support multiple component types dynamically.
  */
-const componentRegistry: { [type: string]: EntryComponentFactory } = {};
+const componentRegistry: { [type: string]: EventGroupFactory } = {};
 
 /**
  * Registers a new component factory in the registry.
@@ -81,7 +91,7 @@ const componentRegistry: { [type: string]: EntryComponentFactory } = {};
  *
  * @param factory - The factory to register.
  */
-export function registerComponentFactory(factory: EntryComponentFactory): void {
+export function registerEventGroupFactory(factory: EventGroupFactory): void {
   componentRegistry[factory.type] = factory;
 }
 
@@ -89,9 +99,9 @@ export function registerComponentFactory(factory: EntryComponentFactory): void {
  * Retrieves a component factory from the registry based on the component type.
  *
  * @param type - The type of the component.
- * @returns The corresponding EntryComponentFactory, or undefined if not found.
+ * @returns The corresponding EventGroupFactory, or undefined if not found.
  */
-export function getComponentFactory(type: string): EntryComponentFactory | undefined {
+export function getEventGroupFactory(type: string): EventGroupFactory | undefined {
   return componentRegistry[type];
 }
 
@@ -101,7 +111,7 @@ export function getComponentFactory(type: string): EntryComponentFactory | undef
  *
  * @internal
  */
-export function _resetComponentRegistry(): void {
+export function _resetEventGroupRegistry(): void {
   for (const key in componentRegistry) {
     delete componentRegistry[key];
   }

@@ -3,12 +3,21 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { HemisphereLight, DirectionalLight, AmbientLight, PointLight, SpotLight } from 'three';
 import {PerfService} from "./perf.service";
-import {BehaviorSubject} from "rxjs";
+import {BehaviorSubject, Subject} from "rxjs";
+
+
+import {
+  acceleratedRaycast,
+  computeBoundsTree,
+  disposeBoundsTree
+} from 'three-mesh-bvh';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ThreeService implements OnDestroy {
+
+
   /** Three.js core components */
   public scene!: THREE.Scene;
   public sceneGeometry!: THREE.Group;
@@ -59,28 +68,43 @@ export class ThreeService implements OnDestroy {
   private pointLight!: PointLight; // Optional
   private spotLight!: SpotLight; // Optional
 
+   // Raycasting properties
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
-  private isRaycastEnabled: boolean = false;
+  private isRaycastEnabled = false;
+  private isSimulationRunning = false;
 
-
-  private onPointerDownHandler!: (event: PointerEvent) => void;
-
-  //Raycasting point for sceneEvent
+  // Track hover indicator
   private hoverPoint: THREE.Mesh | null = null;
 
-  private initHoverPoint() {
-    const sphereGeom = new THREE.SphereGeometry(30, 160, 160);
-    const sphereMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    this.hoverPoint = new THREE.Mesh(sphereGeom, sphereMat);
-    this.hoverPoint.visible = false;
-    this.sceneEvent.add(this.hoverPoint);
-  }
+  // Events
+  public trackHovered = new Subject<{track: THREE.Object3D, point: THREE.Vector3}>();
+  public trackClicked = new Subject<{track: THREE.Object3D, point: THREE.Vector3}>();
+
+  // Raw hit point every frame (hover)
+  public pointHovered = new Subject<THREE.Vector3>();
+
+  // Distance ready after второй точки
+  public distanceReady = new Subject<{ p1: THREE.Vector3; p2: THREE.Vector3; dist: number }>();
+
+  // Toggle by UI when “3‑D Distance” checkbox is on
+  public measureMode = false;
+
+  // temp storage for first measure point
+  private firstMeasurePoint: THREE.Vector3 | null = null;
+
+  private onPointerDownHandler: (event: PointerEvent) => void = () => {};
+
 
   constructor(
     private ngZone: NgZone,
     private perfService: PerfService) {
     // Empty constructor – initialization happens in init()
+
+     // Apply mesh-bvh acceleration to improve raycasting performance
+    THREE.Mesh.prototype.raycast = acceleratedRaycast;
+    THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+    THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
   }
 
   /**
@@ -159,21 +183,6 @@ export class ThreeService implements OnDestroy {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    //Raycasting
-    // this.onPointerDownHandler = (event) => {
-    //     const rect = this.renderer.domElement.getBoundingClientRect();
-    //     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    //     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    //
-    //     this.raycaster.setFromCamera(this.pointer, this.camera);
-    //     const intersects = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
-    //     if (intersects.length > 0) {
-    //       const firstHit = intersects[0].object;
-    //       console.log('Clicked object:', intersects[0].object.name || 'Unnamed object');
-    //     }
-    // };
-    //
-    // this.renderer.domElement.addEventListener('pointerdown', this.onPointerDownHandler);
 
     // Append renderer to the container
     this.containerElement.appendChild(this.renderer.domElement);
@@ -202,8 +211,15 @@ export class ThreeService implements OnDestroy {
     const height = this.containerElement.clientHeight;
     this.setSize(width, height);
 
-    this.raycastHandler();
+
+    // Initialize the hover point
     this.initHoverPoint();
+
+    // Set up new raycasting handlers
+    this.setupRaycasting();
+
+    // Compute BVH for all existing meshes for fast raycasting
+    this.setupBVH();
 
     // Start rendering
     this.startRendering();
@@ -527,11 +543,21 @@ export class ThreeService implements OnDestroy {
    */
   ngOnDestroy(): void {
     this.stopRendering();
-    // Additional cleanup if necessary
+
+    // Clean up event listeners
     if (this.renderer?.domElement) {
       this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDownHandler);
     }
+
+    // Clean up BVH data
+    if (this.sceneGeometry) {
+      this.cleanupBVH(this.sceneGeometry);
+    }
+    if (this.sceneEvent) {
+      this.cleanupBVH(this.sceneEvent);
+    }
   }
+
 
   logRendererInfo() {
     // Access the THREE.WebGLRenderer from threeService
@@ -547,78 +573,240 @@ export class ThreeService implements OnDestroy {
     console.log(info.programs);
   }
 
+  /**
+   * Initialize the hover point indicator that shows where the mouse is hovering
+   */
+  private initHoverPoint(): void {
+    const sphereGeom = new THREE.SphereGeometry(6, 16, 16);
+    const sphereMat = new THREE.MeshBasicMaterial({
+      color: 0xff0000,
+      transparent: true,
+      opacity: 0.8
+    });
+    this.hoverPoint = new THREE.Mesh(sphereGeom, sphereMat);
+    this.hoverPoint.visible = false;
+    this.hoverPoint.name = "HoverPoint";
+    this.sceneEvent.add(this.hoverPoint);
+  }
+
+  /**
+   * Sets up the raycasting functionality for track hover and selection
+   */
+  private setupRaycasting(): void {
+
+    // helper – build BVH for every mesh if it doesn't exist yet
+    const buildBVHIfNeeded = (obj: THREE.Object3D) => {
+      if (obj instanceof THREE.Mesh) {
+        // @ts-ignore – boundsTree is injected by three‑mesh‑bvh
+        if (!obj.geometry.boundsTree) {
+          // @ts-ignore
+          obj.geometry.computeBoundsTree?.();
+        }
+      }
+    };
+
+
+    const onPointerMove = (event: PointerEvent) => {
+
+      if (!this.isRaycastEnabled) {              // raycast toggled off
+        this.hoverPoint && (this.hoverPoint.visible = false);
+        return;
+      }
+
+      event.preventDefault();
+
+      /* --- update pointer coords in Normalised Device Space (‑1…1) --- */
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.pointer.x = ((event.clientX - rect.left) / rect.width)  * 2 - 1;
+      this.pointer.y = -((event.clientY - rect.top)  / rect.height) * 2 + 1;
+
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      this.raycaster.firstHitOnly = true;
+
+      /* make sure any lazy‑loaded meshes have BVH */
+      this.sceneEvent.traverse(buildBVHIfNeeded);
+      this.sceneGeometry.traverse(buildBVHIfNeeded);
+
+      /* ----- 1) try to hit something in sceneEvent first ----- */
+      let intersection: THREE.Intersection | null = null;
+      const hitsEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true);
+      if (hitsEvt.length) {
+        intersection = hitsEvt[0];
+      } else {
+        /* ----- 2) fall back to static detector geometry ----- */
+        const hitsGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
+        if (hitsGeo.length) intersection = hitsGeo[0];
+      }
+
+      if (intersection) {
+        const hitObject = intersection.object;
+
+        if (hitObject.name && hitObject.name !== 'HoverPoint') {
+          /* show red sphere */
+          if (this.hoverPoint) {
+            this.hoverPoint.visible = true;
+            this.hoverPoint.position.copy(intersection.point);
+          }
+
+          /* emit hover events */
+          this.trackHovered.next({ track: hitObject, point: intersection.point.clone() });
+          console.log('[raycast] HOVER', intersection.object.name);
+          this.ngZone.run(() => this.pointHovered.next(intersection.point.clone())); // ↖ overlay
+        }
+      } else {
+        /* nothing hit -> hide sphere */
+        this.hoverPoint && (this.hoverPoint.visible = false);
+      }
+    };
+
+
+
+    const onPointerDown = (event: PointerEvent) => {
+
+      if (!this.isRaycastEnabled) return;
+      event.preventDefault();
+
+      /* =======================  MEASURE MODE  ======================= */
+      if (this.measureMode) {
+        /* reuse same pointer‑to‑ray code */
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.pointer.x = ((event.clientX - rect.left) / rect.width)  * 2 - 1;
+        this.pointer.y = -((event.clientY - rect.top)  / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.pointer, this.camera);
+        this.raycaster.firstHitOnly = true;
+
+        /* search both scenes, but still give priority to sceneEvent */
+        const hitEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true)[0];
+        const hitGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true)[0];
+        const picked = hitEvt ?? hitGeo;
+
+        if (picked) {
+          const pt = picked.point.clone();
+
+          if (!this.firstMeasurePoint) {
+            /* first click -> save point A */
+            this.firstMeasurePoint = pt;
+            console.log('[raycast] DIST: first point from', picked.object.name);
+          } else {
+            /* second click -> have A + B, compute distance */
+            const p1 = this.firstMeasurePoint.clone();
+            const p2 = pt;
+            const dist = p1.distanceTo(p2);
+
+            this.ngZone.run(() => this.distanceReady.next({ p1, p2, dist }));
+            this.firstMeasurePoint = null;        // reset for next measurement
+            console.log('[raycast] DIST: second point from', picked.object.name, '→', dist.toFixed(2));
+          }
+        }
+        return;
+      }
+      /* ===================  END MEASURE MODE  ======================= */
+
+
+      /* ---------- normal picking (single click) ---------- */
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      this.raycaster.firstHitOnly = true;
+
+      /* 1) sceneEvent first */
+      const hitEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true)[0];
+      if (hitEvt && hitEvt.object.name && hitEvt.object.name !== 'HoverPoint') {
+        this.trackClicked.next({ track: hitEvt.object, point: hitEvt.point.clone() });
+        console.log('[raycast] CLICK event', hitEvt.object.name);
+        return;                             // do not fall through to geometry
+      }
+
+      /* 2) then geometry */
+      const hitGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true)[0];
+      if (hitGeo && hitGeo.object.name) {
+        this.trackClicked.next({ track: hitGeo.object, point: hitGeo.point.clone() });
+        console.log('[raycast] CLICK geometry', hitGeo.object.name);
+      }
+    };
+
+
+
+    /* -------- register handlers + keep ref for cleanup (unchanged) -------- */
+    this.renderer.domElement.addEventListener('pointermove', onPointerMove);
+    this.renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    this.onPointerDownHandler = onPointerDown;
+
+  }
+
+  /**
+   * Compute BVH (Bounding Volume Hierarchy) for all meshes to accelerate raycasting
+   */
+  setupBVH(): void {
+    const processMesh = (mesh: THREE.Mesh) => {
+      if (mesh.geometry && !mesh.geometry.boundsTree) {
+        /* @ts-ignore */
+        mesh.geometry.computeBoundsTree({
+          // Optional: Set BVH parameters for performance tuning
+          maxLeafTris: 10,
+          strategy: 0 // SPLIT_STRATEGY_CENTER
+        });
+      }
+    };
+
+    // Process all meshes in the geometry scene
+    this.sceneGeometry.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        processMesh(object);
+      }
+    });
+
+    // Process all meshes in the event scene
+    this.sceneEvent.traverse((object) => {
+      if (object instanceof THREE.Mesh && object !== this.hoverPoint) {
+        processMesh(object);
+      }
+    });
+  }
+
+
+  /**
+   * Clean up BVH data when objects are removed
+   */
+  cleanupBVH(object: THREE.Object3D): void {
+    if (object instanceof THREE.Mesh && object.geometry && object.geometry.boundsTree) {
+      object.geometry.disposeBoundsTree();
+    }
+
+    // Recursively cleanup children
+    object.children.forEach(child => this.cleanupBVH(child));
+  }
+
+  /**
+   * Enable or disable raycasting functionality
+   */
   toggleRaycast(): void {
     this.isRaycastEnabled = !this.isRaycastEnabled;
     console.log(`Raycast is now ${this.isRaycastEnabled ? 'ENABLED' : 'DISABLED'}`);
+
+    // When disabled, hide the hover point
+    if (!this.isRaycastEnabled && this.hoverPoint) {
+      this.hoverPoint.visible = false;
+    }
   }
 
+  /**
+   * Get current raycasting state
+   */
   isRaycastEnabledState(): boolean {
     return this.isRaycastEnabled;
   }
 
+  /**
+   * Set simulation running state - raycasting will only work when simulation is running
+   */
+  setSimulationState(isRunning: boolean): void {
+    this.isSimulationRunning = isRunning;
 
-  private raycastHandler(): void {
-
-    this.renderer.domElement.addEventListener('mousedown', (event) => {
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      const rect = this.renderer.domElement.getBoundingClientRect();
-      this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-      this.raycaster.setFromCamera(this.pointer, this.camera);
-
-      // const allObjects = [
-      //   ...this.sceneGeometry.children,
-      //   ...this.sceneEvent.children
-      // ];
-
-      const intersects = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
-
-      if (intersects.length > 0) {
-        console.log('Geometry intersected objects under cursor:');
-        intersects.forEach((intersection) => {
-          const hitObj = intersection.object;
-          console.log('–', hitObj.name || 'Unnamed object');
-        });
-      } else {
-        console.log('No intersection');
-      }
-
-    });
-
-        // ==== Add after existing mousedown: ====
-    this.renderer.domElement.addEventListener('pointermove', (event) => {
-      if (!this.isRaycastEnabled) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      const rect = this.renderer.domElement.getBoundingClientRect();
-      this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-      this.raycaster.setFromCamera(this.pointer, this.camera);
-
-      const intersectsEvent = this.raycaster.intersectObjects(this.sceneEvent.children, true);
-
-      if (intersectsEvent.length > 0) {
-        const closest = intersectsEvent[0];
-        const hitTrack = closest.object;
-        if (this.hoverPoint) {
-          this.hoverPoint.visible = true;
-          this.hoverPoint.position.copy(closest.point);
-        }
-        console.log(`Hovered track: ${hitTrack.name || 'Unnamed track'}`, hitTrack);
-      } else {
-        if (this.hoverPoint) {
-          this.hoverPoint.visible = false;
-        }
-      }
-    });
-
+    // Hide hover point when simulation is not running
+    if (!isRunning && this.hoverPoint) {
+      this.hoverPoint.visible = false;
+    }
   }
+
 
 }

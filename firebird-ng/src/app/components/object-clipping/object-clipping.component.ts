@@ -1,4 +1,4 @@
-import {Component, OnInit, OnDestroy, ViewChild, TemplateRef} from '@angular/core';
+import {Component, OnInit, OnDestroy, ViewChild, TemplateRef, ElementRef} from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
 import { Subscription } from 'rxjs';
 
@@ -12,6 +12,8 @@ import {MatButton, MatIconButton} from "@angular/material/button";
 import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog";
 import {MatIcon} from "@angular/material/icon";
 import {MatTooltip} from "@angular/material/tooltip";
+import {ObjectRaycastComponent} from "../object-raycast/object-raycast.component";
+
 
 @Component({
   selector: 'app-custom-object-clipping',
@@ -26,7 +28,8 @@ import {MatTooltip} from "@angular/material/tooltip";
     MatIcon,
     MatDialogClose,
     MatIconButton,
-    MatTooltip
+    MatTooltip,
+    ObjectRaycastComponent
   ]
 })
 export class ObjectClippingComponent implements OnInit, OnDestroy {
@@ -37,6 +40,7 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
 
   private subscriptions: Subscription[] = [];
 
+  @ViewChild('openBtn', { read: ElementRef }) openBtn!: ElementRef;
   @ViewChild('dialogTemplate') dialogTemplate!: TemplateRef<any>;
   dialogRef: MatDialogRef<any> | null = null;
 
@@ -131,30 +135,32 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
 
 
   openDialog(): void {
-    if (this.dialogRef) {
-      this.dialogRef.close();
-    } else {
-      this.dialogRef = this.dialog.open(this.dialogTemplate, {
-        position: {
-          top: '63px',
-          left: '200px'
-        },
-        disableClose: true,
-        hasBackdrop: false
-      });
-
-      this.dialogRef.afterClosed().subscribe(() => {
-        this.dialogRef = null;
-      });
-    }
+  if (this.dialogRef) {
+    this.dialogRef.close();
+    return;
   }
 
-  toggleRaycast() {
-    this.threeService.toggleRaycast();
+    const rect = this.openBtn.nativeElement.getBoundingClientRect();
+    const dialogWidth = 320;
+
+    const left = Math.max(rect.right - dialogWidth, 8);
+    const top = rect.bottom + 12;
+
+    this.dialogRef = this.dialog.open(this.dialogTemplate, {
+      position: {
+        top: `${top}px`,
+        left: `${left}px`
+      },
+      hasBackdrop: false,
+      panelClass: 'custom-position-dialog',
+      autoFocus: false
+    });
+
+    this.dialogRef.afterClosed().subscribe(() => {
+      this.dialogRef = null;
+    });
   }
 
-  get isRaycastEnabled(): boolean {
-    return this.threeService.isRaycastEnabledState();
-  }
+
 
 }

@@ -8,14 +8,14 @@ import {
   Color,
   Matrix4,
 } from 'three';
-import { ComponentPainter } from './component-painter';
-import { BoxTrackerHitComponent } from '../model/box-tracker-hit.component';
-import {EntryComponent} from "../model/entry-component";
+import { EventGroupPainter } from './event-group-painter';
+import { BoxHitGroup } from '../model/box-hit.group';
+import {EventGroup} from "../model/event-group";
 
 /**
- * Painter class for rendering BoxTrackerHitComponent using InstancedMesh.
+ * Painter class for rendering BoxHitGroup using InstancedMesh.
  */
-export class BoxTrackerHitPainter extends ComponentPainter {
+export class BoxHitPainter extends EventGroupPainter {
   /** The InstancedMesh object to store multiple hit boxes. */
   private instancedMesh: InstancedMesh;
 
@@ -29,23 +29,23 @@ export class BoxTrackerHitPainter extends ComponentPainter {
   private geometry: BoxGeometry;
 
 
-  private boxComponent: BoxTrackerHitComponent;
+  private boxComponent: BoxHitGroup;
 
   /**
    * Constructs a new BoxHitPainter.
    *
    * @param node - The Object3D node where the instanced mesh will be added.
-   * @param component - The BoxTrackerHitComponent containing the hit data.
+   * @param component - The BoxHitGroup containing the hit data.
    */
-  constructor(node: Object3D, component: EntryComponent) {
+  constructor(node: Object3D, component: EventGroup) {
     super(node, component);
 
     // Runtime type check
-    if (component.type !== BoxTrackerHitComponent.type) {
-      throw new Error('Invalid component type for BoxTrackerHitPainter');
+    if (component.type !== BoxHitGroup.type) {
+      throw new Error('Invalid component type for BoxHitPainter');
     }
 
-    this.boxComponent = component as BoxTrackerHitComponent;
+    this.boxComponent = component as BoxHitGroup;
 
     this.count = this.boxComponent.hits.length;
 
@@ -76,9 +76,9 @@ export class BoxTrackerHitPainter extends ComponentPainter {
   /**
    * Sets up the instances of the hits, including position, scale, color, and time.
    *
-   * @param component - The BoxTrackerHitComponent with the hit data.
+   * @param component - The BoxHitGroup with the hit data.
    */
-  private setupInstances(component: BoxTrackerHitComponent): void {
+  private setupInstances(component: BoxHitGroup): void {
     const instanceColors: number[] = [];
     const instanceTimes: number[] = [];
     const dummy = new Object3D();

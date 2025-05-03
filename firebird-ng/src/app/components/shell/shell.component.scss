@@ -94,7 +94,7 @@
 
 /* If you want columns, or just do standard flex children. */
 .footer-left {
-  display: flex;
+
   align-items: center;
   gap: 8px;
 }
@@ -172,6 +172,34 @@
   margin-top: 16px;
 }
 
+.logo-button {
+  padding: 6px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 25px;
+  width: 48px;
+  height: 48px;
+  box-shadow: 0 0 12px 4px rgba(255, 140, 0, 0.5);
+}
+
+.logo-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 12px 4px rgba(255, 140, 0, 0.5);
+}
+
+.logo-button img {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: var(--mat-sys-level1);
+}
+
+
 
 /* Responsive breakpoints for small screens */
 @media (max-width: 768px) {
@@ -184,4 +212,24 @@
   .mobile-menu {
     display: flex;
   }
+
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+
+  .footer-center {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .footer-left,
+  .footer-right {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+
 }

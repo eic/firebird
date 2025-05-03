@@ -1,6 +1,6 @@
 import logging
 import click
-from pyrobird.edm4eic import edm4eic_to_dict, parse_entry_numbers
+from pyrobird.edm4eic import edm4eic_to_dex_dict, parse_entry_numbers
 import os
 import json
 
@@ -113,10 +113,10 @@ def convert(filename, output_file, entries_str, collections_str):
         "entries_count": num_entries
     }
 
-    event = edm4eic_to_dict(tree, entries, origin_info, collections=collections)
+    fdex_dict = edm4eic_to_dex_dict(tree, entries, origin_info, collections=collections)
 
     # Convert the event data to JSON format
-    json_data = json.dumps(event)
+    json_data = json.dumps(fdex_dict)
 
     if output_file == '-':
         # Output to stdout

@@ -295,11 +295,11 @@ namespace dd4hep {
             std::ofstream output(m_outputFile);
             if (output.is_open()) {
               // Write the header of the JSON file
-              output << fmt::format(R"({{"type":"firebird-dex-json","version":"0.03","origin":{{"file":"{}","entries_count":{}}},)",
+              output << fmt::format(R"({{"type":"firebird-dex-json","version":"0.04","origin":{{"file":"{}","entries_count":{}}},)",
                                    m_outputFile, m_entries.size());
 
               // Write the entries array
-              output << "\"entries\":[";
+              output << "\"events\":[";
 
               // Write each entry
               for (size_t i = 0; i < m_entries.size(); ++i) {
@@ -612,13 +612,13 @@ namespace dd4hep {
         int saved_event = 0;
 
         // Create event entry with components structure
-        std::string eventEntry = fmt::format(R"({{"id":{},"components":[)", event->GetEventID());
+        std::string eventEntry = fmt::format(R"({{"id":{},"groups":[)", event->GetEventID());
 
         // Create component for track segments
-        eventEntry += fmt::format(R"({{"name":"{}","type":"TrackerLinePointTrajectory",)", m_componentName);
+        eventEntry += fmt::format(R"({{"name":"{}","type":"PointTrajectory",)", m_componentName);
 
         // Add origin type information
-        eventEntry += R"("originType":["G4VTrajectory","G4VTrajectoryPoint"],)";
+        eventEntry += R"("origin":{"type":["G4VTrajectory","G4VTrajectoryPoint"]},)";
 
         // Define parameter columns - now using px, py, pz, x, y, z, time
         eventEntry += R"("paramColumns":["pdg","type","charge","px","py","pz","vx","vy","vz","theta","phi","q_over_p","loc_a","loc_b","time"],)";
@@ -626,8 +626,8 @@ namespace dd4hep {
         // Define point columns
         eventEntry += R"("pointColumns":["x","y","z","t","aux"],)";
 
-        // Start the lines array
-        eventEntry += R"("lines":[)";
+        // Start the trajectories array
+        eventEntry += R"("trajectories":[)";
 
         // Process each trajectory
         bool firstLine = true;
@@ -673,7 +673,7 @@ namespace dd4hep {
           eventEntry += "}";
         }
 
-        // Close the lines array, component, components array and event entry
+        // Close the lines array, component, groups array and event entry
         eventEntry += "]}]}";
 
         // Only add event to entries if at least one trajectory was saved
