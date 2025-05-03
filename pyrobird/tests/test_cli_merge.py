@@ -3,7 +3,7 @@ import os
 import tempfile
 import pytest
 from click.testing import CliRunner
-from pyrobird.cli.merge import merge, is_valid_dex_file, merge_dex_files, merge_entries, merge_entry_components, create_merged_header
+from pyrobird.cli.merge import merge, is_valid_dex_file, merge_dex_files, merge_events, merge_event_groups, create_merged_header
 
 # Sample Firebird DEX JSON data for testing
 SAMPLE_DEX_1 = {
@@ -13,14 +13,14 @@ SAMPLE_DEX_1 = {
         "file": "sample1.root",
         "entries_count": 2
     },
-    "entries": [
+    "events": [
         {
             "id": "event_0",
-            "components": [
+            "groups": [
                 {
                     "name": "BarrelVertexHits",
                     "type": "BoxTrackerHit",
-                    "originType": "edm4eic::TrackerHitData",
+                    "origin": {"type": "edm4eic::TrackerHitData"},
                     "hits": [
                         {
                             "pos": [1, 2, 3],
@@ -34,11 +34,11 @@ SAMPLE_DEX_1 = {
         },
         {
             "id": "event_1",
-            "components": [
+            "groups": [
                 {
                     "name": "BarrelTracks",
                     "type": "TrackerLinePointTrajectory",
-                    "originType": "edm4eic::TrackSegmentData",
+                    "origin": {"type":"edm4eic::TrackSegmentData"},
                     "lines": []
                 }
             ]
@@ -53,14 +53,14 @@ SAMPLE_DEX_2 = {
         "file": "sample2.root",
         "entries_count": 2
     },
-    "entries": [
+    "events": [
         {
             "id": "event_0",
-            "components": [
+            "groups": [
                 {
                     "name": "EndcapVertexHits",
                     "type": "BoxTrackerHit",
-                    "originType": "edm4eic::TrackerHitData",
+                    "origin": {"type": ["edm4eic::TrackerHitData"]},
                     "hits": [
                         {
                             "pos": [10, 20, 30],
@@ -74,11 +74,11 @@ SAMPLE_DEX_2 = {
         },
         {
             "id": "event_2",
-            "components": [
+            "groups": [
                 {
                     "name": "EndcapTracks",
                     "type": "TrackerLinePointTrajectory",
-                    "originType": "edm4eic::TrackSegmentData",
+                    "origin": {"type": "edm4eic::TrackSegmentData"},
                     "lines": []
                 }
             ]
@@ -86,17 +86,17 @@ SAMPLE_DEX_2 = {
     ]
 }
 
-# Sample with conflicting component names
+# Sample with conflicting group names
 SAMPLE_DEX_CONFLICT = {
     "version": "0.03",
-    "entries": [
+    "events": [
         {
             "id": "event_0",
-            "components": [
+            "groups": [
                 {
                     "name": "BarrelVertexHits",  # Same name as in SAMPLE_DEX_1
                     "type": "BoxTrackerHit",
-                    "originType": "edm4eic::TrackerHitData",
+                    "origin": {"type": "edm4eic::TrackerHitData"},
                     "hits": [
                         {
                             "pos": [100, 200, 300],
@@ -114,10 +114,10 @@ SAMPLE_DEX_CONFLICT = {
 # Invalid DEX format (missing required fields)
 INVALID_DEX = {
     "version": "0.01",
-    "entries": [
+    "events": [
         {
             "id": "event_0",
-            # Missing "components" field
+            # Missing "groups" field
         }
     ]
 }
@@ -172,7 +172,7 @@ def test_basic_merge(temp_dex_files):
     assert "type" in merged_data
     assert merged_data["type"] == "firebird-dex-json"
     assert "version" in merged_data
-    assert merged_data["version"] in ["0.02", "0.03"]  # Should use the highest version
+    assert merged_data["version"] in ["0.04"]  # Should use the latest version
 
     # Check origin metadata
     assert "origin" in merged_data
@@ -181,23 +181,23 @@ def test_basic_merge(temp_dex_files):
     assert "entries_count" in merged_data["origin"]
     assert merged_data["origin"]["entries_count"] == 4  # Total from both files
 
-    # Verify merged entries
-    assert len(merged_data["entries"]) == 3  # All entries from both files
+    # Verify merged events
+    assert len(merged_data["events"]) == 3  # All events from both files
 
-    # Check that the entries have been properly merged
-    entry_ids = [entry["id"] for entry in merged_data["entries"]]
-    assert "event_0" in entry_ids
-    assert "event_1" in entry_ids
-    assert "event_2" in entry_ids
+    # Check that the events have been properly merged
+    event_ids = [event["id"] for event in merged_data["events"]]
+    assert "event_0" in event_ids
+    assert "event_1" in event_ids
+    assert "event_2" in event_ids
 
-    # Check the components in the first entry (which exists in both files)
-    for entry in merged_data["entries"]:
-        if entry["id"] == "event_0":
-            # This entry should have components from both files
-            component_names = [comp["name"] for comp in entry["components"]]
-            assert "BarrelVertexHits" in component_names
-            assert "EndcapVertexHits" in component_names
-            assert len(entry["components"]) == 2
+    # Check the groups in the first event (which exists in both files)
+    for event in merged_data["events"]:
+        if event["id"] == "event_0":
+            # This event should have groups from both files
+            group_names = [group["name"] for group in event["groups"]]
+            assert "BarrelVertexHits" in group_names
+            assert "EndcapVertexHits" in group_names
+            assert len(event["groups"]) == 2
 
 
 def test_reset_id_flag(temp_dex_files):
@@ -211,34 +211,42 @@ def test_reset_id_flag(temp_dex_files):
     with open(temp_dex_files["output"], 'r') as f:
         merged_data = json.load(f)
 
-    # With reset-id, entries should have been merged by position
-    assert len(merged_data["entries"]) == 2  # File1.entry0 + File2.entry0, File1.entry1 + File2.entry1
+    # With reset-id, events should have been merged by position
+    assert len(merged_data["events"]) == 2  # File1.event0 + File2.event0, File1.event1 + File2.event1
 
-    # First entry should have components from both first entries
-    first_entry = merged_data["entries"][0]
-    component_names = [comp["name"] for comp in first_entry["components"]]
-    assert "BarrelVertexHits" in component_names
-    assert "EndcapVertexHits" in component_names
+    # First event should have groups from both first events
+    first_event = merged_data["events"][0]
+    group_names = [group["name"] for group in first_event["groups"]]
+    assert "BarrelVertexHits" in group_names
+    assert "EndcapVertexHits" in group_names
 
-    # Second entry should have components from both second entries
-    second_entry = merged_data["entries"][1]
-    component_names = [comp["name"] for comp in second_entry["components"]]
-    assert "BarrelTracks" in component_names
-    assert "EndcapTracks" in component_names
+    # Second event should have groups from both second events
+    second_event = merged_data["events"][1]
+    group_names = [group["name"] for group in second_event["groups"]]
+    assert "BarrelTracks" in group_names
+    assert "EndcapTracks" in group_names
 
 
 def test_conflict_detection(temp_dex_files):
-    """Test detection of conflicting component names."""
+    """Test detection of conflicting group names."""
     runner = CliRunner()
-    result = runner.invoke(merge, [temp_dex_files["file1"], temp_dex_files["conflict"]], catch_exceptions=False)
-
-    # Should fail due to duplicate component names
-    assert result.exit_code != 0
-    assert "Duplicate component name" in result.output or "duplicate component" in result.output.lower()
+    # In this case, we want to let the exception be raised but still test it
+    try:
+        runner.invoke(merge, [temp_dex_files["file1"], temp_dex_files["conflict"]], catch_exceptions=False)
+        # If we get here, the command didn't raise an exception, which is a failure
+        assert False, "Expected a ValueError but no exception was raised"
+    except ValueError as e:
+        # The error message should be about duplicate groups
+        error_msg = str(e).lower()
+        assert any(phrase in error_msg for phrase in [
+            "duplicate group",
+            "duplicate name",
+            "already exists"
+        ]), f"Expected error about duplicate groups, got: {error_msg}"
 
 
 def test_ignore_flag(temp_dex_files):
-    """Test the ignore flag for conflicting component names."""
+    """Test the ignore flag for conflicting group names."""
     runner = CliRunner()
     result = runner.invoke(
         merge,
@@ -251,19 +259,19 @@ def test_ignore_flag(temp_dex_files):
     with open(temp_dex_files["output"], 'r') as f:
         merged_data = json.load(f)
 
-    # Find the entry with ID "event_0"
-    for entry in merged_data["entries"]:
-        if entry["id"] == "event_0":
-            # Check that we have the BarrelVertexHits component from file1 (not from conflict)
-            for comp in entry["components"]:
-                if comp["name"] == "BarrelVertexHits":
+    # Find the event with ID "event_0"
+    for event in merged_data["events"]:
+        if event["id"] == "event_0":
+            # Check that we have the BarrelVertexHits group from file1 (not from conflict)
+            for group in event["groups"]:
+                if group["name"] == "BarrelVertexHits":
                     # Verify it's the one from file1, not from conflict
-                    assert comp["hits"][0]["pos"] == [1, 2, 3]  # Values from SAMPLE_DEX_1
-                    assert comp["hits"][0]["dim"] == [0.1, 0.1, 0.1]  # Values from SAMPLE_DEX_1
+                    assert group["hits"][0]["pos"] == [1, 2, 3]  # Values from SAMPLE_DEX_1
+                    assert group["hits"][0]["dim"] == [0.1, 0.1, 0.1]  # Values from SAMPLE_DEX_1
 
 
 def test_overwrite_flag(temp_dex_files):
-    """Test the overwrite flag for conflicting component names."""
+    """Test the overwrite flag for conflicting group names."""
     runner = CliRunner()
     result = runner.invoke(
         merge,
@@ -276,15 +284,15 @@ def test_overwrite_flag(temp_dex_files):
     with open(temp_dex_files["output"], 'r') as f:
         merged_data = json.load(f)
 
-    # Find the entry with ID "event_0"
-    for entry in merged_data["entries"]:
-        if entry["id"] == "event_0":
-            # Check that we have the BarrelVertexHits component from conflict (not from file1)
-            for comp in entry["components"]:
-                if comp["name"] == "BarrelVertexHits":
+    # Find the event with ID "event_0"
+    for event in merged_data["events"]:
+        if event["id"] == "event_0":
+            # Check that we have the BarrelVertexHits group from conflict (not from file1)
+            for group in event["groups"]:
+                if group["name"] == "BarrelVertexHits":
                     # Verify it's the one from conflict, not from file1
-                    assert comp["hits"][0]["pos"] == [100, 200, 300]  # Values from SAMPLE_DEX_CONFLICT
-                    assert comp["hits"][0]["dim"] == [1, 1, 1]  # Values from SAMPLE_DEX_CONFLICT
+                    assert group["hits"][0]["pos"] == [100, 200, 300]  # Values from SAMPLE_DEX_CONFLICT
+                    assert group["hits"][0]["dim"] == [1, 1, 1]  # Values from SAMPLE_DEX_CONFLICT
 
 
 def test_invalid_file(temp_dex_files):
@@ -335,7 +343,7 @@ def test_stdout_output(temp_dex_files):
 
 def test_merge_more_than_two_files(temp_dex_files):
     """Test merging more than two files."""
-    # Create a third file with a unique entry
+    # Create a third file with a unique event
     sample_dex_3 = {
         "type": "firebird-dex-json",
         "version": "0.03",
@@ -343,14 +351,14 @@ def test_merge_more_than_two_files(temp_dex_files):
             "file": "sample3.root",
             "entries_count": 1
         },
-        "entries": [
+        "events": [
             {
                 "id": "event_3",
-                "components": [
+                "groups": [
                     {
                         "name": "CalorHits",
                         "type": "BoxTrackerHit",
-                        "originType": "edm4eic::TrackerHitData",
+                        "origin": {"type": "edm4eic::TrackerHitData"},
                         "hits": []
                     }
                 ]
@@ -375,19 +383,19 @@ def test_merge_more_than_two_files(temp_dex_files):
         merged_data = json.load(f)
 
     # Verify header
-    assert merged_data["version"] == "0.03"  # Should use the highest version
+    assert merged_data["version"] == "0.04"  # Should use the latest version
     assert len(merged_data["origin"]["merged_from"]) == 3
     assert merged_data["origin"]["entries_count"] == 5  # Total from all files
 
-    # Verify merged entries - should have all entries from all three files
-    assert len(merged_data["entries"]) == 4  # 2 from file1 + 1 from file2 + 1 from file3
+    # Verify merged events - should have all events from all three files
+    assert len(merged_data["events"]) == 4  # 2 from file1 + 1 from file2 + 1 from file3
 
-    # Check that all expected entry IDs are present
-    entry_ids = [entry["id"] for entry in merged_data["entries"]]
-    assert "event_0" in entry_ids
-    assert "event_1" in entry_ids
-    assert "event_2" in entry_ids
-    assert "event_3" in entry_ids
+    # Check that all expected event IDs are present
+    event_ids = [event["id"] for event in merged_data["events"]]
+    assert "event_0" in event_ids
+    assert "event_1" in event_ids
+    assert "event_2" in event_ids
+    assert "event_3" in event_ids
 
 
 def test_is_valid_dex_file():
@@ -397,25 +405,25 @@ def test_is_valid_dex_file():
 
     # Invalid cases
     assert not is_valid_dex_file({})  # Empty dict
-    assert not is_valid_dex_file({"entries": "not a list"})  # entries not a list
-    assert not is_valid_dex_file({"version": "0.01"})  # Missing entries
+    assert not is_valid_dex_file({"events": "not a list"})  # events not a list
+    assert not is_valid_dex_file({"version": "0.01"})  # Missing events
 
-    # Invalid entry
-    invalid_entry = {
+    # Invalid event
+    invalid_event = {
         "version": "0.01",
-        "entries": [{"not_id": "event_0"}]  # Missing id
+        "events": [{"not_id": "event_0"}]  # Missing id
     }
-    assert not is_valid_dex_file(invalid_entry)
+    assert not is_valid_dex_file(invalid_event)
 
-    # Invalid component
-    invalid_component = {
+    # Invalid group
+    invalid_group = {
         "version": "0.01",
-        "entries": [{
+        "events": [{
             "id": "event_0",
-            "components": [{"not_name": "BarrelVertexHits"}]  # Missing name
+            "groups": [{"not_name": "BarrelVertexHits"}]  # Missing name
         }]
     }
-    assert not is_valid_dex_file(invalid_component)
+    assert not is_valid_dex_file(invalid_group)
 
 
 def test_create_merged_header():
@@ -430,7 +438,7 @@ def test_create_merged_header():
 
     # Check basic structure
     assert header["type"] == "firebird-dex-json"
-    assert header["version"] == "0.03"  # Should use the highest version
+    assert header["version"] == "0.04"  # Should use the latest version
     assert "origin" in header
     assert "merged_from" in header["origin"]
     assert "entries_count" in header["origin"]
@@ -446,54 +454,54 @@ def test_create_merged_header():
     assert header["origin"]["entries_count"] == 4  # 2 from file1 + 2 from file2
 
 
-def test_merge_entry_components():
-    """Test the merge_entry_components function."""
-    # Set up test entries
-    entry1 = {
-        "id": "test_entry",
-        "components": [
-            {"name": "comp1", "type": "type1", "data": [1, 2, 3]},
-            {"name": "comp2", "type": "type2", "data": [4, 5, 6]}
+def test_merge_event_groups():
+    """Test the merge_event_groups function."""
+    # Set up test events
+    event1 = {
+        "id": "test_event",
+        "groups": [
+            {"name": "group1", "type": "type1", "origin": {"type": "TypeA"}, "data": [1, 2, 3]},
+            {"name": "group2", "type": "type2", "origin": {"type": "TypeB"}, "data": [4, 5, 6]}
         ]
     }
 
-    entry2 = {
-        "id": "test_entry",
-        "components": [
-            {"name": "comp3", "type": "type3", "data": [7, 8, 9]},
-            {"name": "comp1", "type": "type1", "data": [10, 11, 12]}  # Conflict with entry1
+    event2 = {
+        "id": "test_event",
+        "groups": [
+            {"name": "group3", "type": "type3", "origin": {"type": "TypeC"}, "data": [7, 8, 9]},
+            {"name": "group1", "type": "type1", "origin": {"type": "TypeA"}, "data": [10, 11, 12]}  # Conflict with event1
         ]
     }
 
-    entries_with_id = [
-        ("file1.json", entry1),
-        ("file2.json", entry2)
+    events_with_id = [
+        ("file1.json", event1),
+        ("file2.json", event2)
     ]
 
     # Test normal merge (should raise ValueError due to conflict)
     with pytest.raises(ValueError):
-        merged_entry = merge_entry_components("test_entry", entries_with_id)
+        merged_event = merge_event_groups("test_event", events_with_id)
 
     # Test with ignore flag
-    merged_entry = merge_entry_components("test_entry", entries_with_id, ignore=True)
-    component_names = [comp["name"] for comp in merged_entry["components"]]
-    assert "comp1" in component_names
-    assert "comp2" in component_names
-    assert "comp3" in component_names
+    merged_event = merge_event_groups("test_event", events_with_id, ignore=True)
+    group_names = [group["name"] for group in merged_event["groups"]]
+    assert "group1" in group_names
+    assert "group2" in group_names
+    assert "group3" in group_names
 
-    # Verify that comp1 from file1 was kept
-    for comp in merged_entry["components"]:
-        if comp["name"] == "comp1":
-            assert comp["data"] == [1, 2, 3]  # From entry1, not entry2
+    # Verify that group1 from file1 was kept
+    for group in merged_event["groups"]:
+        if group["name"] == "group1":
+            assert group["data"] == [1, 2, 3]  # From event1, not event2
 
     # Test with overwrite flag
-    merged_entry = merge_entry_components("test_entry", entries_with_id, overwrite=True)
-    component_names = [comp["name"] for comp in merged_entry["components"]]
-    assert "comp1" in component_names
-    assert "comp2" in component_names
-    assert "comp3" in component_names
+    merged_event = merge_event_groups("test_event", events_with_id, overwrite=True)
+    group_names = [group["name"] for group in merged_event["groups"]]
+    assert "group1" in group_names
+    assert "group2" in group_names
+    assert "group3" in group_names
 
-    # Verify that comp1 from file2 overwrote the one from file1
-    for comp in merged_entry["components"]:
-        if comp["name"] == "comp1":
-            assert comp["data"] == [10, 11, 12]  # From entry2, not entry1
+    # Verify that group1 from file2 overwrote the one from file1
+    for group in merged_event["groups"]:
+        if group["name"] == "group1":
+            assert group["data"] == [10, 11, 12]  # From event2, not event1

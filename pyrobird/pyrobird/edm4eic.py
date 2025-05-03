@@ -179,7 +179,7 @@ def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_st
     result = {
         "name": branch_name,
         "type": "PointTrajectory",
-        "originType": ["edm4eic::TrackPoint", "edm4eic::TrackSegmentData"],
+        "origin": ["edm4eic::TrackPoint", "edm4eic::TrackSegmentData"],
         "paramColumns": [],
         "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"],
         "trajectories": []
