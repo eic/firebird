@@ -32,6 +32,10 @@ import {Object3D} from "three";
 import {DisplayMode} from "../../painters/data-model-painter";
 import {CubeViewportControlComponent} from "../../components/cube-viewport-control/cube-viewport-control.component";
 import {LegendWindowComponent} from "../../components/legend-window/legend-window.component";
+import {PainterConfigPageComponent} from "../../services/configurator/painter-config-page.component";
+import {NgIf} from "@angular/common";
+import {TrackPainterConfig} from "../../services/track-painter-config";
+import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
 
 
 /**
@@ -49,7 +53,6 @@ import {LegendWindowComponent} from "../../components/legend-window/legend-windo
     styleUrls: ['./main-display.component.scss'],
   imports: [
     MatIcon,
-    MatButton,
     MatTooltip,
     MatIconButton,
     SceneTreeComponent,
@@ -61,7 +64,10 @@ import {LegendWindowComponent} from "../../components/legend-window/legend-windo
     PerfStatsComponent,
     EventTimeControlComponent,
     CubeViewportControlComponent,
-    LegendWindowComponent
+    LegendWindowComponent,
+    PainterConfigPageComponent,
+    NgIf,
+    ObjectRaycastComponent
   ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -94,6 +100,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // UI toggles
   isLeftPaneOpen: boolean = false;
+  isRightPaneOpen: boolean = false;
 
 
   // Phoenix API
@@ -126,41 +133,60 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
 
-    this.userConfig.dexJsonEventSource.subject.subscribe(url => {
-      if(!url || url.trim().length === 0) {
-        console.log("[main-display]: No data source specified. Skip loadDexData ");
-        return;
-      }
+    // this.userConfig.dexJsonEventSource.subject.subscribe(url => {
+    //   if(!url || url.trim().length === 0) {
+    //     console.log("[main-display]: No data source specified. Skip loadDexData ");
+    //     return;
+    //   }
+    //
+    //   // Check if we have the same data
+    //   if(this.eventDisplay.lastLoadedDexUrl === url) {
+    //     console.log(`[main-display]: Event data (DEX) url is the same as before: '${url}', skip loading`);
+    //     return;
+    //   }
+    //
+    //   // Try to load
+    //   this.eventDisplay.loadDexData(url).catch(error=>{
+    //     const msg = `Error loading events: ${error}`;
+    //     console.error(`[main-display]: ${msg}`);
+    //     this.showError(msg);
+    //   }).then(value=>{
+    //     console.log("[main-display]: Event loaded");
+    //     this.updateSceneTreeComponent();
+    //   });
+    // });
+    let dexUrl = this.userConfig.dexJsonEventSource.subject.getValue();
 
-      // Check if we have the same data
-      if(this.eventDisplay.lastLoadedDexUrl === url) {
-        console.log(`[main-display]: Event data (DEX) url is the same as before: '${url}', skip loading`);
-        return;
-      }
-
-      // Try to load
-      this.eventDisplay.loadDexData(url).catch(error=>{
+    if (!dexUrl || dexUrl.trim().length === 0) {
+      console.log("[main-display]: No event data source specified. Skip loadDexData.");
+    }
+    // Check if we have the same data
+    else if (this.eventDisplay.lastLoadedDexUrl === dexUrl) {
+      console.log(`[main-display]: Event data (DEX) url is the same as before: '${dexUrl}', skip loading.`);
+    }
+    // Try to load
+    else {
+      this.eventDisplay.loadDexData(dexUrl).catch(error => {
         const msg = `Error loading events: ${error}`;
         console.error(`[main-display]: ${msg}`);
         this.showError(msg);
-      }).then(value=>{
-        console.log("[main-display]: Event loaded");
+      }).then(() => {
+        console.log("[main-display]: Event data loaded.");
         this.updateSceneTreeComponent();
       });
-    });
+    }
 
-    this.userConfig.selectedGeometry.subject.subscribe(url =>{
-      if(!url || url.trim().length === 0) {
-        console.log("[main-display]: No data source specified. Skip loadGeometry ");
-        return;
-      }
 
-      // Check if we have the same data
-      if(this.eventDisplay.lastLoadedGeometryUrl === url) {
-        console.log(`[main-display]: Geometry url is the same as before: '${url}', skip loading`);
-        return;
-      }
+    let url = this.userConfig.selectedGeometry.value;
 
+    if(!url || url.trim().length === 0) {
+      console.log("[main-display]: No data source specified. Skip loadGeometry ");
+
+    }
+    // Check if we have the same data
+    else if(this.eventDisplay.lastLoadedGeometryUrl === url) {
+      console.log(`[main-display]: Geometry url is the same as before: '${url}', skip loading`);
+    } else {
       // Load geometry
       this.eventDisplay.loadGeometry(url).catch(error=>{
         const msg = `Error loading geometry: ${error}`;
@@ -171,9 +197,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log(value)
         this.updateSceneTreeComponent();
       });
-    });
+    }
+}
 
-  }
+
 
   // 2) AFTER VIEW INIT => handle resizing with DisplayShell or window
   ngAfterViewInit(): void {
@@ -215,6 +242,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleRightPane() {
     this.displayShellComponent?.toggleRightPane();
+    this.isRightPaneOpen = !this.isRightPaneOpen;
   }
 
   // 4) Method to initialize CubeViewportControl with the existing Three.js objects
@@ -234,6 +262,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
   }
+
 
 
 
@@ -316,5 +345,20 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onDebugButton() {
     this.showError("Error message works");
+  }
+
+
+  selectedConfigItem: any = null;
+
+  onConfigureItemClicked(type: string) {
+    if (type === 'track') {
+      this.selectedConfigItem = {
+        name: 'Track A',
+        type: 'track',
+        config: new TrackPainterConfig()
+      };
+    }
+
+    this.toggleRightPane();
   }
 }

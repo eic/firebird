@@ -1,15 +1,15 @@
 <div class="tool-panel-wrapper">
   <div class="tool-panel" [class.collapsed]="isCollapsed">
     <div class="content">
-      <button class="icon-button toggle-button" title="Toggle Panel" (click)="togglePanel()">
+      <button mat-icon-button class="toggle-button panel-button"  matTooltip="Toggle Panel" (click)="togglePanel()">
         <mat-icon>{{ isCollapsed ? 'keyboard_arrow_left' : 'keyboard_arrow_right' }}</mat-icon>
       </button>
 
-      <div class="action-buttons" *ngIf="!isCollapsed">
+      <div class="action-buttons " *ngIf="!isCollapsed">
         <!-- Zoom In -->
-        <button
-          class="icon-button"
-          title="Zoom In"
+        <button mat-icon-button
+          class="panel-button"
+          matTooltip="Zoom In"
           (click)="onLeftClick($event, 'zoomIn')"
           (mouseup)="clearZoom()"
           (mouseleave)="clearZoom()"
@@ -20,9 +20,9 @@
         </button>
 
         <!-- Zoom Out -->
-        <button
-          class="icon-button"
-          title="Zoom Out"
+        <button mat-icon-button
+          class=" panel-button"
+          matTooltip="Zoom Out"
           (click)="onLeftClick($event, 'zoomOut')"
           (mouseup)="clearZoom()"
           (mouseleave)="clearZoom()"
@@ -36,9 +36,9 @@
         <app-custom-view-options></app-custom-view-options>
 
         <!-- Switch Orthographic/Perspective -->
-        <button
-          class="icon-button"
-          title="Switch orthographic/perspective camera"
+        <button mat-icon-button
+          class=" panel-button"
+          matTooltip="Switch orthographic/perspective camera"
           (click)="switchMainView()"
         >
           <mat-icon>view_in_ar</mat-icon>

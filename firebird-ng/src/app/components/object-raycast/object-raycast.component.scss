@@ -1,0 +1,50 @@
+
+.custom-position-dialog {
+  padding: 45px 24px 24px 24px;
+  border-radius: 18px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+  font-family: Arial, sans-serif;
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+}
+
+.close-round-btn {
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  border-radius: 50%;
+  z-index: 10;
+  border: none;
+  background: none;
+  box-shadow: var(--mat-sys-level2);
+}
+
+.close-round-btn:hover{
+  color: #bec2ff;
+}
+
+.close-btn{
+  height: 30px;
+  border: none;
+}
+
+.panel-button {
+  box-shadow: var(--mat-sys-level2);
+}
+
+.raycast-overlay{
+  position: fixed;
+  bottom: 140px;
+  left: 12px;
+  padding: 4px 8px;
+  background: rgba(0,0,0,.65);
+  color: #fff;
+  font-family: monospace;
+  font-size: 12px;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+}

@@ -117,20 +117,11 @@ def parse_entry_numbers(value):
 
 
 def tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None):
-    """Converts vector<edm4eic::TrackerHitData> to HitBox format dictionary"""
-
-    result = {
-        "name": branch_name,
-        "type": "TrackerLinePointTrajectory",
-        "originType": ["edm4eic::TrackPoint", "edm4eic::TrackSegmentData"],
-        "paramColumns": ["px", "py", "pz", "charge", "phi", "theta", "qOverP", "chi2", "ndf"],
-        "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"],
-        "lines": []
-    }
+    """Converts vector<edm4eic::TrackerHitData> to BoxHit format dictionary"""
 
     # Read only 1 event if entry_stop is not given
     if entry_stop is None:
-        entry_stop = entry_start + 10
+        entry_stop = entry_start + 1
 
     def get_field_array(field_branch):
         """Gets array of values of a field branch"""
@@ -166,8 +157,8 @@ def tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None):
 
     group = {
         "name": branch_name,
-        "type": "BoxTrackerHit",
-        "originType": "edm4eic::TrackerHitData",
+        "type": "BoxHit",
+        "origin": {"type": "edm4eic::TrackerHitData", "name": branch_name},
         "hits": hits,
     }
     return group
@@ -187,11 +178,11 @@ def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_st
 
     result = {
         "name": branch_name,
-        "type": "TrackerLinePointTrajectory",
-        "originType": ["edm4eic::TrackPoint", "edm4eic::TrackSegmentData"],
+        "type": "PointTrajectory",
+        "origin": ["edm4eic::TrackPoint", "edm4eic::TrackSegmentData"],
         "paramColumns": [],
         "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"],
-        "lines": []
+        "trajectories": []
     }
     # -- Grab the arrays for the main TrackSegmentData
     seg_points_begin_index   = ak.flatten(tree[f'{branch_name}/{branch_name}.points_begin'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
@@ -267,7 +258,7 @@ def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_st
         trk_loc_b  = []
         trk_time   = []
 
-    lines = []
+    trajectories = []
     n_segments = len(seg_points_begin_index)
 
     if params_exists and n_segments != len(trk_theta):
@@ -297,13 +288,13 @@ def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_st
             params_list.append(trk_loc_b[seg_index])
             params_list.append(trk_time [seg_index])
 
-        line = {
+        trajectory = {
             "points": segment_points,
             "params": params_list
         }
-        lines.append(line)
+        trajectories.append(trajectory)
 
-    result["lines"] = lines
+    result["trajectories"] = trajectories
     return result
 
 
@@ -336,25 +327,26 @@ def edm4eic_entry_to_dict(tree, entry_index, custom_name=None, collections=None)
 
     entry = {
         "id": custom_name if custom_name else entry_index,
-        "components": components
+        "groups": components
     }
 
     return entry
 
 
-def edm4eic_to_dict(tree, entry_ids, origin_info=None, collections=None):
-    entries_data = []
+def edm4eic_to_dex_dict(tree, event_ids, origin_info=None, collections=None):
+    event_data = []
 
-    if isinstance(entry_ids, int):
-        entry_ids = [entry_ids]
+    if isinstance(event_ids, int):
+        event_ids = [event_ids]
 
-    for entry_id in entry_ids:
-        entries_data.append(edm4eic_entry_to_dict(tree, entry_id, custom_name=None, collections=collections))
+    for entry_id in event_ids:
+        event_data.append(edm4eic_entry_to_dict(tree, entry_id, custom_name=None, collections=collections))
 
     result = {
-        "version": "0.02",
+        "type": "firebird-dex-json",
+        "version": "0.04",
         "origin": origin_info,
-        "entries": entries_data
+        "events": event_data
     }
     
     return result

@@ -1,36 +1,36 @@
 // data-exchange.spec.ts
 
 import { DataExchange } from './data-exchange';
-import { Entry } from './entry';
-import { BoxTrackerHitComponent, BoxTrackerHit, BoxTrackerHitComponentFactory } from './box-tracker-hit.component';
-import {_resetComponentRegistry, registerComponentFactory} from './entry-component';
+import { Event } from './event';
+import { BoxHitGroup, BoxHit, BoxHitGroupFactory } from './box-hit.group';
+import {_resetEventGroupRegistry, registerEventGroupFactory} from './event-group';
 
-// Register the BoxTrackerHitComponentFactory
+// Register the BoxHitComponentFactory
 
 
-describe('DataExchange with BoxTrackerHitComponent', () => {
+describe('DataExchange with BoxHitGroup', () => {
   it('should serialize and deserialize correctly', () => {
     // Create hits
-    const hit1 = new BoxTrackerHit([1, 2, 3], [10, 10, 1], [4, 1], [0.001, 0.0001]);
-    const hit2 = new BoxTrackerHit([4, 5, 6], [10, 10, 2], [5, 1], [0.002, 0.0002]);
+    const hit1 = new BoxHit([1, 2, 3], [10, 10, 1], [4, 1], [0.001, 0.0001]);
+    const hit2 = new BoxHit([4, 5, 6], [10, 10, 2], [5, 1], [0.002, 0.0002]);
 
     // Create component
-    const component = new BoxTrackerHitComponent('TestComponent', 'TestOriginType');
+    const component = new BoxHitGroup('TestComponent', 'Testorigin');
     component.hits.push(hit1, hit2);
 
     // Create entry
-    const entry = new Entry();
+    const entry = new Event();
     entry.id = 'event1';
-    entry.components.push(component);
+    entry.groups.push(component);
 
     // Create DataExchange
     const dataExchange = new DataExchange();
     dataExchange.version = '0.01';
     dataExchange.origin = { fileName: 'sample.dat' };
-    dataExchange.entries.push(entry);
+    dataExchange.events.push(entry);
 
-    _resetComponentRegistry();
-    registerComponentFactory(new BoxTrackerHitComponentFactory());
+    _resetEventGroupRegistry();
+    registerEventGroupFactory(new BoxHitGroupFactory());
 
     // Serialize
     const serialized = dataExchange.toDexObject();
@@ -41,16 +41,16 @@ describe('DataExchange with BoxTrackerHitComponent', () => {
     // Assertions
     expect(deserialized.version).toBe(dataExchange.version);
     expect(deserialized.origin).toEqual(dataExchange.origin);
-    expect(deserialized.entries.length).toBe(1);
+    expect(deserialized.events.length).toBe(1);
 
-    const deserializedEntry = deserialized.entries[0];
+    const deserializedEntry = deserialized.events[0];
     expect(deserializedEntry.id).toBe(entry.id);
-    expect(deserializedEntry.components.length).toBe(1);
+    expect(deserializedEntry.groups.length).toBe(1);
 
-    const deserializedComponent = deserializedEntry.components[0] as BoxTrackerHitComponent;
+    const deserializedComponent = deserializedEntry.groups[0] as BoxHitGroup;
     expect(deserializedComponent.name).toBe(component.name);
     expect(deserializedComponent.type).toBe(component.type);
-    expect(deserializedComponent.originType).toBe(component.originType);
+    expect(deserializedComponent.origin).toBe(component.origin);
     expect(deserializedComponent.hits.length).toBe(2);
 
     // Check hits

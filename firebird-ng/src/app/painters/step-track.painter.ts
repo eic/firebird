@@ -62,6 +62,7 @@ export class StepTrackComponentPainter {
   } );
 
   gammaMaterial: LineMaterial;
+  opticalMaterial: LineMaterial;
   electronMaterial: LineMaterial;
   piPlusMaterial: LineMaterial;
   piMinusMaterial: LineMaterial;
@@ -78,6 +79,9 @@ export class StepTrackComponentPainter {
     this.gammaMaterial.color = new Color(NeonTrackColors.Yellow);
     this.gammaMaterial.dashSize = 50;
     this.gammaMaterial.gapSize = 50;
+
+    this.opticalMaterial = this.dashedLineMaterial.clone();
+    this.opticalMaterial.color = new Color(NeonTrackColors.Yellow);
 
     this.electronMaterial = this.solidLineMaterial.clone();
     this.electronMaterial.color = new Color(NeonTrackColors.Blue);
@@ -115,6 +119,8 @@ export class StepTrackComponentPainter {
     switch (pdgName) {
       case "gamma":
         return this.gammaMaterial;
+      case "opticalphoton":
+        return this.opticalMaterial;
       case "e-":
         return this.electronMaterial;
       case "pi+":

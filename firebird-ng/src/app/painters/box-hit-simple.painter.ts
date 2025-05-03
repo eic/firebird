@@ -5,34 +5,34 @@ import {
   MeshBasicMaterial,
   Color,
 } from 'three';
-import { ComponentPainter } from './component-painter';
-import { BoxTrackerHitComponent } from '../model/box-tracker-hit.component';
-import { EntryComponent } from '../model/entry-component';
+import { EventGroupPainter } from './event-group-painter';
+import { BoxHitGroup } from '../model/box-hit.group';
+import { EventGroup } from '../model/event-group';
 
 /**
- * Alternative Painter class for rendering BoxTrackerHitComponent using individual Meshes.
+ * Alternative Painter class for rendering BoxHitGroup using individual Meshes.
  */
-export class BoxTrackerHitSimplePainter extends ComponentPainter {
+export class BoxHitSimplePainter extends EventGroupPainter {
   /** Array of Mesh objects representing hits */
   private hitMeshes: Mesh[] = [];
 
-  private boxComponent: BoxTrackerHitComponent;
+  private boxComponent: BoxHitGroup;
 
   /**
-   * Constructs a new BoxTrackerHitAlternativePainter.
+   * Constructs a new BoxHitAlternativePainter.
    *
    * @param parentNode - The Object3D node where the hit meshes will be added.
-   * @param component - The BoxTrackerHitComponent containing the hit data.
+   * @param component - The BoxHitGroup containing the hit data.
    */
-  constructor(parentNode: Object3D, component: EntryComponent) {
+  constructor(parentNode: Object3D, component: EventGroup) {
     super(parentNode, component);
 
     // Runtime type check
-    if (component.type !== BoxTrackerHitComponent.type) {
-      throw new Error('Invalid component type for BoxTrackerHitAlternativePainter');
+    if (component.type !== BoxHitGroup.type) {
+      throw new Error('Invalid component type for BoxHitAlternativePainter');
     }
 
-    this.boxComponent = component as BoxTrackerHitComponent;
+    this.boxComponent = component as BoxHitGroup;
 
     // Create a bright random color for this component collection
     const hue = Math.random();

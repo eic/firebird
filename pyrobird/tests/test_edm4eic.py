@@ -28,32 +28,53 @@ def test_edm4eic_to_dict_structure():
     # Check that the event is a dictionary
     assert isinstance(event, dict), "Event should be a dictionary"
 
-    # Check that the event has 'id' and 'components' keys
+    # Check that the event has 'id' and "groups" keys
     assert 'id' in event, "'id' key missing in event dictionary"
-    assert 'components' in event, "'components' key missing in event dictionary"
+    assert 'groups' in event, "'groups' key missing in event dictionary"
 
-    # Check that 'components' is a list
-    assert isinstance(event['components'], list), "'components' should be a list"
+    # Check that 'data' is a list
+    assert isinstance(event['groups'], list), "'groups' should be a list"
 
-    # Check that each item in 'components' is a dictionary with expected keys
-    for component in event['components']:
-        assert isinstance(component, dict), "Each component should be a dictionary"
-        assert 'name' in component, "'name' key missing in component"
-        assert 'type' in component, "'type' key missing in component"
-        assert 'originType' in component, "'originType' key missing in component"
+    # Check that each item in 'data' is a dictionary with expected keys
+    for group in event['groups']:
+        assert isinstance(group, dict), "Each group in 'groups' should be a dictionary"
+        assert 'name' in group, "'name' key missing in group"
+        assert 'type' in group, "'type' key missing in group"
+        assert 'origin' in group, "'origin' key missing in group"
 
-        # Check for appropriate data key based on component type
-        component_type = component['type']
-        if component_type == 'BoxTrackerHit' or 'Hit' in component_type:
-            assert 'hits' in component, f"'hits' key missing in component of type {component_type}"
-        elif component_type == 'TrackerLinePointTrajectory' or 'Track' in component_type:
-            assert 'lines' in component, f"'lines' key missing in component of type {component_type}"
-        else:
-            # If new component types are added, you might need to add more conditions
-            # For now, we'll ensure at least one valid data key exists
-            valid_data_keys = ['hits', 'lines', 'particles', 'clusters', 'points']
-            assert any(key in component for key in valid_data_keys), \
-                f"No valid data key found in component of type {component_type}"
+        if group["type"] == "BoxHit":
+            assert 'hits' in group, "'hits' key missing in group"
+            assert isinstance(group['hits'], list), "'hits' should be a list"
+
+        if group["type"] == "PointTrajectory":
+            assert "paramColumns" in group
+            assert "pointColumns" in group
+            assert "trajectories" in group
+
+        # Optionally, check the first hit for expected structure
+        if 'hits' in group and  len(group['hits']) > 0:
+            hit = group['hits'][0]
+            assert isinstance(hit, dict), "Each hit should be a dictionary"
+            assert 'pos' in hit, "'pos' key missing in hit"
+            assert 'dim' in hit, "'dim' key missing in hit"
+            assert 't' in hit, "'t' key missing in hit"
+            assert 'ed' in hit, "'ed' key missing in hit"
+
+            # Check that 'pos' is a list of three floats
+            assert isinstance(hit['pos'], list) and len(hit['pos']) == 3, "'pos' should be a list of three elements"
+            assert all(isinstance(x, (float, int)) for x in hit['pos']), "'pos' elements should be numbers"
+
+            # Check that 'dim' is a list of three floats
+            assert isinstance(hit['dim'], list) and len(hit['dim']) == 3, "'dim' should be a list of three elements"
+            assert all(isinstance(x, (float, int)) for x in hit['dim']), "'dim' elements should be numbers"
+
+            # Check that 't' is a list of two floats
+            assert isinstance(hit['t'], list) and len(hit['t']) == 2, "'t' should be a list of two elements"
+            assert all(isinstance(x, (float, int)) for x in hit['t']), "'t' elements should be numbers"
+
+            # Check that 'ed' is a list of two floats
+            assert isinstance(hit['ed'], list) and len(hit['ed']) == 2, "'ed' should be a list of two elements"
+            assert all(isinstance(x, (float, int)) for x in hit['ed']), "'ed' elements should be numbers"
 
 def test_edm4eic_to_dict_values():
     # Open the ROOT file
@@ -64,10 +85,10 @@ def test_edm4eic_to_dict_values():
     event = edm4eic_entry_to_dict(tree, entry_index=0)
 
     # Ensure there is at least one group with hits
-    assert len(event['components']) > 0, "No data groups found in event"
+    assert len(event["groups"]) > 0, "No data groups found in event"
 
     # Get the first group
-    group = event['components'][0]
+    group = event["groups"][0]
     hits = group['hits']
     assert len(hits) > 0, "No hits found in the first group"
 
@@ -98,9 +119,9 @@ def test_edm4eic_to_dict_multiple_entries():
         assert event['id'] == entry, f"Event name does not match entry number: {event['id']} != {entry}"
 
         # Perform the same checks as in the previous test
-        assert 'components' in event, "'components' key missing in event dictionary"
-        assert isinstance(event['components'], list), "'data' should be a list"
-        assert len(event['components']) > 0, "No data groups found in event"
+        assert "groups" in event, "groups key missing in event dictionary"
+        assert isinstance(event["groups"], list), "'data' should be a list"
+        assert len(event["groups"]) > 0, "No data groups found in event"
 
         # Optionally, perform additional checks for each event
 
@@ -124,7 +145,7 @@ def test_tracker_hits_to_box_hits():
         assert isinstance(group, dict), "Group should be a dictionary"
         assert 'name' in group, "'name' key missing in group"
         assert 'type' in group, "'type' key missing in group"
-        assert 'originType' in group, "'originType' key missing in group"
+        assert 'origin' in group, "'origin' key missing in group"
         assert 'hits' in group, "'hits' key missing in group"
 
         # Check that 'hits' is a list

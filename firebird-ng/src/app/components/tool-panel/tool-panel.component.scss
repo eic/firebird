@@ -2,16 +2,12 @@
   position: fixed;
   top: 20%;
   right: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+
 }
 
-.tool-panel {
-  width: 60px;
-  height: auto;
-  background-color: #2e2e2e;
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+.content {
+  background-color: var(--mat-sys-surface-container-low);
+  box-shadow: var(--mat-sys-level2);
   border-radius: 8px 0 0 8px;
   display: flex;
   flex-direction: column;
@@ -19,32 +15,18 @@
   justify-content: center;
   transition: transform 0.3s ease;
   padding: 10px;
+
 }
 
 .tool-panel.collapsed {
   transform: translateX(calc(100% - 60px));
 }
 
-.tool-panel button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 10px;
+.action-buttons{
   display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-left: 7px;
-  border-radius: 50%;
-  transition: background-color 0.3s ease;
-
-  &:hover {
-    background-color: #5c5c5c;
-  }
-
-  mat-icon {
-    font-size: 24px;
-    color: white;
-  }
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .toggle-button {

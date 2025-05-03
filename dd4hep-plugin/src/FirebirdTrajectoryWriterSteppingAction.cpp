@@ -167,11 +167,11 @@ namespace dd4hep {
         ensureOutputWritable();
 
         // Write the header of the JSON file
-        m_output << fmt::format(R"({{"type":"firebird-dex-json","version":"0.03","origin":{{"file":"{}","entries_count":{}}},)",
+        m_output << fmt::format(R"({{"type":"firebird-dex-json","version":"0.04","origin":{{"file":"{}","entries_count":{}}},)",
                              m_outputFile, m_eventEntries.size());
 
         // Write the entries array
-        m_output << "\"entries\":[";
+        m_output << "\"events\":[";
 
         // Write each event entry
         for (size_t i = 0; i < m_eventEntries.size(); ++i) {
@@ -281,13 +281,13 @@ namespace dd4hep {
         m_pointEntries.clear();
 
         // Create the beginning of an event entry with header
-        m_currentEventEntry = fmt::format(R"({{"id":{},"components":[)", eventNumber);
+        m_currentEventEntry = fmt::format(R"({{"id":{},"groups":[)", eventNumber);
 
         // Add component for track segments
-        m_currentEventEntry += fmt::format(R"({{"name":"{}","type":"TrackerLinePointTrajectory",)", m_componentName);
+        m_currentEventEntry += fmt::format(R"({{"name":"{}","type":"PointTrajectory",)", m_componentName);
 
         // Add origin type information
-        m_currentEventEntry += R"("originType":["G4Track","G4StepPoint"],)";
+        m_currentEventEntry += R"("origin":{"type":["G4Track","G4StepPoint"]},)";
 
         // Define parameter columns
         m_currentEventEntry += R"("paramColumns":["pdg","type","charge","px","py","pz","vx","vy","vz","theta","phi","q_over_p","loc_a","loc_b","time"],)";
@@ -296,7 +296,7 @@ namespace dd4hep {
         m_currentEventEntry += R"("pointColumns":["x","y","z","t","aux"],)";
 
         // Start the lines array
-        m_currentEventEntry += R"("lines":[)";
+        m_currentEventEntry += R"("trajectories":[)";
 
         m_totalEvents++;
         fmt::print("Started processing event: {} (run: {})\n", eventNumber, runNumber);
@@ -307,7 +307,7 @@ namespace dd4hep {
         if (m_prevEvent >= 0) {
           // Only save the event if it has at least one track
           if (!m_firstTrackInEvent) {
-            // Close the lines array, component, and components array
+            // Close the trajectories array, component, and group array
             m_currentEventEntry += "]}]}";
             m_eventEntries.push_back(m_currentEventEntry);
 

@@ -1,7 +1,11 @@
 <div class="time-slider-wrapper">
-  <!-- Current Time (left side) -->
+  <!-- Custom Time Icon Button -->
+  <button #openBtn mat-icon-button class="panel-button" (click)="openDialog()" matTooltip="Custom time range">
+    <mat-icon>schedule</mat-icon>
+  </button>
+
+  <!-- Current Time (left label) -->
   <div class="time-label">
-    <!-- If you're using a signal-based approach, eventTime() is how you read the signal -->
     {{ shownTime() | number:'1.1-1' }}
   </div>
 
@@ -10,18 +14,51 @@
     class="tslider"
     [min]="eventDisplayService.minTime"
     [max]="eventDisplayService.maxTime"
-    step="1"
-    showTickMarks
-    discrete
-    [displayWith]="formatCurrentTime"
-    (input)="changeCurrentTime($event)"
+    [step]="eventDisplayService.animationSpeed"
+
   >
-    <!-- Slider thumb with direct binding to the current time -->
-    <input matSliderThumb [value]="shownTime()" />
+    <input
+      matSliderThumb
+      [value]="shownTime()"
+      (input)="onThumbInput($event)" />
   </mat-slider>
 
-  <!-- Max Time (right side) -->
+
+  <!-- Max Time (right label) -->
   <div class="time-label">
     {{ eventDisplayService.maxTime | number:'1.0-0' }} [ns]
   </div>
 </div>
+
+<!-- Custom Time Inputs -->
+<ng-template #dialogTemplate>
+  <button mat-dialog-close aria-label="Close dialog" class="close-round-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <div class="custom-dialog-container">
+    <h3 class="dialog-title">Set Time Range</h3>
+
+    <div class="time-inputs">
+      <mat-form-field appearance="fill">
+        <mat-label>Start Time</mat-label>
+        <input matInput type="number" [(ngModel)]="customStartTime">
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>End Time</mat-label>
+        <input matInput type="number" [(ngModel)]="customEndTime">
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Animation Speed</mat-label>
+        <input matInput type="number" [(ngModel)]="animationSpeed" step="0.1" min="0.1" />
+      </mat-form-field>
+    </div>
+
+    <div class="dialog-actions">
+      <button mat-raised-button  (click)="applyCustomTimeRange()">Apply</button>
+    </div>
+  </div>
+</ng-template>
+

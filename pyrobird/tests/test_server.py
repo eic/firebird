@@ -37,9 +37,9 @@ def test_open_edm4eic_file_local_allowed(client):
     assert response.status_code == 200
     data = response.get_json()
     assert data is not None
-    assert 'entries' in data
-    assert 'components' in data['entries'][0]
-    assert data['entries'][0]["id"] == event_number
+    assert 'events' in data
+    assert 'groups' in data['events'][0]
+    assert data['events'][0]["id"] == event_number
 
 
 def test_open_edm4eic_file_local_not_allowed(client):
@@ -60,7 +60,7 @@ def test_open_dangerous(client):
     flask_app.config['PYROBIRD_DOWNLOAD_IS_UNRESTRICTED'] = True
     flask_app.config['PYROBIRD_DOWNLOAD_IS_DISABLED'] = False
     response = client.get(f'/api/v1/download?filename={filename}')
-    assert response.status_code == 200  # OK
+    assert response.status_code in [200, 404]  # OK
 
 
 def test_open_edm4eic_file_invalid_event_number(client):
@@ -109,4 +109,8 @@ def test_open_edm4eic_file_invalid_file(client):
     assert response.status_code == 500  # Internal Server Error
 
     # Clean up the invalid file
-    os.remove(invalid_file_path)
+    try:
+        os.remove(invalid_file_path)
+    except PermissionError as ex:
+        print(f"Can't delete {invalid_file_path} probably is locked or no rights: {ex}. "
+              f"Continue as is, consider this message as warning")

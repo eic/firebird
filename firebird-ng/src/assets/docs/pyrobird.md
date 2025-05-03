@@ -74,7 +74,7 @@ well as to complement frontend features such as opening XRootD files, etc.
 Serve Firobird locally and have access to files in current directory:
 
 ```bash
-fbd serve
+pyrobird serve
 ```
 
 **pyrobird** (backend) allows **Firebird** (frontend) to access certain files on your system.

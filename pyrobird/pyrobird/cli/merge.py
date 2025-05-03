@@ -9,31 +9,31 @@ from typing import Dict, List, Any, Set, Union
 logger = logging.getLogger(__name__)
 
 @click.command()
-@click.option('--reset-id', is_flag=True, help='Reset entry IDs to sequential numbers (0,1,2...)')
-@click.option('--ignore', is_flag=True, help='Ignore duplicate component names from right files')
-@click.option('--overwrite', is_flag=True, help='Overwrite duplicate component names from left files')
+@click.option('--reset-id', is_flag=True, help='Reset event IDs to sequential numbers (0,1,2...)')
+@click.option('--ignore', is_flag=True, help='Ignore duplicate group names from right files')
+@click.option('--overwrite', is_flag=True, help='Overwrite duplicate group names from left files')
 @click.option('-o', '--output', 'output_file', help='Output file name for the merged result')
 @click.argument('input_files', nargs=-1, required=True)
 def merge(reset_id, ignore, overwrite, output_file, input_files):
     """
     Merge multiple Firebird DEX JSON files.
 
-    This command merges entries from multiple Firebird DEX JSON files based on their IDs.
-    Components with the same name in different files are handled according to specified flags.
+    This command merges events from multiple Firebird DEX JSON files based on their IDs.
+    Groups with the same name in different files are handled according to specified flags.
 
-    By default, the command fails if duplicate component names are found.
+    By default, the command fails if duplicate group names are found.
 
     Examples:
-      - Merge two files with default behavior (fail on duplicate components):
+      - Merge two files with default behavior (fail on duplicate groups):
           pyrobird merge file1.firebird.json file2.firebird.json
 
-      - Merge multiple files, resetting entry IDs to sequential numbers:
+      - Merge multiple files, resetting event IDs to sequential numbers:
           pyrobird merge --reset-id file1.firebird.json file2.firebird.json file3.firebird.json
 
-      - Merge two files, ignoring duplicate components from the second file:
+      - Merge two files, ignoring duplicate groups from the second file:
           pyrobird merge --ignore file1.firebird.json file2.firebird.json
 
-      - Merge two files, overwriting duplicate components from the first file:
+      - Merge two files, overwriting duplicate groups from the first file:
           pyrobird merge --overwrite file1.firebird.json file2.firebird.json
 
       - Save merged result to a specific file:
@@ -110,32 +110,56 @@ def is_valid_dex_file(data: Dict[str, Any]) -> bool:
         True if the data appears to be a valid DEX file, False otherwise
     """
     # Check for required fields
-    if "entries" not in data:
+    if "events" not in data:
         return False
 
     # Version is required - either as "version" or inside "type"
     if "version" not in data and "type" not in data:
         return False
 
-    # Check if entries is a list
-    if not isinstance(data["entries"], list):
+    # Check if events is a list
+    if not isinstance(data["events"], list):
         return False
 
-    # Check each entry
-    for entry in data["entries"]:
-        if "id" not in entry or "components" not in entry:
+    # Check each event
+    for event in data["events"]:
+        if "id" not in event or "groups" not in event:
             return False
 
-        # Check if components is a list
-        if not isinstance(entry["components"], list):
+        # Check if groups is a list
+        if not isinstance(event["groups"], list):
             return False
 
-        # Check each component
-        for component in entry["components"]:
-            if "name" not in component or "type" not in component:
+        # Check each group
+        for group in event["groups"]:
+            if "name" not in group or "type" not in group:
                 return False
 
     return True
+
+
+def reset_events_id(dex_files: List[tuple]) -> List[tuple]:
+    """
+    Reset event IDs to sequential numbers.
+
+    Args:
+        dex_files: List of (file_path, dex_data) tuples
+
+    Returns:
+        Updated list of (file_path, dex_data) tuples with reset event IDs
+    """
+    processed_files = []
+    for file_path, dex in dex_files:
+        # Reset event IDs to sequential numbers
+        updated_dex = dex.copy()
+        updated_events = []
+        for new_index, event in enumerate(dex["events"]):
+            updated_event = event.copy()
+            updated_event["id"] = new_index
+            updated_events.append(updated_event)
+        updated_dex["events"] = updated_events
+        processed_files.append((file_path, updated_dex))
+    return processed_files
 
 
 def merge_dex_files(
@@ -149,9 +173,9 @@ def merge_dex_files(
 
     Args:
         dex_files: List of (file_path, dex_data) tuples
-        reset_id: Whether to reset entry IDs to sequential numbers
-        ignore: Whether to ignore duplicate components from the right file
-        overwrite: Whether to overwrite duplicate components in the left file
+        reset_id: Whether to reset event IDs to sequential numbers
+        ignore: Whether to ignore duplicate groups from the right file
+        overwrite: Whether to overwrite duplicate groups in the left file
 
     Returns:
         The merged DEX data
@@ -159,15 +183,16 @@ def merge_dex_files(
     if not dex_files:
         return {}
 
-    # Start with the first file's data as the base
-    file_path, base_dex = dex_files[0]
-
     # Initialize the result with the proper header structure
     result = create_merged_header(dex_files)
 
-    # Merge entries from all files
-    entries = merge_entries(dex_files, reset_id, ignore, overwrite)
-    result["entries"] = entries
+    # Reset event IDs if requested
+    if reset_id:
+        dex_files = reset_events_id(dex_files)
+
+    # Merge events from all files
+    events = merge_events(dex_files, ignore, overwrite)
+    result["events"] = events
 
     return result
 
@@ -187,7 +212,7 @@ def create_merged_header(dex_files: List[tuple]) -> Dict[str, Any]:
     # Start with a basic DEX structure
     result = {
         "type": "firebird-dex-json",
-        "version": "0.03",  # Use latest version
+        "version": "0.04",  # Use latest version
         "origin": {
             "merged_from": [],
             "entries_count": 0
@@ -229,145 +254,128 @@ def create_merged_header(dex_files: List[tuple]) -> Dict[str, Any]:
     return result
 
 
-def merge_entries(
+def merge_events(
         dex_files: List[tuple],
-        reset_id: bool = False,
         ignore: bool = False,
         overwrite: bool = False
 ) -> List[Dict[str, Any]]:
     """
-    Merge entries from multiple DEX files.
+    Merge events from multiple DEX files.
 
     Args:
         dex_files: List of (file_path, dex_data) tuples
-        reset_id: Whether to reset entry IDs to sequential numbers
-        ignore: Whether to ignore duplicate components from the right file
-        overwrite: Whether to overwrite duplicate components in the left file
+        ignore: Whether to ignore duplicate groups from the right file
+        overwrite: Whether to overwrite duplicate groups in the left file
 
     Returns:
-        A list of merged entries
+        A list of merged events
     """
     if not dex_files:
         return []
 
-    # Process entry IDs if reset_id is True
-    if reset_id:
-        processed_files = []
-        for i, (file_path, dex) in enumerate(dex_files):
-            # Reset entry IDs to sequential numbers
-            updated_dex = dex.copy()
-            updated_entries = []
-            for j, entry in enumerate(dex["entries"]):
-                updated_entry = entry.copy()
-                updated_entry["id"] = j
-                updated_entries.append(updated_entry)
-            updated_dex["entries"] = updated_entries
-            processed_files.append((file_path, updated_dex))
-        dex_files = processed_files
-
-    # Create dictionaries of entries by ID for each file
-    entries_by_id_list = []
+    # Create dictionaries of events by ID for each file
+    events_by_id_list = []
     for file_path, dex in dex_files:
-        entries_by_id = {entry["id"]: entry for entry in dex["entries"]}
-        entries_by_id_list.append((file_path, entries_by_id))
+        events_by_id = {event["id"]: event for event in dex["events"]}
+        events_by_id_list.append((file_path, events_by_id))
 
-    # Collect all unique entry IDs
-    all_entry_ids = set()
-    for _, entries_by_id in entries_by_id_list:
-        all_entry_ids.update(entries_by_id.keys())
+    # Collect all unique event IDs
+    all_event_ids = set()
+    for _, events_by_id in events_by_id_list:
+        all_event_ids.update(events_by_id.keys())
 
-    # Process each entry ID
-    merged_entries = []
-    for entry_id in sorted(all_entry_ids, key=lambda x: (isinstance(x, (int, float)), x)):
-        entries_with_this_id = []
-        for file_path, entries_by_id in entries_by_id_list:
-            if entry_id in entries_by_id:
-                entries_with_this_id.append((file_path, entries_by_id[entry_id]))
+    # Process each event ID
+    merged_events = []
+    for event_id in sorted(all_event_ids, key=lambda x: (isinstance(x, (int, float)), x)):
+        events_with_this_id = []
+        for file_path, events_by_id in events_by_id_list:
+            if event_id in events_by_id:
+                events_with_this_id.append((file_path, events_by_id[event_id]))
 
-        # If only one file has this entry ID, add it directly
-        if len(entries_with_this_id) == 1:
-            file_path, entry = entries_with_this_id[0]
-            merged_entries.append(entry)
+        # If only one file has this event ID, add it directly
+        if len(events_with_this_id) == 1:
+            file_path, event = events_with_this_id[0]
+            merged_events.append(event)
             continue
 
-        # Merge entries with the same ID
-        merged_entry = merge_entry_components(entry_id, entries_with_this_id, ignore, overwrite)
-        merged_entries.append(merged_entry)
+        # Merge events with the same ID
+        merged_event = merge_event_groups(event_id, events_with_this_id, ignore, overwrite)
+        merged_events.append(merged_event)
 
-    return merged_entries
+    return merged_events
 
 
-def merge_entry_components(
-        entry_id: Union[str, int],
-        entries_with_id: List[tuple],
+def merge_event_groups(
+        event_id: Union[str, int],
+        events_with_id: List[tuple],
         ignore: bool = False,
         overwrite: bool = False
 ) -> Dict[str, Any]:
     """
-    Merge components from multiple entries with the same ID.
+    Merge groups from multiple events with the same ID.
 
     Args:
-        entry_id: The entry ID being processed
-        entries_with_id: List of (file_path, entry) tuples for entries with this ID
-        ignore: Whether to ignore duplicate components from later files
-        overwrite: Whether to overwrite duplicate components from earlier files
+        event_id: The event ID being processed
+        events_with_id: List of (file_path, event) tuples for events with this ID
+        ignore: Whether to ignore duplicate groups from later files
+        overwrite: Whether to overwrite duplicate groups from earlier files
 
     Returns:
-        A merged entry
+        A merged event
     """
-    if not entries_with_id:
-        return {"id": entry_id, "components": []}
+    if not events_with_id:
+        return {"id": event_id, "groups": []}
 
-    # Start with the first entry
-    first_file_path, first_entry = entries_with_id[0]
-    merged_entry = {
-        "id": entry_id,
-        "components": [],
-        # Copy any additional fields from the first entry
-        **{k: v for k, v in first_entry.items() if k not in ["id", "components"]}
+    # Start with the first event
+    first_file_path, first_event = events_with_id[0]
+    merged_event = {
+        "id": event_id,
+        "groups": [],
+        # Copy any additional fields from the first event
+        **{k: v for k, v in first_event.items() if k not in ["id", "groups"]}
     }
 
-    # Track components by name for duplicate detection
-    components_by_name = {}
+    # Track groups by name for duplicate detection
+    groups_by_name = {}
 
-    # Process each entry's components
-    for file_idx, (file_path, entry) in enumerate(entries_with_id):
-        for component in entry["components"]:
-            comp_name = component["name"]
+    # Process each event's groups
+    for file_idx, (file_path, event) in enumerate(events_with_id):
+        for group in event["groups"]:
+            group_name = group["name"]
 
-            if comp_name in components_by_name:
-                # Handle duplicate component names
-                prev_idx, prev_comp = components_by_name[comp_name]
+            if group_name in groups_by_name:
+                # Handle duplicate group names
+                prev_idx, prev_group = groups_by_name[group_name]
 
                 if ignore:
-                    # Ignore the current component, keep the previous one
+                    # Ignore the current group, keep the previous one
                     logger.warning(
-                        f"Ignoring component '{comp_name}' in entry ID '{entry_id}' from {file_path}"
+                        f"Ignoring group '{group_name}' in event ID '{event_id}' from {file_path}"
                     )
                     continue
 
                 elif overwrite:
-                    # Overwrite the previous component with the current one
-                    merged_entry["components"].remove(prev_comp)
-                    merged_entry["components"].append(component)
-                    components_by_name[comp_name] = (file_idx, component)
+                    # Overwrite the previous group with the current one
+                    merged_event["groups"].remove(prev_group)
+                    merged_event["groups"].append(group)
+                    groups_by_name[group_name] = (file_idx, group)
                     logger.warning(
-                        f"Overwriting component '{comp_name}' in entry ID '{entry_id}' with component from {file_path}"
+                        f"Overwriting group '{group_name}' in event ID '{event_id}' with group from {file_path}"
                     )
 
                 else:
                     # Default behavior: fail with detailed error
-                    prev_file_path = entries_with_id[prev_idx][0]
+                    prev_file_path = events_with_id[prev_idx][0]
                     error_msg = (
-                        f"Duplicate component name '{comp_name}' found in entry ID '{entry_id}': "
+                        f"Duplicate group name '{group_name}' found in event ID '{event_id}': "
                         f"in files '{prev_file_path}' and '{file_path}'. "
                         "Use --ignore or --overwrite flags to handle duplicates."
                     )
                     raise ValueError(error_msg)
 
             else:
-                # No duplicate, add the component
-                merged_entry["components"].append(component)
-                components_by_name[comp_name] = (file_idx, component)
+                # No duplicate, add the group
+                merged_event["groups"].append(group)
+                groups_by_name[group_name] = (file_idx, group)
 
-    return merged_entry
+    return merged_event

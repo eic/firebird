@@ -1,76 +1,79 @@
-// entry-component.spec.ts
+// event-group.spec.ts
 
 import {
-  EntryComponent,
-  EntryComponentFactory,
-  registerComponentFactory,
-  getComponentFactory,
-  _resetComponentRegistry,
-} from './entry-component';
+  EventGroup,
+  EventGroupFactory,
+  registerEventGroupFactory,
+  getEventGroupFactory,
+  _resetEventGroupRegistry,
+} from './event-group';
 
-describe('EntryComponent', () => {
+describe('EventGroup', () => {
   it('should not allow instantiation of abstract class', () => {
     // Attempting to instantiate an abstract class should result in a compile-time error.
     // This test ensures that the class is abstract by design.
 
     // Uncommenting the following line should cause a TypeScript error.
-    // const component = new EntryComponent('name', 'type');
+    // const component = new EventGroup('name', 'type');
 
     // Since TypeScript prevents instantiation of abstract classes at compile time,
     // we can simulate this in the test by checking that an error is thrown.
 
     expect(() => {
       // Force a runtime check by attempting to instantiate via casting.
-      (EntryComponent as any).call(null, 'name', 'type');
+      (EventGroup as any).call(null, 'name', 'type');
     }).toThrowError();
   });
 });
 
 describe('Component Registry', () => {
   // Define a TestComponentFactory for testing
-  class TestComponentFactory implements EntryComponentFactory {
+  class TestComponentFactory implements EventGroupFactory {
     type: string = 'TestType';
 
-    fromDexObject(obj: any): EntryComponent {
-      return new TestComponent(obj['name'], obj['originType']);
+    fromDexObject(obj: any): EventGroup {
+      return new TestEventGroup(obj['name'], obj['origin']);
     }
   }
 
-  // Define TestComponent class extending EntryComponent
-  class TestComponent extends EntryComponent {
-    constructor(name: string, originType?: string) {
-      super(name, 'TestType', originType);
+  // Define TestEventGroup class extending EventGroup
+  class TestEventGroup extends EventGroup {
+    override get timeRange(): [number, number] | null {
+        return [0, 100]
+    }
+    constructor(name: string, origin?: string) {
+      super(name, 'TestType', origin);
     }
 
     toDexObject(): any {
       return {
         name: this.name,
         type: this.type,
-        originType: this.originType,
+        origin: this.origin,
       };
     }
   }
 
   beforeEach(() => {
     // Reset the component registry before each test
-    _resetComponentRegistry();
+    _resetEventGroupRegistry();
   });
 
   it('should register and retrieve component factories correctly', () => {
     const factory = new TestComponentFactory();
 
     // Register the factory
-    registerComponentFactory(factory);
+    registerEventGroupFactory(factory);
 
     // Retrieve the factory
-    const retrievedFactory = getComponentFactory('TestType');
+    const retrievedFactory = getEventGroupFactory('TestType');
 
     expect(retrievedFactory).toBeDefined();
     expect(retrievedFactory).toBe(factory);
   });
 
   it('should return undefined for unregistered component types', () => {
-    const retrievedFactory = getComponentFactory('UnknownType');
+    const retrievedFactory = getEventGroupFactory('UnknownType');
 
     expect(retrievedFactory).toBeUndefined();
   });
@@ -80,34 +83,34 @@ describe('Component Registry', () => {
     const factory2 = new TestComponentFactory();
 
     // Register the first factory
-    registerComponentFactory(factory1);
+    registerEventGroupFactory(factory1);
 
     // Register the second factory with the same type
-    registerComponentFactory(factory2);
+    registerEventGroupFactory(factory2);
 
     // Retrieve the factory
-    const retrievedFactory = getComponentFactory('TestType');
+    const retrievedFactory = getEventGroupFactory('TestType');
 
     expect(retrievedFactory).toBe(factory2);
   });
 
   it('should use the correct factory to create component instances', () => {
     const factory = new TestComponentFactory();
-    registerComponentFactory(factory);
+    registerEventGroupFactory(factory);
 
     const dexObject = {
-      name: 'TestComponent',
+      name: 'TestEventGroup',
       type: 'TestType',
-      originType: 'TestOrigin',
+      origin: 'TestOrigin',
     };
 
-    const retrievedFactory = getComponentFactory('TestType');
+    const retrievedFactory = getEventGroupFactory('TestType');
     expect(retrievedFactory).toBeDefined();
 
-    const component = retrievedFactory!.fromDexObject(dexObject);
-    expect(component).toBeInstanceOf(EntryComponent);
-    expect(component.name).toBe('TestComponent');
-    expect(component.type).toBe('TestType');
-    expect(component.originType).toBe('TestOrigin');
+    const group = retrievedFactory!.fromDexObject(dexObject);
+    expect(group).toBeInstanceOf(EventGroup);
+    expect(group.name).toBe('TestEventGroup');
+    expect(group.type).toBe('TestType');
+    expect(group.origin).toBe('TestOrigin');
   });
 });

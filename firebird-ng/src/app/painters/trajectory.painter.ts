@@ -1,14 +1,14 @@
-import { ComponentPainter } from "./component-painter";
-import { EntryComponent } from "../model/entry-component";
+import {EventGroupPainter} from "./event-group-painter";
+import {EventGroup} from "../model/event-group";
 import {
-  PointTrajectoryComponent,
-  TrackerLineSegment
-} from "../model/point-trajectory.event-component";
+  PointTrajectoryGroup,
+  PointTrajectory
+} from "../model/point-trajectory.group";
 
-import { Color, Object3D } from "three";
-import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
-import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
-import { Line2 } from "three/examples/jsm/lines/Line2";
+import {Color, Object3D} from "three";
+import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
+import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
+import {Line2} from "three/examples/jsm/lines/Line2";
 
 /** Example color set. Feel free to refine or expand. */
 export enum NeonTrackColors {
@@ -28,7 +28,8 @@ export enum NeonTrackColors {
 /**
  * We'll keep each line's full data in a small structure so we can rebuild partial geometry.
  */
-interface InternalLineData {
+interface TrajectoryRenderContext {
+  collectionIndex: number;           // Index in the array
   lineObj: Line2;                    // the Line2 object in the scene
   points: number[][];                // the raw array of [x, y, z, t, dx, dy, dz, dt]
   lineMaterial: LineMaterial;        // the material used
@@ -39,23 +40,23 @@ interface InternalLineData {
 }
 
 /**
- * Painter that draws lines for a "TrackerLinePointTrajectoryComponent",
+ * Painter that draws lines for a "PointTrajectoryComponent",
  * supporting partial display based on time.
  */
-export class PointTrajectoryPainter extends ComponentPainter {
+export class TrajectoryPainter extends EventGroupPainter {
   /** A small array to store each line's data and references. */
-  private trajectories: InternalLineData[] = [];
+  public trajectories: TrajectoryRenderContext[] = [];
   private timeColumnIndex = 3;         // TODO check that line has time column
 
   /** Base materials that we clone for each line. */
   private baseSolidMaterial: LineMaterial;
   private baseDashedMaterial: LineMaterial;
 
-  constructor(parentNode: Object3D, component: EntryComponent) {
+  constructor(parentNode: Object3D, component: EventGroup) {
     super(parentNode, component);
 
-    if (component.type !== PointTrajectoryComponent.type) {
-      throw new Error("Wrong component type given to TrackerLinePointTrajectoryPainter.");
+    if (component.type !== PointTrajectoryGroup.type) {
+      throw new Error("Wrong component type given to PointTrajectoryPainter.");
     }
 
     // Create base materials
@@ -86,7 +87,8 @@ export class PointTrajectoryPainter extends ComponentPainter {
    * Initially, we set them fully visible (or we could set them invisible).
    */
   private initLines() {
-    const component = this.component as PointTrajectoryComponent;
+
+    const component = this.component as PointTrajectoryGroup;
 
     // Let us see if paramColumns includes "pdg" or "charge" or something.
     const pdgIndex = component.paramColumns.indexOf("pdg");
@@ -94,18 +96,20 @@ export class PointTrajectoryPainter extends ComponentPainter {
     let paramsToColumnsMismatchWarned = false;
     let noPointsWarned = 0;
 
-    for (const lineSegment of component.lines) {
+
+    for (let trajIndex = 0; trajIndex < component.trajectories.length; trajIndex++) {
+      const trajectory = component.trajectories[trajIndex];
 
       // Copy params
       const paramColumns = component.paramColumns;
-      const params = lineSegment.params;
-      if(params.length != paramColumns.length && !paramsToColumnsMismatchWarned) {
+      const params = trajectory.params;
+      if (params.length != paramColumns.length && !paramsToColumnsMismatchWarned) {
         // We do the warning only once!
         console.error(`params.length(${params.length})  != paramColumns.length(${paramColumns.length}) at '${component.name}'. This should never happen!`);
         paramsToColumnsMismatchWarned = true;
       }
 
-      // We intentionally use the very dumb method but this method allows us do at least something if they mismatch
+      // We intentionally use the very dumb method, but this method allows us to do at least something if they mismatch
       const paramArrLen = Math.min(paramColumns.length, params.length);
       const paramsDict: Record<string, any> = {};
       for (let i = 0; i < paramArrLen; i++) {
@@ -113,24 +117,24 @@ export class PointTrajectoryPainter extends ComponentPainter {
       }
 
       // Check we have enough points to build at least something!
-      if(lineSegment.points.length <= 1) {
-        if(noPointsWarned < 10) {
+      if (trajectory.points.length <= 1) {
+        if (noPointsWarned < 10) {
           const result = Object.entries(paramsDict)
             .map(([key, value]) => `${key}:${value}`)
             .join(", ");
-          console.warn(`Line has ${lineSegment.points.length} points. This can't be. Track parameters: ${result}`);
+          console.warn(`Trajectory has ${trajectory.points.length} points. This can't be. Track parameters: ${result}`);
           noPointsWarned++;
         }
         continue;   // Skip this line!
       }
 
       // Create proper material
-      const { lineMaterial } = this.createLineMaterial(lineSegment, pdgIndex, chargeIndex);
+      const {lineMaterial} = this.createLineMaterial(trajectory, pdgIndex, chargeIndex);
 
       // We'll start by building a geometry with *all* points, and rely on paint() to do partial logic.
       // We'll store the full set of points in linesData, then paint() can rebuild partial geometry.
       const geometry = new LineGeometry();
-      const fullPositions = this.generateFlatXYZ(lineSegment.points);
+      const fullPositions = this.generateFlatXYZ(trajectory.points);
       geometry.setPositions(fullPositions);
 
       const line2 = new Line2(geometry, lineMaterial);
@@ -141,22 +145,23 @@ export class PointTrajectoryPainter extends ComponentPainter {
 
       let startTime = 0;
       let endTime = 0;
-      if(lineSegment.points[0].length > this.timeColumnIndex) {
-        startTime = lineSegment.points[0][this.timeColumnIndex];
-        endTime = lineSegment.points[lineSegment.points.length-1][this.timeColumnIndex]
+      if (trajectory.points[0].length > this.timeColumnIndex) {
+        startTime = trajectory.points[0][this.timeColumnIndex];
+        endTime = trajectory.points[trajectory.points.length - 1][this.timeColumnIndex]
       }
 
-      const trajData: InternalLineData = {
+      const trajData: TrajectoryRenderContext = {
+        collectionIndex: trajIndex,
         lineObj: line2,
         lineMaterial: lineMaterial,
-        points: lineSegment.points,
+        points: trajectory.points,
         startTime: startTime,
         endTime: endTime,
         params: paramsDict,
         lastPaintIndex: 0,
       }
 
-      trajData.lineObj.name = this.getNodeName(trajData);
+      trajData.lineObj.name = this.getNodeName(trajData, component.trajectories.length);
       trajData.lineObj.userData["track_params"] = trajData.params;
 
       // Keep the data
@@ -168,9 +173,8 @@ export class PointTrajectoryPainter extends ComponentPainter {
   /**
    * Creates or picks a line material based on PDG or charge, etc.
    */
-  private createLineMaterial(line: TrackerLineSegment, pdgIndex: number, chargeIndex: number) {
-    let colorVal = NeonTrackColors.Gray;
-    let dashed = false;
+  private createLineMaterial(line: PointTrajectory, pdgIndex: number, chargeIndex: number) {
+
 
     // Try to read PDG and/or charge from line.params
     // This assumes line.params matches paramColumns.
@@ -183,17 +187,23 @@ export class PointTrajectoryPainter extends ComponentPainter {
     }
 
     // Minimal PDG-based color logic
+    let colorVal;
+    let dashed = false;
     switch (pdg) {
       case 22: // gamma
         colorVal = NeonTrackColors.Yellow;
         dashed = true;
+        break;
+      case -22: // optical photon
+        colorVal = NeonTrackColors.Yellow;
+        dashed = false;
         break;
       case 11: // e-
         colorVal = NeonTrackColors.Blue;
         dashed = false;
         break;
       case -11: // e+
-        colorVal = NeonTrackColors.Red;
+        colorVal = NeonTrackColors.Orange;
         dashed = false;
         break;
       case 211: // pi+
@@ -224,7 +234,7 @@ export class PointTrajectoryPainter extends ComponentPainter {
     const mat = dashed ? this.baseDashedMaterial.clone() : this.baseSolidMaterial.clone();
     mat.color = new Color(colorVal);
 
-    return { lineMaterial: mat, dashed };
+    return {lineMaterial: mat, dashed};
   }
 
   /**
@@ -241,152 +251,94 @@ export class PointTrajectoryPainter extends ComponentPainter {
   }
 
   /**
-   * Rebuild partial geometry for a line up to time `t`.
-   * If the user wants interpolation, we do that for the "one extra" point beyond t.
-   * Otherwise, we just up to the last point with time <= t.
-   */
-  private buildPartialXYZ(points: number[][], t: number): number[] {
-    const flat: number[] = [];
-
-    // We assume each "points[i]" = [x, y, z, time, dx, dy, dz, dt].
-    // The time is at index 3 if it exists.
-    const TIME_INDEX = 3;
-    if (!points.length) return flat;
-
-    let lastGoodIndex = -1;
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      if (p.length > TIME_INDEX) {
-        if (p[TIME_INDEX] <= t) {
-          // This entire point is included
-          flat.push(p[0], p[1], p[2]);
-          lastGoodIndex = i;
-        } else {
-          // we've found a point beyond t, let's see if we want to interpolate
-          if (lastGoodIndex >= 0) {
-            // Interpolate between points[lastGoodIndex] and points[i]
-            const p0 = points[lastGoodIndex];
-            const t0 = p0[TIME_INDEX];
-            const t1 = p[TIME_INDEX];
-            if (Math.abs(t1 - t0) > 1e-9) {
-              const frac = (t - t0) / (t1 - t0);
-              const xInterp = p0[0] + frac * (p[0] - p0[0]);
-              const yInterp = p0[1] + frac * (p[1] - p0[1]);
-              const zInterp = p0[2] + frac * (p[2] - p0[2]);
-              flat.push(xInterp, yInterp, zInterp);
-            } else {
-              // times are effectively the same
-              flat.push(p0[0], p0[1], p0[2]);
-            }
-          }
-          break; // stop scanning
-        }
-      } else {
-        // If there's no time column for that point, let's assume 0 or treat as instant
-        // For simplicity, let's treat time as 0. So if t>0, we include it.
-        flat.push(p[0], p[1], p[2]);
-        lastGoodIndex = i;
-      }
-    }
-    return flat;
-  }
-
-  /**
-   * The main painting method, called each time the user updates "time."
-   * If time is null, we show the entire track. Otherwise, we show partial up to that time.
+   * The main Paint method, called each time the user updates "time."
+   * If time is null - timeless mode, we show the entire tracks. Otherwise, we show partial up to that time.
    */
   public override paint(time: number | null): void {
-    // If time===null => show all lines fully
+
     if (time === null) {
       this.paintNoTime();
-      return;
+    } else {
+      this.paintAtTime(time);
     }
-
-    // Otherwise, partial or none
-    this.fastPaint(time);
   }
 
   private paintNoTime() {
     for (const track of this.trajectories) {
       // Rebuild geometry with *all* points
       track.lineObj.visible = true;
-      track.lineObj.geometry.instanceCount=Infinity;
+      track.lineObj.geometry.instanceCount = Infinity;
     }
   }
 
-  public paintAtTime(time:number) {
-    for (const ld of this.trajectories) {
-      // Rebuild geometry up to time
-      const partialPositions = this.buildPartialXYZ(ld.points, time);
-      if (partialPositions.length < 2 * 3) {
-        // fewer than 2 points => hide
-        ld.lineObj.visible = false;
-        continue;
-      }
-      ld.lineObj.visible = true;
 
-      // Dispose old geometry
-      const geom = ld.lineObj.geometry as LineGeometry;
-      geom.dispose();
-
-      // Set new geometry
-      geom.setPositions(partialPositions);
-      ld.lineObj.computeLineDistances();
-    }
-  }
-
-  public fastPaint(time: number) {
-
-    // pass1 select fully visible, partial and fully hidden tracks
-
-    let partialTracks: InternalLineData[] = []; // Replace 'any' with the actual type
+  /**
+   * Improved fastPaint function with proper boundary checking between time points
+   * @param time Current simulation time
+   */
+  public paintAtTime(time: number): void {
+    // First pass: categorize tracks as fully visible, partial, or hidden
+    const partialTracks: TrajectoryRenderContext[] = [];
 
     for (const track of this.trajectories) {
+      // Hide tracks that haven't started yet
       if (track.startTime > time) {
         track.lineObj.visible = false;
-      } else {
-        track.lineObj.visible = true;
-        track.lineObj.geometry.instanceCount = track.points.length;
-
-        if (track.endTime > time) {
-          partialTracks.push(track);
-        } else {
-          // track should be visible fully
-          track.lineObj.geometry.instanceCount = Infinity;
-        }
+        track.lastPaintIndex = -1;       // if time moves forward, and we start showing track the next time
+        continue;
       }
+
+      // Show track
+      track.lineObj.visible = true;
+
+      // If track has already ended, show it completely
+      if (track.endTime <= time) {
+        track.lineObj.geometry.instanceCount = Infinity;
+
+        // if next paint the time moves backward, and we start hiding track parts,
+        // we want lastPaintIndex to correspond to fully rendered track
+        track.lastPaintIndex = this.trajectories.length - 1;
+        continue;
+      }
+
+      // This track is only partially visible and will be treated the next
+      partialTracks.push(track);
     }
 
-     if (partialTracks.length > 0) {
-       for (let track of partialTracks) {
-         let geometryPosCount = track.points.length;
+    // Second pass: handle partially visible tracks
+    for (const track of partialTracks) {
+      // Validate lastPaintIndex
+      if (track.lastPaintIndex < 0 || track.lastPaintIndex >= track.points.length) {
+        track.lastPaintIndex = 0;
+      }
 
-         //if (!geometryPosCount || geometryPosCount < 10) continue;
-         //let trackProgress = (time - track.startTime) / (track.endTime - track.startTime);
-         //let roundedProgress = Math.round(geometryPosCount * trackProgress * 2) / 2; // *2/2 to stick to 0.5 rounding
+      // Find the correct interval where the current time falls
+      // This is the key improvement: check if we need to move to next/previous point
+      // rather than just searching forward or backward arbitrarily
 
-         if(track.lastPaintIndex<0 || track.lastPaintIndex>=track.points.length) {
-           // In case of emergency set lastPointIndex to the center of array
-           track.lastPaintIndex=track.points.length/2;
-         }
+      let needToUpdate = true;
+      while (needToUpdate) {
+        needToUpdate = false;
 
-         if(track.points[track.lastPaintIndex][this.timeColumnIndex] < time) {
-           // Seek the correct point of time forward
-           while(track.points[track.lastPaintIndex][this.timeColumnIndex] < time && track.lastPaintIndex<track.points.length) {
-             track.lastPaintIndex++;
-           }
-         }
-         else {
-           // Seek the correct point of time backward
-           while(track.points[track.lastPaintIndex][this.timeColumnIndex] > time && track.lastPaintIndex>=0) {
-             track.lastPaintIndex--;
-           }
-         }
+        // Check if we should move forward to next point
+        if (track.lastPaintIndex < track.points.length - 1 &&
+          time >= track.points[track.lastPaintIndex + 1][this.timeColumnIndex]) {
+          track.lastPaintIndex++;
+          needToUpdate = true;
+        }
+        // Check if we should move backward to previous point
+        else if (track.lastPaintIndex > 0 &&
+          time < track.points[track.lastPaintIndex][this.timeColumnIndex]) {
+          track.lastPaintIndex--;
+          needToUpdate = true;
+        }
+      }
 
-         track.lineObj.geometry.instanceCount = track.lastPaintIndex;
-       }
-     }
-
+      // At this point, we've found the correct index where:
+      // time is between points[lastPaintIndex] and points[lastPaintIndex+1]
+      // Show points up to and including lastPaintIndex
+      track.lineObj.geometry.instanceCount = track.lastPaintIndex + 1;
+    }
   }
 
   /**
@@ -406,39 +358,46 @@ export class PointTrajectoryPainter extends ComponentPainter {
     super.dispose();
   }
 
-  private getNodeName(trajData: InternalLineData) {
+  private getNodeName(trajData: TrajectoryRenderContext, trajCount: number) {
+
+    // Calculate the number of digits needed (order of magnitude + 1)
+    const padLength = Math.floor(Math.log10(trajCount)) + 1;
+
+    // Use padStart to pad the string representation with leading zeros
+    const indexStr = String(trajData.collectionIndex).padStart(padLength, ' ');
+
 
     let name = "track"
-    if("type" in trajData.params) {
+    if ("type" in trajData.params) {
       name = trajData.params["type"]
     } else if ("pdg" in trajData.params) {
       name = trajData.params["pdg"]
     } else if ("charge" in trajData.params) {
       const charge = parseFloat(trajData.params["cahrge"]);
-      if(Math.abs(charge) < 0.00001) {
+      if (Math.abs(charge) < 0.00001) {
         name = "NeuTrk";
       }
-      if(charge>0) {
+      if (charge > 0) {
         name = "PosTrk";
       } else if (charge < 0) {
         name = "NegTrk";
       }
     }
-    name="["+name+"]"
+    name = "[" + name + "]"
 
     let time = "no-t"
-    if(Math.abs(trajData.startTime) > 0.000001 ||  Math.abs(trajData.endTime) > 0.000001) {
+    if (Math.abs(trajData.startTime) > 0.000001 || Math.abs(trajData.endTime) > 0.000001) {
       time = `t:${trajData.startTime.toFixed(1)}-${trajData.endTime.toFixed(1)}`;
     }
 
     let momentum = "no-p"
-    if("px" in trajData.params && "py" in trajData.params && "pz" in trajData.params) {
+    if ("px" in trajData.params && "py" in trajData.params && "pz" in trajData.params) {
       let px = parseFloat(trajData.params["px"]);
       let py = parseFloat(trajData.params["py"]);
       let pz = parseFloat(trajData.params["pz"]);
-      momentum = "p:"+(Math.sqrt(px*px+py*py+pz*pz)/1000.0).toFixed(3);
+      momentum = "p:" + (Math.sqrt(px * px + py * py + pz * pz) / 1000.0).toFixed(3);
     }
 
-    return `${name} ${momentum} ${time}`;
+    return `${indexStr} ${trajData.collectionIndex} ${name} ${momentum} ${time}`;
   }
 }

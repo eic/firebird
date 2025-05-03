@@ -17,8 +17,16 @@ Optional dependencies:
 - `xrootd` - install libraries to read xrootd located files and URLs starting with `root://`
 - `test` - install pytest, mainly to run tests in development build
 
-> If installed via pip, `xrootd` library requires compilation, so the system should have cmake,
-> compiler and some xrootd dependencies installed. 
+If installed via pip, `xrootd` library requires compilation, so the system should have cmake,
+compiler and some xrootd dependencies installed.
+
+For debian/ubuntu the packages to install to use xrootd: 
+
+```bash
+sudo apt install build-essential libxrootd-client-dev cmake zlib1g-dev uuid-dev libssl-dev python3-dev
+
+```
+
 
 Development installation 
 
@@ -78,7 +86,7 @@ well as to complement frontend features such as opening XRootD files, etc.
 Serve Firobird locally and have access to files in current directory: 
 
 ```bash
-fbd serve
+pyrobird serve
 ```
 
 **pyrobird** (backend) allows **Firebird** (frontend) to access certain files on your system. 
@@ -111,13 +119,13 @@ has access to files in your current directory or a directory provided via `--wor
 
 - Start server with default settings, Firebird works with files in current directory:
    ```bash
-  fbd serve
+  pyrobird serve
    ```
 
 - Set where Firebird will take files from:
    
    ```bash
-   fbd serve --work-path=/home/username/datafiles
+   pyrobird serve --work-path=/home/username/datafiles
    ```
 
    Now if you set file `local://filename.root` in Firebird UI,

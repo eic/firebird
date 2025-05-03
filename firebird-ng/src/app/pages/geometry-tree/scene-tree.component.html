@@ -15,6 +15,10 @@
     <button mat-icon-button (click)="toggleVisibility(node)">
       <mat-icon>{{ node.visible ? 'visibility' : 'visibility_off' }}</mat-icon>
     </button>
+    <!-- Пример для трека -->
+    <button (click)="onConfigClick('track')">⚙️</button>
+
+
   </mat-tree-node>
   <!-- This is the tree node template for expandable nodes -->
   <mat-tree-node *matTreeNodeDef="let node; when: hasChild" matTreeNodePadding

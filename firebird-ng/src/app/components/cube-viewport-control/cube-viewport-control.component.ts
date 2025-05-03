@@ -2,6 +2,7 @@
 import { Component, ElementRef, OnInit } from '@angular/core';
 import * as THREE from 'three';
 import {GizmoOptions, ViewportGizmo} from 'three-viewport-gizmo';
+import { ThreeService } from '../../services/three.service';
 import {
   OrthographicCamera,
   PerspectiveCamera,
@@ -23,7 +24,12 @@ export class CubeViewportControlComponent implements OnInit {
   // The ViewportGizmo instance
   public gizmo!: ViewportGizmo;
 
-  constructor(private elRef: ElementRef) {}
+  private lastCamera!: PerspectiveCamera | OrthographicCamera;
+
+  constructor(
+    private elRef: ElementRef,
+    private threeService: ThreeService
+  ) {}
 
   ngOnInit(): void {
     // We do NOT call initThreeJS() here.
@@ -42,6 +48,7 @@ export class CubeViewportControlComponent implements OnInit {
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
+    this.lastCamera = camera;
 
     const container = this.elRef.nativeElement.querySelector('.three-container');
     const gizmoConfig:GizmoOptions = {
@@ -54,15 +61,7 @@ export class CubeViewportControlComponent implements OnInit {
         color: 0x333333,
         hover: {color: 0x4bac84},
       },
-       // Define axis configurations (customize these as needed)
-    // x: { scale: 5 },       // Original "right" axis (X+)
-    // z: { color: 0x00ff00 },       // Original "front" axis (Z+)
-    // nx: { color: 0x0000ff },      // Original "left" axis (X-)
-    // nz: { color: 0xffff00 },      // Original "back" axis (Z-)
-    //     front: {nx},  // Original left (nx) becomes new front
-    //     right: z,   // Original front (z) becomes new right
-    //     back: x,    // Original right (x) becomes new back
-    //     left: nz,   // Original back (nz) becomes new left
+
 
       front: { label: "Right" },   // Original left face
       left: { label: "Front" },    // Original back face
@@ -73,5 +72,20 @@ export class CubeViewportControlComponent implements OnInit {
     // Create gizmo with custom config (autoPlace = false)
     this.gizmo = new ViewportGizmo(this.camera, this.renderer, gizmoConfig);
 
-    }
+    // Listen for any changes to OrbitControls and synchronize the camera
+    this.threeService.controls.addEventListener('change', () =>
+      this.syncCamera()
+    );
+  }
+
+  // Compare the camera from the service with the one known by the gizmo
+  private syncCamera(): void {
+    const current = this.threeService.camera;
+    if (!current || current === this.lastCamera) return;
+
+    this.lastCamera = current;
+    this.camera = current;
+    this.gizmo.camera = current;
+    this.gizmo.cameraUpdate();
+  }
 }

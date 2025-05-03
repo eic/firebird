@@ -58,7 +58,7 @@ export class HelpComponent {
    */
   docPages: DocPage[] = [
     { title: 'Introduction', path: 'assets/docs/intro.md' },
-    { title: 'Installation', path: 'assets/docs/pirobird.md' },
+    { title: 'Installation', path: 'assets/docs/pyrobird.md' },
     { title: 'DD4Hep plugin', path: 'assets/docs/dd4hep-plugin.md' },
     // ...add more as needed
   ];

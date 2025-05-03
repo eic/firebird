@@ -41,23 +41,23 @@
     </mat-checkbox>
   </button>
 
-  <button mat-menu-item>
-    <mat-checkbox
-      (click)="$event.stopPropagation()"
-      (change)="show3DMousePoints($event)"
-    >
-      Show 3D Coordinates
-    </mat-checkbox>
-  </button>
+<!--  <button mat-menu-item>-->
+<!--    <mat-checkbox-->
+<!--      (click)="$event.stopPropagation()"-->
+<!--      (change)="show3DMousePoints($event)"-->
+<!--    >-->
+<!--      Show 3D Coordinates-->
+<!--    </mat-checkbox>-->
+<!--  </button>-->
 
-  <button mat-menu-item>
-    <mat-checkbox
-      (click)="$event.stopPropagation()"
-      (change)="toggleShowDistance($event)"
-    >
-      Show 3D Distance
-    </mat-checkbox>
-  </button>
+<!--  <button mat-menu-item>-->
+<!--    <mat-checkbox-->
+<!--      (click)="$event.stopPropagation()"-->
+<!--      (change)="toggleShowDistance($event)"-->
+<!--    >-->
+<!--      Show 3D Distance-->
+<!--    </mat-checkbox>-->
+<!--  </button>-->
 
   <!-- For each "view" in your local array.  -->
   <button
@@ -71,8 +71,8 @@
 </mat-menu>
 
 <!-- The button that triggers the menu.  -->
-<button
-  title="Configure view options"
+<button mat-icon-button class="panel-button"
+  matTooltip="Configure view options"
   [matMenuTriggerFor]="viewOptions"
 >
   <mat-icon>visibility</mat-icon>
