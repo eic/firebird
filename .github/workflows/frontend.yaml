@@ -93,7 +93,6 @@ jobs:
           ls -latrh ./dist/firebird/assets
           echo "--- ls ./dist/firebird/assets/data"
           ls -latrh ./dist/firebird/assets/data
-          
 
       - name: Fix dynamic routing
         run: |
