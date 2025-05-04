@@ -133,7 +133,7 @@ export class DataModelService {
       // Resolve local aliases or relative paths
       let finalUrl = url;
       if (url.startsWith("asset://")) {
-        finalUrl = "/assets/" + url.substring("asset://".length);
+        finalUrl = "assets/" + url.substring("asset://".length);
       } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
         finalUrl = this.urlService.resolveDownloadUrl(url);
       }
