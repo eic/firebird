@@ -182,18 +182,10 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
    * @param sliderType Identifier for which slider is being updated ('start' or 'opening')
    */
   onSliderInput(event: any, sliderType: 'start' | 'opening'): void {
-    // Extract the value safely from the event
-    let newValue: number | null = null;
-
-    // Try different ways to get the value based on Angular Material version
-    if (event && event.value !== undefined) {
-      newValue = event.value;
-    } else if (event && event.source && event.source.value !== undefined) {
-      newValue = event.source.value;
-    } else if (event && event.target && event.target.value !== undefined) {
-      newValue = Number(event.target.value);
-    }
-
+    // Extract the value safely from the event using optional chaining and nullish coalescing
+    const newValue: number | null = event?.value 
+      ?? event?.source?.value 
+      ?? (event?.target?.value !== undefined ? Number(event.target.value) : null);
     // Only update if we got a valid number
     if (newValue !== null && !isNaN(newValue)) {
       // Update the appropriate property based on which slider was moved
