@@ -73,7 +73,6 @@ export class PointTrajectoryGroup extends EventGroup {
   }
 
   /** calculate time range */
-  /** calculate time range */
   override get timeRange(): [number, number] | null {
     // Check if there are any lines
     if (this.trajectories.length === 0) return null;
@@ -166,12 +165,31 @@ export class PointTrajectoryGroupFactory implements EventGroupFactory {
       comp.pointColumns = [...obj["pointColumns"]];
     }
 
+    // Find time column index
+    const timeIndex = comp.pointColumns.indexOf("t");
+
     // trajectories
     comp.trajectories = [];
     if (Array.isArray(obj["trajectories"])) {
       for (const lineObj of obj["trajectories"]) {
+        // Create a copy of points to avoid modifying the original data
+        let points = Array.isArray(lineObj["points"]) ? [...lineObj["points"]] : [];
+
+        // Sort points by time (4th column) if time column exists
+        if (timeIndex !== -1 && points.length > 1) {
+          // Sort using Array.sort which uses TimSort algorithm in most modern browsers
+          // TimSort is efficient for arrays that are partially sorted, which is often the case here
+          points.sort((a, b) => {
+            // Make sure points have time value at the specified index
+            if (a.length <= timeIndex || b.length <= timeIndex) {
+              return 0; // Keep original order if time index is out of bounds
+            }
+            return a[timeIndex] - b[timeIndex]; // Sort by time ascending
+          });
+        }
+
         comp.trajectories.push({
-          points: Array.isArray(lineObj["points"]) ? lineObj["points"] : [],
+          points: points,
           params: Array.isArray(lineObj["params"]) ? lineObj["params"] : []
         });
       }

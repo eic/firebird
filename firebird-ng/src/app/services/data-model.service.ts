@@ -68,7 +68,7 @@ export class DataModelService {
    * @param entryNames - Comma-separated entry indices (default "0"). Passed to the converter service.
    * @returns A Promise that resolves to a DataExchange object or null if there's an error.
    */
-  async loadEdm4EicData(url: string, entryNames: string = "0"): Promise<DataExchange | null> {
+  async loadRootData(url: string, entryNames: string = "0"): Promise<DataExchange | null> {
     try {
       // Early exit if no URL is provided
       if (!url) {
@@ -133,6 +133,8 @@ export class DataModelService {
       // Resolve local aliases or relative paths
       let finalUrl = url;
       if (url.startsWith("asset://")) {
+        // Transform 'asset://' URLs to 'assets/' paths. This removes the leading slash
+        // intentionally to support deployment in the /firebird subdirectory.
         finalUrl = "assets/" + url.substring("asset://".length);
       } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
         finalUrl = this.urlService.resolveDownloadUrl(url);

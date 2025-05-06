@@ -84,7 +84,7 @@ export class ThreeService implements OnDestroy {
   // Raw hit point every frame (hover)
   public pointHovered = new Subject<THREE.Vector3>();
 
-  // Distance ready after второй точки
+  // Distance ready after second point
   public distanceReady = new Subject<{ p1: THREE.Vector3; p2: THREE.Vector3; dist: number }>();
 
   // Toggle by UI when “3‑D Distance” checkbox is on
@@ -160,7 +160,6 @@ export class ThreeService implements OnDestroy {
 
     // 2) Create cameras
     this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 10, 40000);
-    this.perspectiveCamera.position.set(0, 100, 200);
     this.perspectiveCamera.position.set(-7000, 0 , 0);
 
     // Better orthographic camera initialization
@@ -173,8 +172,10 @@ export class ThreeService implements OnDestroy {
     this.orthographicCamera.position.copy(this.perspectiveCamera.position);
     this.orthographicCamera.lookAt(this.scene.position);
 
+
     // Default camera is perspective
     this.camera = this.perspectiveCamera;
+
 
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -192,6 +193,14 @@ export class ThreeService implements OnDestroy {
     this.controls.target.set(0, 0, 0);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
+
+    // Perspective camera distance limits
+    const sceneRadius = 5000;
+    this.controls.minDistance = sceneRadius * 0.05;
+    this.controls.maxDistance = sceneRadius * 3;
+    this.camera.far = this.controls.maxDistance * 1.1;
+    this.camera.updateProjectionMatrix();
+
     this.controls.update();
 
     // Setup lights
@@ -586,7 +595,7 @@ export class ThreeService implements OnDestroy {
     this.hoverPoint = new THREE.Mesh(sphereGeom, sphereMat);
     this.hoverPoint.visible = false;
     this.hoverPoint.name = "HoverPoint";
-    this.sceneEvent.add(this.hoverPoint);
+    this.scene.add(this.hoverPoint);
   }
 
   /**

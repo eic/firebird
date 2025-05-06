@@ -184,8 +184,9 @@ export class UrlService {
     if (this.isBackendAvailable && this.serverAddress) {
       return `${this.serverAddress}/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(inputUrl)}`;
     } else {
-      console.warn("Backend is not available to perform conversion");
-      return inputUrl;
+      const message = "Backend is not available to convert the file";
+      console.warn(message);
+      throw Error(message);
     }
   }
 }

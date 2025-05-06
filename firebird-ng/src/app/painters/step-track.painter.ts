@@ -81,7 +81,8 @@ export class StepTrackComponentPainter {
     this.gammaMaterial.gapSize = 50;
 
     this.opticalMaterial = this.dashedLineMaterial.clone();
-    this.opticalMaterial.color = new Color(NeonTrackColors.Yellow);
+    this.opticalMaterial.color = new Color(NeonTrackColors.Salad);
+    this.opticalMaterial.linewidth = 1;
 
     this.electronMaterial = this.solidLineMaterial.clone();
     this.electronMaterial.color = new Color(NeonTrackColors.Blue);

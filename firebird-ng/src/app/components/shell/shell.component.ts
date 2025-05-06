@@ -9,7 +9,7 @@ import {
   Output, ElementRef, Input,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {Router, RouterLink} from '@angular/router';
+import {Router} from '@angular/router';
 // Angular Material imports for the top bar
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -40,7 +40,6 @@ interface NavItem {
     MatIconModule,
     MatMenuModule,
     ThemeSwitcherComponent,
-    RouterLink,
     MatTooltip
   ],
 })

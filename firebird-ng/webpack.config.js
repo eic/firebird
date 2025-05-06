@@ -13,7 +13,7 @@ module.exports = {
       analyzerMode: 'static',  // Generates a static HTML file with a treemap.
       reportFilename: 'bundle-report.html',  // Can be opened in a browser after build.
       openAnalyzer: false,  // Prevents the report from automatically opening.
-      generateStatsFile: true//,  // Generates a stats.json.
+      generateStatsFile: true//  // Generates a stats.json.
       //statsFilename: 'bundle-stats.json'  // Useful for custom analysis.
     })
   ]

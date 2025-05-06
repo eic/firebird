@@ -1,9 +1,5 @@
 import {
   Component,
-  Input,
-  Output,
-  EventEmitter,
-  inject,
   computed,
   Signal,
   ViewChild,
@@ -11,7 +7,7 @@ import {
   ElementRef
 } from '@angular/core';
 import { MatSliderModule } from '@angular/material/slider';
-import {DecimalPipe, NgIf} from '@angular/common';
+import {DecimalPipe} from '@angular/common';
 import { MatInputModule } from '@angular/material/input';
 import {EventDisplayService} from "../../services/event-display.service";
 import {FormsModule} from "@angular/forms";
@@ -23,24 +19,31 @@ import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog"
 @Component({
   selector: 'app-event-time-control',
   standalone: true,
-  imports: [MatSliderModule, MatInputModule, DecimalPipe, MatButton, NgIf, FormsModule, MatIcon, MatIconButton, MatTooltip, MatDialogClose],
+  imports: [MatSliderModule, MatInputModule, DecimalPipe, MatButton, FormsModule, MatIcon, MatIconButton, MatTooltip, MatDialogClose],
   templateUrl: './event-time-control.component.html',
   styleUrls: ['./event-time-control.component.scss']
 })
 export class EventTimeControlComponent {
-  private dialog = inject(MatDialog);
+
   animationSpeed: number = 1.0;
 
+  @ViewChild('openBtn', { read: ElementRef })
+  openBtn!: ElementRef;
 
-  @ViewChild('openBtn', { read: ElementRef }) openBtn!: ElementRef;
-  @ViewChild('dialogTemplate') dialogTemplate!: TemplateRef<any>;
+  @ViewChild('dialogTemplate')
+  dialogTemplate!: TemplateRef<any>;
+
   dialogRef: MatDialogRef<any> | null = null;
 
 
   customStartTime = this.eventDisplayService.minTime;
   customEndTime = this.eventDisplayService.maxTime;
 
-  constructor(public eventDisplayService: EventDisplayService) {}
+  constructor(public eventDisplayService: EventDisplayService,
+              private dialog: MatDialog)
+  {
+
+  }
 
   public shownTime: Signal<number> = computed(()=>{
     const edTime = this.eventDisplayService.eventTime();
@@ -49,6 +52,7 @@ export class EventTimeControlComponent {
     }
     return edTime;
   })
+
   /**
    * Called whenever the slider input changes.
    * It extracts the new value and updates the service's time.
@@ -101,17 +105,10 @@ export class EventTimeControlComponent {
     });
   }
 
-
-
   applyCustomTimeRange(): void {
     this.eventDisplayService.minTime = this.customStartTime;
     this.eventDisplayService.maxTime = this.customEndTime;
-
     this.eventDisplayService.animationSpeed = this.animationSpeed;
-
     this.dialogRef?.close();
   }
-
-
-
 }

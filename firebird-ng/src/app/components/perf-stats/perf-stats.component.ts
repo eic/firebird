@@ -8,7 +8,6 @@ import {DecimalPipe} from "@angular/common"; // adjust path as needed
   selector: 'app-perf-stats',
   templateUrl: './perf-stats.component.html',
   imports: [
-    MatTooltip,
     DecimalPipe
   ],
   styleUrls: ['./perf-stats.component.scss']

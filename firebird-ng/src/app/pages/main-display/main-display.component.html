@@ -5,13 +5,11 @@
     </button>
 
     <button mat-icon-button class="panel-button" (click)="onDebugButton()">
-      <mat-icon>upcoming</mat-icon>
+      <mat-icon>bug_report</mat-icon>
     </button>
 
     <!-- Event selector -->
     <app-custom-event-selector></app-custom-event-selector>
-
-    <app-custom-auto-rotate></app-custom-auto-rotate>
 
     <!-- Toggle for clipping geometries -->
     <app-custom-object-clipping></app-custom-object-clipping>
@@ -45,9 +43,29 @@
   <div footer-left>
     <app-perf-stats></app-perf-stats>
   </div>
-  <div footer-right id="footerRight">
-    <div class="theme-text">{{message}}</div>
+<div footer-right id="footerRight">
+  <div class="loading-indicators">
+    <!-- Dex JSON Loader -->
+    <div class="loader-container" *ngIf="loadingDex()">
+      <mat-spinner diameter="24" color="accent"></mat-spinner>
+      <div class="loader-label">loading json</div>
+    </div>
+
+    <!-- EDM4EIC Loader -->
+    <div class="loader-container" *ngIf="loadingEdm()">
+      <mat-spinner diameter="24" color="accent"></mat-spinner>
+      <div class="loader-label">loading root</div>
+    </div>
+
+    <!-- Geometry Loader -->
+    <div class="loader-container" *ngIf="loadingGeometry()">
+      <mat-spinner diameter="24" color="accent"></mat-spinner>
+      <div class="loader-label">loading geo</div>
+    </div>
   </div>
+  <div class="theme-text">{{message}}</div>
+</div>
+
   <div footer>
     <div class="time-controls" id="bottom-controls">
       <app-event-time-control></app-event-time-control>

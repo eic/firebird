@@ -3,39 +3,37 @@ import {
   OnInit,
   AfterViewInit,
   Input,
-  ViewChild, OnDestroy, TemplateRef, ElementRef, effect
+  ViewChild, OnDestroy, TemplateRef, ElementRef, signal
 } from '@angular/core';
 
-import {ALL_GROUPS } from '../../services/geometry.service';
-import { GameControllerService } from '../../services/game-controller.service';
-import { UserConfigService } from '../../services/user-config.service';
+import {ALL_GROUPS} from '../../services/geometry.service';
+import {GameControllerService} from '../../services/game-controller.service';
+import {UserConfigService} from '../../services/user-config.service';
 
-import { SceneTreeComponent } from '../geometry-tree/scene-tree.component';
-import { ShellComponent } from '../../components/shell/shell.component';
-import { ToolPanelComponent } from '../../components/tool-panel/tool-panel.component';
-import { EventSelectorComponent } from '../../components/event-selector/event-selector.component';
-import { AutoRotateComponent } from '../../components/auto-rotate/auto-rotate.component';
-import { ObjectClippingComponent } from '../../components/object-clipping/object-clipping.component';
-import { PhoenixThreeFacade } from "../../utils/phoenix-three-facade";
+import {SceneTreeComponent} from '../geometry-tree/scene-tree.component';
+import {ShellComponent} from '../../components/shell/shell.component';
+import {ToolPanelComponent} from '../../components/tool-panel/tool-panel.component';
+import {EventSelectorComponent} from '../../components/event-selector/event-selector.component';
+import {ObjectClippingComponent} from '../../components/object-clipping/object-clipping.component';
+import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
 
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatIcon } from '@angular/material/icon';
-import { MatButton, MatIconButton } from '@angular/material/button';
-import { MatTooltip } from '@angular/material/tooltip';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {MatIcon} from '@angular/material/icon';
+import { MatIconButton} from '@angular/material/button';
+import {MatTooltip} from '@angular/material/tooltip';
 import {EventDisplay} from "phoenix-event-display";
 
 import {PerfStatsComponent} from "../../components/perf-stats/perf-stats.component";
 import {EventDisplayService} from "../../services/event-display.service";
 import {EventTimeControlComponent} from "../../components/event-time-control/event-time-control.component";
 import {ServerConfigService} from "../../services/server-config.service";
-import {Object3D} from "three";
-import {DisplayMode} from "../../painters/data-model-painter";
 import {CubeViewportControlComponent} from "../../components/cube-viewport-control/cube-viewport-control.component";
 import {LegendWindowComponent} from "../../components/legend-window/legend-window.component";
 import {PainterConfigPageComponent} from "../../services/configurator/painter-config-page.component";
 import {NgIf} from "@angular/common";
 import {TrackPainterConfig} from "../../services/track-painter-config";
 import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
+import {MatProgressSpinner} from "@angular/material/progress-spinner";
 
 
 /**
@@ -48,9 +46,9 @@ import {ObjectRaycastComponent} from "../../components/object-raycast/object-ray
  *  - Has *no* references to phoenix-event-display or eventDisplay.
  */
 @Component({
-    selector: 'app-main-display',
-    templateUrl: './main-display.component.html',
-    styleUrls: ['./main-display.component.scss'],
+  selector: 'app-main-display',
+  templateUrl: './main-display.component.html',
+  styleUrls: ['./main-display.component.scss'],
   imports: [
     MatIcon,
     MatTooltip,
@@ -59,7 +57,6 @@ import {ObjectRaycastComponent} from "../../components/object-raycast/object-ray
     ShellComponent,
     ToolPanelComponent,
     EventSelectorComponent,
-    AutoRotateComponent,
     ObjectClippingComponent,
     PerfStatsComponent,
     EventTimeControlComponent,
@@ -67,14 +64,15 @@ import {ObjectRaycastComponent} from "../../components/object-raycast/object-ray
     LegendWindowComponent,
     PainterConfigPageComponent,
     NgIf,
-    ObjectRaycastComponent
+    ObjectRaycastComponent,
+    MatProgressSpinner,
   ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input()
   eventDataImportOptions: string[] = []; // example, if you used them in UI
 
-  @ViewChild('displayHeaderControls', { static: true })
+  @ViewChild('displayHeaderControls', {static: true})
   displayHeaderControls!: TemplateRef<any>;
 
   @ViewChild('eventDisplay')
@@ -102,6 +100,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   isLeftPaneOpen: boolean = false;
   isRightPaneOpen: boolean = false;
 
+  // Loading indicators
+  loadingDex     = signal(false);
+  loadingEdm     = signal(false);
+  loadingGeometry = signal(false);
 
   // Phoenix API
   private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
@@ -112,8 +114,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     public eventDisplay: EventDisplayService,
     private userConfig: UserConfigService,
     private serverConfig: ServerConfigService,
-  )
-  {
+  ) {
 
   }
 
@@ -131,79 +132,18 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
         // TODO this.cycleGeometry();
       }
     });
-
-
-    // this.userConfig.dexJsonEventSource.subject.subscribe(url => {
-    //   if(!url || url.trim().length === 0) {
-    //     console.log("[main-display]: No data source specified. Skip loadDexData ");
-    //     return;
-    //   }
-    //
-    //   // Check if we have the same data
-    //   if(this.eventDisplay.lastLoadedDexUrl === url) {
-    //     console.log(`[main-display]: Event data (DEX) url is the same as before: '${url}', skip loading`);
-    //     return;
-    //   }
-    //
-    //   // Try to load
-    //   this.eventDisplay.loadDexData(url).catch(error=>{
-    //     const msg = `Error loading events: ${error}`;
-    //     console.error(`[main-display]: ${msg}`);
-    //     this.showError(msg);
-    //   }).then(value=>{
-    //     console.log("[main-display]: Event loaded");
-    //     this.updateSceneTreeComponent();
-    //   });
-    // });
-    let dexUrl = this.userConfig.dexJsonEventSource.subject.getValue();
-
-    if (!dexUrl || dexUrl.trim().length === 0) {
-      console.log("[main-display]: No event data source specified. Skip loadDexData.");
-    }
-    // Check if we have the same data
-    else if (this.eventDisplay.lastLoadedDexUrl === dexUrl) {
-      console.log(`[main-display]: Event data (DEX) url is the same as before: '${dexUrl}', skip loading.`);
-    }
-    // Try to load
-    else {
-      this.eventDisplay.loadDexData(dexUrl).catch(error => {
-        const msg = `Error loading events: ${error}`;
-        console.error(`[main-display]: ${msg}`);
-        this.showError(msg);
-      }).then(() => {
-        console.log("[main-display]: Event data loaded.");
-        this.updateSceneTreeComponent();
-      });
-    }
-
-
-    let url = this.userConfig.selectedGeometry.value;
-
-    if(!url || url.trim().length === 0) {
-      console.log("[main-display]: No data source specified. Skip loadGeometry ");
-
-    }
-    // Check if we have the same data
-    else if(this.eventDisplay.lastLoadedGeometryUrl === url) {
-      console.log(`[main-display]: Geometry url is the same as before: '${url}', skip loading`);
-    } else {
-      // Load geometry
-      this.eventDisplay.loadGeometry(url).catch(error=>{
-        const msg = `Error loading geometry: ${error}`;
-        console.error(`[main-display]: ${msg}`);
-        this.showError(msg);
-      }).then(value=>{
-        console.log("[main-display]: Geometry loaded");
-        console.log(value)
-        this.updateSceneTreeComponent();
-      });
-    }
-}
-
+  }
 
 
   // 2) AFTER VIEW INIT => handle resizing with DisplayShell or window
   ngAfterViewInit(): void {
+
+    // Load JSON based data files
+    this.initDexEventSource();
+
+    // Load Root file based data files
+    this.initRootData();
+
     if (this.displayShellComponent) {
       const resizeInvoker = () => {
         setTimeout(() => {
@@ -225,13 +165,15 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     // When sidebar is collapsed/opened, the main container, i.e. #eventDisplay offsetWidth is not yet updated.
     // This leads to a not proper resize  processing. We add 100ms delay before calling a function
     const this_obj = this;
-    const resizeInvoker = function(){
+    const resizeInvoker = function () {
       setTimeout(() => {
         this_obj.onRendererElementResize();
       }, 100);  // 100 milliseconds = 0.1 seconds
     };
     resizeInvoker();
-    // this.startAnimationLoop();
+
+    // Loads the geometry (do it last as it might be long)
+    this.initGeometry();
   }
 
   // 3) UI - Toggling panes
@@ -247,7 +189,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 4) Method to initialize CubeViewportControl with the existing Three.js objects
   private initCubeViewportControl(): void {
-    const { scene, camera, renderer } = this.eventDisplay.three;
+    const {scene, camera, renderer} = this.eventDisplay.three;
     if (this.cubeControl && scene && camera && renderer) {
       // Pass the external scene, camera, and renderer to the cube control
       this.cubeControl.initWithExternalScene(scene, camera, renderer);
@@ -256,7 +198,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const thisPointer = this;
-    this.eventDisplay.three.addFrameCallback(()=>{
+    this.eventDisplay.three.addFrameCallback(() => {
       if (thisPointer.cubeControl?.gizmo) {
         thisPointer.cubeControl.gizmo.render();
       }
@@ -264,14 +206,11 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
 
-
-
-  // Example function to show an error
   showError(message: string) {
     this.snackBar.open(message, 'Dismiss', {
-      duration: 1000, // Auto-dismiss after X ms
-      verticalPosition: 'top', // Place at the top of the screen
-      panelClass: ['mat-mdc-snack-bar-error'] // Optional: Custom styling (MD3)
+      duration: 7000, // Auto-dismiss after X ms
+      // verticalPosition: 'top', // Place at the top of the screen
+      panelClass: ['error-snackbar']
     });
   }
 
@@ -292,8 +231,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       this.cubeControl.gizmo.update();
     }
   }
-
-
 
   // 8) GEOMETRY TOGGLING
   // showAllGeometries() {
@@ -323,12 +260,12 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   //   }
   // }
 
-  public formatCurrentTime (value: number): string {
+  public formatCurrentTime(value: number): string {
     return value.toFixed(1);
   }
 
   changeCurrentTime(event: Event) {
-    if(!event) return;
+    if (!event) return;
     const input = event.target as HTMLInputElement;
     const value = parseFloat(input.value);
     this.eventDisplay.updateEventTime(value);
@@ -360,5 +297,102 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.toggleRightPane();
+  }
+
+  private initDexEventSource() {
+
+    // We set loadingDex=false to be safe
+    this.loadingDex.set(false);
+
+    let dexUrl = this.userConfig.dexJsonEventSource.subject.getValue();
+
+    if (!dexUrl || dexUrl.trim().length === 0) {
+      console.log("[main-display]: No event data source specified. Skip loadDexData.");
+    }
+    // Check if we have the same data
+    else if (this.eventDisplay.lastLoadedDexUrl === dexUrl) {
+      console.log(`[main-display]: Event data (DEX) url is the same as before: '${dexUrl}', skip loading.`);
+    }
+    // Try to load
+    else {
+      this.loadingDex.set(true);
+      this.eventDisplay.loadDexData(dexUrl).catch(error => {
+        const msg = `Error loading events: ${error}`;
+        console.error(`[main-display]: ${msg}`);
+        this.showError(msg);
+      }).then(() => {
+        console.log("[main-display]: Event data loaded.");
+        this.updateSceneTreeComponent();
+      }).finally(()=>{
+        this.loadingDex.set(false);   // switch off loading indicator
+      });
+    }
+  }
+
+
+  private initRootData() {
+    let url = this.userConfig.rootEventSource.subject.getValue();
+    let eventRange = this.userConfig.rootEventRange.subject.getValue();
+
+    // Do we have url?
+    if (!url || url.trim().length === 0) {
+      console.log("[main-display]: No Edm4Eic source specified. Nothing to load");
+      return;
+    }
+
+    // Do we have event Range?
+    if (!eventRange || eventRange.trim().length === 0) {
+      console.log("[main-display]: Event Range specified. Trying '0', to load the first event");
+      eventRange = "0";
+    }
+
+    // Check if we have the same data
+    if (this.eventDisplay.lastLoadedRootUrl === url && this.eventDisplay.lastLoadedRootEventRange === eventRange) {
+      console.log(`[main-display]: Edm url is the same as before: '${url}', eventRange: '${eventRange}' - skip loading.`);
+      return;
+    }
+
+    // Try to load
+    else {
+      this.loadingEdm.set(true);
+      this.eventDisplay.loadRootData(url, eventRange).catch(error => {
+        const msg = `Error loading events: ${error}`;
+        console.error(`[main-display]: ${msg}`);
+        this.showError(msg);
+      }).then(() => {
+        console.log("[main-display]: Event data loaded.");
+        this.updateSceneTreeComponent();
+      }).finally(()=>{
+        this.loadingEdm.set(false);   // switch off loading indicator
+      });
+    }
+  }
+
+
+  private initGeometry() {
+    let url = this.userConfig.selectedGeometry.value;
+
+    if (!url || url.trim().length === 0) {
+      console.log("[main-display]: No geometry specified. Skip loadGeometry ");
+    }
+    // Check if we have the same data
+    else if (this.eventDisplay.lastLoadedGeometryUrl === url) {
+      console.log(`[main-display]: Geometry url is the same as before: '${url}', skip loading`);
+    } else {
+      // Load geometry
+      this.loadingGeometry.set(true);
+      this.eventDisplay.loadGeometry(url).catch(error => {
+
+        const msg = `Error loading geometry: ${error}`;
+        console.error(`[main-display]: ${msg}`);
+        this.showError("Error loading Geometry. Open 'Configure' to change. Press F12->Console for logs");
+      }).then(() => {
+        this.updateSceneTreeComponent();
+        console.log("[main-display]: Geometry loaded");
+
+      }).finally(()=>{
+        this.loadingGeometry.set(false);   // switch off loading indicator
+      });
+    }
   }
 }
