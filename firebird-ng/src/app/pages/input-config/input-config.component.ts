@@ -91,7 +91,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     "asset://data/trk_dis-cc_18x275_q2-100_p-150mev.v0.4.firebird.zip",
     "asset://data/trk_dis-cc_18x275_q2-1000_p-150mev.v0.4.firebird.zip",
     "asset://data/trk_dis-cc_10x100_q2-1_p-150mev.v0.4.firebird.zip",
-    "asset://data/trk_dis-cc_10x100_q2-100_minp-150mev.v0.4.firebird.zip",
+    "asset://data/trk_dis-cc_10x100_q2-100_p-150mev.v0.4.firebird.zip",
     "asset://data/trk_dis-cc_10x100_q2-1000_p-150mev.v0.4.firebird.zip",
     "asset://data/trk_dis-cc_5x41_q2-1_p-150mev.v0.4.firebird.zip",
     "asset://data/trk_dis-cc_5x41_q2-100_p-150mev.v0.4.firebird.zip",
@@ -116,14 +116,14 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
       dexjson: "asset://data/trk_dis-cc_5x41_q2-1_p-150mev.v0.4.firebird.zip",
       edm4eic: ""
     },
-    'DIS CC in ePIC Beam=10x100 minQ2=1': {
+    'DIS CC in ePIC Beam=10x100 minQ2=100': {
       geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root",
-      dexjson: "asset://data/trk_dis-cc_10x100_q2-1_p-150mev.v0.4.firebird.zip",
+      dexjson: "asset://data/trk_dis-cc_10x100_q2-100_p-150mev.v0.4.firebird.zip",
       edm4eic: ""
     },
-    'DIS CC in ePIC Beam=18x275 minQ2=1': {
+    'DIS CC in ePIC Beam=18x275 minQ2=1000': {
       geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root",
-      dexjson: "asset://data/trk_dis-cc_18x275_q2-1_p-150mev.v0.4.firebird.zip",
+      dexjson: "asset://data/trk_dis-cc_18x275_q2-1000_p-150mev.v0.4.firebird.zip",
       edm4eic: ""
     },
     'Tracking reconstruction ePIC Beam=18x275': {

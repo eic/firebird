@@ -94,13 +94,23 @@ export class DataModelService {
 
       // Build DataExchange structure
       let data = DataExchange.fromDexObj(dexData);
-      console.log(data);
+
+      // Update service signals with the newly loaded entries
+      if (data) {
+        this.entries.set(data.events);
+        if (this.entries().length > 0) {
+          // If at least one entry is present, automatically set the first as current
+          this.setCurrentEntry(this.entries()[0]);
+        }
+      }
+
       return data;
 
     } catch (error) {
       // Log errors
-      console.error(`[DataModelService.loadEdm4EicData] Failed to load data: ${error}`);
-      console.log("Default config will be used");
+      console.error(`[DataModelService.loadRootData] Failed to load data: ${error}`);
+      console.log("[DataModelService.loadRootData] Default config will be used");
+      throw error;
     } finally {
       // No final cleanup needed right now
     }
@@ -162,8 +172,6 @@ export class DataModelService {
       let data = DataExchange.fromDexObj(dexData);
       console.log(data);
 
-      // Extract entry names/IDs for debugging or usage
-      const entryNames = data.events.map((entry) => entry.id);
 
       // Update service signals with the newly loaded entries
       if (dexData) {
@@ -179,6 +187,7 @@ export class DataModelService {
     } catch (error) {
       console.error(`[DataModelService.loadDexData] Failed to load data: ${error}`);
       console.log(`[DataModelService.loadDexData] Default config will be used`);
+      throw error;
     } finally {
       // No final cleanup needed right now
     }
