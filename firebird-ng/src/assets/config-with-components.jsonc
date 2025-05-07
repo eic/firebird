@@ -1,0 +1,49 @@
+{
+  // Flag indicates if python Flask server from Pyrobird package is in used. Set automatically by Pyrobird
+  "servedByPyrobird": false,
+
+  "Configs": [
+    {
+      "ConfigType": "RootPipelineTopRemoveList",
+      "ConfigName": "CentralDetector",
+      "RemoveDetectorNames": [
+        "Lumi",
+        "B1",
+        "B2",
+        "Q2",
+        "ForwardOffM",
+        "Forward",
+        "Backward",
+        "Vacuum",
+        "SweeperMag",
+        "AnalyzerMag",
+        "ZDC",
+        "HcalFarForward",
+        "InnerTrackingSupport"
+      ]
+    },
+    {
+      "ConfigType": "RootPipelineTopRemoveList",
+      "ConfigName": "FarForward",
+      "RemoveDetectorNames": [
+        "Lumi",
+        "B1",
+        "B2",
+        "Q2",
+        "Backward",
+        "Vacuum",
+        "SweeperMag",
+        "AnalyzerMag",
+        "ZDC",
+        "HcalFarForward",
+        "InnerTrackingSupport"
+      ]
+    },
+    {
+      "ConfigType": "RootPipelineTopRemoveList",
+      "ConfigName": "NoRemoveList",
+      "RemoveDetectorNames": [
+      ]
+    }
+  ]
+}
