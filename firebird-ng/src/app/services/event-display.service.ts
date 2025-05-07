@@ -27,7 +27,7 @@ export class EventDisplayService {
 
   // Time
   //private eventDisplayMode: WritableSignal<DisplayMode> = signal(DisplayMode.Timeless);
-  public eventTime: WritableSignal<number|null> = signal(0);
+  public eventTime: WritableSignal<number | null> = signal(0);
 
 
   public maxTime = 200;
@@ -49,11 +49,15 @@ export class EventDisplayService {
   // Animation manager
   private animationManager: AnimationManager;
 
-  /** The last successfully loaded Event Data url. Switches to null on every new load attempt */
-  public lastLoadedDexUrl:string|null = "";
+  /** The last successfully loaded Firebird DEX JSON url. Switches to null on every new load attempt */
+  public lastLoadedDexUrl: string | null = "";
 
   /** The last successfully loaded Geometry url. Switches to null on every new load attempt */
-  public lastLoadedGeometryUrl:string|null = "";
+  public lastLoadedGeometryUrl: string | null = "";
+
+  /** The last successfully loaded Edm4Eic converted url. Switches to null on every new load attempt */
+  public lastLoadedRootUrl: string | null = "";
+  public lastLoadedRootEventRange: string | null = "";
 
   constructor(
     public three: ThreeService,
@@ -74,10 +78,8 @@ export class EventDisplayService {
 
     // On time change
     effect(() => {
-      console.log("[eventDisplay] Time change effect start")
       const time = this.eventTime();
       this.painter.paint(time);
-      console.log("[eventDisplay] Time change effect end")
     }, {debugName: "EventDisplayService.OnTimeChange"});
 
     effect(() => {
@@ -93,7 +95,7 @@ export class EventDisplayService {
       // Make sure to clean-up even if event is null
       // this.painter.cleanupCurrentEntry();
 
-      if(event === null || this.painter.getEntry() == event) return;
+      if (event === null || this.painter.getEntry() == event) return;
       this.painter.setEntry(event);
       this.painter.paint(null);
 
@@ -109,13 +111,13 @@ export class EventDisplayService {
    * Initialize the default three.js scene
    * @param container
    */
-  initThree(container: string|HTMLElement) {
+  initThree(container: string | HTMLElement) {
     this.three.init(container);
     this.painter.setThreeSceneParent(this.three.sceneEvent);
     this.three.startRendering();
 
     // We need this to update the animation group
-    this.three.addFrameCallback(()=> {
+    this.three.addFrameCallback(() => {
       this.tweenGroup.update();
     })
   }
@@ -152,8 +154,8 @@ export class EventDisplayService {
 
 
   animateTime() {
-  let time = this.eventTime() ?? this.minTime;
-  const timeToTravel = this.maxTime - time;
+    let time = this.eventTime() ?? this.minTime;
+    const timeToTravel = this.maxTime - time;
 
     // Speed: the higher the animationSpeed, the faster (less duration)
     const baseMsPerUnit = 200;
@@ -181,8 +183,8 @@ export class EventDisplayService {
       this.stopTimeAnimation();
     }
 
-    this.tween = new Tween({ currentTime: this.eventTime() ?? this.minTime }, this.tweenGroup)
-      .to({ currentTime: targetTime }, duration)
+    this.tween = new Tween({currentTime: this.eventTime() ?? this.minTime}, this.tweenGroup)
+      .to({currentTime: targetTime}, duration)
       .onUpdate((obj) => {
         console.log(obj.currentTime);
         this.eventTime.set(obj.currentTime);
@@ -243,9 +245,9 @@ export class EventDisplayService {
   /**
    * Load geometry
    */
-  async loadGeometry(url:string, scale = 10, clearGeometry=true) {
+  async loadGeometry(url: string, scale = 10, clearGeometry = true) {
     this.lastLoadedGeometryUrl = null;
-    let { rootGeometry, threeGeometry } = await this.geomService.loadGeometry(url);
+    let {rootGeometry, threeGeometry} = await this.geomService.loadGeometry(url);
     if (!threeGeometry) return;
 
     // Set geometry scale
@@ -256,7 +258,7 @@ export class EventDisplayService {
     const sceneGeo = this.three.sceneGeometry;
 
     // There should be only one geometry if clearGeometry=true
-    if(clearGeometry && sceneGeo.children.length > 0) {
+    if (clearGeometry && sceneGeo.children.length > 0) {
       disposeHierarchy(sceneGeo, /* disposeSelf= */ false);
     }
 
@@ -284,7 +286,7 @@ export class EventDisplayService {
     ) {
       let eventType = eventSource.endsWith('zip') ? 'zip' : 'json';
       let eventFile = eventSource;
-      eventConfig = { eventFile, eventType };
+      eventConfig = {eventFile, eventType};
     }
 
     if (typeof Worker !== 'undefined') {
@@ -292,7 +294,7 @@ export class EventDisplayService {
       const worker = new Worker(
         new URL('../workers/event-loader.worker.ts', import.meta.url)
       );
-      worker.onmessage = ({ data }) => {
+      worker.onmessage = ({data}) => {
         for (let key in data) {
           this.eventsByName.set(key, data[key]);
           this.eventsArray.push(data[key]);
@@ -312,7 +314,7 @@ export class EventDisplayService {
   }
 
 
-  async loadDexData(url:string) {
+  async loadDexData(url: string) {
     this.lastLoadedDexUrl = null;
     const data = await this.dataService.loadDexData(url);
     if (data == null) {
@@ -334,6 +336,29 @@ export class EventDisplayService {
     }
   }
 
+  async loadRootData(url: string, eventRange: string = "0") {
+    this.lastLoadedRootUrl = null;
+    this.lastLoadedRootEventRange = null;
+    const data = await this.dataService.loadRootData(url, eventRange);
+    if (data == null) {
+      console.warn(
+        'DataService.loadRootData() Received data is null or undefined'
+      );
+      return;
+    }
+
+    if (data.events?.length ?? 0 > 0) {
+      this.painter.setEntry(data.events[0]);
+      this.eventTime.set(null);
+      this.painter.paint(this.eventTime());
+      this.lastLoadedRootUrl = url;
+      this.lastLoadedRootEventRange = eventRange;
+    } else {
+      console.warn('DataService.loadRootData() Received data had no entries');
+      console.log(data);
+    }
+  }
+
   // ****************************************************
   // *************** EVENTS *****************************
   // ****************************************************
@@ -343,7 +368,7 @@ export class EventDisplayService {
    * @param value
    * @private
    */
-  private processCurrentTimeChange(value: number|null) {
+  private processCurrentTimeChange(value: number | null) {
 
   }
 
@@ -421,4 +446,4 @@ export class EventDisplayService {
       this.animateWithCollision();
     }
   }
-  }
+}

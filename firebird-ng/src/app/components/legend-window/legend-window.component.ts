@@ -1,13 +1,11 @@
-import {Component, OnInit, OnDestroy, ViewChild, TemplateRef} from '@angular/core';
-import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
-import { Subscription } from 'rxjs';
+import {Component, OnInit, OnDestroy, ViewChild, TemplateRef, ViewContainerRef} from '@angular/core';
+
 
 import { ThreeService } from '../../services/three.service';
 import { UserConfigService } from '../../services/user-config.service';
-import {MatMenuItem} from "@angular/material/menu";
-import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 
-import {MatButton, MatIconButton} from "@angular/material/button";
+
+import {MatIconButton} from "@angular/material/button";
 
 import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog";
 import {MatIcon} from "@angular/material/icon";
@@ -18,10 +16,6 @@ import {MatTooltip} from "@angular/material/tooltip";
   templateUrl: './legend-window.component.html',
   styleUrls: ['./legend-window.component.scss'],
   imports: [
-    MatSlider,
-    MatMenuItem,
-    MatSliderThumb,
-    MatCheckbox,
     MatIcon,
     MatDialogClose,
     MatIconButton,
@@ -41,7 +35,8 @@ export class LegendWindowComponent implements OnInit, OnDestroy {
   constructor(
     private threeService: ThreeService,
     private config: UserConfigService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private viewContainerRef: ViewContainerRef
   ) {}
 
   ngOnInit(): void {
@@ -64,7 +59,8 @@ export class LegendWindowComponent implements OnInit, OnDestroy {
           left: '600px'
         },
         disableClose: true,
-        hasBackdrop: false
+        hasBackdrop: false,
+        viewContainerRef: this.viewContainerRef
       });
 
       this.dialogRef.afterClosed().subscribe(() => {
@@ -73,12 +69,6 @@ export class LegendWindowComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleRaycast() {
-    this.threeService.toggleRaycast();
-  }
 
-  get isRaycastEnabled(): boolean {
-    return this.threeService.isRaycastEnabledState();
-  }
 
 }

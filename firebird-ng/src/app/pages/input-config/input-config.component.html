@@ -6,7 +6,7 @@
         <mat-card-title>Select Geometry and Events</mat-card-title>
         <mat-card-content>
           <div class="section">
-            <h3>Premade configurations</h3>
+            <h3>Examples:</h3>
             <p>Select file with the geometry</p>
             <firebird-resource-select
               #premadeGeometry
@@ -36,18 +36,24 @@
           </div>
 
           <div class="section">
-            <h3>Event Source: EDM4EIC</h3>
+            <h3>EDM4EIC Event Source:</h3>
             <p>Select file with EDM4EIC data</p>
             <firebird-resource-select
               #edm4eicSelect
               [options]="edm4eicOptions"
               label="Load EDM4EIC .root Edm4Eic (this operation requires backend to be running)">
             </firebird-resource-select>
+            <p>Event range to load (e.g. "0", "0,1,2", "0-5").
+              It is recommended to load 1-10 events at a time. Not more!
+            </p>
+            <mat-form-field appearance="fill" class="full-width">
+              <input matInput type="text" placeholder="0-5" [formControl]="rootEventRange">
+            </mat-form-field>
           </div>
         </mat-card-content>
 
         <div class="action-buttons">
-          <button mat-raised-button color="primary" [routerLink]="['/display']">DISPLAY</button>
+          <button type="button" mat-raised-button [routerLink]="['/display']">DISPLAY</button>
         </div>
 
       </mat-card>

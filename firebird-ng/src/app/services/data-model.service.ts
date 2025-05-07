@@ -68,7 +68,7 @@ export class DataModelService {
    * @param entryNames - Comma-separated entry indices (default "0"). Passed to the converter service.
    * @returns A Promise that resolves to a DataExchange object or null if there's an error.
    */
-  async loadEdm4EicData(url: string, entryNames: string = "0"): Promise<DataExchange | null> {
+  async loadRootData(url: string, entryNames: string = "0"): Promise<DataExchange | null> {
     try {
       // Early exit if no URL is provided
       if (!url) {

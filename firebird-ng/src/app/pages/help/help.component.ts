@@ -1,10 +1,10 @@
 import {Component, SecurityContext} from '@angular/core';
 import {ShellComponent} from "../../components/shell/shell.component";
 import {MatIcon} from "@angular/material/icon";
-import {MarkdownComponent, MarkdownModule, MARKED_OPTIONS, provideMarkdown} from "ngx-markdown";
+import {MarkdownComponent, MARKED_OPTIONS, provideMarkdown} from "ngx-markdown";
 import {MatIconButton} from "@angular/material/button";
-import {HttpClient, provideHttpClient} from "@angular/common/http";
-import {MatCard, MatCardContent, MatCardTitle} from "@angular/material/card";
+import {HttpClient} from "@angular/common/http";
+import {MatCard, MatCardTitle} from "@angular/material/card";
 import {MatListItem, MatNavList} from "@angular/material/list";
 import {NgForOf} from "@angular/common";
 
@@ -22,7 +22,6 @@ interface DocPage {
     MarkdownComponent,
     MatIconButton,
     MatCard,
-    MatCardContent,
     MatCardTitle,
     MatListItem,
     MatNavList,

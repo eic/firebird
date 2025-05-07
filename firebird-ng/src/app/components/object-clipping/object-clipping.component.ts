@@ -1,4 +1,13 @@
-import {Component, OnInit, OnDestroy, ViewChild, TemplateRef, ElementRef} from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  ViewChild,
+  TemplateRef,
+  ElementRef,
+  ViewContainerRef,
+  ChangeDetectorRef
+} from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
 import { Subscription } from 'rxjs';
 
@@ -12,7 +21,8 @@ import {MatButton, MatIconButton} from "@angular/material/button";
 import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog";
 import {MatIcon} from "@angular/material/icon";
 import {MatTooltip} from "@angular/material/tooltip";
-import {ObjectRaycastComponent} from "../object-raycast/object-raycast.component";
+import {FormsModule} from "@angular/forms";
+
 
 
 @Component({
@@ -29,7 +39,8 @@ import {ObjectRaycastComponent} from "../object-raycast/object-raycast.component
     MatDialogClose,
     MatIconButton,
     MatTooltip,
-    ObjectRaycastComponent
+    FormsModule,
+
   ]
 })
 export class ObjectClippingComponent implements OnInit, OnDestroy {
@@ -47,7 +58,9 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
   constructor(
     private threeService: ThreeService,
     private config: UserConfigService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private viewContainerRef: ViewContainerRef,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -153,7 +166,8 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
       },
       hasBackdrop: false,
       panelClass: 'custom-position-dialog',
-      autoFocus: false
+      autoFocus: false,
+      viewContainerRef: this.viewContainerRef
     });
 
     this.dialogRef.afterClosed().subscribe(() => {
@@ -161,6 +175,27 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
     });
   }
 
+
+  /**
+   * Updates angle value in real-time as any slider moves
+   * @param event The slider input event
+   * @param sliderType Identifier for which slider is being updated ('start' or 'opening')
+   */
+  onSliderInput(event: any, sliderType: 'start' | 'opening'): void {
+    // Extract the value safely from the event using optional chaining and nullish coalescing
+    const newValue: number | null = event?.value 
+      ?? event?.source?.value 
+      ?? (event?.target?.value !== undefined ? Number(event.target.value) : null);
+    // Only update if we got a valid number
+    if (newValue !== null && !isNaN(newValue)) {
+      // Update the appropriate property based on which slider was moved
+      if (sliderType === 'start') {
+        this.startClippingAngle = newValue;
+      } else if (sliderType === 'opening') {
+        this.openingClippingAngle = newValue;
+      }
+    }
+  }
 
 
 }

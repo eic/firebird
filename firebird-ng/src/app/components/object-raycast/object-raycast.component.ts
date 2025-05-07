@@ -1,9 +1,9 @@
-import {Component, ElementRef, OnDestroy, TemplateRef, ViewChild} from '@angular/core';
+import {Component, ElementRef, OnDestroy, TemplateRef, ViewChild, ViewContainerRef} from '@angular/core';
 import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog";
 import {MatMenuItem} from "@angular/material/menu";
 import {MatCheckbox, MatCheckboxChange} from "@angular/material/checkbox";
 import {MatIcon} from "@angular/material/icon";
-import {MatButton, MatIconButton} from "@angular/material/button";
+import {MatIconButton} from "@angular/material/button";
 import {Subscription} from "rxjs";
 import {ThreeService} from "../../services/three.service";
 import * as THREE from 'three';
@@ -17,7 +17,6 @@ import {NgIf} from "@angular/common";
     MatDialogClose,
     MatMenuItem,
     MatCheckbox,
-    MatButton,
     MatTooltip,
     MatIconButton,
     NgIf
@@ -51,7 +50,9 @@ export class ObjectRaycastComponent implements OnDestroy {
 
   constructor(
     private dialog: MatDialog,
-    private three: ThreeService) {}
+    private three: ThreeService,
+    private viewContainerRef: ViewContainerRef
+  ) {}
 
   /* ------------ UI ------------- */
   openRaycastDialog() {
@@ -73,7 +74,8 @@ export class ObjectRaycastComponent implements OnDestroy {
       },
       hasBackdrop: false,
       panelClass: 'custom-position-dialog',
-      autoFocus: false
+      autoFocus: false,
+      viewContainerRef: this.viewContainerRef
     });
 
     this.dialogRef.afterClosed().subscribe(() => {

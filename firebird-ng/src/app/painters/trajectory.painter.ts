@@ -12,17 +12,17 @@ import {Line2} from "three/examples/jsm/lines/Line2";
 
 /** Example color set. Feel free to refine or expand. */
 export enum NeonTrackColors {
-  Red      = 0xFF0007,
-  Pink     = 0xCF00FF,
-  Violet   = 0x5400FF,
-  Blue     = 0x0097FF,
+  Red = 0xFF0007,
+  Pink = 0xCF00FF,
+  Violet = 0x5400FF,
+  Blue = 0x0097FF,
   DeepBlue = 0x003BFF,
-  Teal     = 0x00FFD1,
-  Green    = 0x13FF00,
-  Salad    = 0x8CFF00,
-  Yellow   = 0xFFEE00,
-  Orange   = 0xFF3500,
-  Gray     = 0xAAAAAA,
+  Teal = 0x00FFD1,
+  Green = 0x13FF00,
+  Salad = 0x8CFF00,
+  Yellow = 0xFFEE00,
+  Orange = 0xFF3500,
+  Gray = 0xAAAAAA,
 }
 
 /**
@@ -51,6 +51,9 @@ export class TrajectoryPainter extends EventGroupPainter {
   /** Base materials that we clone for each line. */
   private baseSolidMaterial: LineMaterial;
   private baseDashedMaterial: LineMaterial;
+
+  public readonly trackColorHighlight = 0xff4081; // vivid pink for highlight
+  public readonly trackWidthFactor = 2;          // how many times thicker when highlighted
 
   constructor(parentNode: Object3D, component: EventGroup) {
     super(parentNode, component);
@@ -129,7 +132,7 @@ export class TrajectoryPainter extends EventGroupPainter {
       }
 
       // Create proper material
-      const {lineMaterial} = this.createLineMaterial(trajectory, pdgIndex, chargeIndex);
+      const lineMaterial = this.createLineMaterial(trajectory, pdgIndex, chargeIndex);
 
       // We'll start by building a geometry with *all* points, and rely on paint() to do partial logic.
       // We'll store the full set of points in linesData, then paint() can rebuild partial geometry.
@@ -164,6 +167,24 @@ export class TrajectoryPainter extends EventGroupPainter {
       trajData.lineObj.name = this.getNodeName(trajData, component.trajectories.length);
       trajData.lineObj.userData["track_params"] = trajData.params;
 
+      const this_obj = this;
+      const line_obj = trajData.lineObj;
+
+      trajData.lineObj.userData["highlightFunction"] = ()=>{
+        // line_obj.material.color.set(this_obj.trackColorHighlight);
+        console.log("highlightFunction");
+        console.log(this_obj);
+        console.log(line_obj);
+      };
+
+      trajData.lineObj.userData["unhighlightFunction"] = ()=>{
+        // line_obj.material.color.set(this_obj.trackColorHighlight);
+        console.log("unhighlightFunction");
+        console.log(this_obj);
+        console.log(line_obj);
+      };
+
+
       // Keep the data
       this.trajectories.push(trajData);
 
@@ -187,54 +208,68 @@ export class TrajectoryPainter extends EventGroupPainter {
     }
 
     // Minimal PDG-based color logic
-    let colorVal;
-    let dashed = false;
+    // ---------- PDG‑specific cases ----------
     switch (pdg) {
-      case 22: // gamma
-        colorVal = NeonTrackColors.Yellow;
-        dashed = true;
-        break;
-      case -22: // optical photon
-        colorVal = NeonTrackColors.Yellow;
-        dashed = false;
-        break;
-      case 11: // e-
-        colorVal = NeonTrackColors.Blue;
-        dashed = false;
-        break;
-      case -11: // e+
-        colorVal = NeonTrackColors.Orange;
-        dashed = false;
-        break;
-      case 211: // pi+
-        colorVal = NeonTrackColors.Pink;
-        dashed = false;
-        break;
-      case -211: // pi-
-        colorVal = NeonTrackColors.Teal;
-        dashed = false;
-        break;
-      case 2212: // proton
-        colorVal = NeonTrackColors.Violet;
-        dashed = false;
-        break;
-      case 2112: // neutron
-        colorVal = NeonTrackColors.Green;
-        dashed = true;
-        break;
-      default:
-        // fallback by charge
-        if (charge > 0) colorVal = NeonTrackColors.Red;
-        else if (charge < 0) colorVal = NeonTrackColors.DeepBlue;
-        else colorVal = NeonTrackColors.Gray;
-        break;
+      case  22: {                             // γ
+        const mat = this.baseDashedMaterial.clone();
+        mat.color = new Color(NeonTrackColors.Yellow);
+        return mat;
+      }
+      case -22: {                            // optical photon
+        const mat = this.baseSolidMaterial.clone();
+        mat.color = new Color(NeonTrackColors.Salad);
+        mat.linewidth = 2;
+        return mat;
+      }
+      case  11: {                            // e⁻
+        const mat = this.baseSolidMaterial.clone();
+        mat.color = new Color(NeonTrackColors.Blue);
+        return mat;
+      }
+      case -11: {                            // e⁺
+        const mat = this.baseSolidMaterial.clone();
+        mat.color = new Color(NeonTrackColors.Orange);
+        return mat;
+      }
+      case  211: {                           // π⁺
+        const mat = this.baseSolidMaterial.clone();
+        mat.color = new Color(NeonTrackColors.Pink);
+        return mat;
+      }
+      case -211: {                           // π⁻
+        const mat = this.baseSolidMaterial.clone();
+        mat.color = new Color(NeonTrackColors.Teal);
+        return mat;
+      }
+      case  2212: {                          // proton
+        const mat = this.baseSolidMaterial.clone();
+        mat.color = new Color(NeonTrackColors.Violet);
+        return mat;
+      }
+      case  2112: {                          // neutron
+        const mat = this.baseDashedMaterial.clone();
+        mat.color = new Color(NeonTrackColors.Green);
+        return mat;
+      }
     }
 
-    // clone base material
-    const mat = dashed ? this.baseDashedMaterial.clone() : this.baseSolidMaterial.clone();
-    mat.color = new Color(colorVal);
+    // ---------- Fallback by charge ----------
+    if (charge > 0) {
+      const mat = this.baseSolidMaterial.clone();
+      mat.color = new Color(NeonTrackColors.Red);
+      return mat;
+    }
 
-    return {lineMaterial: mat, dashed};
+    if (charge < 0) {
+      const mat = this.baseSolidMaterial.clone();
+      mat.color = new Color(NeonTrackColors.DeepBlue);
+      return mat;
+    }
+
+    // Neutral fallback
+    const mat = this.baseSolidMaterial.clone();
+    mat.color = new Color(NeonTrackColors.Gray);
+    return mat;
   }
 
   /**
