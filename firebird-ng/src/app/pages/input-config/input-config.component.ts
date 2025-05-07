@@ -95,7 +95,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     "asset://data/trk_dis-cc_10x100_q2-1000_p-150mev.v0.4.firebird.zip",
     "asset://data/trk_dis-cc_5x41_q2-1_p-150mev.v0.4.firebird.zip",
     "asset://data/trk_dis-cc_5x41_q2-100_p-150mev.v0.4.firebird.zip",
-    "asset://data/reco_dis_18x275_fdex-v0.4.edm4eic.v0.4.firebird.zip",
+    "asset://data/reco_dis_18x275.edm4eic.v0.4.firebird.zip",
     "asset://data/trk_dirc_optical.v0.4.firebird.zip",
   ];
 
@@ -128,7 +128,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     },
     'Tracking reconstruction ePIC Beam=18x275': {
       geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
-      dexjson: "asset://data/reco_dis_18x275_fdex-v0.4.edm4eic.v0.4.firebird.zip",
+      dexjson: "asset://data/reco_dis_18x275.edm4eic.v0.4.firebird.zip",
       edm4eic: ""
     },
     'Simulation campaign EDM4EIC': {
