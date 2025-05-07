@@ -167,27 +167,37 @@ export class TrajectoryPainter extends EventGroupPainter {
       trajData.lineObj.name = this.getNodeName(trajData, component.trajectories.length);
       trajData.lineObj.userData["track_params"] = trajData.params;
 
-      const this_obj = this;
-      const line_obj = trajData.lineObj;
+      // Store the original material properties for highlighting
+      const origColor = lineMaterial.color.getHex();
+      const origWidth = lineMaterial.linewidth;
 
-      trajData.lineObj.userData["highlightFunction"] = ()=>{
-        // line_obj.material.color.set(this_obj.trackColorHighlight);
-        console.log("highlightFunction");
-        console.log(this_obj);
-        console.log(line_obj);
+      // Define proper highlight and unhighlight functions
+      trajData.lineObj.userData["highlightFunction"] = () => {
+        // Store original values if not already stored
+        if (!trajData.lineObj.userData["origColor"]) {
+          trajData.lineObj.userData["origColor"] = origColor;
+          trajData.lineObj.userData["origWidth"] = origWidth;
+        }
+
+        // Apply highlight
+        const mat = trajData.lineObj.material as LineMaterial;
+        mat.color.setHex(this.trackColorHighlight);
+        mat.linewidth = origWidth * this.trackWidthFactor;
+        mat.needsUpdate = true;
       };
 
-      trajData.lineObj.userData["unhighlightFunction"] = ()=>{
-        // line_obj.material.color.set(this_obj.trackColorHighlight);
-        console.log("unhighlightFunction");
-        console.log(this_obj);
-        console.log(line_obj);
+      trajData.lineObj.userData["unhighlightFunction"] = () => {
+        // Restore original properties
+        if (trajData.lineObj.userData["origColor"] !== undefined) {
+          const mat = trajData.lineObj.material as LineMaterial;
+          mat.color.setHex(trajData.lineObj.userData["origColor"]);
+          mat.linewidth = trajData.lineObj.userData["origWidth"];
+          mat.needsUpdate = true;
+        }
       };
-
 
       // Keep the data
       this.trajectories.push(trajData);
-
     }
   }
 
