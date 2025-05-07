@@ -166,9 +166,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     // This leads to a not proper resize  processing. We add 100ms delay before calling a function
     const this_obj = this;
     const resizeInvoker = function () {
-      setTimeout(() => {
-        this_obj.onRendererElementResize();
-      }, 100);  // 100 milliseconds = 0.1 seconds
+      setTimeout(() => { this_obj.onRendererElementResize(); }, 100);  // [milliseconds]
     };
     resizeInvoker();
 
@@ -319,7 +317,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       this.eventDisplay.loadDexData(dexUrl).catch(error => {
         const msg = `Error loading events: ${error}`;
         console.error(`[main-display]: ${msg}`);
-        this.showError(msg);
+        this.showError("Error loading JSON event. Open 'Configure' to change. Press F12->Console for logs");
       }).then(() => {
         console.log("[main-display]: Event data loaded.");
         this.updateSceneTreeComponent();
