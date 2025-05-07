@@ -250,11 +250,22 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     total_num_entries = tree.num_entries
 
     # Do we have valid entries?
+    existing_index_list = []
     for entry_index in entries_index_list:
         if entry_index > total_num_entries - 1:
             err_msg = f"For entries='{entries}' entry index={entry_index} is outside of tree num_entries={total_num_entries}"
-            logger.error(err_msg)
-            return {"error": err_msg}, 400
+            logger.warning(err_msg)
+            #return {"error": err_msg}, 400
+        else:
+            existing_index_list.append(entry_index)
+
+    # Do we have entries AT ALL?
+    if not existing_index_list:
+        err_msg = f"For entries='{entries}' there are no entries to process!"
+        logger.error(err_msg)
+        return {"error": err_msg}, 400
+
+    entries_index_list = existing_index_list
 
     try:
         # Extract the event data
