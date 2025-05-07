@@ -53,7 +53,9 @@ jobs:
 
       - name: Set EIC config
         run: |
-          cp firebird-ng/src/assets/config-eic-ghpages.jsonc firebird-ng/src/assets/config.jsonc
+          pwd
+          ls
+          cp ./firebird-ng/src/assets/config-eic-ghpages.jsonc firebird-ng/src/assets/config.jsonc
 
       - name: Build
         run: npm run build:ghpages
