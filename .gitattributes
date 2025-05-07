@@ -1,5 +1,0 @@
-# We use -text (i.e treat as binary) on json files as .firebird.json could be huge
-# Git's text-based diffing becomes very resource-intensive and possibly unusable
-*.firebird.json filter=lfs diff=lfs merge=lfs -text
-*.firebird.json.zip filter=lfs diff=lfs merge=lfs -text
-*.firebird.zip filter=lfs diff=lfs merge=lfs -text
