@@ -2,5 +2,7 @@
   // Flag indicates if python Flask server from Pyrobird package is in used. Set automatically by Pyrobird
   "servedByPyrobird": true,
   "apiAvailable": true,
-  "apiBaseUrl": "http://137.184.78.249"
+  "apiBaseUrl": "http://137.184.78.249",
+  "serverHost": "http://137.184.78.249",
+  "serverPort": 80
 }
