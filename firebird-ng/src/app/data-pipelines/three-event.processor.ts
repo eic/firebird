@@ -1,7 +1,7 @@
 import {Color, Line, Object3D, Vector3} from "three";
-import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
-import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
-import {Line2} from "three/examples/jsm/lines/Line2";
+import {LineMaterial} from "three/examples/jsm/lines/LineMaterial.js";
+import {LineGeometry} from "three/examples/jsm/lines/LineGeometry.js";
+import {Line2} from "three/examples/jsm/lines/Line2.js";
 
 
 export interface ProcessTrackInfo {

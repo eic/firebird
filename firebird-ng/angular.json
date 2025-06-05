@@ -15,20 +15,25 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-builders/custom-webpack:browser",
+          "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/firebird",
-            "outputHashing": "all",
-            "main": "src/main.ts",
-            "index": "src/index.html",
             "polyfills": [
               "zone.js"
             ],
+            "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
-              "src/favicon.ico",
-              "src/assets"
+              {
+                "glob": "favicon.ico",
+                "input": "src",
+                "output": "/"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "/assets"
+              }
             ],
             "styles": [
               "@angular/material/prebuilt-themes/azure-blue.css",
@@ -40,26 +45,54 @@
               "node_modules/prismjs/components/prism-markup.min.js",
               "node_modules/prismjs/components/prism-css.min.js",
               "node_modules/prismjs/components/prism-typescript.min.js"
-
             ],
-            "customWebpackConfig": {
-              "path": "./webpack.config.js",
-
-            },
-            "webWorkerTsConfig": "tsconfig.worker.json"
+            "allowedCommonJsDependencies": [
+              "reflect-metadata",
+              "jszip",
+              "html2canvas",
+              "jsdom",
+              "canvas",
+              "tmp",
+              "tough-cookie",
+              "html-encoding-sniffer",
+              "whatwg-url",
+              "whatwg-encoding",
+              "whatwg-mimetype",
+              "mathjax",
+              "events",
+              "webidl-conversions",
+              "cssstyle",
+              "w3c-xmlserializer",
+              "parse5",
+              "url",
+              "data-urls",
+              "lodash",
+              "whatwg-url/webidl2js-wrapper",
+              "symbol-tree",
+              "ws",
+              "util",
+              "rrweb-cssom",
+              "saxes",
+              "http-proxy-agent",
+              "https-proxy-agent",
+              "is-potential-custom-element-name",
+              "nwsapi",
+              "decimal.js",
+              "xml-name-validator"
+            ]
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kb",
-                  "maximumError": "5mb"
+                  "maximumWarning": "2MB",
+                  "maximumError": "5MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "4kb"
+                  "maximumWarning": "10kB",
+                  "maximumError": "40kB"
                 }
               ],
               "outputHashing": "all"
@@ -79,7 +112,7 @@
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
+          "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
               "buildTarget": "firebird:build:production"
@@ -91,30 +124,33 @@
           "defaultConfiguration": "development"
         },
         "extract-i18n": {
-          "builder": "@angular-devkit/build-angular:extract-i18n",
-          "options": {
-            "buildTarget": "firebird:build"
-          }
+          "builder": "@angular/build:extract-i18n"
         },
         "test": {
-          "builder": "@angular-devkit/build-angular:karma",
+          "builder": "@angular/build:karma",
           "options": {
+            "tsConfig": "tsconfig.spec.json",
+            "inlineStyleLanguage": "scss",
             "polyfills": [
               "zone.js",
               "zone.js/testing"
             ],
-            "tsConfig": "tsconfig.spec.json",
-            "inlineStyleLanguage": "scss",
             "assets": [
-              "src/favicon.ico",
-              "src/assets"
+              {
+                "glob": "favicon.ico",
+                "input": "src",
+                "output": "/"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "/assets"
+              }
             ],
             "styles": [
               "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
-            ],
-            "scripts": [],
-            "webWorkerTsConfig": "tsconfig.worker.json"
+            ]
           }
         }
       }

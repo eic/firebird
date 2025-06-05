@@ -27,9 +27,6 @@ import { Mesh, Object3D} from 'three';
 
 import { Line, LineSegments } from 'three';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-
-import { GeometryService } from '../../services/geometry.service';
 import { ThreeService } from '../../services/three.service';
 
 
@@ -46,7 +43,7 @@ interface TreeNodeFlat {
 
 
 @Component({
-  selector: 'app-geometry-tree',
+  selector: 'app-scene-tree',
   standalone: true,
   imports: [
     MatTree,
@@ -71,11 +68,6 @@ export class SceneTreeComponent implements OnInit {
   /** Enable/disable event-track highlighting. */
   public isTrackHighlightingEnabled = false;
 
-  /* ---------------- Track highlight parameters ---------------- */
-
-  private readonly trackColorHighlight = 0xff4081; // vivid pink for highlight
-  private readonly baseTrackWidth = 0.003;        // world-unit width in TrajectoryPainter
-  private readonly trackWidthFactor = 2;          // how many times thicker when highlighted
 
   /* ---------------- Highlight materials for regular geometry ---------------- */
 
@@ -124,26 +116,17 @@ export class SceneTreeComponent implements OnInit {
 
   /* ---------------- UI callbacks ---------------- */
 
-  onConfigClick(type: string) {
-    this.configureItem.emit(type);
+
+  public get isAnyHighlightingEnabled(): boolean {
+    return this.isHighlightingEnabled || this.isTrackHighlightingEnabled;
   }
+
 
   public toggleHighlighting(): void {
-    this.isHighlightingEnabled = !this.isHighlightingEnabled;
-    console.log(
-      `Geometry highlighting is now ${
-        this.isHighlightingEnabled ? 'enabled' : 'disabled'
-      }`,
-    );
-  }
+    const newState = !this.isAnyHighlightingEnabled;
 
-  public toggleTrackHighlighting(): void {
-    this.isTrackHighlightingEnabled = !this.isTrackHighlightingEnabled;
-    console.log(
-      `Track highlighting is now ${
-        this.isTrackHighlightingEnabled ? 'enabled' : 'disabled'
-      }`,
-    );
+    this.isHighlightingEnabled = newState;
+    this.isTrackHighlightingEnabled = newState;
   }
 
   /* ---------------- Tree population ---------------- */
@@ -240,7 +223,6 @@ export class SceneTreeComponent implements OnInit {
   /* ---------------- Geometry highlight (meshes) ---------------- */
 
   public highlightNode(node: TreeNodeFlat): void {
-
     node.object3D.traverse(child => {
       if (child instanceof Mesh) {
         if (!child.userData['origMaterial']) {
@@ -260,24 +242,8 @@ export class SceneTreeComponent implements OnInit {
     });
   }
 
-  /* ---------------- Track highlight (Line2) ---------------- */
 
-  /** Main helper – apply callback to every line-like object. */
-  private applyToLine(
-    obj: Object3D,
-    action: (line: Line | LineSegments | Mesh | Line2) => void,
-  ): number {
-    let count = 0;
-    obj.traverse(child => {
-      if (child instanceof Line2) {
-        action(child as any);
-        ++count;
-      }
-    });
-    return count;
-  }
-
-  /** Returns true if node belongs to the “event track” hierarchy. */
+  /** Returns true if node belongs to the "event track" hierarchy. */
   public isTrackNode(node: TreeNodeFlat): boolean {
     return (
       this.isUnderEventParent(node) &&
@@ -287,7 +253,7 @@ export class SceneTreeComponent implements OnInit {
     );
   }
 
-  /** Detect “Event” parent upwards in scene graph. */
+  /** Detect "Event" parent upwards in scene graph. */
   private isUnderEventParent(node: TreeNodeFlat): boolean {
     if (
       node.name.toLowerCase() === 'event' ||
@@ -326,94 +292,22 @@ export class SceneTreeComponent implements OnInit {
     return found;
   }
 
-  /* ---------- Track highlight helpers ---------- */
-
-  /** Change colour and width of a LineMaterial. */
-  private setLineAppearance(
-    line: Line2,
-    color: number,
-    width: number,
-  ) {
-    const mat = line.material as LineMaterial;
-    mat.color.setHex(color);
-    mat.linewidth = width;
-    mat.needsUpdate = true; // required for material changes
-  }
 
   public highlightTrack(node: TreeNodeFlat): void {
-
+    // Using the highlight function stored in userData
     node.object3D.traverse(obj3d => {
       if (obj3d.userData['highlightFunction']) {
         obj3d.userData['highlightFunction']();
       }
     });
-
-
-    // console.log(node);
-    // this.applyToLine(node.object3D, line => {
-    //   if (!(line instanceof Line2)) return;
-    //
-    //   const origMaterial = line.material as LineMaterial;
-    //
-    //   if (!line.userData['origMaterial']) {
-    //
-    //     // Save original material
-    //     line.userData['origMaterial'] = origMaterial;
-    //     const highMaterial = origMaterial.clone();
-    //
-    //     // Set highlight material properties
-    //     highMaterial.color.setHex(this.trackColorHighlight);
-    //     highMaterial.linewidth = origMaterial.linewidth * this.trackWidthFactor;
-    //
-    //     // Apply highlight material
-    //     line.material = highMaterial;
-    //     highMaterial.needsUpdate = true;
-    //   }
-    //
-    //
-    //
-    //   /* Save original parameters once */
-    //   // if (!line.userData['origSaved']) {
-    //   //   const mat = line.material as LineMaterial;
-    //   //   mat.clone();
-    //   //
-    //   //   line.userData['origColor'] = mat.color.getHex();
-    //   //   line.userData['origWidth'] = mat.linewidth;
-    //   //   line.userData['origSaved'] = true;
-    //   // }
-    //   //
-    //   // const origWidth =
-    //   //   (line.userData['origWidth'] as number) ?? this.baseTrackWidth;
-    //   //
-    //   // this.setLineAppearance(
-    //   //   line,
-    //   //   this.trackColorHighlight,
-    //   //   ,
-    //   // );
-    // });
   }
 
   public unhighlightTrack(node: TreeNodeFlat): void {
-
-    // if (node.object3D.userData['unhighlightFunction']) {
-    //     node.object3D.userData['unhighlightFunction']();
-    //   }
-
+    // Using the unhighlight function stored in userData
     node.object3D.traverse(obj3d => {
       if (obj3d.userData['unhighlightFunction']) {
         obj3d.userData['unhighlightFunction']();
       }
     });
-
-    // this.applyToLine(node.object3D, line => {
-    //   if (!line.userData['origMaterial']) return;
-    //
-    //   // restore original material
-    //   line.material = line.userData['origMaterial'] as LineMaterial;
-    //   line.material.needsUpdate = true;
-    //
-    //   // delete so highlight works
-    //   delete line.userData['origMaterial'];
-    // });
   }
 }

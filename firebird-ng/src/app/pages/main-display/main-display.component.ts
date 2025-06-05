@@ -10,7 +10,7 @@ import {ALL_GROUPS} from '../../services/geometry.service';
 import {GameControllerService} from '../../services/game-controller.service';
 import {UserConfigService} from '../../services/user-config.service';
 
-import {SceneTreeComponent} from '../geometry-tree/scene-tree.component';
+import {SceneTreeComponent} from '../../components/scene-tree/scene-tree.component';
 import {ShellComponent} from '../../components/shell/shell.component';
 import {ToolPanelComponent} from '../../components/tool-panel/tool-panel.component';
 import {EventSelectorComponent} from '../../components/event-selector/event-selector.component';
@@ -166,7 +166,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     // This leads to a not proper resize  processing. We add 100ms delay before calling a function
     const this_obj = this;
     const resizeInvoker = function () {
-      setTimeout(() => { this_obj.onRendererElementResize(); }, 100);  // [milliseconds]
+      setTimeout(() => {
+        this_obj.onRendererElementResize();
+      }, 100);  // 100 milliseconds = 0.1 seconds
     };
     resizeInvoker();
 
@@ -317,7 +319,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       this.eventDisplay.loadDexData(dexUrl).catch(error => {
         const msg = `Error loading events: ${error}`;
         console.error(`[main-display]: ${msg}`);
-        this.showError("Error loading JSON event. Open 'Configure' to change. Press F12->Console for logs");
+        this.showError(msg);
       }).then(() => {
         console.log("[main-display]: Event data loaded.");
         this.updateSceneTreeComponent();

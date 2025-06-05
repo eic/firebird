@@ -220,6 +220,8 @@ export interface CreateOutlineOptions {
   thresholdAngle?: number;
 }
 
+let globalOutlineCount = 0;
+
 /**
  * Applies an outline mesh from lines to a mesh and adds the outline to the mesh's parent.
  *
@@ -259,7 +261,11 @@ export function createOutline(mesh: any, options: CreateOutlineOptions = {}): vo
   // Add the outline to the parent of the mesh
   mesh.updateMatrixWorld(true);
   mesh?.parent?.add(edgesLine);
-};
+  globalOutlineCount++;
+  if(globalOutlineCount>0 && !(globalOutlineCount%10000)) {
+    console.warn(`createOutline: Created: ${globalOutlineCount} outlines. (it is many)`);
+  }
+}
 
 /**
  * Extended properties for THREE.Material to include various texture maps.

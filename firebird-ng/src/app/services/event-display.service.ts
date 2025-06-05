@@ -186,6 +186,7 @@ export class EventDisplayService {
     this.tween = new Tween({currentTime: this.eventTime() ?? this.minTime}, this.tweenGroup)
       .to({currentTime: targetTime}, duration)
       .onUpdate((obj) => {
+        console.log(obj.currentTime);
         this.eventTime.set(obj.currentTime);
       })
       // .easing(TWEEN.Easing.Quadratic.In) // This can be changed to other easing functions

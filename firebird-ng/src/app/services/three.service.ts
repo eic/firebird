@@ -1,6 +1,6 @@
-import {EventEmitter, Injectable, NgZone, OnDestroy} from '@angular/core';
+import { Injectable, NgZone, OnDestroy} from '@angular/core';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { HemisphereLight, DirectionalLight, AmbientLight, PointLight, SpotLight } from 'three';
 import {PerfService} from "./perf.service";
 import {BehaviorSubject, Subject} from "rxjs";
@@ -72,10 +72,14 @@ export class ThreeService implements OnDestroy {
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private isRaycastEnabled = false;
-  private isSimulationRunning = false;
+
 
   // Track hover indicator
-  private hoverPoint: THREE.Mesh | null = null;
+  // private hoverPoint: THREE.Mesh | null = null;
+
+  // Track highlighted object for raycast feedback
+  private highlightedObject: THREE.Object3D | null = null;
+  private originalMaterials = new Map<THREE.Object3D, THREE.Material | THREE.Material[]>();
 
   // Events
   public trackHovered = new Subject<{track: THREE.Object3D, point: THREE.Vector3}>();
@@ -93,7 +97,12 @@ export class ThreeService implements OnDestroy {
   // temp storage for first measure point
   private firstMeasurePoint: THREE.Vector3 | null = null;
 
-  private onPointerDownHandler: (event: PointerEvent) => void = () => {};
+  //  Add properties for event handlers and measurement state
+  private pointerMoveHandler?: (event: PointerEvent) => void;
+  private pointerDownHandler?: (event: PointerEvent) => void;
+  private doubleClickHandler?: (event: MouseEvent) => void;
+  private hoverTimeout: number | null = null;
+  private measurementPoints: THREE.Mesh[] = [];
 
 
   constructor(
@@ -222,7 +231,7 @@ export class ThreeService implements OnDestroy {
 
 
     // Initialize the hover point
-    this.initHoverPoint();
+    // this.initHoverPoint();
 
     // Set up new raycasting handlers
     this.setupRaycasting();
@@ -441,6 +450,11 @@ export class ThreeService implements OnDestroy {
    */
   enableClipping(enable: boolean): void {
     this.renderer.localClippingEnabled = enable;
+
+    // Update all materials to use clipping planes when enabled
+    if (enable) {
+      this.updateMaterialClipping();
+    }
   }
 
   /**
@@ -464,27 +478,45 @@ export class ThreeService implements OnDestroy {
     quatB.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle + openingAngle);
     planeB.normal.set(0, 1, 0).applyQuaternion(quatB);
 
-    this.sceneGeometry.traverse((child) => {
-      const mesh = child as THREE.Mesh;
-      if (mesh.material) {
-        const matArray = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        matArray.forEach((mat: THREE.Material) => {
-          mat.clippingPlanes = this.clipPlanes;
-          mat.clipIntersection = this.clipIntersection;
+    // Enable clipping and update materials
+    this.renderer.localClippingEnabled = true;
+    this.updateMaterialClipping();
+  }
 
-          // Add these properties to prevent z-fighting and flickering
-          if (mat instanceof THREE.MeshBasicMaterial ||
-            mat instanceof THREE.MeshLambertMaterial ||
-            mat instanceof THREE.MeshPhongMaterial ||
-            mat instanceof THREE.MeshStandardMaterial) {
-            mat.polygonOffset = true;
-            mat.polygonOffsetFactor = 1;
-            mat.polygonOffsetUnits = 1;
+  /**
+   * Update all materials to use current clipping planes
+   */
+  private updateMaterialClipping(): void {
+    const updateObjectClipping = (object: THREE.Object3D) => {
+      if (object instanceof THREE.Mesh && object.material) {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+
+        materials.forEach((material: THREE.Material) => {
+          if (this.renderer.localClippingEnabled) {
+            material.clippingPlanes = this.clipPlanes;
+            material.clipIntersection = this.clipIntersection;
+          } else {
+            material.clippingPlanes = null;
+            material.clipIntersection = false;
           }
-        });
 
+          // Prevent z-fighting
+          if (material instanceof THREE.MeshBasicMaterial ||
+            material instanceof THREE.MeshLambertMaterial ||
+            material instanceof THREE.MeshPhongMaterial ||
+            material instanceof THREE.MeshStandardMaterial) {
+            material.polygonOffset = true;
+            material.polygonOffsetFactor = 1;
+            material.polygonOffsetUnits = 1;
+          }
+
+          material.needsUpdate = true;
+        });
       }
-    });
+    };
+
+    this.sceneGeometry.traverse(updateObjectClipping);
+    this.sceneEvent.traverse(updateObjectClipping);
   }
 
   /**
@@ -500,8 +532,6 @@ export class ThreeService implements OnDestroy {
       // Get the current target from OrbitControls
       const target = this.controls.target.clone();
 
-      // Compute the direction vector from camera to target
-      const direction = new THREE.Vector3().subVectors(target, this.orthographicCamera.position).normalize();
 
       // Update orthographic camera to look in the same direction
       this.orthographicCamera.lookAt(target);
@@ -551,20 +581,11 @@ export class ThreeService implements OnDestroy {
    * Cleans up resources when the service is destroyed.
    */
   ngOnDestroy(): void {
+    this.clearHighlight();
     this.stopRendering();
-
-    // Clean up event listeners
-    if (this.renderer?.domElement) {
-      this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDownHandler);
-    }
-
-    // Clean up BVH data
-    if (this.sceneGeometry) {
-      this.cleanupBVH(this.sceneGeometry);
-    }
-    if (this.sceneEvent) {
-      this.cleanupBVH(this.sceneEvent);
-    }
+    this.cleanupEventListeners();
+    if(this.sceneGeometry) this.cleanupBVH(this.sceneGeometry);
+    if(this.sceneEvent) this.cleanupBVH(this.sceneEvent);
   }
 
 
@@ -581,241 +602,402 @@ export class ThreeService implements OnDestroy {
     console.log('Programs:', info.programs?.length);
     console.log(info.programs);
   }
+  // /**
+  //  * Initialize the hover point indicator
+  //  */
+  // private initHoverPoint(): void {
+  //   const sphereGeom = new THREE.SphereGeometry(6, 16, 16);
+  //   const sphereMat = new THREE.MeshBasicMaterial({
+  //     color: 0xff0000,
+  //     transparent: true,
+  //     opacity: 0.8,
+  //     depthTest: false,
+  //     depthWrite: false
+  //   });
+  //
+  //   this.hoverPoint = new THREE.Mesh(sphereGeom, sphereMat);
+  //   this.hoverPoint.visible = false;
+  //   this.hoverPoint.name = "HoverPoint";
+  //   this.hoverPoint.renderOrder = 999;
+  //   this.sceneHelpers.add(this.hoverPoint);
+  // }
 
   /**
-   * Initialize the hover point indicator that shows where the mouse is hovering
+   * Highlight an object by making its material brighter
    */
-  private initHoverPoint(): void {
-    const sphereGeom = new THREE.SphereGeometry(6, 16, 16);
-    const sphereMat = new THREE.MeshBasicMaterial({
-      color: 0xff0000,
-      transparent: true,
-      opacity: 0.8
-    });
-    this.hoverPoint = new THREE.Mesh(sphereGeom, sphereMat);
-    this.hoverPoint.visible = false;
-    this.hoverPoint.name = "HoverPoint";
-    this.scene.add(this.hoverPoint);
+  private highlightObject(object: THREE.Object3D): void {
+    if (this.highlightedObject === object) return;
+
+    // Clear previous highlight
+    this.clearHighlight();
+
+    if (object instanceof THREE.Mesh && object.material) {
+      this.highlightedObject = object;
+
+      // Store original material(s)
+      this.originalMaterials.set(object, object.material);
+
+      // Create highlighted version
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      const highlightedMaterials = materials.map(mat => {
+        const highlightMat = mat.clone();
+
+        // Make material brighter by increasing emissive
+        if ('emissive' in highlightMat) {
+          highlightMat.emissive.setHex(0x444444); // Add subtle glow
+        }
+
+        // Increase overall brightness for materials that support it
+        if ('color' in highlightMat && highlightMat.color) {
+          highlightMat.color.multiplyScalar(1.5); // Make 50% brighter
+        }
+
+        highlightMat.needsUpdate = true;
+        return highlightMat;
+      });
+
+      object.material = Array.isArray(object.material) ? highlightedMaterials : highlightedMaterials[0];
+    }
   }
 
   /**
-   * Sets up the raycasting functionality for track hover and selection
+   * Clear the current highlight
+   */
+  private clearHighlight(): void {
+    if (this.highlightedObject && this.originalMaterials.has(this.highlightedObject)) {
+      const original = this.originalMaterials.get(this.highlightedObject);
+      if (this.highlightedObject instanceof THREE.Mesh && original) {
+        this.highlightedObject.material = original;
+      }
+      this.originalMaterials.delete(this.highlightedObject);
+      this.highlightedObject = null;
+    }
+  }
+
+  /**
+   * Helper to check if a point is clipped by active clipping planes
+   */
+  private isPointClipped(point: THREE.Vector3): boolean {
+    if (!this.renderer.localClippingEnabled || this.clipPlanes.length === 0) {
+      return false;
+    }
+
+    for (const plane of this.clipPlanes) {
+      const distance = plane.distanceToPoint(point);
+      if (distance < 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Filter intersections based on clipping planes
+   */
+  private filterClippedIntersections(intersections: THREE.Intersection[]): THREE.Intersection[] {
+    if (!this.renderer.localClippingEnabled || this.clipPlanes.length === 0) {
+      return intersections;
+    }
+
+    return intersections.filter(intersection => !this.isPointClipped(intersection.point));
+  }
+
+
+  /**
+   * Sets up the raycasting functionality with proper clipping support
    */
   private setupRaycasting(): void {
-
-    // helper – build BVH for every mesh if it doesn't exist yet
     const buildBVHIfNeeded = (obj: THREE.Object3D) => {
-      if (obj instanceof THREE.Mesh) {
-        // @ts-ignore – boundsTree is injected by three‑mesh‑bvh
-        if (!obj.geometry.boundsTree) {
-          // @ts-ignore
-          obj.geometry.computeBoundsTree?.();
-        }
+      if (obj instanceof THREE.Mesh && obj.geometry && !obj.geometry.boundsTree) {
+        // @ts-ignore
+        obj.geometry.computeBoundsTree?.();
       }
     };
 
-
+    //  Throttled hover handling to improve performance
     const onPointerMove = (event: PointerEvent) => {
-
-      if (!this.isRaycastEnabled) {              // raycast toggled off
-        this.hoverPoint && (this.hoverPoint.visible = false);
+      if (!this.isRaycastEnabled || this.measureMode) {
+        this.clearHighlight();
         return;
       }
 
-      event.preventDefault();
+      //  Throttle hover events
+      if (this.hoverTimeout) return;
 
-      /* --- update pointer coords in Normalised Device Space (‑1…1) --- */
-      const rect = this.renderer.domElement.getBoundingClientRect();
-      this.pointer.x = ((event.clientX - rect.left) / rect.width)  * 2 - 1;
-      this.pointer.y = -((event.clientY - rect.top)  / rect.height) * 2 + 1;
+      this.hoverTimeout = window.setTimeout(() => {
+        this.hoverTimeout = null;
 
-      this.raycaster.setFromCamera(this.pointer, this.camera);
-      this.raycaster.firstHitOnly = true;
+        // Use proper canvas dimensions for coordinate calculation
+        const canvas = this.renderer.domElement;
+        const rect = canvas.getBoundingClientRect();
 
-      /* make sure any lazy‑loaded meshes have BVH */
-      this.sceneEvent.traverse(buildBVHIfNeeded);
-      this.sceneGeometry.traverse(buildBVHIfNeeded);
-
-      /* ----- 1) try to hit something in sceneEvent first ----- */
-      let intersection: THREE.Intersection | null = null;
-      const hitsEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true);
-      if (hitsEvt.length) {
-        intersection = hitsEvt[0];
-      } else {
-        /* ----- 2) fall back to static detector geometry ----- */
-        const hitsGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
-        if (hitsGeo.length) intersection = hitsGeo[0];
-      }
-
-      if (intersection) {
-        const hitObject = intersection.object;
-
-        if (hitObject.name && hitObject.name !== 'HoverPoint') {
-          /* show red sphere */
-          if (this.hoverPoint) {
-            this.hoverPoint.visible = true;
-            this.hoverPoint.position.copy(intersection.point);
-          }
-
-          /* emit hover events */
-          this.trackHovered.next({ track: hitObject, point: intersection.point.clone() });
-          console.log('[raycast] HOVER', intersection.object.name);
-          this.ngZone.run(() => this.pointHovered.next(intersection.point.clone())); // ↖ overlay
-        }
-      } else {
-        /* nothing hit -> hide sphere */
-        this.hoverPoint && (this.hoverPoint.visible = false);
-      }
-    };
-
-
-
-    const onPointerDown = (event: PointerEvent) => {
-
-      if (!this.isRaycastEnabled) return;
-      event.preventDefault();
-
-      /* =======================  MEASURE MODE  ======================= */
-      if (this.measureMode) {
-        /* reuse same pointer‑to‑ray code */
-        const rect = this.renderer.domElement.getBoundingClientRect();
-        this.pointer.x = ((event.clientX - rect.left) / rect.width)  * 2 - 1;
-        this.pointer.y = -((event.clientY - rect.top)  / rect.height) * 2 + 1;
+        this.pointer.x = ((event.clientX - rect.left) / canvas.clientWidth) * 2 - 1;
+        this.pointer.y = -((event.clientY - rect.top) / canvas.clientHeight) * 2 + 1;
 
         this.raycaster.setFromCamera(this.pointer, this.camera);
-        this.raycaster.firstHitOnly = true;
+        this.raycaster.firstHitOnly = false;
+        this.raycaster.near = this.camera.near;
+        this.raycaster.far = this.camera.far;
 
-        /* search both scenes, but still give priority to sceneEvent */
-        const hitEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true)[0];
-        const hitGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true)[0];
-        const picked = hitEvt ?? hitGeo;
+        this.sceneEvent.traverse(buildBVHIfNeeded);
+        this.sceneGeometry.traverse(buildBVHIfNeeded);
 
-        if (picked) {
-          const pt = picked.point.clone();
+        let intersection: THREE.Intersection | null = null;
 
-          if (!this.firstMeasurePoint) {
-            /* first click -> save point A */
-            this.firstMeasurePoint = pt;
-            console.log('[raycast] DIST: first point from', picked.object.name);
-          } else {
-            /* second click -> have A + B, compute distance */
-            const p1 = this.firstMeasurePoint.clone();
-            const p2 = pt;
-            const dist = p1.distanceTo(p2);
+        // Try sceneEvent first
+        const hitsEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true);
+        const filteredEvtHits = this.filterClippedIntersections(hitsEvt);
 
-            this.ngZone.run(() => this.distanceReady.next({ p1, p2, dist }));
-            this.firstMeasurePoint = null;        // reset for next measurement
-            console.log('[raycast] DIST: second point from', picked.object.name, '→', dist.toFixed(2));
+        if (filteredEvtHits.length > 0) {
+          intersection = filteredEvtHits[0];
+        } else {
+          // Fall back to geometry
+          const hitsGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
+          const filteredGeoHits = this.filterClippedIntersections(hitsGeo);
+
+          if (filteredGeoHits.length > 0) {
+            intersection = filteredGeoHits[0];
           }
         }
-        return;
-      }
-      /* ===================  END MEASURE MODE  ======================= */
 
+        if (intersection && intersection.object.name &&
+          !intersection.object.name.includes('Helper') &&
+          !intersection.object.name.startsWith('MeasurePoint_') &&
+          intersection.object.visible) {
 
-      /* ---------- normal picking (single click) ---------- */
+          this.highlightObject(intersection.object);
+          this.trackHovered.next({ track: intersection.object, point: intersection.point.clone() });
+          console.log('[raycast] HOVER', intersection.object.name, intersection.point);
+
+          this.ngZone.run(() => {
+            this.pointHovered.next(intersection.point.clone());
+          });
+        } else {
+          this.clearHighlight();
+        }
+      }, 16); // ~60fps throttling
+    };
+
+    //  Single click for selection only (no measurement, no preventDefault in selection mode)
+    const onPointerDown = (event: PointerEvent) => {
+      if (!this.isRaycastEnabled || this.measureMode) return;
+
+      // Only handle left mouse button
+      if (event.button !== 0) return;
+
+      //  Don't prevent default for selection to allow OrbitControls
+      // event.preventDefault(); // REMOVED
+
+      const canvas = this.renderer.domElement;
+      const rect = canvas.getBoundingClientRect();
+
+      this.pointer.x = ((event.clientX - rect.left) / canvas.clientWidth) * 2 - 1;
+      this.pointer.y = -((event.clientY - rect.top) / canvas.clientHeight) * 2 + 1;
+
       this.raycaster.setFromCamera(this.pointer, this.camera);
-      this.raycaster.firstHitOnly = true;
+      this.raycaster.firstHitOnly = false;
 
-      /* 1) sceneEvent first */
-      const hitEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true)[0];
-      if (hitEvt && hitEvt.object.name && hitEvt.object.name !== 'HoverPoint') {
-        this.trackClicked.next({ track: hitEvt.object, point: hitEvt.point.clone() });
-        console.log('[raycast] CLICK event', hitEvt.object.name);
-        return;                             // do not fall through to geometry
-      }
+      // Selection mode
+      const hitsEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true);
+      const hitsGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
 
-      /* 2) then geometry */
-      const hitGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true)[0];
-      if (hitGeo && hitGeo.object.name) {
-        this.trackClicked.next({ track: hitGeo.object, point: hitGeo.point.clone() });
-        console.log('[raycast] CLICK geometry', hitGeo.object.name);
+      const filteredEvtHits = this.filterClippedIntersections(hitsEvt);
+      const filteredGeoHits = this.filterClippedIntersections(hitsGeo);
+
+      const selected = filteredEvtHits[0] ?? filteredGeoHits[0];
+
+      if (selected && selected.object.visible && selected.object.name &&
+        selected.object.name !== 'HoverPoint' &&
+        !selected.object.name.startsWith('MeasurePoint_')) {
+        this.trackClicked.next({ track: selected.object, point: selected.point.clone() });
+        console.log('[raycast] SELECTED', selected.object.name, selected.point);
       }
     };
 
+    //  Double-click handler for distance measurement
+    const onDoubleClick = (event: MouseEvent) => {
+      if (!this.isRaycastEnabled || !this.measureMode) return;
 
+      event.preventDefault();
+      event.stopPropagation();
 
-    /* -------- register handlers + keep ref for cleanup (unchanged) -------- */
-    this.renderer.domElement.addEventListener('pointermove', onPointerMove);
-    this.renderer.domElement.addEventListener('pointerdown', onPointerDown);
-    this.onPointerDownHandler = onPointerDown;
+      const canvas = this.renderer.domElement;
+      const rect = canvas.getBoundingClientRect();
 
+      this.pointer.x = ((event.clientX - rect.left) / canvas.clientWidth) * 2 - 1;
+      this.pointer.y = -((event.clientY - rect.top) / canvas.clientHeight) * 2 + 1;
+
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+      this.raycaster.firstHitOnly = false;
+
+      // Measure mode - double click
+      const hitsEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true);
+      const hitsGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
+
+      const filteredEvtHits = this.filterClippedIntersections(hitsEvt);
+      const filteredGeoHits = this.filterClippedIntersections(hitsGeo);
+
+      const picked = filteredEvtHits[0] ?? filteredGeoHits[0];
+
+      if (picked && picked.object.visible &&
+        picked.object.name !== 'HoverPoint' &&
+        !picked.object.name.startsWith('MeasurePoint_')) {
+        const pt = picked.point.clone();
+
+        if (!this.firstMeasurePoint) {
+          this.firstMeasurePoint = pt;
+          this.showMeasurePoint(pt, 'first');
+          console.log('[raycast] DIST: first point from', picked.object.name, pt);
+        } else {
+          const p1 = this.firstMeasurePoint.clone();
+          const p2 = pt;
+          const dist = p1.distanceTo(p2);
+
+          this.showMeasurePoint(pt, 'second');
+
+          this.ngZone.run(() => {
+            this.distanceReady.next({ p1, p2, dist });
+          });
+
+          console.log('[raycast] DIST: second point from', picked.object.name, '→', dist.toFixed(2));
+
+          //  Reset after measurement
+          setTimeout(() => this.resetMeasurement(), 2000); // Clear after 2 seconds
+        }
+      }
+    };
+
+    //  Clean up existing listeners before adding new ones
+    this.cleanupEventListeners();
+
+    // Store references and attach listeners
+    this.pointerMoveHandler = onPointerMove;
+    this.pointerDownHandler = onPointerDown;
+    this.doubleClickHandler = onDoubleClick;
+
+    const canvas = this.renderer.domElement;
+    canvas.addEventListener('pointermove', this.pointerMoveHandler, false);
+    canvas.addEventListener('pointerdown', this.pointerDownHandler, false);
+    canvas.addEventListener('dblclick', this.doubleClickHandler, false);
+  }
+
+//  Visual feedback for measurement points
+  private showMeasurePoint(point: THREE.Vector3, type: 'first' | 'second'): void {
+    const geometry = new THREE.SphereGeometry(8, 16, 16);
+    const material = new THREE.MeshBasicMaterial({
+      color: type === 'first' ? 0x00ff00 : 0x0000ff, // Green for first, blue for second
+      transparent: true,
+      opacity: 0.9,
+      depthTest: false,
+      depthWrite: false
+    });
+
+    const sphere = new THREE.Mesh(geometry, material);
+    sphere.position.copy(point);
+    sphere.name = `MeasurePoint_${type}`;
+    sphere.renderOrder = 1000;
+
+    // Add to helpers scene
+    this.sceneHelpers.add(sphere);
+    this.measurementPoints.push(sphere);
+  }
+
+//  Reset measurement state and clear visual indicators
+  private resetMeasurement(): void {
+    this.firstMeasurePoint = null;
+    this.clearMeasurePoints();
+  }
+
+  private clearMeasurePoints(): void {
+    this.measurementPoints.forEach(point => {
+      this.sceneHelpers.remove(point);
+      point.geometry.dispose();
+      if (point.material instanceof THREE.Material) {
+        point.material.dispose();
+      }
+    });
+    this.measurementPoints = [];
   }
 
   /**
-   * Compute BVH (Bounding Volume Hierarchy) for all meshes to accelerate raycasting
+   * Clean up event listeners
    */
+  private cleanupEventListeners(): void {
+
+    if(!this.renderer?.domElement) {
+      return;
+    }
+    const canvas = this.renderer.domElement;
+
+    if (this.pointerMoveHandler) {
+      canvas.removeEventListener('pointermove', this.pointerMoveHandler);
+      this.pointerMoveHandler = undefined;
+    }
+    if (this.pointerDownHandler) {
+      canvas.removeEventListener('pointerdown', this.pointerDownHandler);
+      this.pointerDownHandler = undefined;
+    }
+    if (this.doubleClickHandler) {
+      canvas.removeEventListener('dblclick', this.doubleClickHandler);
+      this.doubleClickHandler = undefined;
+    }
+
+    //  Clear timeout if active
+    if (this.hoverTimeout) {
+      clearTimeout(this.hoverTimeout);
+      this.hoverTimeout = null;
+    }
+  }
+
   setupBVH(): void {
     const processMesh = (mesh: THREE.Mesh) => {
       if (mesh.geometry && !mesh.geometry.boundsTree) {
-        /* @ts-ignore */
+        // @ts-ignore
         mesh.geometry.computeBoundsTree({
-          // Optional: Set BVH parameters for performance tuning
           maxLeafTris: 10,
-          strategy: 0 // SPLIT_STRATEGY_CENTER
+          strategy: 0
         });
       }
     };
 
-    // Process all meshes in the geometry scene
     this.sceneGeometry.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         processMesh(object);
       }
     });
 
-    // Process all meshes in the event scene
     this.sceneEvent.traverse((object) => {
-      if (object instanceof THREE.Mesh && object !== this.hoverPoint) {
+      if (object instanceof THREE.Mesh ) {
         processMesh(object);
       }
     });
   }
 
-
-  /**
-   * Clean up BVH data when objects are removed
-   */
   cleanupBVH(object: THREE.Object3D): void {
+
     if (object instanceof THREE.Mesh && object.geometry && object.geometry.boundsTree) {
+      // @ts-ignore
       object.geometry.disposeBoundsTree();
     }
-
-    // Recursively cleanup children
-    object.children.forEach(child => this.cleanupBVH(child));
+    if(object.children != null) {
+      object.children.forEach(child => this.cleanupBVH(child));
+    }
   }
 
-  /**
-   * Enable or disable raycasting functionality
-   */
+  //  Enhanced toggle methods
   toggleRaycast(): void {
     this.isRaycastEnabled = !this.isRaycastEnabled;
     console.log(`Raycast is now ${this.isRaycastEnabled ? 'ENABLED' : 'DISABLED'}`);
 
-    // When disabled, hide the hover point
-    if (!this.isRaycastEnabled && this.hoverPoint) {
-      this.hoverPoint.visible = false;
+    if (!this.isRaycastEnabled) {
+      this.clearHighlight();
+      //  Reset measurement when disabling raycast
+      this.resetMeasurement();
     }
   }
 
-  /**
-   * Get current raycasting state
-   */
   isRaycastEnabledState(): boolean {
     return this.isRaycastEnabled;
   }
-
-  /**
-   * Set simulation running state - raycasting will only work when simulation is running
-   */
-  setSimulationState(isRunning: boolean): void {
-    this.isSimulationRunning = isRunning;
-
-    // Hide hover point when simulation is not running
-    if (!isRunning && this.hoverPoint) {
-      this.hoverPoint.visible = false;
-    }
-  }
-
 
 }

@@ -18,7 +18,7 @@ export const routes: Routes = [
   },
   {
     path: 'geometry',
-    loadComponent: () => import('./pages/geometry-tree/scene-tree.component').then(m => m.SceneTreeComponent)
+    loadComponent: () => import('./components/scene-tree/scene-tree.component').then(m => m.SceneTreeComponent)
   },
   {
     path: 'shell',
