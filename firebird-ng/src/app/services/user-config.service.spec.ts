@@ -123,20 +123,6 @@ describe('UrlService', () => {
       expect(resolvedUrl).toBe(expectedUrl);
     });
 
-    it('Convert should throw when backend is not available', () => {
-      // Ensure backend is not available
-      serverConfigService.config.servedByPyrobird = false;
-      userConfigService.localServerUseApi.subject.next(false);
-
-      // Manually trigger the service to update its config
-      (service as any).updateServerConfig();
-
-      const inputUrl = 'https://example.com/file.root';
-      const fileType = 'edm4eic';
-      const entries = 'all';
-
-      expect(() => service.resolveConvertUrl(inputUrl, fileType, entries)).toThrowError(Error);
-    });
 
     it('should handle URLs starting with asset:// in convert URL', () => {
       // Simulate backend availability

@@ -1,6 +1,7 @@
 //import { openFile } from '../../../jsroot/core.mjs';
 //import * as ROOT from '../../../jsroot/build;
 import {
+  analyzeGeoNodes,
   findSingleGeoNode,
 } from '../../lib-root-geometry/root-geo-navigation';
 import {EditActions, GeoNodeEditRule, removeGeoNode} from "../../lib-root-geometry/root-geo-edit";
@@ -144,16 +145,28 @@ export class RootGeometryProcessor {
         {pattern: "*/component*3", action: EditActions.RemoveSiblings},
       ]
     },
+    {
+      namePattern: "*/BarrelTOF*",
+      editRules: [
+        {pattern: "*/component*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisThis},
+        {pattern: "*/component*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisNone},
+        {pattern: "*/component*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+        {pattern: "*/component160*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+        {pattern: "*/component160*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
+        {pattern: "*/component160*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters}
+      ]
+    },
 
   ]
 
   public process(rootGeoManager:any):any {
     // Getting main detector nodes
     let result = pruneTopLevelDetectors(rootGeoManager, this.removeDetectorNames);
-    console.log("[RootGeometryProcessor] Filtered top level detectors: ", result);
+    // console.log("[RootGeometryProcessor] Filtered top level detectors: ", result);
     console.time(`[RootGeometryProcessor] Processing time`);
 
-    // >oO analyzeGeoNodes(rootGeoManager, 1);
+    // >oO
+    analyzeGeoNodes(rootGeoManager, 1);
     // Now we go with the fine-tuning of each detector
     for(let detector of this.subDetectorsRules) {
       let topDetNode = findSingleGeoNode(rootGeoManager, detector.namePattern, 1);

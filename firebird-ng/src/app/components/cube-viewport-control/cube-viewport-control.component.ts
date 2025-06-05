@@ -118,9 +118,6 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
 
   // Start a continuous update loop to keep the gizmo in sync with camera
   private startGizmoUpdateLoop(): void {
-    // Run the update loop outside Angular to avoid triggering unnecessary
-    // change detection cycles, which could degrade performance during
-    // high-frequency updates like animation loops.
     this.ngZone.runOutsideAngular(() => {
       const animate = () => {
         this.updateGizmo();

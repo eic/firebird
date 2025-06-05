@@ -6,9 +6,9 @@ import {
 } from "../model/point-trajectory.group";
 
 import {Color, Object3D} from "three";
-import {LineMaterial} from "three/examples/jsm/lines/LineMaterial";
-import {LineGeometry} from "three/examples/jsm/lines/LineGeometry";
-import {Line2} from "three/examples/jsm/lines/Line2";
+import {LineMaterial} from "three/examples/jsm/lines/LineMaterial.js";
+import {LineGeometry} from "three/examples/jsm/lines/LineGeometry.js";
+import {Line2} from "three/examples/jsm/lines/Line2.js";
 
 /** Example color set. Feel free to refine or expand. */
 export enum NeonTrackColors {
