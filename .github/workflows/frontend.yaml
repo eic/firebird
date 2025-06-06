@@ -22,8 +22,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: ./firebird-ng/package-lock.json
+          # cache: 'npm'
+          # cache-dependency-path: ./firebird-ng/package-lock.json
 
       - name: Install Dependencies
         run: npm install
@@ -45,8 +45,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: ./firebird-ng/package-lock.json
+          # cache: 'npm'
+          # cache-dependency-path: ./firebird-ng/package-lock.json
 
       - name: Install Dependencies
         run: npm install
