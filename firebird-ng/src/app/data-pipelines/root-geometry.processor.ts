@@ -123,6 +123,10 @@ export class RootGeometryProcessor {
         {pattern: "*/LFHCAL_8M*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
         {pattern: "*/LFHCAL_8M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
         {pattern: "*/LFHCAL_8M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+        {pattern: "*/LFHCAL_4M*", action: EditActions.RemoveChildren},
+        {pattern: "*/LFHCAL_4M*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+        {pattern: "*/LFHCAL_4M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
+        {pattern: "*/LFHCAL_4M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
       ]
     },
     {
@@ -142,18 +146,15 @@ export class RootGeometryProcessor {
       namePattern: "*/EndcapTOF*",
       editRules: [
         {pattern: "*/suppbar*", action: EditActions.Remove},
-        {pattern: "*/component*3", action: EditActions.RemoveSiblings},
+        {pattern: "*/component_hyb*", action: EditActions.Remove},
       ]
     },
     {
       namePattern: "*/BarrelTOF*",
       editRules: [
-        {pattern: "*/component*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisThis},
-        {pattern: "*/component*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisNone},
-        {pattern: "*/component*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
-        {pattern: "*/component160*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
-        {pattern: "*/component160*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
-        {pattern: "*/component160*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters}
+        {pattern: "*/component_sensor*", action: EditActions.Remove},
+        {pattern: "*/component_ASIC*", action: EditActions.Remove},
+        {pattern: "*/cooling*", action: EditActions.Remove},
       ]
     },
 
@@ -166,7 +167,7 @@ export class RootGeometryProcessor {
     console.time(`[RootGeometryProcessor] Processing time`);
 
     // >oO
-    analyzeGeoNodes(rootGeoManager, 1);
+    // analyzeGeoNodes(rootGeoManager, 1);
     // Now we go with the fine-tuning of each detector
     for(let detector of this.subDetectorsRules) {
       let topDetNode = findSingleGeoNode(rootGeoManager, detector.namePattern, 1);
