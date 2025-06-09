@@ -13,7 +13,7 @@ import {DecimalPipe} from "@angular/common"; // adjust path as needed
   styleUrls: ['./perf-stats.component.scss']
 })
 export class PerfStatsComponent implements OnInit {
-  perf: PerfLog = { fps: 0, cpu: 0, calls: 0, triangles: 0 };
+  perf: PerfLog = { fps: 0, frameTime: 0, calls: 0, triangles: 0 };
 
   constructor(private perfService: PerfService) {}
 

@@ -4,21 +4,29 @@
     <tr>
       <td class="perf-item">
         <span class="perf-label" title="Frames Per Second">FPS</span>
-        <span class="perf-value">{{ perf.fps | number:'1.0-0' }}</span>
+      </td>
+      <td>
+        <span class="perf-value" title="Frames Per Second">{{ perf.fps | number:'1.0-0' }}</span>
       </td>
       <td class="perf-item">
-        <span class="perf-label" title="Average Frame Time (ms)">CPU</span>
-        <span class="perf-value">{{ perf.cpu | number:'1.0-2' }}</span>
+        <span class="perf-label" title="Average Frame Time (ms)">T(ms)</span>
+      </td>
+      <td>
+        <span class="perf-value" title="Average Frame Time (ms)">{{ perf.frameTime | number:'1.0-0' }}</span>
       </td>
     </tr>
     <tr>
       <td class="perf-item">
         <span class="perf-label" title="Draw Calls">DC</span>
-        <span class="perf-value">{{ perf.calls }}</span>
+      </td>
+      <td>
+        <span class="perf-value"  title="Draw Calls">{{ perf.calls }}</span>
       </td>
       <td class="perf-item">
-        <span class="perf-label" title="Triangles">Tris</span>
-        <span class="perf-value">{{ perf.triangles }}</span>
+        <span class="perf-label" title="Triangles">Tr(k)</span>
+      </td>
+      <td>
+        <span class="perf-value"  title="Triangles">{{ perf.triangles / 1000 | number:'1.1-1'}}</span>
       </td>
     </tr>
   </table>
