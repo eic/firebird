@@ -13,13 +13,12 @@ import {UrlService} from "./url.service";
 import {DetectorThreeRuleSet, ThreeGeometryProcessor} from "../data-pipelines/three-geometry.processor";
 import * as THREE from "three";
 import {disposeHierarchy, getColorOrDefault} from "../utils/three.utils";
-import {modernRules} from "../theme/geometry-ruleset";
-import {coolColorRules} from "../theme/cool-geometry-ruleset";
+
 import {cool2ColorRules} from "../theme/cool2-geometry-ruleset";
 import {cadColorRules} from "../theme/cad-geometry-ruleset";
 import {monoColorRules} from "../theme/mono-geometry-ruleset";
 import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
-import {NoBlending} from "three/src/constants";
+
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -428,7 +427,7 @@ export class GeometryService {
           side: DoubleSide,           // you said you can’t change this
           transparent: false,
           opacity: 1,                 // false transparency; use 1 for full opacity
-          blending: NoBlending,       // since transparent is false
+          blending: THREE.NoBlending,       // since transparent is false
           depthTest: true,
           depthWrite: true,
           clippingPlanes,
