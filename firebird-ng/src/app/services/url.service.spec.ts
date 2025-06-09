@@ -2,7 +2,7 @@
 
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { UrlService } from './url.service';
-import { UserConfigService } from './user-config.service';
+import { LocalStorageService } from './local-storage.service';
 import { ServerConfigService } from './server-config.service';
 import { BehaviorSubject } from 'rxjs';
 import {HttpClientModule} from "@angular/common/http";
@@ -41,7 +41,7 @@ describe('UrlService', () => {
       imports: [HttpClientModule], // Add this line
       providers: [
         UrlService,
-        { provide: UserConfigService, useValue: userConfigService },
+        { provide: LocalStorageService, useValue: userConfigService },
         { provide: ServerConfigService, useValue: serverConfigService }
       ]
     });

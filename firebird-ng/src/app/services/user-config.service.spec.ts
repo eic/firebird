@@ -2,13 +2,13 @@
 
 import { TestBed } from '@angular/core/testing';
 import { UrlService } from './url.service';
-import { UserConfigService } from './user-config.service';
+import { LocalStorageService } from './local-storage.service';
 import { ServerConfigService } from './server-config.service';
 import { BehaviorSubject } from 'rxjs';
 
 describe('UrlService', () => {
   let service: UrlService;
-  let userConfigService: UserConfigService;
+  let userConfigService: LocalStorageService;
   let serverConfigService: ServerConfigService;
 
   beforeEach(() => {
@@ -34,13 +34,13 @@ describe('UrlService', () => {
     TestBed.configureTestingModule({
       providers: [
         UrlService,
-        { provide: UserConfigService, useValue: mockUserConfigService },
+        { provide: LocalStorageService, useValue: mockUserConfigService },
         { provide: ServerConfigService, useValue: mockServerConfigService }
       ]
     });
 
     service = TestBed.inject(UrlService);
-    userConfigService = TestBed.inject(UserConfigService);
+    userConfigService = TestBed.inject(LocalStorageService);
     serverConfigService = TestBed.inject(ServerConfigService);
   });
 

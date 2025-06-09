@@ -1,4 +1,4 @@
-import { Component, computed } from '@angular/core';
+import {Component, computed, OnInit} from '@angular/core';
 import { ThemeService, Theme } from '../../services/theme.service';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +11,7 @@ import { MatButtonModule } from '@angular/material/button';
   standalone: true,
   imports: [MatMenuModule, MatIconModule, MatButtonModule]
 })
-export class ThemeSwitcherComponent {
+export class ThemeSwitcherComponent implements OnInit {
   /**
    * A computed signal that returns the appropriate Material icon name
    * based on the current theme stored in ThemeService.
@@ -34,6 +34,10 @@ export class ThemeSwitcherComponent {
    * @param themeService The ThemeService managing theme state via signals.
    */
   constructor(public themeService: ThemeService) {}
+
+  ngOnInit(): void {
+    this.themeService.initializeTheme();
+  }
 
   /**
    * Handles user selection of a new theme from the menu.

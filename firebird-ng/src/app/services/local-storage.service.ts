@@ -4,9 +4,12 @@ import { ConfigProperty } from '../utils/config-property';
 @Injectable({
   providedIn: 'root',
 })
-export class UserConfigService {
-  public selectedGeometry: ConfigProperty<string>;
-  public onlyCentralDetector: ConfigProperty<boolean>;
+export class LocalStorageService {
+  public geometryUrl: ConfigProperty<string>;
+  public geometryThemeName: ConfigProperty<string>;
+  public geometryCutListName: ConfigProperty<string>;
+  public geometryFastAndUgly: ConfigProperty<boolean>;
+  public geometryRootFilterName: ConfigProperty<string>;
   public dexJsonEventSource: ConfigProperty<string>;
   public rootEventSource: ConfigProperty<string>;
   public rootEventRange: ConfigProperty<string>;
@@ -20,8 +23,11 @@ export class UserConfigService {
 
 
   constructor() {
-    this.selectedGeometry = new ConfigProperty('geometry.selectedGeometry', 'https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root');
-    this.onlyCentralDetector = new ConfigProperty('geometry.onlyCentralDetector', true);
+    this.geometryUrl = new ConfigProperty('geometry.selectedGeometry', 'https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root');
+    this.geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
+    this.geometryCutListName = new ConfigProperty('geometry.cutListName', "central");
+    this.geometryThemeName = new ConfigProperty('geometry.themeName', "cool2");
+    this.geometryRootFilterName = new ConfigProperty('geometry.rootFilterName', "default");
     this.dexJsonEventSource = new ConfigProperty('events.dexEventsSource', '');
     this.rootEventSource = new ConfigProperty('events.rootEventSource', '');
     this.rootEventRange = new ConfigProperty('events.rootEventRange', '0-5');

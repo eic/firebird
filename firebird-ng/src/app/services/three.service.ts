@@ -432,9 +432,10 @@ export class ThreeService implements OnDestroy {
     this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
 
     try {
+      const frameStartTime = performance.now();  // Add this
       // Profiling start
       this.profileBeginFunc?.();
-      this.perfService.updateStats(this.renderer);
+
 
       // Add frustum culling before rendering
       // this.frustumCuller.cullMeshes(this.scene, this.camera);
@@ -442,14 +443,15 @@ export class ThreeService implements OnDestroy {
       // Update three components
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
+      // Profiling end
+      this.perfService.updateStats(this.renderer, frameStartTime);
+
 
       // Run all custom/users callbacks
       for (const cb of this.frameCallbacks) {
         cb();
       }
 
-      // Profiling end
-      //TODO this.perfService.profileEnd(this.renderer);
       this.profileEndFunc?.();
     } catch (error) {
       console.error('(!!!) ThreeService Render Loop Error:', error);

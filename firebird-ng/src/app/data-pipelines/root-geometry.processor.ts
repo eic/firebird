@@ -15,7 +15,7 @@ export class DetectorGeometryFineTuning {
 }
 
 
-function pruneTopLevelDetectors(geoManager: any, removeNames: string[]): any {
+export function pruneTopLevelDetectors(geoManager: any, removeNames: string[]): any {
   const volume = geoManager.fMasterVolume === undefined ? geoManager.fVolume : geoManager.fMasterVolume;
   const nodes: any[] = volume?.fNodes?.arr ?? [];
   let removedNodes: any[] = [];
@@ -42,32 +42,7 @@ function pruneTopLevelDetectors(geoManager: any, removeNames: string[]): any {
 }
 
 export class RootGeometryProcessor {
-  /**
-   * Detectors (top level TGeo nodes) to be removed.
-   * (!) startsWith function is used for filtering (aka: detector.fName.startsWith(removeDetectorNames[i]) ... )
-   */
-  public removeDetectorNames: string[] = [
-    "Lumi",
-    //"Magnet",
-    //"B0",
-    "B1",
-    "B2",
-    //"Q0",
-    //"Q1",
-    "Q2",
-    //"BeamPipe",
-    //"Pipe",
-    "ForwardOffM",
-    "Forward",
-    "Backward",
-    "Vacuum",
-    "SweeperMag",
-    "AnalyzerMag",
-    "ZDC",
-    //"LFHCAL",
-    "HcalFarForward",
-    "InnerTrackingSupport"
-  ];
+
 
   subDetectorsRules: DetectorGeometryFineTuning[] = [
     {
@@ -161,8 +136,7 @@ export class RootGeometryProcessor {
   ]
 
   public process(rootGeoManager:any):any {
-    // Getting main detector nodes
-    let result = pruneTopLevelDetectors(rootGeoManager, this.removeDetectorNames);
+
     // console.log("[RootGeometryProcessor] Filtered top level detectors: ", result);
     console.time(`[RootGeometryProcessor] Processing time`);
 

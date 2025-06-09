@@ -5,8 +5,8 @@ import {
   findGeoManager, getGeoNodesByLevel
 } from '../../lib-root-geometry/root-geo-navigation';
 import {build} from 'jsroot/geom';
-import {RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
-import {UserConfigService} from "./user-config.service";
+import {pruneTopLevelDetectors, RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
+import {LocalStorageService} from "./local-storage.service";
 import {Subdetector} from "../model/subdetector";
 import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, Plane} from "three";
 import {UrlService} from "./url.service";
@@ -16,6 +16,10 @@ import {disposeHierarchy, getColorOrDefault} from "../utils/three.utils";
 import {modernRules} from "../theme/geometry-ruleset";
 import {coolColorRules} from "../theme/cool-geometry-ruleset";
 import {cool2ColorRules} from "../theme/cool2-geometry-ruleset";
+import {cadColorRules} from "../theme/cad-geometry-ruleset";
+import {monoColorRules} from "../theme/mono-geometry-ruleset";
+import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
+import {NoBlending} from "three/src/constants";
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -182,6 +186,32 @@ export const defaultRules: DetectorThreeRuleSet[] = [
   }
 ]
 
+/**
+ * Detectors (top level TGeo nodes) to be removed.
+ * (!) startsWith function is used for filtering (aka: detector.fName.startsWith(removeDetectorNames[i]) ... )
+ */
+const removeDetectorNames: string[] = [
+  "Lumi",
+  //"Magnet",
+  //"B0",
+  "B1",
+  "B2",
+  //"Q0",
+  //"Q1",
+  "Q2",
+  //"BeamPipe",
+  //"Pipe",
+  "ForwardOffM",
+  "Forward",
+  "Backward",
+  "Vacuum",
+  "SweeperMag",
+  "AnalyzerMag",
+  "ZDC",
+  //"LFHCAL",
+  "HcalFarForward",
+  "InnerTrackingSupport"
+];
 
 
 // constants.ts
@@ -212,7 +242,9 @@ export class GeometryService {
 
   public geometry:WritableSignal<Object3D|null> = signal(null)
 
-  constructor(private urlService: UrlService) {
+  constructor(private urlService: UrlService,
+              private localStorage: LocalStorageService,
+              ) {
     this.groupsByDetName = new Map<string,string> ([
       ["SolenoidBarrel_assembly_0", GROUP_MAGNETS],
       ["SolenoidEndcapP_1", GROUP_MAGNETS],
@@ -296,11 +328,27 @@ export class GeometryService {
     // console.log(this.rootGeometry);
     console.timeEnd('[GeometryService]: Reading geometry from file');
 
-    console.time('[GeometryService]: Root geometry pre-processing');
-    this.rootGeometryProcessor.process(this.rootGeometry);
-    console.timeEnd('[GeometryService]: Root geometry pre-processing');
 
-    // analyzeGeoNodes(this.rootGeometry, 1);
+    // Getting main detector nodes
+    if(this.localStorage.geometryCutListName.value === "central") {
+      let result = pruneTopLevelDetectors(this.rootGeometry, removeDetectorNames);
+      console.log(`[GeometryService]: Done prune geometry. Nodes left: ${result.nodes.length}, Nodes removed: ${result.removedNodes.length}`);
+    } else {
+      console.log("[GeometryService]: Prune geometry IS OFF");
+
+    }
+
+    if(this.localStorage.geometryRootFilterName.value === "default") {
+      console.time('[GeometryService]: Root geometry pre-processing');
+      this.rootGeometryProcessor.process(this.rootGeometry);
+      console.timeEnd('[GeometryService]: Root geometry pre-processing');
+    } else {
+      console.log("[GeometryService]: Root geometry pre-processing IS OFF");
+    }
+
+
+    console.log("[GeometryService]: Number of tree elements analysis:");
+    analyzeGeoNodes(this.rootGeometry, 1);
 
     //
     console.time('[GeometryService]: Build geometry');
@@ -371,32 +419,57 @@ export class GeometryService {
         return;
       }
 
-      // Assuming `getObjectSize` is correctly typed and available
-      child.userData['size'] = 1; //this.importManager.getObjectSize(child);
-
       // Handle the material of the child
       const color = getColorOrDefault(child.material, this.defaultColor);
-      const side = DoubleSide;
 
-      let opacity = threeGeometry.userData['opacity'] ?? 1;
+      if(this.localStorage.geometryFastAndUgly.value) {
+        child.material = new MeshLambertMaterial({
+          color: color,
+          side: DoubleSide,           // you said you can’t change this
+          transparent: false,
+          opacity: 1,                 // false transparency; use 1 for full opacity
+          blending: NoBlending,       // since transparent is false
+          depthTest: true,
+          depthWrite: true,
+          clippingPlanes,
+          clipIntersection: true,
+          clipShadows: false,
+          fog: false,                 // disable fog math
+          vertexColors: false,        // disable vertex-color math
+          flatShading: true,          // simpler “flat” shading
+          toneMapped: false           // skip tone-mapping
+        });
+      } else {
+        child.material = new MeshLambertMaterial({
+          color: color,
+          side: DoubleSide,
+          transparent: true,
+          opacity: 0.7,
+          blending: NormalBlending,
+          depthTest: true,
+          depthWrite: true,
+          clippingPlanes: clippingPlanes,
+          clipIntersection: true,
+          clipShadows: false,
+        });
 
-      child.material = new MeshLambertMaterial({
-        color: color,
-        side: side,
-        transparent: true,
-        opacity: 0.7,
-        blending: NormalBlending,
-        depthTest: true,
-        depthWrite: true,
-        clippingPlanes: clippingPlanes,
-        clipIntersection: true,
-        clipShadows: false,
-      });
+      }
     });
+
 
     // HERE WE DO POSTPROCESSING STEP
     // TODO this.threeGeometryProcessor.processRuleSets(defaultRules, this.subdetectors);
-    this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
+    console.log(`[GeometryService]: Geometry theme name is set to '${this.localStorage.geometryThemeName.value}'`);
+    if(this.localStorage.geometryThemeName.value === "cool2") {
+      this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
+    }else if(this.localStorage.geometryThemeName.value === "cool2no") {
+      this.threeGeometryProcessor.processRuleSets(cool2NoOutlineColorRules, this.subdetectors);
+    } else if(this.localStorage.geometryThemeName.value === "cad") {
+      this.threeGeometryProcessor.processRuleSets(cadColorRules, this.subdetectors);
+    } else if(this.localStorage.geometryThemeName.value === "grey") {
+      this.threeGeometryProcessor.processRuleSets(monoColorRules, this.subdetectors);
+    }
+
 
 
     // Now we want to change the materials

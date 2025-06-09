@@ -8,7 +8,7 @@ import {
 
 import {ALL_GROUPS} from '../../services/geometry.service';
 import {GameControllerService} from '../../services/game-controller.service';
-import {UserConfigService} from '../../services/user-config.service';
+import {LocalStorageService} from '../../services/local-storage.service';
 
 import {SceneTreeComponent} from '../../components/scene-tree/scene-tree.component';
 import {ShellComponent} from '../../components/shell/shell.component';
@@ -112,7 +112,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     private controller: GameControllerService,
     private snackBar: MatSnackBar,
     public eventDisplay: EventDisplayService,
-    private userConfig: UserConfigService,
+    private userConfig: LocalStorageService,
     private serverConfig: ServerConfigService,
   ) {
 
@@ -370,7 +370,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   private initGeometry() {
-    let url = this.userConfig.selectedGeometry.value;
+    let url = this.userConfig.geometryUrl.value;
 
     if (!url || url.trim().length === 0) {
       console.log("[main-display]: No geometry specified. Skip loadGeometry ");
