@@ -92,14 +92,14 @@ jobs:
           ls -latrh ./dist
           echo "--- ls ./dist/firebird"
           ls -latrh ./dist/firebird
-          echo "--- ls ./dist/firebird/assets"
-          ls -latrh ./dist/firebird/assets
-          echo "--- ls ./dist/firebird/assets/data"
-          ls -latrh ./dist/firebird/assets/data
+          echo "--- ls ./dist/firebird/browser/assets"
+          ls -latrh ./dist/firebird/browser/assets
+          echo "--- ls ./dist/firebird/browser/assets/data"
+          ls -latrh ./dist/firebird/browser/assets/data
 
       - name: Fix dynamic routing
         run: |
-          cp ./dist/firebird/index.html ./dist/firebird/404.html
+          cp ./dist/firebird/browser/index.html ./dist/firebird/browser/404.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -107,7 +107,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist/firebird'
+          path: './dist/firebird/browser'
 
       - name: Deploy to GitHub Pages
         id: deployment
