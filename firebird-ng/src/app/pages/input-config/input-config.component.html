@@ -7,7 +7,7 @@
         <mat-card-content>
           <div class="section">
             <h3>Examples:</h3>
-            <p>Select file with the geometry</p>
+            <p>Select example configuration preset</p>
             <firebird-resource-select
               #premadeGeometry
               [options]="quickLinkTitles"
@@ -18,7 +18,7 @@
 
           <div class="section">
             <h3>Geometry</h3>
-            <p>Select file with the geometry</p>
+            <p>Select or type in your url for the geometry</p>
             <firebird-resource-select
               #geometrySelect
               [options]="geometryOptions"
@@ -64,43 +64,58 @@
       <mat-card class="config-card">
       <mat-card-title>Configure Geometry Pipeline</mat-card-title>
       <mat-card-content>
-        <img src="assets/diagrams/geometry-pipeline.svg" alt="Geometry Pipeline" style="width:100%;"/>
-
-        <!-- ROOT Geometry Optimization -->
+        <img src="assets/diagrams/geometry-pipeline.svg" alt="Geometry Pipeline" style="width:60%; text-align: center"/>
         <div class="subsection">
-          <h3>ROOT Geometry Optimization</h3>
+          <h3>Geometry Processing Options</h3>
+          <p>(!) A page reload might be needed to see these changes</p>
+
+
           <div class="section">
-            <h4>Leave only central detector</h4>
-            <p>(Remove Beamline, Far Forward and Backward)</p>
-            <mat-slide-toggle [formControl]="onlyCentralDetector">Enabled</mat-slide-toggle>
+            <h4>WebGL pipeline</h4>
+            <p>Select how geometry looks and optimized</p>
+            <mat-form-field appearance="fill" class="full-width">
+              <mat-select [formControl]="geometryThemeName" [value]="geometryThemeName">
+                <mat-option value="cool2">Cool2 - (default) cold colors, optimized </mat-option>
+                <mat-option value="cool2no">Cool2 No Outline - cool2 but no outline for performance </mat-option>
+                <mat-option value="cad">CAD - like colors, optimized</mat-option>
+                <mat-option value="grey">Grey - mono colors</mat-option>
+                <mat-option value="off">Off (may hit performance)</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <p>Performance over quality (remove transparency, simple lights, etc.)</p>
+            <mat-slide-toggle [formControl]="geometryFastAndUgly">Enabled</mat-slide-toggle>
           </div>
+
+
+
           <div class="section">
-            <h4>Optimize detectors</h4>
-            <p>(Remove parts such as glue, pixels, some layers, etc)</p>
-            <mat-slide-toggle checked disabled>Enabled</mat-slide-toggle>
+            <h4>ROOT Geo pipeline</h4>
+
+            <p>Cut sub-detectors. Remove certain subdetectors such as FF, FB, some magnets and beam-pipe elements</p>
+            <mat-form-field appearance="fill" class="full-width">
+              <mat-select [formControl]="geometryCutListName" [value]="geometryCutListName">
+                <mat-option value="central">Show central detector only</mat-option>
+                <mat-option value="off">Off (don't remove anything)</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <p>Clean tree: remove elements such as glue layers, individual straws, ASICs, PCBs, etc.</p>
+            <mat-form-field appearance="fill" class="full-width">
+              <mat-select [formControl]="geometryRootFilterName" [value]="geometryRootFilterName">
+                <mat-option value="default">Default (remove glues, straws, thin layers, etc)</mat-option>
+                <mat-option value="off">Off (SLOW for full detector,)</mat-option>
+              </mat-select>
+            </mat-form-field>
           </div>
+
+          <div class="action-buttons">
+            <button type="button" mat-raised-button [routerLink]="['/display']">DISPLAY</button>
+            <button type="button" mat-raised-button (click)="resetGeometryToDefaults()">Reset pipeline to Defaults</button>
+          </div>
+
         </div>
 
-        <!-- Geometry Config -->
-        <div class="subsection">
-          <h3>Geometry Config</h3>
-          <div class="section">
-            Config selector placeholder
-          </div>
-        </div>
 
-        <!-- WebGL Geometry Optimization -->
-        <div class="subsection">
-          <h3>WebGL Geometry Optimization</h3>
-          <div class="section">
-            <h4>Merge geometries if possible</h4>
-            <p>
-              Merging geometries significantly improves performance by reducing the number of
-              <a href="https://discourse.threejs.org/t/webgl-drawcalls/24476" target="_blank">drawcalls</a>.
-            </p>
-            <mat-slide-toggle checked disabled>Enabled</mat-slide-toggle>
-          </div>
-        </div>
       </mat-card-content>
     </mat-card>
 

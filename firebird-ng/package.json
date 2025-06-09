@@ -75,6 +75,9 @@
     "stream": false,
     "zlib": false,
     "child_process": false,
-    "crypto": false
+    "crypto": false,
+    "url": false,
+    "assert": false,
+    "util": false
   }
 }

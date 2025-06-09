@@ -2,7 +2,7 @@ import { Injectable, Inject, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ThreeService } from './three.service';
 import * as THREE from 'three';
-import {UserConfigService} from "./user-config.service";
+import {LocalStorageService} from "./local-storage.service";
 import {ConfigProperty} from "../utils/config-property";
 
 export type Theme = 'light' | 'dark' | 'system';
@@ -28,7 +28,7 @@ export class ThemeService {
 
   // Colors for three.js background for dark and light themes
   private readonly threeDarkBackground = new THREE.Color(0x3f3f3f);
-  private readonly threeLightBackground = new THREE.Color(0xf3f3f3);
+  private readonly threeLightBackground = new THREE.Color(0xFFFFFF);
 
   // What user has in local storage
   private userSavedTheme: ConfigProperty<string>;
@@ -42,7 +42,7 @@ export class ThemeService {
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private threeService: ThreeService,
-    private userConfigService: UserConfigService
+    private userConfigService: LocalStorageService
   ) {
     if (isPlatformBrowser(this.platformId)) {
       this._htmlElement = document.documentElement as HTMLHtmlElement;

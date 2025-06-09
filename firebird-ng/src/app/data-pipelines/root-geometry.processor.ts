@@ -15,7 +15,7 @@ export class DetectorGeometryFineTuning {
 }
 
 
-function pruneTopLevelDetectors(geoManager: any, removeNames: string[]): any {
+export function pruneTopLevelDetectors(geoManager: any, removeNames: string[]): any {
   const volume = geoManager.fMasterVolume === undefined ? geoManager.fVolume : geoManager.fMasterVolume;
   const nodes: any[] = volume?.fNodes?.arr ?? [];
   let removedNodes: any[] = [];
@@ -42,32 +42,7 @@ function pruneTopLevelDetectors(geoManager: any, removeNames: string[]): any {
 }
 
 export class RootGeometryProcessor {
-  /**
-   * Detectors (top level TGeo nodes) to be removed.
-   * (!) startsWith function is used for filtering (aka: detector.fName.startsWith(removeDetectorNames[i]) ... )
-   */
-  public removeDetectorNames: string[] = [
-    "Lumi",
-    //"Magnet",
-    //"B0",
-    "B1",
-    "B2",
-    //"Q0",
-    //"Q1",
-    "Q2",
-    //"BeamPipe",
-    //"Pipe",
-    "ForwardOffM",
-    "Forward",
-    "Backward",
-    "Vacuum",
-    "SweeperMag",
-    "AnalyzerMag",
-    "ZDC",
-    //"LFHCAL",
-    "HcalFarForward",
-    "InnerTrackingSupport"
-  ];
+
 
   subDetectorsRules: DetectorGeometryFineTuning[] = [
     {
@@ -123,6 +98,10 @@ export class RootGeometryProcessor {
         {pattern: "*/LFHCAL_8M*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
         {pattern: "*/LFHCAL_8M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
         {pattern: "*/LFHCAL_8M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+        {pattern: "*/LFHCAL_4M*", action: EditActions.RemoveChildren},
+        {pattern: "*/LFHCAL_4M*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+        {pattern: "*/LFHCAL_4M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
+        {pattern: "*/LFHCAL_4M*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
       ]
     },
     {
@@ -142,31 +121,27 @@ export class RootGeometryProcessor {
       namePattern: "*/EndcapTOF*",
       editRules: [
         {pattern: "*/suppbar*", action: EditActions.Remove},
-        {pattern: "*/component*3", action: EditActions.RemoveSiblings},
+        {pattern: "*/component_hyb*", action: EditActions.Remove},
       ]
     },
     {
       namePattern: "*/BarrelTOF*",
       editRules: [
-        {pattern: "*/component*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisThis},
-        {pattern: "*/component*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisNone},
-        {pattern: "*/component*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
-        {pattern: "*/component160*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
-        {pattern: "*/component160*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
-        {pattern: "*/component160*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters}
+        {pattern: "*/component_sensor*", action: EditActions.Remove},
+        {pattern: "*/component_ASIC*", action: EditActions.Remove},
+        {pattern: "*/cooling*", action: EditActions.Remove},
       ]
     },
 
   ]
 
   public process(rootGeoManager:any):any {
-    // Getting main detector nodes
-    let result = pruneTopLevelDetectors(rootGeoManager, this.removeDetectorNames);
+
     // console.log("[RootGeometryProcessor] Filtered top level detectors: ", result);
     console.time(`[RootGeometryProcessor] Processing time`);
 
     // >oO
-    analyzeGeoNodes(rootGeoManager, 1);
+    // analyzeGeoNodes(rootGeoManager, 1);
     // Now we go with the fine-tuning of each detector
     for(let detector of this.subDetectorsRules) {
       let topDetNode = findSingleGeoNode(rootGeoManager, detector.namePattern, 1);

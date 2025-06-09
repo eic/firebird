@@ -6,6 +6,7 @@
   display: inline-block;
   box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
   margin: 4px;
+  font-family: 'Roboto Mono', monospace;
 }
 
 .perf-table {
@@ -18,18 +19,17 @@
 }
 
 .perf-label {
-  font-family: 'Roboto', sans-serif;
   font-size: 0.65rem;  // smaller than the value
   color: var(--mat-sys-on-secondary-container, #666);
   margin-right: 4px;
 }
 
 .perf-value {
-  font-family: 'Roboto Mono', monospace;
+
   font-size: 0.75rem;  // slightly larger
   color: var(--mat-sys-on-secondary-container, #666);
   font-weight: 500;
   display: inline-block;
   min-width: 40px;  // fixed width to avoid jumps
-  text-align: right;
+  text-align: left;
 }

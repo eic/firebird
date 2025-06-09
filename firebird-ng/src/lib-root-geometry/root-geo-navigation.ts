@@ -37,7 +37,7 @@ export function walkGeoNodes(node: any, callback: GeoNodeWalkCallback|null, maxL
 
   // Continue recursion to child nodes if they exist and the max level is not reached
   if (volume && subNodes && level < maxLevel) {
-    for (let i = 0; i < subNodes.arr.length; i++) {
+    for (let i = subNodes.arr.length - 1; i >= 0; i--) {
       const childNode = subNodes.arr[i];
       if (childNode) {
         processedNodes += walkGeoNodes(childNode, callback, maxLevel, level + 1, nodeFullPath, pattern);
@@ -84,14 +84,14 @@ export function analyzeGeoNodes(node: any, level:number=2) {
 
   let totalNodes = 0;
 
-  console.log(`--- Detector subcomponents analysis --- Detectors: ${highLevelNodes.length}`);
+  console.log(`  --- Detector subcomponents [num]-[name]: ${highLevelNodes.length}`);
   for(let item of highLevelNodes) {
     // Now run walkNodes for each of high level node to get number of subnodes
     let numSubNodes = walkGeoNodes(item.geoNode, null, Infinity);
     totalNodes += numSubNodes;
-    console.log(`${numSubNodes}: ${item.fullPath}`);
+    console.log(`    ${numSubNodes}: ${item.fullPath}`);
   }
-  console.log(`--- End of analysis --- Total elements: ${totalNodes}`);
+  console.log(`  --- End of analysis --- Total elements: ${totalNodes}`);
 
 }
 

@@ -113,4 +113,12 @@ export class ConfigProperty<T> {
   get value(): T {
     return this.subject.value;
   }
+
+
+  /**
+   * Resets value to its default given at Config construction
+   */
+  public setDefault() {
+    this.subject.next(this.defaultValue);
+  }
 }

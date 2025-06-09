@@ -1,7 +1,17 @@
 import { Injectable, NgZone, OnDestroy} from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { HemisphereLight, DirectionalLight, AmbientLight, PointLight, SpotLight } from 'three';
+import {
+  HemisphereLight,
+  DirectionalLight,
+  AmbientLight,
+  PointLight,
+  SpotLight,
+  Frustum,
+  Matrix4,
+  Camera,
+  Scene, Mesh
+} from 'three';
 import {PerfService} from "./perf.service";
 import {BehaviorSubject, Subject} from "rxjs";
 
@@ -9,8 +19,10 @@ import {BehaviorSubject, Subject} from "rxjs";
 import {
   acceleratedRaycast,
   computeBoundsTree,
-  disposeBoundsTree
+  disposeBoundsTree, MeshBVH, MeshBVHHelper
 } from 'three-mesh-bvh';
+
+
 
 @Injectable({
   providedIn: 'root',
@@ -68,6 +80,9 @@ export class ThreeService implements OnDestroy {
   private pointLight!: PointLight; // Optional
   private spotLight!: SpotLight; // Optional
 
+  /** BVH wizard */
+  private boundsViz!: MeshBVHHelper;
+
    // Raycasting properties
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
@@ -103,6 +118,49 @@ export class ThreeService implements OnDestroy {
   private doubleClickHandler?: (event: MouseEvent) => void;
   private hoverTimeout: number | null = null;
   private measurementPoints: THREE.Mesh[] = [];
+
+  private frustumCuller = {
+    frustum: new Frustum(),
+    projScreenMatrix: new Matrix4(),
+
+    updateFrustum(camera: Camera): void {
+      this.projScreenMatrix.multiplyMatrices(
+        camera.projectionMatrix,
+        camera.matrixWorldInverse
+      );
+      this.frustum.setFromProjectionMatrix(this.projScreenMatrix);
+    },
+
+    cullMeshes(scene: Scene, camera: Camera): void {
+      this.updateFrustum(camera);
+
+      scene.traverse((object:any) => {
+        if (object!=null && (object as any).isMesh) {
+          // First check if object has bounds
+          if (!object.geometry.boundingBox) {
+            object.geometry.computeBoundingBox();
+          }
+
+          // For objects with BVH
+          if (object.geometry.boundsTree) {
+            // Use BVH for efficient culling
+            const visible = object.geometry.boundsTree.shapecast({
+              intersectsBounds: (box: THREE.Box3) => {
+                return this.frustum.intersectsBox(box);
+              }
+            });
+            console.log("Shapecast!");
+            object.visible = visible ?? true;
+          } else {
+            // Fallback to standard bounding box check
+            const box = new THREE.Box3().setFromObject(object);
+            object.visible = this.frustum.intersectsBox(box);
+          }
+        }
+      });
+    }
+  };
+
 
 
   constructor(
@@ -146,8 +204,6 @@ export class ThreeService implements OnDestroy {
 
     this.containerElement = containerElement;
 
-
-
     // 1) Create scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x3f3f3f); // Dark grey background
@@ -167,7 +223,11 @@ export class ThreeService implements OnDestroy {
     this.sceneHelpers.name = 'Helpers';
     this.scene.add(this.sceneHelpers);
 
-    // 2) Create cameras
+    // BVH helper
+    // this.boundsViz = new MeshBVHHelper( knots[ 0 ] );
+    // containerObj.add( boundsViz );
+
+    // Create cameras
     this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 10, 40000);
     this.perspectiveCamera.position.set(-7000, 0 , 0);
 
@@ -200,8 +260,9 @@ export class ThreeService implements OnDestroy {
     // Create OrbitControls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 0, 0);
-    this.controls.enableDamping = true;
+    this.controls.enableDamping = false;
     this.controls.dampingFactor = 0.05;
+
 
     // Perspective camera distance limits
     const sceneRadius = 5000;
@@ -371,22 +432,26 @@ export class ThreeService implements OnDestroy {
     this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
 
     try {
+      const frameStartTime = performance.now();  // Add this
       // Profiling start
       this.profileBeginFunc?.();
-      this.perfService.updateStats(this.renderer);
 
+
+      // Add frustum culling before rendering
+      // this.frustumCuller.cullMeshes(this.scene, this.camera);
 
       // Update three components
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
+      // Profiling end
+      this.perfService.updateStats(this.renderer, frameStartTime);
+
 
       // Run all custom/users callbacks
       for (const cb of this.frameCallbacks) {
         cb();
       }
 
-      // Profiling end
-      //TODO this.perfService.profileEnd(this.renderer);
       this.profileEndFunc?.();
     } catch (error) {
       console.error('(!!!) ThreeService Render Loop Error:', error);
@@ -961,14 +1026,14 @@ export class ThreeService implements OnDestroy {
     };
 
     this.sceneGeometry.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        processMesh(object);
+      if ((object as any).isMesh) {
+        processMesh(object as Mesh);
       }
     });
 
     this.sceneEvent.traverse((object) => {
-      if (object instanceof THREE.Mesh ) {
-        processMesh(object);
+      if ((object as any).isMesh) {
+        processMesh(object as Mesh);
       }
     });
   }
