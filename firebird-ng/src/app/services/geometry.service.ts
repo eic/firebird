@@ -19,6 +19,7 @@ import {cadColorRules} from "../theme/cad-geometry-ruleset";
 import {monoColorRules} from "../theme/mono-geometry-ruleset";
 import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
 
+import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -295,6 +296,45 @@ export class GeometryService {
     ])
   }
 
+  private simplifyAllMeshes(object: THREE.Object3D, simplifyRatio = 0.5): void {
+    const modifier = new SimplifyModifier();
+    let simplifiedCount = 0;
+    let skippedCount = 0;
+    const minVerts = 10;
+    const maxVerts = 300000;
+
+    object.traverse((child: THREE.Object3D) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        const geom = mesh.geometry as THREE.BufferGeometry;
+        if (geom && geom.attributes['position']) {
+          const count = geom.attributes['position'].count;
+          const targetCount = Math.floor(count * simplifyRatio);
+          if (count > minVerts && count < maxVerts && targetCount > minVerts) {
+            const t0 = performance.now();
+            console.log(`[Simplify] Mesh "${mesh.name || '(unnamed)'}": vertices before=${count}, after=${targetCount}`);
+            mesh.geometry = modifier.modify(geom, targetCount);
+            mesh.geometry.computeBoundingSphere();
+            mesh.geometry.computeVertexNormals();
+            const t1 = performance.now();
+            if (t1 - t0 > 100) {
+              console.warn(`[Simplify] Mesh "${mesh.name || '(unnamed)'}" took ${Math.round(t1-t0)}ms to simplify.`);
+            }
+            simplifiedCount++;
+          } else if (count >= maxVerts) {
+            console.log(`[Simplify] Mesh "${mesh.name || '(unnamed)'}": skipped (too large, vertices=${count})`);
+            skippedCount++;
+          } else {
+            console.log(`[Simplify] Mesh "${mesh.name || '(unnamed)'}": skipped (too small, vertices=${count})`);
+            skippedCount++;
+          }
+        }
+      }
+    });
+    console.log(`[Simplify] Total meshes simplified: ${simplifiedCount}, skipped: ${skippedCount}`);
+  }
+
+
 
   async loadGeometry(url:string): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
 
@@ -400,6 +440,8 @@ export class GeometryService {
     }
     console.timeEnd('[GeometryService]: Map root geometry to threejs geometry');
 
+
+
     console.timeEnd('[GeometryService]: Total load geometry time');
 
     this.geometry.set(geometry);
@@ -489,6 +531,8 @@ export class GeometryService {
         child.material.clipShadows = false;
       }
     });
+
+    this.simplifyAllMeshes(geometry, 0.5);
   }
 
   private stripIdFromName(name: string) {
