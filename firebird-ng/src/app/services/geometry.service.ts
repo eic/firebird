@@ -301,7 +301,7 @@ export class GeometryService {
     let simplifiedCount = 0;
     let skippedCount = 0;
     const minVerts = 10;
-    const maxVerts = 300000;
+
 
     object.traverse((child: THREE.Object3D) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -310,20 +310,25 @@ export class GeometryService {
         if (geom && geom.attributes['position']) {
           const count = geom.attributes['position'].count;
           const targetCount = Math.floor(count * simplifyRatio);
-          if (count > minVerts && count < maxVerts && targetCount > minVerts) {
-            const t0 = performance.now();
-            console.log(`[Simplify] Mesh "${mesh.name || '(unnamed)'}": vertices before=${count}, after=${targetCount}`);
+          if (count > minVerts && targetCount > minVerts) {
+            const timeStart = performance.now();
+            console.log(`[Simplify] Processing "${mesh.name || '(unnamed)'}": vertices before=${count}, after=${targetCount}`);
             mesh.geometry = modifier.modify(geom, targetCount);
+            const timeOptimized = performance.now();
+            mesh.geometry.computeBoundingBox();
             mesh.geometry.computeBoundingSphere();
             mesh.geometry.computeVertexNormals();
+            // After simplification
+            mesh.geometry.attributes.position.needsUpdate = true;
+            if (mesh.geometry.attributes.normal) {
+              mesh.geometry.attributes.normal.needsUpdate = true;
+            }
             const t1 = performance.now();
-            if (t1 - t0 > 100) {
-              console.warn(`[Simplify] Mesh "${mesh.name || '(unnamed)'}" took ${Math.round(t1-t0)}ms to simplify.`);
+            if (t1 - timeStart > 100) {
+              console.warn(`[Simplify] Mesh "${mesh.name || '(unnamed)'}" took ${Math.round(t1-timeStart)}ms to simplify.`);
             }
             simplifiedCount++;
-          } else if (count >= maxVerts) {
-            console.log(`[Simplify] Mesh "${mesh.name || '(unnamed)'}": skipped (too large, vertices=${count})`);
-            skippedCount++;
+
           } else {
             console.log(`[Simplify] Mesh "${mesh.name || '(unnamed)'}": skipped (too small, vertices=${count})`);
             skippedCount++;
