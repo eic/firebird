@@ -397,4 +397,4 @@ def configure_flask_app(config=None):
 
 def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
     configure_flask_app(config)
-    flask_app.run(host=host, port=port, debug=debug, load_dotenv=load_dotenv)
+    flask_app.run(host=host, port=port, debug=debug, load_dotenv=load_dotenv, use_reloader=False)

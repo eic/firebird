@@ -2,22 +2,25 @@ import threading
 import time
 import asyncio
 import click
-from pyrobird.cli.serve import serve as cli_serve_command
+
 import urllib.request
 import urllib.error
 
 
 def run_flask_app(unsecure_files, allow_cors, disable_download, work_path):
-    # Call the serve function directly with parameters
-    serve_params = {
-        'unsecure_files': unsecure_files,
-        'allow_cors': allow_cors,
-        'disable_download': disable_download,
-        'work_path': work_path
-    }
-    # Simulate Click context
-    ctx = click.Context(cli_serve_command)
-    cli_serve_command.invoke(ctx, **serve_params)
+    args = []
+    if unsecure_files:
+        args.append('--allow-any-file')
+    if allow_cors:
+        args.append('--allow-cors')
+    if disable_download:
+        args.append('--disable-files')
+    if work_path:
+        args.extend(['--work-path', work_path])
+
+    from pyrobird.cli.serve import serve as cli_serve_command
+    cli_serve_command.main(args=args, standalone_mode=False)
+
 
 
 async def capture_screenshot(url, output_path):
@@ -55,7 +58,7 @@ async def capture_screenshot(url, output_path):
 @click.option('--disable-download', is_flag=True, default=False, help='Disable all file downloads')
 @click.option('--work-path', default='', help='Set the base directory path for file downloads')
 @click.option('--output-path', default='screenshot.png', help='Path to save the screenshot')
-@click.option('--url', default='http://localhost:5000', help='URL to take the screenshot of')
+@click.option('--url', default='http://localhost:5454', help='URL to take the screenshot of')
 def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_path, url):
     """
     Start the Flask server, take a screenshot of the specified URL using Pyppeteer,
@@ -105,3 +108,5 @@ def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_p
 
 if __name__ == '__main__':
     screenshot()
+
+
