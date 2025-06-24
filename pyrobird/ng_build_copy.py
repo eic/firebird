@@ -10,7 +10,7 @@ def main():
 
     # Define the paths
     firebird_ng_path = os.path.join(script_path, '..', 'firebird-ng')
-    dist_path = os.path.join(firebird_ng_path, 'dist', 'firebird')
+    dist_path = os.path.join(firebird_ng_path, 'dist', 'firebird', 'browser')
     static_path = os.path.join(script_path, 'pyrobird', 'server', 'static')
     # Fancy print the paths
     print(f"Script Path:        {script_path}")
@@ -33,7 +33,7 @@ def main():
     os.makedirs(static_path)
 
     # Copy all files and directories from script_path/../firebird-ng/dist/firebird to script_path/pyrobird/server/static
-    print("copying firebird-ng/dist/firebird to  pyrobird/server/static")
+    print("copying firebird-ng/dist/firebird/browser to  pyrobird/server/static")
     if os.path.exists(dist_path):
         for item in os.listdir(dist_path):
             s = os.path.join(dist_path, item)
