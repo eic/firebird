@@ -296,51 +296,6 @@ export class GeometryService {
     ])
   }
 
-  private simplifyAllMeshes(object: THREE.Object3D, simplifyRatio = 0.5): void {
-    const modifier = new SimplifyModifier();
-    let simplifiedCount = 0;
-    let skippedCount = 0;
-    const minVerts = 10;
-
-
-    object.traverse((child: THREE.Object3D) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        const geom = mesh.geometry as THREE.BufferGeometry;
-        if (geom && geom.attributes['position']) {
-          const count = geom.attributes['position'].count;
-          const targetCount = Math.floor(count * simplifyRatio);
-          if (count > minVerts && targetCount > minVerts) {
-            const timeStart = performance.now();
-            console.log(`[Simplify] Processing "${mesh.name || '(unnamed)'}": vertices before=${count}, after=${targetCount}`);
-            mesh.geometry = modifier.modify(geom, targetCount);
-            const timeOptimized = performance.now();
-            mesh.geometry.computeBoundingBox();
-            mesh.geometry.computeBoundingSphere();
-            mesh.geometry.computeVertexNormals();
-            // After simplification
-            mesh.geometry.attributes.position.needsUpdate = true;
-            if (mesh.geometry.attributes.normal) {
-              mesh.geometry.attributes.normal.needsUpdate = true;
-            }
-            const t1 = performance.now();
-            if (t1 - timeStart > 100) {
-              console.warn(`[Simplify] Mesh "${mesh.name || '(unnamed)'}" took ${Math.round(t1-timeStart)}ms to simplify.`);
-            }
-            simplifiedCount++;
-
-          } else {
-            console.log(`[Simplify] Mesh "${mesh.name || '(unnamed)'}": skipped (too small, vertices=${count})`);
-            skippedCount++;
-          }
-        }
-      }
-    });
-    console.log(`[Simplify] Total meshes simplified: ${simplifiedCount}, skipped: ${skippedCount}`);
-  }
-
-
-
   async loadGeometry(url:string): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
 
     this.subdetectors = [];
@@ -537,7 +492,7 @@ export class GeometryService {
       }
     });
 
-    this.simplifyAllMeshes(geometry, 0.5);
+    //this.simplifyAllMeshes(geometry, 0.5);
   }
 
   private stripIdFromName(name: string) {
