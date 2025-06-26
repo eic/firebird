@@ -33,6 +33,12 @@ jobs:
           # Add any other dependencies your project requires
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run tests
+      - name: Run unit tests
         run: |
           pytest ./pyrobird/tests
+
+      - name: Run integration tests
+        run: |
+          python pyrobird/tests/integration_tests/run_all.py
+      
+      

@@ -52,3 +52,8 @@ def test_pyrobird_serve_runs_and_responds():
             else:
                 os.kill(proc.pid, signal.SIGTERM)
             proc.wait(timeout=10)
+
+
+if __name__ == "__main__":
+    test_pyrobird_serve_runs_and_responds()
+    print("Test passed!")
