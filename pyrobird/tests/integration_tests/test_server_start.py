@@ -1,9 +1,8 @@
+import signal
 import subprocess
 import time
 import requests
-import sys
 import os
-import signal
 
 def test_pyrobird_serve_runs_and_responds():
     port = 5461
@@ -15,45 +14,53 @@ def test_pyrobird_serve_runs_and_responds():
         text=True  # output is string
     )
 
-    try:
-        server_started = False
+    time.sleep(3)
 
-        for _ in range(15):
-            try:
-                response = requests.get(f"http://127.0.0.1:{port}", timeout=2)
-                if response.status_code not in (500, 404):
-                    server_started = True
-                    break
-            except Exception:
-                pass
+    page_served_ok = False
+    status_code = -1
 
-            if proc.poll() is not None:
-                output = proc.stdout.read()
-                assert False, f"pyrobird serve died during startup!\nServer output:\n{output}"
-            time.sleep(1)
 
-        if not server_started:
-            if proc.poll() is None:
-                if os.name == "nt":
-                    proc.terminate()
-                else:
-                    os.kill(proc.pid, signal.SIGTERM)
-                proc.wait(timeout=10)
-            output = proc.stdout.read()
-            assert False, f"pyrobird serve did not start in time.\nServer output:\n{output}"
+    for try_count in range(15):
+        try:
+            print(f"Making try: {try_count+1}")
+            response = requests.get(f"http://127.0.0.1:{port}", timeout=2)
+            status_code = response.status_code
+            if status_code == 200:
+                page_served_ok = True
+                print(f"Success!")
+                break
+        except Exception as e:
+            print(f"(warn) Error duing requiest: {e}")
 
-        time.sleep(3)
-        assert proc.poll() is None, "pyrobird serve exited unexpectedly"
+        time.sleep(1)
 
-    finally:
-        if proc.poll() is None:
-            if os.name == "nt":
-                proc.terminate()
-            else:
-                os.kill(proc.pid, signal.SIGTERM)
-            proc.wait(timeout=10)
+    # what is our server doing?
+    if os.name == "nt":
+        proc.terminate()
+    else:
+        os.kill(proc.pid, signal.SIGTERM)
+
+    # What its output was?
+    output, _ = proc.communicate(timeout=10)
+    print(f"Server output:\n======================================\n{output}")
+    # proc.wait(timeout=10)
+    # poll_result = proc.poll()
+    # if poll_result is not None:
+    #     print(f"Server exited(!) with code: {poll_result}")
+
+
+
+
+    # Now should we fail with error:
+    if page_served_ok:
+        print("Page served ok")
+    else:
+        print("ERROR: Page not served ok")
+        raise Exception(f"Test failed!")
 
 
 if __name__ == "__main__":
     test_pyrobird_serve_runs_and_responds()
-    print("Test passed!")
+
+
+
