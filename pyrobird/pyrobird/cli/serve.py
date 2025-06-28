@@ -30,8 +30,9 @@ allow_cors_help = (
 @click.option("--port", "port", default="", help="Set the port for development server to listen to")
 @click.option("--api-url", "api_url", envvar=CFG_API_BASE_URL, default="", help="Force to use this address as backend API base URL. E.g. https://my-server:1234/")
 @click.option("--config", "config_path", envvar=CFG_FIREBIRD_CONFIG_PATH, default="", help="Path to firebird config.jsonc if used a custom")
+@click.option("--debug", "is_debug", is_flag=True, help="Run flask in debugging mode")
 @click.pass_context
-def serve(ctx, unsecure_files, allow_cors, disable_download, work_path, host, port, api_url, config_path):
+def serve(ctx, unsecure_files, allow_cors, disable_download, work_path, host, port, api_url, config_path, is_debug):
     """
     Start the server that serves Firebird frontend and can communicate with it.
 
@@ -64,7 +65,7 @@ def serve(ctx, unsecure_files, allow_cors, disable_download, work_path, host, po
     if not port:
         port = 5454
 
-    pyrobird.server.run(debug=True, host=host, port=port, config={
+    pyrobird.server.run(debug=is_debug, host=host, port=port, config={
         CFG_DOWNLOAD_IS_UNRESTRICTED: unsecure_files,
         CFG_DOWNLOAD_IS_DISABLED: disable_download,
         CFG_DOWNLOAD_PATH: work_path,

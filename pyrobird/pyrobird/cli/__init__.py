@@ -5,7 +5,7 @@ import logging
 
 import click
 
-from pyrobird.__about__ import __version__
+from pyrobird.__version__ import __version__
 from pyrobird.cli.geo import geo as geo_group
 from pyrobird.cli.serve import serve as serve_group
 from pyrobird.cli.convert import convert as convert_cmd
@@ -39,7 +39,7 @@ def setup_logging(is_verbose):
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]}, invoke_without_command=True)
 @click.option('--verbose', is_flag=True, help="Enable verbose mode (INFO level logging).")
-@click.version_option(version=__version__, prog_name="fbd")
+@click.version_option(version=__version__, prog_name="pyrobird")
 @click.pass_context
 def cli_app(ctx, verbose):
     """

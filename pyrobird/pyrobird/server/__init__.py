@@ -353,8 +353,24 @@ def static_file(path):
     try:
         return send_from_directory(static_dir, path)
     except werkzeug.exceptions.NotFound as ex:
-        logger.debug("File is not found, assuming it is SPA and serving index.html")
-        return static_file("index.html")
+
+        if path != "index.html":
+
+            logger.debug("File is not found, assuming it is SPA and serving index.html")
+            return static_file("index.html")
+        else:
+            # What a bad situation
+            logger.error("'index.html' is not found!")
+
+            # Maybe it is developer problem?
+            from flask import abort
+            if flask_app.debug:
+                logger.warning("You run in debug mode. If you are a developer, did you run ng_build_copy.py?")
+                return abort(404, "404 ERROR. index.html is not found. It might suggest frontend hasn't been built")
+            else:
+                return abort(404)
+
+
 
 
 @flask_app.route('/shutdown', methods=['GET', 'POST'])
