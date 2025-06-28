@@ -19,6 +19,7 @@ import {cadColorRules} from "../theme/cad-geometry-ruleset";
 import {monoColorRules} from "../theme/mono-geometry-ruleset";
 import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
 
+import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -295,7 +296,6 @@ export class GeometryService {
     ])
   }
 
-
   async loadGeometry(url:string): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
 
     this.subdetectors = [];
@@ -400,6 +400,8 @@ export class GeometryService {
     }
     console.timeEnd('[GeometryService]: Map root geometry to threejs geometry');
 
+
+
     console.timeEnd('[GeometryService]: Total load geometry time');
 
     this.geometry.set(geometry);
@@ -489,6 +491,8 @@ export class GeometryService {
         child.material.clipShadows = false;
       }
     });
+
+    //this.simplifyAllMeshes(geometry, 0.5);
   }
 
   private stripIdFromName(name: string) {
