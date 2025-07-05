@@ -3,6 +3,7 @@ import {createOutline, disposeOriginalMeshesAfterMerge, findObject3DNodes, prune
 import {mergeBranchGeometries, mergeMeshList, MergeResult} from "./three-geometry-merge";
 import * as THREE from "three";
 import {ColorRepresentation} from "three/src/math/Color";
+import {SimplifyModifier} from "three/examples/jsm/modifiers/SimplifyModifier.js";
 
 export enum EditThreeNodeActions {
 
@@ -19,11 +20,74 @@ export interface EditThreeNodeRule {
   cleanupNodes?: boolean;
   outline?: boolean;
   outlineThresholdAngle?: number;
+  simplifyMeshes?: boolean;
+  simplifyRatio?: number;
+
   /** [degrees] */
   outlineColor?: ColorRepresentation;
   material?: Material;
   color?: ColorRepresentation;
 
+}
+
+function simplifyMeshTree(object: THREE.Object3D, simplifyRatio = 0.5): void {
+  const simplifier = new SimplifyModifier();
+  const minVerts = 10;
+
+  object.traverse((child: THREE.Object3D) => {
+
+    // Type coercions and type validations
+    if (!(child as THREE.Mesh).isMesh) {
+      return
+    }
+    const mesh = child as THREE.Mesh;
+
+    if(!(mesh.geometry as THREE.BufferGeometry).isBufferGeometry) {
+      return;
+    }
+    const geom = mesh.geometry as THREE.BufferGeometry;
+
+    if (!geom.attributes['position']) {
+      return;
+    }
+
+    // Do we need to convert looking at the number of vertices?
+    const verticeCount  = geom.attributes['position'].count;
+    const targetVerticeCount = Math.floor(verticeCount  * simplifyRatio);
+
+    if (verticeCount < minVerts) {
+      console.log(`[SimplifyMeshTree] Mesh "${mesh.name || '(unnamed)'}": skipped (too small, vertices=${verticeCount })`);
+      return;
+    }
+
+    if (verticeCount < targetVerticeCount) {
+      console.log(`[SimplifyMeshTree] Mesh "${mesh.name || '(unnamed)'}": skipped (too small targetVerticeCount, targetVerticeCount=${targetVerticeCount})`);
+      return;
+    }
+
+
+    // Actual simplification
+    const timeStart = performance.now();
+    console.log(`[SimplifyMeshTree] Processing "${mesh.name || '(unnamed)'}": vertices before=${verticeCount}, after=${targetVerticeCount}`);
+
+    mesh.geometry = simplifier.modify(geom, targetVerticeCount);
+
+    // Recompute bounding limits
+    mesh.geometry.computeBoundingBox();
+    mesh.geometry.computeBoundingSphere();
+    mesh.geometry.computeVertexNormals();
+
+    // Make sure positions and normals will be updated
+    mesh.geometry.attributes["position"]["needsUpdate"] = true;
+    if (mesh.geometry.attributes["normal"]) {
+      mesh.geometry.attributes["normal"]["needsUpdate"] = true;
+    }
+
+    const timeEnd = performance.now()
+    if (timeEnd - timeStart > 500) {
+      console.warn(`[SimplifyMeshTree] Warn: mesh "${mesh.name || '(unnamed)'}" took ${Math.round(timeEnd-timeStart)}ms to simplify.`);
+    }
+  });
 }
 
 function mergeWhatever(node: Object3D, rule: EditThreeNodeRule): MergeResult | undefined {
@@ -65,6 +129,8 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
     outline = true,
     outlineThresholdAngle = 40,
     outlineColor,
+    simplifyMeshes = false,
+    simplifyRatio = 0.7,
     material,
     color,
     merge = true,
@@ -106,10 +172,21 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
 
   // Apply operations to each target mesh
   for (const targetMesh of targetMeshes) {
+
+    // Change color
     if (color !== undefined && color !== null) {
       if (targetMesh.material) {
         (targetMesh.material as any).color = new Color(color);
       }
+    }
+
+    // Change material
+    if (material !== undefined && material !== null) {
+       targetMesh.material = material;
+    }
+
+    if (simplifyMeshes) {
+      simplifyMeshTree(targetMesh, simplifyRatio);
     }
 
     if (outline) {

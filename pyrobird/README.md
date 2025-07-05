@@ -15,7 +15,7 @@ Optional dependencies:
 
 - `batch` - install pyppeteer, that allows to make screenshots in batch mode
 - `xrootd` - install libraries to read xrootd located files and URLs starting with `root://`
-- `test` - install pytest, mainly to run tests in development build
+- `dev` - install pytest and other development requirements, mainly to run tests
 
 If installed via pip, `xrootd` library requires compilation, so the system should have cmake,
 compiler and some xrootd dependencies installed.
@@ -27,14 +27,13 @@ sudo apt install build-essential libxrootd-client-dev cmake zlib1g-dev uuid-dev 
 
 ```
 
-
 Development installation 
 
 ```bash
-python -m pip install --editable .[test,batch]
+python -m pip install --editable .[dev,batch]
 
 # with xrootd
-python -m pip install --editable .[test,batch,xrootd]
+python -m pip install --editable .[dev,batch,xrootd]
 ```
 
 Running with Gunicorn (development mode)
@@ -75,7 +74,7 @@ pytest -x --pdb
 ## Development install
 
 ```
-python -m pip install --upgrade --editable  .[test]
+python -m pip install --upgrade --editable  .[dev]
 ```
 
 # Pyrobird Server
@@ -83,7 +82,7 @@ python -m pip install --upgrade --editable  .[test]
 This server allows Firebird to work with local files and the local file system as
 well as to complement frontend features such as opening XRootD files, etc.
 
-Serve Firobird locally and have access to files in current directory: 
+Serve Pirobird locally and have access to files in current directory: 
 
 ```bash
 pyrobird serve
