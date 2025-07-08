@@ -37,8 +37,8 @@ jobs:
 
       - name: Install Frontend Dependencies
         run: |
-          npm install
           cd firebird-ng
+          npm install
 
       - name: Build and Setup Frontend
         run: |
