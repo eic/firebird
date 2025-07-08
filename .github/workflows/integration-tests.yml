@@ -60,6 +60,20 @@ jobs:
           name: firebird-ng-build
           path: ./dist/
 
+      - name: Setup Frontend Files for Server
+        run: |
+          echo "--- Checking downloaded artifacts structure"
+          ls -latrh ./dist/
+          echo "--- Checking firebird directory"
+          ls -latrh ./dist/firebird/
+          echo "--- Checking browser directory"
+          ls -latrh ./dist/firebird/browser/
+          echo "--- Copying frontend files to server location"
+          # Copy the frontend files to where the server expects them
+          cp -r ./dist/firebird/browser/* ./
+          echo "--- Verifying index.html is in place"
+          ls -la index.html
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
