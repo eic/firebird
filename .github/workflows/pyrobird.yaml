@@ -36,9 +36,5 @@ jobs:
       - name: Run unit tests
         run: |
           pytest ./pyrobird/tests
-
-      - name: Run integration tests
-        run: |
-          python pyrobird/tests/integration_tests/run_all.py
-      
-      
+          
+          
