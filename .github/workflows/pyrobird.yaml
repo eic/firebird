@@ -35,6 +35,6 @@ jobs:
 
       - name: Run unit tests
         run: |
-          pytest ./pyrobird/tests
+          pytest ./pyrobird/tests/unit_tests
           
           
