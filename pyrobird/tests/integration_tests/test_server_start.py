@@ -1,8 +1,11 @@
 import signal
 import subprocess
 import time
-import requests
 import os
+import urllib
+import urllib.request
+import urllib.error
+
 
 def test_pyrobird_serve_runs_and_responds():
     port = 5461
@@ -19,18 +22,17 @@ def test_pyrobird_serve_runs_and_responds():
     page_served_ok = False
     status_code = -1
 
-
     for try_count in range(15):
         try:
             print(f"Making try: {try_count+1}")
-            response = requests.get(f"http://127.0.0.1:{port}", timeout=2)
-            status_code = response.status_code
+            response = urllib.request.urlopen(f"http://127.0.0.1:{port}", timeout=2)
+            status_code = response.getcode()
             if status_code == 200:
                 page_served_ok = True
                 print(f"Success!")
                 break
         except Exception as e:
-            print(f"(warn) Error duing requiest: {e}")
+            print(f"(warn) Error during request: {e}")
 
         time.sleep(1)
 
