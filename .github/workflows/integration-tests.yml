@@ -35,6 +35,7 @@ jobs:
           cd firebird-ng
           npm install
           npm install -g @angular/cli
+          ng build
 
       - name: Install Python dependencies and Build Frontend
         run: |
