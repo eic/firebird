@@ -37,29 +37,32 @@ jobs:
           cat package.json
           npm --version
           node --version
-
-      - name: Install Frontend dependencies
-        run: |
-          cd firebird-ng
           npm install
+          npm install -g @angular/cli
+          ng build
 
-      - name: Try build and show all output
-        run: |
-          cd firebird-ng
-          npm run build
-
-      - name: Clean backend static and copy frontend build
-        run: |
-          rm -rf pyrobird/server/static/*
-          ls -la pyrobird/server/static
-          cp -r firebird-ng/dist/firebird/browser/* pyrobird/server/static/
+#      - name: Install Frontend dependencies
+#        run: |
+#          cd firebird-ng
+#          npm install
+#
+#      - name: Try build and show all output
+#        run: |
+#          cd firebird-ng
+#          npm run build
+#
+#      - name: Clean backend static and copy frontend build
+#        run: |
+#          rm -rf pyrobird/server/static/*
+#          ls -la pyrobird/server/static
+#          cp -r firebird-ng/dist/firebird/browser/* pyrobird/server/static/
 
       - name: Install Python dependencies and Build Frontend
         run: |
           python -m pip install --upgrade pip
           python -m pip install pytest
           cd pyrobird
-          python -m pip install .[test] 
+          python ng_build_copy.py
           python -m pip install -e .[dev,batch]
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
