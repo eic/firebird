@@ -20,10 +20,10 @@ def main():
 
     # Run `ng build` in script_path/../firebird-ng directory
     try:
-        print("Running ng build at firebird-ng")
-        subprocess.run(['ng', 'build'], cwd=firebird_ng_path, check=True, shell=True)
+        print("Running build at firebird-ng")
+        subprocess.run(['npm', 'run', 'build'], cwd=firebird_ng_path, check=True, shell=True)
     except subprocess.CalledProcessError as e:
-        print(f"Error running 'ng build': {e}")
+        print(f"Error running 'build' phase: {e}")
         sys.exit(1)
 
     # Remove all files and folders in script_path/pyrobird/server/static
