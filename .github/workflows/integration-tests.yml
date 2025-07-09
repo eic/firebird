@@ -51,6 +51,7 @@ jobs:
       - name: Clean backend static and copy frontend build
         run: |
           rm -rf pyrobird/server/static/*
+          ls -la pyrobird/server/static
           cp -r firebird-ng/dist/firebird/browser/* pyrobird/server/static/
 
       - name: Install Python dependencies and Build Frontend
