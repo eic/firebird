@@ -1,12 +1,13 @@
 name: Frontend CI/CD Workflow
 
 on:
-  push:
-    branches:
-      - '*'
-  pull_request:
-    branches:
-      - master
+  workflow_dispatch
+#  push:
+#    branches:
+#      - '*'
+#  pull_request:
+#    branches:
+#      - master
 
 jobs:
   test:
