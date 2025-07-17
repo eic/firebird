@@ -378,9 +378,11 @@ def shutdown():
     """Shutdowns the server"""
 
     func = request.environ.get('werkzeug.server.shutdown')
-    if func is None:
-        return 'Not running with the Werkzeug Server', 500
-    func()
+    if func is not None:
+        func()
+    else:
+        print("Werkzeug shutdown not available. Forcing exit.")
+        os._exit(0)
     return 'Server shutting down...'
 
 

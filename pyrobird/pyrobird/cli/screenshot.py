@@ -22,9 +22,7 @@ def run_flask_app(unsecure_files, allow_cors, disable_download, work_path):
     cli_serve_command.main(args=args, standalone_mode=False)
 
 
-
 async def capture_screenshot(url, output_path):
-
     try:
         from pyppeteer import launch
     except ImportError:
@@ -45,8 +43,16 @@ async def capture_screenshot(url, output_path):
     await page.setViewport({'width': 1920, 'height': 1080})
     await page.goto(url)
 
-    # Wait for the content to render (adjust as needed)
-    await page.waitForSelector('#your-threejs-container', timeout=5000)  # Adjust the selector if needed
+    # Wait for the content to render
+    try:
+        await page.waitForFunction('document.readyState === "complete"', timeout=10000)
+    except:
+        try:
+            await page.waitForSelector('body', timeout=10000)
+        except:
+            await asyncio.sleep(3)
+
+    await asyncio.sleep(2)
 
     # Take a screenshot
     await page.screenshot({'path': output_path, 'fullPage': True})
@@ -100,13 +106,14 @@ def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_p
         shutdown_url = url.rstrip('/') + '/shutdown'
         data = ''.encode('utf-8')  # Empty data for POST
         req = urllib.request.Request(shutdown_url, data=data)
-        with urllib.request.urlopen(req) as response:
-            pass  # Process the response if needed
-    except urllib.error.URLError as e:
-        print(f"Error shutting down Flask app: {e}")
-        print(f"It will be dead anyway... soon... ")
+        with urllib.request.urlopen(req, timeout=3) as response:
+            print("Flask app shutdown successfully")
+    except urllib.error.HTTPError as e:
+        if e.code == 500:
+            print("Flask app shutdown initiated (500 error is expected)")
+        else:
+            print(f"Unexpected HTTP error during shutdown: {e.code}")
+
 
 if __name__ == '__main__':
     screenshot()
-
-
