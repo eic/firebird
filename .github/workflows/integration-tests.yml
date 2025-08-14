@@ -1,0 +1,68 @@
+name: Integration Tests Workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+
+      - name: Debug info before build
+        run: |
+          cd firebird-ng
+          ls -l
+          cat package.json
+          npm --version
+          node --version
+          npm install
+          npm install -g @angular/cli
+          ng build
+
+#      - name: Install Frontend dependencies
+#        run: |
+#          cd firebird-ng
+#          npm install
+#
+#      - name: Try build and show all output
+#        run: |
+#          cd firebird-ng
+#          npm run build
+#
+#      - name: Clean backend static and copy frontend build
+#        run: |
+#          rm -rf pyrobird/server/static/*
+#          ls -la pyrobird/server/static
+#          cp -r firebird-ng/dist/firebird/browser/* pyrobird/server/static/
+
+      - name: Install Python dependencies and Build Frontend
+        run: |
+          cd pyrobird          
+          python -m pip install -e .[dev,batch]
+          python ng_build_copy.py
+
+      - name: Run integration tests
+        run: |
+          python pyrobird/tests/integration_tests/run_integration_tests.py

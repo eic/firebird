@@ -9,8 +9,8 @@ def main():
     script_path = os.path.dirname(os.path.abspath(__file__))
 
     # Define the paths
-    firebird_ng_path = os.path.join(script_path, '..', 'firebird-ng')
-    dist_path = os.path.join(firebird_ng_path, 'dist', 'firebird')
+    firebird_ng_path = os.path.abspath(os.path.join(script_path, '..', 'firebird-ng'))
+    dist_path = os.path.join(firebird_ng_path, 'dist', 'firebird', 'browser')
     static_path = os.path.join(script_path, 'pyrobird', 'server', 'static')
     # Fancy print the paths
     print(f"Script Path:        {script_path}")
@@ -18,12 +18,27 @@ def main():
     print(f"Dist Path:          {dist_path}")
     print(f"Static Path:        {static_path}")
 
+    # Angular can start asking
+
     # Run `ng build` in script_path/../firebird-ng directory
     try:
-        print("Running ng build at firebird-ng")
-        subprocess.run(['ng', 'build'], cwd=firebird_ng_path, check=True, shell=True)
+        print("Running build at firebird-ng")
+        proc = subprocess.Popen(
+            ["npm", "run", "build"],
+            cwd=firebird_ng_path,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+        for line in proc.stdout:
+            print("[ng] " + line, end="")
+
+        proc.wait()
+        if proc.returncode:
+            sys.exit(proc.returncode)
     except subprocess.CalledProcessError as e:
-        print(f"Error running 'ng build': {e}")
+        print(f"Error running 'build' phase: {e}")
         sys.exit(1)
 
     # Remove all files and folders in script_path/pyrobird/server/static
@@ -33,7 +48,7 @@ def main():
     os.makedirs(static_path)
 
     # Copy all files and directories from script_path/../firebird-ng/dist/firebird to script_path/pyrobird/server/static
-    print("copying firebird-ng/dist/firebird to  pyrobird/server/static")
+    print("copying firebird-ng/dist/firebird/browser to  pyrobird/server/static")
     if os.path.exists(dist_path):
         for item in os.listdir(dist_path):
             s = os.path.join(dist_path, item)

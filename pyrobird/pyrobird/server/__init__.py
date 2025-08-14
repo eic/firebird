@@ -353,8 +353,24 @@ def static_file(path):
     try:
         return send_from_directory(static_dir, path)
     except werkzeug.exceptions.NotFound as ex:
-        logger.debug("File is not found, assuming it is SPA and serving index.html")
-        return static_file("index.html")
+
+        if path != "index.html":
+
+            logger.debug("File is not found, assuming it is SPA and serving index.html")
+            return static_file("index.html")
+        else:
+            # What a bad situation
+            logger.error("'index.html' is not found!")
+
+            # Maybe it is developer problem?
+            from flask import abort
+            if flask_app.debug:
+                logger.warning("You run in debug mode. If you are a developer, did you run ng_build_copy.py?")
+                return abort(404, "404 ERROR. index.html is not found. It might suggest frontend hasn't been built")
+            else:
+                return abort(404)
+
+
 
 
 @flask_app.route('/shutdown', methods=['GET', 'POST'])
@@ -362,9 +378,11 @@ def shutdown():
     """Shutdowns the server"""
 
     func = request.environ.get('werkzeug.server.shutdown')
-    if func is None:
-        return 'Not running with the Werkzeug Server', 500
-    func()
+    if func is not None:
+        func()
+    else:
+        print("Werkzeug shutdown not available. Forcing exit.")
+        os._exit(0)
     return 'Server shutting down...'
 
 
@@ -397,4 +415,4 @@ def configure_flask_app(config=None):
 
 def run(config=None, host=None, port=5454, debug=False, load_dotenv=False):
     configure_flask_app(config)
-    flask_app.run(host=host, port=port, debug=debug, load_dotenv=load_dotenv)
+    flask_app.run(host=host, port=port, debug=debug, load_dotenv=load_dotenv, use_reloader=False)

@@ -1,18 +1,6 @@
-import {Injectable, signal, WritableSignal} from '@angular/core';
-import {openFile} from 'jsroot';
-import {
-  analyzeGeoNodes,
-  findGeoManager, getGeoNodesByLevel
-} from '../../lib-root-geometry/root-geo-navigation';
-import {build} from 'jsroot/geom';
-import {RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
 
-import {Subdetector} from "../model/subdetector";
-import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, Plane} from "three";
-
-import {DetectorThreeRuleSet, ThreeGeometryProcessor} from "../data-pipelines/three-geometry.processor";
 import * as THREE from "three";
-import {disposeHierarchy, getColorOrDefault} from "../utils/three.utils";
+
 
 export const cool2ColorRules = [
   // Solenoid components - Very light blue-gray
@@ -58,7 +46,8 @@ export const cool2ColorRules = [
       {
         color: 0xE1F5FE,  // Light Blue 50 - extremely light blue
         merge: true,
-        outline: true
+        outline: true,
+        // simplifyMeshes: true
       }
     ]
   },

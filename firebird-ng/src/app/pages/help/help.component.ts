@@ -49,16 +49,16 @@ export class HelpComponent {
   /**
    * The current Markdown file being displayed
    */
-  docUrl = 'assets/docs/intro.md';
+  docUrl = 'assets/doc/intro.md';
 
   /**
    * A simple list of documentation pages to show in the left pane.
    * `path` should match your .md files in assets/docs folder.
    */
   docPages: DocPage[] = [
-    { title: 'Introduction', path: 'assets/docs/intro.md' },
-    { title: 'Installation', path: 'assets/docs/pyrobird.md' },
-    { title: 'DD4Hep plugin', path: 'assets/docs/dd4hep-plugin.md' },
+    { title: 'Introduction', path: 'assets/doc/intro.md' },
+    { title: 'Installation', path: 'assets/doc/pyrobird.md' },
+    { title: 'DD4Hep plugin', path: 'assets/doc/dd4hep-plugin.md' },
     // ...add more as needed
   ];
 
