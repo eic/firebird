@@ -2,6 +2,8 @@ import threading
 import time
 import asyncio
 import click
+import os
+import glob
 
 import urllib.request
 import urllib.error
@@ -20,6 +22,47 @@ def run_flask_app(unsecure_files, allow_cors, disable_download, work_path):
 
     from pyrobird.cli.serve import serve as cli_serve_command
     cli_serve_command.main(args=args, standalone_mode=False)
+
+
+def get_screenshot_path(output_path):
+    # Create screenshots directory if it doesn't exist
+    screenshots_dir = 'screenshots'
+    os.makedirs(screenshots_dir, exist_ok=True)
+
+    # Extract filename and extension from output_path
+    filename = os.path.basename(output_path)
+    name, ext = os.path.splitext(filename)
+
+    if not ext:
+        ext = '.png'
+
+    base_path = os.path.join(screenshots_dir, f"{name}{ext}")
+    if not os.path.exists(base_path):
+        # Use base filename for first screenshot
+        print(f"Will save screenshot to: {base_path}")
+        return base_path
+
+    pattern = os.path.join(screenshots_dir, f"{name}_*{ext}")
+    existing_files = glob.glob(pattern)
+
+    numbers = []
+    for file in existing_files:
+        base = os.path.basename(file)
+        try:
+            # Extract number between name_ and extension
+            number_part = base[len(name) + 1:-len(ext)]
+            numbers.append(int(number_part))
+        except ValueError:
+            continue
+
+    if numbers:
+        next_number = max(numbers) + 1
+    else:
+        next_number = 1
+
+    final_path = os.path.join(screenshots_dir, f"{name}_{next_number:03d}{ext}")
+    print(f"Will save screenshot to: {final_path}")
+    return final_path
 
 
 async def capture_screenshot(url, output_path):
@@ -58,18 +101,21 @@ async def capture_screenshot(url, output_path):
     await page.screenshot({'path': output_path, 'fullPage': True})
     await browser.close()
 
+
 @click.command()
 @click.option('--unsecure-files', is_flag=True, default=False, help='Allow unrestricted file downloads')
 @click.option('--allow-cors', is_flag=True, default=False, help='Enable CORS for downloaded files')
 @click.option('--disable-download', is_flag=True, default=False, help='Disable all file downloads')
 @click.option('--work-path', default='', help='Set the base directory path for file downloads')
-@click.option('--output-path', default='screenshot.png', help='Path to save the screenshot')
+@click.option('--output-path', default='screenshot.png',
+              help='Base filename for the screenshot (will be saved in screenshots/ with auto-numbering)')
 @click.option('--url', default='http://localhost:5454', help='URL to take the screenshot of')
 def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_path, url):
     """
     Start the Flask server, take a screenshot of the specified URL using Pyppeteer,
     and then shut down the server.
 
+    Screenshots are saved in the 'screenshots' folder with automatic numbering to prevent overwrites.
     All options can be customized via command-line arguments.
     """
     # Start Flask app in a separate thread
@@ -97,9 +143,12 @@ def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_p
         print("Flask app did not start correctly")
         return
 
+    # Get the next available screenshot path
+    final_output_path = get_screenshot_path(output_path)
+
     # Run Pyppeteer code to take screenshot
-    asyncio.get_event_loop().run_until_complete(capture_screenshot(url, output_path))
-    print(f"Screenshot saved to {output_path}")
+    asyncio.get_event_loop().run_until_complete(capture_screenshot(url, final_output_path))
+    print(f"Screenshot saved to {final_output_path}")
 
     # Shutdown Flask app
     try:
