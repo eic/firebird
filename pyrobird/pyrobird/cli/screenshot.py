@@ -25,44 +25,28 @@ def run_flask_app(unsecure_files, allow_cors, disable_download, work_path):
 
 
 def get_screenshot_path(output_path):
-    # Create screenshots directory if it doesn't exist
-    screenshots_dir = 'screenshots'
-    os.makedirs(screenshots_dir, exist_ok=True)
+    """Generate unique screenshot path with auto-numbering in screenshots/ directory."""
+    os.makedirs('screenshots', exist_ok=True)
 
-    # Extract filename and extension from output_path
-    filename = os.path.basename(output_path)
-    name, ext = os.path.splitext(filename)
+    name, ext = os.path.splitext(os.path.basename(output_path))
+    ext = ext or '.png'
 
-    if not ext:
-        ext = '.png'
-
-    base_path = os.path.join(screenshots_dir, f"{name}{ext}")
+    base_path = os.path.join('screenshots', f"{name}{ext}")
     if not os.path.exists(base_path):
-        # Use base filename for first screenshot
-        print(f"Will save screenshot to: {base_path}")
         return base_path
 
-    pattern = os.path.join(screenshots_dir, f"{name}_*{ext}")
-    existing_files = glob.glob(pattern)
-
-    numbers = []
-    for file in existing_files:
-        base = os.path.basename(file)
+    # Extract numbers from existing files and find next available
+    existing_numbers = []
+    for file in glob.glob(os.path.join('screenshots', f"{name}_*{ext}")):
         try:
-            # Extract number between name_ and extension
-            number_part = base[len(name) + 1:-len(ext)]
-            numbers.append(int(number_part))
+            num = int(os.path.basename(file)[len(name) + 1:-len(ext)])
+            existing_numbers.append(num)
         except ValueError:
-            continue
+            pass
 
-    if numbers:
-        next_number = max(numbers) + 1
-    else:
-        next_number = 1
+    next_num = max(existing_numbers, default=0) + 1
+    return os.path.join('screenshots', f"{name}_{next_num:03d}{ext}")
 
-    final_path = os.path.join(screenshots_dir, f"{name}_{next_number:03d}{ext}")
-    print(f"Will save screenshot to: {final_path}")
-    return final_path
 
 
 async def capture_screenshot(url, output_path):
