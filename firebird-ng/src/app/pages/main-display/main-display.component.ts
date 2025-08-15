@@ -34,7 +34,7 @@ import {NgIf} from "@angular/common";
 import {TrackPainterConfig} from "../../services/track-painter-config";
 import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
 import {MatProgressSpinner} from "@angular/material/progress-spinner";
-
+import GUI from 'lil-gui';
 
 /**
  * This MainDisplayComponent:
@@ -105,6 +105,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   loadingEdm     = signal(false);
   loadingGeometry = signal(false);
 
+  // lil GUI for right panel
+  lilGui = new GUI();
+
   // Phoenix API
   private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
 
@@ -174,6 +177,12 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Loads the geometry (do it last as it might be long)
     this.initGeometry();
+
+    // Init gui
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'y').listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'z').listen();
+
   }
 
   // 3) UI - Toggling panes

@@ -38,6 +38,11 @@ export class ThreeService implements OnDestroy {
   public renderer!: THREE.WebGLRenderer;
   public controls!: OrbitControls;
 
+
+  /** Cameras */
+  public perspectiveCamera!: THREE.PerspectiveCamera;
+  public orthographicCamera!: THREE.OrthographicCamera;
+
   /** Camera that is actually used */
   public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   public cameraMode$ = new BehaviorSubject<boolean>(true);
@@ -52,9 +57,7 @@ export class ThreeService implements OnDestroy {
   public profileBeginFunc: (() => void) | null = null;
   public profileEndFunc: (() => void) | null = null;
 
-  /** Cameras */
-  private perspectiveCamera!: THREE.PerspectiveCamera;
-  private orthographicCamera!: THREE.OrthographicCamera;
+
 
 
   /** Animation loop control */
@@ -229,6 +232,8 @@ export class ThreeService implements OnDestroy {
     this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 10, 40000);
     this.perspectiveCamera.position.set(-7000, 0 , 0);
 
+
+
     // Better orthographic camera initialization
     const orthoSize = 1000; // Start with a large enough size to see the detector
     this.orthographicCamera = new THREE.OrthographicCamera(
@@ -238,6 +243,8 @@ export class ThreeService implements OnDestroy {
     );
     this.orthographicCamera.position.copy(this.perspectiveCamera.position);
     this.orthographicCamera.lookAt(this.scene.position);
+
+
 
 
     // Default camera is perspective
@@ -270,6 +277,7 @@ export class ThreeService implements OnDestroy {
     this.camera.updateProjectionMatrix();
 
     this.controls.update();
+
 
     // Setup lights
     this.setupLights();

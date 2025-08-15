@@ -3,7 +3,7 @@ import { FormControl } from '@angular/forms';
 import { LocalStorageService } from '../../services/local-storage.service';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ConfigProperty } from '../../utils/config-property';
+import { PersistentProperty } from '../../utils/persistent-property';
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatFormField } from '@angular/material/form-field';
@@ -165,7 +165,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   ) {
   }
 
-  bindConfigToControl<Type>(control: FormControl<Type | null>, config: ConfigProperty<Type>) {
+  bindConfigToControl<Type>(control: FormControl<Type | null>, config: PersistentProperty<Type>) {
     control.setValue(config.value, { emitEvent: false });
 
     config.changes$.subscribe(value => {

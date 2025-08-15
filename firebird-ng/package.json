@@ -28,6 +28,7 @@
     "jsonc-parser": "^3.3.1",
     "jsroot": "^7.9.1",
     "jszip": "^3.10.1",
+    "lil-gui": "^0.20.0",
     "ngx-markdown": "^20.0.0",
     "outmatch": "^1.0.0",
     "phoenix-event-display": "^3.0.5",

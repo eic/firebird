@@ -4,7 +4,7 @@ import {BehaviorSubject, Observable} from 'rxjs';
 /**
  * Storage general interface for storing ConfigProperty-ies.
  * ConfigProperty uses the storage to save and load values.
- * 
+ *
  * Time-based Configuration System:
  * - Each configuration value is stored with an associated timestamp
  * - Timestamps are stored in parallel variables with ".time" suffix (e.g., "myConfig" value has "myConfig.time" timestamp)
@@ -12,7 +12,7 @@ import {BehaviorSubject, Observable} from 'rxjs';
  * - If no timestamp is provided when setting a value, the current time ("now") is used
  * - This allows for conflict resolution when multiple sources might update the same configuration
  */
-interface ConfigPropertyStorage {
+interface PersistentPropertyStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
@@ -20,7 +20,7 @@ interface ConfigPropertyStorage {
 /**
  * Use local storage to save load ConfigProperty
  */
-class ConfigPropertyLocalStorage implements ConfigPropertyStorage {
+class PersistentPropertyLocalStorage implements PersistentPropertyStorage {
   getItem(key: string): string | null {
     return localStorage.getItem(key);
   }
@@ -33,7 +33,7 @@ class ConfigPropertyLocalStorage implements ConfigPropertyStorage {
 /**
  * Manages an individual configuration property. Provides reactive updates to subscribers,
  * persistence to localStorage, and optional value validation.
- * 
+ *
  * Includes time-based update logic to handle concurrent modifications:
  * - Each value is stored with a timestamp
  * - Updates can specify a timestamp to enable conflict resolution
@@ -41,7 +41,7 @@ class ConfigPropertyLocalStorage implements ConfigPropertyStorage {
  *
  * @template T The type of the configuration value.
  */
-export class ConfigProperty<T> {
+export class PersistentProperty<T> {
   public subject: BehaviorSubject<T>;
 
   /** Observable for subscribers to react to changes in the property value. */
@@ -61,7 +61,7 @@ export class ConfigProperty<T> {
     private defaultValue: T,
     private saveCallback?: () => void,
     private validator?: (value: T) => boolean,
-    private storage: ConfigPropertyStorage = new ConfigPropertyLocalStorage(),
+    private storage: PersistentPropertyStorage = new PersistentPropertyLocalStorage(),
     ) {
     const value = this.loadValue();
     this.subject = new BehaviorSubject<T>(value);
@@ -100,7 +100,7 @@ export class ConfigProperty<T> {
 
   /**
    * Gets the timestamp of when the current value was stored.
-   * 
+   *
    * @returns {number | null} The timestamp in milliseconds, or null if not found.
    */
   private getStoredTime(): number | null {
@@ -116,7 +116,7 @@ export class ConfigProperty<T> {
 
   /**
    * Saves the timestamp for when the value was stored.
-   * 
+   *
    * @param {number} timestamp The timestamp in milliseconds.
    */
   private saveTime(timestamp: number): void {
