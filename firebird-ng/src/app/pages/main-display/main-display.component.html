@@ -21,9 +21,9 @@
     <!-- Extra options -->
     <ng-content></ng-content>
 
-    <button mat-icon-button matTooltip="Toggle right pane" (click)="toggleRightPane()" class="panel-button">
-      <mat-icon>{{ isRightPaneOpen ? 'close' : 'settings' }}</mat-icon>
-    </button>
+<!--    <button mat-icon-button matTooltip="Toggle right pane" (click)="toggleRightPane()" class="panel-button">-->
+<!--      <mat-icon>{{ isRightPaneOpen ? 'close' : 'settings' }}</mat-icon>-->
+<!--    </button>-->
 
   </ng-container>
 
@@ -35,13 +35,13 @@
   <div centralPane>
     <!-- Central content area -->
     <div id="eventDisplay"></div>
-
     <app-tool-panel ></app-tool-panel>
     <app-cube-viewport-control></app-cube-viewport-control>
   </div>
 
+  <div id="lilgui"></div>
+
   <div rightPane>
-    <div id="lilgui"></div>
     <app-painter-config-page *ngIf="isRightPaneOpen"></app-painter-config-page>
   </div>
 
