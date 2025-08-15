@@ -21,6 +21,10 @@
     <!-- Extra options -->
     <ng-content></ng-content>
 
+    <button mat-icon-button matTooltip="Toggle right pane" (click)="toggleRightPane()" class="panel-button">
+      <mat-icon>{{ isRightPaneOpen ? 'close' : 'settings' }}</mat-icon>
+    </button>
+
   </ng-container>
 
 
