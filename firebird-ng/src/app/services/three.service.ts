@@ -64,7 +64,6 @@ export class ThreeService implements OnDestroy {
   /** Callbacks to run each frame before rendering. */
   private frameCallbacks: Array<() => void> = [];
 
-
   private clipIntersection: boolean = false;
 
   /** Initialization flag */
@@ -160,7 +159,6 @@ export class ThreeService implements OnDestroy {
       });
     }
   };
-
 
 
   constructor(
