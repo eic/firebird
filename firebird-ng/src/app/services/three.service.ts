@@ -270,9 +270,9 @@ export class ThreeService implements OnDestroy {
 
 
     // Perspective camera distance limits
-    const sceneRadius = 5000;
+    const sceneRadius = 15000;
     this.controls.minDistance = sceneRadius * 0.05;
-    this.controls.maxDistance = sceneRadius * 3;
+    this.controls.maxDistance = sceneRadius * 5;
     this.camera.far = this.controls.maxDistance * 1.1;
     this.camera.updateProjectionMatrix();
 
