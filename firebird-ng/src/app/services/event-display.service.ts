@@ -29,6 +29,9 @@ export class EventDisplayService {
   // Time
   //private eventDisplayMode: WritableSignal<DisplayMode> = signal(DisplayMode.Timeless);
   public eventTime: WritableSignal<number | null> = signal(0);
+  
+  // Animation cycling
+  public animationIsCycling: WritableSignal<boolean> = signal(false);
 
 
   public maxTime = 200;
@@ -283,6 +286,17 @@ export class EventDisplayService {
         trackInfo.newLine.geometry.instanceCount = Infinity;
       }
     }
+  }
+
+  // Animation cycling methods
+  startAnimationCycling() {
+    this.animationIsCycling.set(true);
+    // TODO: Implement animation cycling logic
+  }
+
+  stopAnimationCycling() {
+    this.animationIsCycling.set(false);
+    // TODO: Stop animation cycling logic
   }
 
   // ****************************************************

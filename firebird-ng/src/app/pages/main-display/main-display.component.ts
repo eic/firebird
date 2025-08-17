@@ -307,6 +307,14 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  toggleAnimationCycling() {
+    if (this.eventDisplay.animationIsCycling()) {
+      this.eventDisplay.stopAnimationCycling();
+    } else {
+      this.eventDisplay.startAnimationCycling();
+    }
+  }
+
 
   selectedConfigItem: any = null;
 

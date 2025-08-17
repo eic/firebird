@@ -12,6 +12,15 @@
         <mat-icon>close_fullscreen</mat-icon>
     </button>
 
+    <button mat-icon-button 
+            matTooltip="Auto play animation" 
+            class="panel-button"
+            [style.background-color]="eventDisplay.animationIsCycling() ? 'var(--mat-sys-primary-container)' : 'transparent'"
+            [style.color]="eventDisplay.animationIsCycling() ? 'var(--mat-sys-on-primary-container)' : 'inherit'"
+            (click)="toggleAnimationCycling()">
+      <mat-icon>loop</mat-icon>
+    </button>
+
     <!-- Event selector -->
     <app-custom-event-selector></app-custom-event-selector>
 
