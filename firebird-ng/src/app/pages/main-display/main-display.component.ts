@@ -418,4 +418,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
   }
+
+  animateWithCollision() {
+    this.eventDisplay.animateWithCollision();
+  }
 }

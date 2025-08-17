@@ -12,6 +12,7 @@ import {ThreeEventProcessor} from '../data-pipelines/three-event.processor';
 import {DataModelPainter, DisplayMode} from '../painters/data-model-painter';
 import {AnimationManager} from "../animation/animation-manager";
 import {initGroupFactories} from "../model/default-group-init";
+import {Mesh, MeshBasicMaterial, SphereGeometry} from "three";
 
 
 @Injectable({
@@ -193,6 +194,57 @@ export class EventDisplayService {
       .start();
   }
 
+  /**
+   * Animate the collision of two particles.
+   * @param tweenDuration Duration of the particle collision animation tween.
+   * @param particleSize Size of the particles.
+   * @param distanceFromOrigin Distance of the particles (along z-axes) from the origin.
+   * @param onEnd Callback to call when the particle collision ends.
+   */
+  public animateParticlesCollide(
+    tweenDuration: number,
+    particleSize: number = 30,
+    distanceFromOrigin: number = 5000,
+    onEnd?: () => void,
+  ) {
+
+    // Make electron
+    const electronGeometry = new SphereGeometry(particleSize, 32, 32);
+    const electronMaterial = new MeshBasicMaterial({ color: 0x0000FF, transparent: true, opacity: 0});
+    const electron = new Mesh(electronGeometry, electronMaterial);
+
+    // Make ion
+    const ionMaterial = new MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0});
+    const ionGeometry = new SphereGeometry(2*particleSize, 32, 32);
+    const ion = new Mesh(ionGeometry, ionMaterial);
+
+    electron.position.setZ(distanceFromOrigin);
+    ion.position.setZ(-distanceFromOrigin);
+
+    const particles = [electron, ion];
+
+    this.three.sceneEvent.add(...particles);
+
+    const particleTweens = [];
+
+    for (const particle of particles) {
+      new Tween(particle.material, this.tweenGroup)
+        .to({opacity: 1,},300,)
+        .start();
+
+      const particleToOrigin = new Tween(particle.position, this.tweenGroup)
+        .to({z: 0,}, tweenDuration,)
+        .start();
+
+      particleTweens.push(particleToOrigin);
+    }
+
+    particleTweens[0].onComplete(() => {
+      this.three.sceneEvent.remove(...particles);
+      onEnd?.();
+    });
+  }
+
   animateWithCollision() {
     this.stopTimeAnimation();
     this.rewindTime();
@@ -201,16 +253,11 @@ export class EventDisplayService {
         trackInfo.trackNode.visible = false;
       }
     }
-    // TODO
-    // this.animationManager?.collideParticles(
-    //   this.beamAnimationTime,
-    //   30,
-    //   5000,
-    //   new Color(0xaaaaaa),
-    //   () => {
-    //     this.animateTime();
-    //   }
-    // );
+
+    const ed_this = this;
+    this.animateParticlesCollide(1000, undefined, undefined, ()=>{
+      ed_this.animateTime();
+    });
   }
 
   timeStepBack(): void {
