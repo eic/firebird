@@ -29,7 +29,7 @@ export class EventDisplayService {
   // Time
   //private eventDisplayMode: WritableSignal<DisplayMode> = signal(DisplayMode.Timeless);
   public eventTime: WritableSignal<number | null> = signal(0);
-  
+
   // Animation cycling
   public animationIsCycling: WritableSignal<boolean> = signal(false);
 
@@ -190,8 +190,14 @@ export class EventDisplayService {
     this.tween = new Tween({currentTime: this.eventTime() ?? this.minTime}, this.tweenGroup)
       .to({currentTime: targetTime}, duration)
       .onUpdate((obj) => {
-        console.log(obj.currentTime);
         this.eventTime.set(obj.currentTime);
+      }).onStop((time)=>{
+        console.log(`[eventDisplay]: time animation stopped at: ${time}`);
+      }).onComplete((time)=>{
+        if(this.animationIsCycling()) {
+          this.dataService.setNextEntry();
+          setTimeout(() => { this.animateWithCollision();}, 1);
+        }
       })
       // .easing(TWEEN.Easing.Quadratic.In) // This can be changed to other easing functions
       .start();
@@ -299,6 +305,11 @@ export class EventDisplayService {
     // TODO: Stop animation cycling logic
   }
 
+  // Entry navigation
+  setNextEntry() {
+    this.dataService.setNextEntry();
+  }
+
   // ****************************************************
   // *************** DATA LOADING ***********************
   // ****************************************************
@@ -328,52 +339,6 @@ export class EventDisplayService {
     sceneGeo.children.push(threeGeometry);
     this.lastLoadedGeometryUrl = url;
   }
-
-  /**
-   * Load events
-   * @private
-   */
-  private loadEvents() {
-    let eventSource = this.settings.dexJsonEventSource.value;
-    eventSource = this.urlService.resolveDownloadUrl(eventSource);
-    let eventConfig = {
-      eventFile:
-        'https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip',
-      eventType: 'zip',
-    };
-    if (
-      eventSource != 'no-events' &&
-      !eventSource.endsWith('edm4hep.json')
-    ) {
-      let eventType = eventSource.endsWith('zip') ? 'zip' : 'json';
-      let eventFile = eventSource;
-      eventConfig = {eventFile, eventType};
-    }
-
-    if (typeof Worker !== 'undefined') {
-      // Create a new
-      const worker = new Worker(
-        new URL('../workers/event-loader.worker.ts', import.meta.url)
-      );
-      worker.onmessage = ({data}) => {
-        for (let key in data) {
-          this.eventsByName.set(key, data[key]);
-          this.eventsArray.push(data[key]);
-        }
-      };
-      worker.postMessage(eventConfig.eventFile);
-    } else {
-      // Web workers are not supported in this environment.
-    }
-  }
-
-  public loadEvent(eventName: string) {
-    const event = this.eventsByName.get(eventName);
-    if (event) {
-      this.buildEventDataFromJSON(event);
-    }
-  }
-
 
   async loadDexData(url: string) {
     this.lastLoadedDexUrl = null;
@@ -440,38 +405,17 @@ export class EventDisplayService {
 
     this.three.sceneEvent.clear();
 
-    // Use the ThreeService to handle object groups
-    const eventDataGroup = this.three.sceneEvent;
-
     // Event data collections by type
     for (const collectionType in eventData) {
       const collectionsOfType = eventData[collectionType];
 
       for (const collectionName in collectionsOfType) {
         const collection = collectionsOfType[collectionName];
-
-        // // THREE.Group for this collection
-        // const collectionGroup = new THREE.Group();
-        // collectionGroup.name = collectionName;
-        // eventDataGroup.add(collectionGroup);
-        //
-        // for (const item of collection) {
-        //   // Object for each item
-        //   const object = threeEventProcessor.makeObject(
-        //     collectionType,
-        //     collectionName,
-        //     item
-        //   );
-        //
-        //   if (object) {
-        //     collectionGroup.add(object);
-        //   }
-        // }
       }
     }
 
     // Post-processing for specific event data types
-    const mcTracksGroup = eventDataGroup.getObjectByName('mc_tracks');
+    const mcTracksGroup = this.three.sceneEvent.getObjectByName('mc_tracks');
     if (mcTracksGroup) {
       this.trackInfos = threeEventProcessor.processMcTracks(mcTracksGroup);
 
@@ -493,13 +437,6 @@ export class EventDisplayService {
       }
       console.timeEnd('Process tracks on event load');
     }
-
-    // Update event metadata (not really used for now)
-    // this.eventMetadata = {
-    //   eventNumber: eventData.eventNumber,
-    //   runNumber: eventData.runNumber,
-    //   startTime: eventData.startTime * 1000, // Convert UNIX time to milliseconds
-    // };
 
     console.timeEnd('[buildEventDataFromJSON] BUILD EVENT');
 

@@ -244,12 +244,8 @@ export class ThreeService implements OnDestroy {
     this.orthographicCamera.position.copy(this.perspectiveCamera.position);
     this.orthographicCamera.lookAt(this.scene.position);
 
-
-
-
     // Default camera is perspective
     this.camera = this.perspectiveCamera;
-
 
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -257,7 +253,6 @@ export class ThreeService implements OnDestroy {
     this.renderer.localClippingEnabled = false;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
 
     // Append renderer to the container
     this.containerElement.appendChild(this.renderer.domElement);
@@ -268,7 +263,6 @@ export class ThreeService implements OnDestroy {
     this.controls.enableDamping = false;
     this.controls.dampingFactor = 0.05;
 
-
     // Perspective camera distance limits
     const sceneRadius = 15000;
     this.controls.minDistance = sceneRadius * 0.05;
@@ -277,7 +271,6 @@ export class ThreeService implements OnDestroy {
     this.camera.updateProjectionMatrix();
 
     this.controls.update();
-
 
     // Setup lights
     this.setupLights();

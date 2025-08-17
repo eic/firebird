@@ -15,8 +15,7 @@
     <button mat-icon-button 
             matTooltip="Auto play animation" 
             class="panel-button"
-            [style.background-color]="eventDisplay.animationIsCycling() ? 'var(--mat-sys-primary-container)' : 'transparent'"
-            [style.color]="eventDisplay.animationIsCycling() ? 'var(--mat-sys-on-primary-container)' : 'inherit'"
+            [class.active]="eventDisplay.animationIsCycling()"
             (click)="toggleAnimationCycling()">
       <mat-icon>loop</mat-icon>
     </button>
