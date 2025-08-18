@@ -46,6 +46,9 @@ export class PersistentProperty<T> {
 
   /** Observable for subscribers to react to changes in the property value. */
   public changes$: Observable<T>;
+  
+  /** Track last automatic timestamp to ensure uniqueness */
+  private lastAutoTimestamp: number = 0;
 
   /**
    * Creates an instance of ConfigProperty.
@@ -101,13 +104,18 @@ export class PersistentProperty<T> {
   /**
    * Gets the timestamp of when the current value was stored.
    *
-   * @returns {number | null} The timestamp in milliseconds, or null if not found.
+   * @returns {number | null} The timestamp in milliseconds, or null if not found or invalid.
    */
   private getStoredTime(): number | null {
     try {
       const timeKey = `${this.key}.time`;
       const storedTime = this.storage.getItem(timeKey);
-      return storedTime ? parseInt(storedTime, 10) : null;
+      if (!storedTime) {
+        return null;
+      }
+      const parsedTime = parseInt(storedTime, 10);
+      // Return null if the timestamp is invalid (NaN)
+      return isNaN(parsedTime) ? null : parsedTime;
     } catch (error) {
       console.error(`Error loading timestamp for key='${this.key}'`, error);
       return null;
@@ -138,7 +146,19 @@ export class PersistentProperty<T> {
       return;
     }
 
-    const updateTime = time ?? Date.now();
+    // If no explicit time provided, use Date.now() but ensure it's unique
+    let updateTime: number;
+    if (time !== undefined) {
+      updateTime = time;
+    } else {
+      updateTime = Date.now();
+      // Ensure timestamp is always increasing for automatic timestamps
+      if (updateTime <= this.lastAutoTimestamp) {
+        updateTime = this.lastAutoTimestamp + 1;
+      }
+      this.lastAutoTimestamp = updateTime;
+    }
+    
     const storedTime = this.getStoredTime();
 
     // Only update if no stored time exists or if the update time is newer
