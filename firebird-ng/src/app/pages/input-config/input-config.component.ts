@@ -7,6 +7,7 @@ import { PersistentProperty } from '../../utils/persistent-property';
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatFormField } from '@angular/material/form-field';
+import { NgIf } from '@angular/common';
 import { MatInput, MatLabel } from '@angular/material/input';
 import { ResourceSelectComponent } from '../../components/resource-select/resource-select.component';
 import { defaultFirebirdConfig, ServerConfig, ServerConfigService } from '../../services/server-config.service';
@@ -38,6 +39,7 @@ import {MatOption} from "@angular/material/autocomplete";
     MatButton,
     MatSelect,
     MatOption,
+    NgIf,
   ],
   templateUrl: './input-config.component.html',
   styleUrls: ['./input-config.component.scss']
@@ -66,6 +68,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   geometryCutListName = new FormControl('off');
   geometryRootFilterName = new FormControl('default');
   geometryFastAndUgly: FormControl<boolean | null> = new FormControl(false);
+  useController: FormControl<boolean | null> = new FormControl(false);
 
 
   firebirdConfig: ServerConfig = defaultFirebirdConfig;
@@ -202,6 +205,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     this.bindConfigToControl(this.geometryCutListName, this.userConfigService.geometryCutListName);
     this.bindConfigToControl(this.geometryRootFilterName, this.userConfigService.geometryRootFilterName);
     this.bindConfigToControl(this.geometryFastAndUgly, this.userConfigService.geometryFastAndUgly);
+    this.bindConfigToControl(this.useController, this.userConfigService.useController);
 
     this.firebirdConfig = this.firebirdConfigService.config;
     setTimeout(() => {

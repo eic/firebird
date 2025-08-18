@@ -20,6 +20,7 @@ export class LocalStorageService {
   public clippingStartAngle: PersistentProperty<number>;
   public clippingOpeningAngle: PersistentProperty<number>;
   public uiSelectedTheme: PersistentProperty<string>;
+  public useController: PersistentProperty<boolean>;
 
 
   constructor() {
@@ -46,5 +47,7 @@ export class LocalStorageService {
     this.clippingOpeningAngle = new PersistentProperty<number>('clipping.openingAngle', 180, undefined,
       /* validator */ (val) => val >= 0 && val <= 360 // Provide an optional validator ensuring 0 <= angle <= 360
     );
+
+    this.useController = new PersistentProperty<boolean>('controls.useController', false);
   }
 }

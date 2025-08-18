@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import * as THREE from "three";
 import {BehaviorSubject, Observable, Subject} from "rxjs";
 import {ThreeService} from "./three.service";
+import {LocalStorageService} from "./local-storage.service";
 
 
 export enum GamepadButtonIndexes {
@@ -67,8 +68,14 @@ export class GameControllerService {
   public buttonSelect: GamepadObservableButton = new GamepadObservableButton(GamepadButtonIndexes.Select);
 
   public activeGamepad: Gamepad|null = null;
+  private frameCallbackRef: (() => void) | null = null;
+  private isControllerEnabled: boolean = false;
 
   animationLoopHandler () {
+    // Only process if controller is enabled
+    if (!this.isControllerEnabled) {
+      return;
+    }
 
     const epsilon = 0.01;
     const gamepads = navigator.getGamepads();
@@ -97,9 +104,9 @@ export class GameControllerService {
           this.rotateCamera(xAxis, yAxis);
         }
 
-        // Zooming using buttons
-        const zoomInButton = gamepad.buttons[2];
-        const zoomOutButton = gamepad.buttons[0];
+        // Zooming using buttons (X and A)
+        const zoomInButton = gamepad.buttons[2]; // X button
+        const zoomOutButton = gamepad.buttons[0]; // A button
 
         if (zoomInButton.pressed) {
           this.zoom(0.99);
@@ -107,6 +114,22 @@ export class GameControllerService {
 
         if (zoomOutButton.pressed) {
           this.zoom(1.01);
+        }
+
+        // Strafe functionality
+        // B button for strafe left
+        if (this.buttonB.state.pressed) {
+          this.strafe(-0.5);
+        }
+
+        // RT button for strafe right  
+        if (this.buttonRT.state.pressed) {
+          this.strafe(0.5);
+        }
+
+        // Default view on LT button press
+        if (this.buttonLT.state.pressed) {
+          this.resetToDefaultView();
         }
 
         this.buttonSelect.updateFromGamepadState(gamepad);
@@ -165,19 +188,85 @@ export class GameControllerService {
     orbitControls.update();
   }
 
+  strafe(amount: number) {
+    const camera = this.three.camera;
+    const controls = this.three.controls;
+    
+    // Move along Z axis (right = positive Z, left = negative Z)
+    const offset = new THREE.Vector3(0, 0, amount * 10); // Scale for reasonable movement
+    
+    // Move camera and target together
+    camera.position.add(offset);
+    controls.target.add(offset);
+    controls.update();
+  }
+
+  resetToDefaultView() {
+    const camera = this.three.camera;
+    const controls = this.three.controls;
+    
+    // Reset camera to default position
+    camera.position.set(-7000, 0, 0);
+    controls.target.set(0, 0, 0);
+    
+    // Update controls
+    controls.update();
+    
+    console.log('[GameController] Camera reset to default view');
+  }
+
   constructor(
-    private three: ThreeService
-
+    private three: ThreeService,
+    private localStorageService: LocalStorageService
   ) {
-    // Run it on contruction so if we have an active controller we set up values
-
-    this.three.addFrameCallback(()=>{this.animationLoopHandler();});
+    // Check if controller should be enabled on initialization
+    this.isControllerEnabled = this.localStorageService.useController?.value ?? false;
+    
+    // Create the callback reference
+    this.frameCallbackRef = () => { this.animationLoopHandler(); };
+    
+    // Only attach handler if controller is enabled
+    if (this.isControllerEnabled) {
+      this.three.addFrameCallback(this.frameCallbackRef);
+      console.log('[GameController] Controller enabled on initialization');
+    }
+    
+    // Subscribe to changes in the use controller setting
+    this.localStorageService.useController?.changes$.subscribe((enabled) => {
+      this.setControllerEnabled(enabled);
+    });
+    
     this.xAxisChanged.subscribe((data)=>{
-      console.log(`[joystick] x: ${data}`);
+      if (this.isControllerEnabled) {
+        console.log(`[joystick] x: ${data}`);
+      }
     });
     this.yAxisChanged.subscribe((data)=>{
-      console.log(`[joystick] y: ${data}`);
+      if (this.isControllerEnabled) {
+        console.log(`[joystick] y: ${data}`);
+      }
     });
+  }
 
+  private setControllerEnabled(enabled: boolean) {
+    if (this.isControllerEnabled === enabled) {
+      return;
+    }
+    
+    this.isControllerEnabled = enabled;
+    
+    if (enabled) {
+      // Attach the frame callback
+      if (this.frameCallbackRef) {
+        this.three.addFrameCallback(this.frameCallbackRef);
+        console.log('[GameController] Controller enabled');
+      }
+    } else {
+      // Remove the frame callback
+      if (this.frameCallbackRef) {
+        this.three.removeFrameCallback(this.frameCallbackRef);
+        console.log('[GameController] Controller disabled');
+      }
+    }
   }
 }
