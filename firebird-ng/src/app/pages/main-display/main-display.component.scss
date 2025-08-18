@@ -102,3 +102,9 @@ mat-slider{
   position: absolute;
   top: 60px;
 }
+
+// Active state for panel buttons
+.panel-button.active {
+  background-color: var(--mat-sys-primary-container) !important;
+  color: var(--mat-sys-on-primary-container) !important;
+}

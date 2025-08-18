@@ -170,7 +170,7 @@ export class DataModelService {
         this.entries.set(data.events);
         if (this.entries().length > 0) {
           // If at least one entry is present, automatically set the first as current
-          this.setCurrentEntry(this.entries()[0]);
+          this.setNextEntry();   // Sets entry to be the first in this case
         }
       }
 
@@ -210,5 +210,39 @@ export class DataModelService {
     } else {
       console.warn(`[DataModelService] setCurrentEntryByName: Entry with id='${name}' not found.`);
     }
+  }
+
+  setNextEntry() {
+    const allEntries = this.entries();
+    const current = this.currentEntry();
+
+    // If no entries available, return
+    if (allEntries.length === 0) {
+      console.warn('[DataModelService.setNextEntry] No entries available');
+      return;
+    }
+
+    // If no current entry, set the first one
+    if (!current) {
+      this.setCurrentEntry(allEntries[0]);
+      return;
+    }
+
+    // Find the current entry index
+    const currentIndex = allEntries.findIndex(entry => entry === current);
+
+    // If current entry not found in the list (shouldn't happen), set first entry
+    if (currentIndex === -1) {
+      console.warn('[DataModelService.setNextEntry] Current entry not found in entries list');
+      this.setCurrentEntry(allEntries[0]);
+      return;
+    }
+
+    // Calculate the next index with wrapping
+    const nextIndex = (currentIndex + 1) % allEntries.length;
+
+    // Set the next entry
+    this.setCurrentEntry(allEntries[nextIndex]);
+    console.log(`[DataModelService.setNextEntry] Switching from entry ${currentIndex} to ${nextIndex} (${allEntries[nextIndex].id})`);
   }
 }

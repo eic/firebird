@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from "three";
 import {BehaviorSubject, Observable, Subject} from "rxjs";
+import {ThreeService} from "./three.service";
 
 
 export enum GamepadButtonIndexes {
@@ -89,6 +90,25 @@ export class GameControllerService {
           this.yAxisSubject.next(this.yAxis);
         }
 
+        const xAxis = gamepad.axes[0];
+        const yAxis = gamepad.axes[1];
+
+        if (Math.abs(xAxis) > 0.1 || Math.abs(yAxis) > 0.1) {
+          this.rotateCamera(xAxis, yAxis);
+        }
+
+        // Zooming using buttons
+        const zoomInButton = gamepad.buttons[2];
+        const zoomOutButton = gamepad.buttons[0];
+
+        if (zoomInButton.pressed) {
+          this.zoom(0.99);
+        }
+
+        if (zoomOutButton.pressed) {
+          this.zoom(1.01);
+        }
+
         this.buttonSelect.updateFromGamepadState(gamepad);
         this.buttonStart.updateFromGamepadState(gamepad);
 
@@ -107,8 +127,57 @@ export class GameControllerService {
     }
   };
 
-  constructor() {
+
+  rotateCamera(xAxisChange: number, yAxisChange: number) {
+    let orbitControls = this.three.controls;
+    let camera = this.three.camera;
+
+    const offset = new THREE.Vector3(); // Offset of the camera from the target
+    const quat = new THREE.Quaternion().setFromUnitVectors(camera.up, new THREE.Vector3(0, 1, 0));
+    const quatInverse = quat.clone().invert();
+
+    const currentPosition = camera.position.clone().sub(orbitControls.target);
+    currentPosition.applyQuaternion(quat); // Apply the quaternion
+
+    // Spherical coordinates
+    const spherical = new THREE.Spherical().setFromVector3(currentPosition);
+
+    // Adjusting spherical coordinates
+    spherical.theta -= xAxisChange * 0.023; // Azimuth angle change
+    spherical.phi += yAxisChange * 0.023; // Polar angle change, for rotating up/down
+
+    // Ensure phi is within bounds to avoid flipping
+    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+
+    // Convert back to Cartesian coordinates
+    const newPostion = new THREE.Vector3().setFromSpherical(spherical);
+    newPostion.applyQuaternion(quatInverse);
+
+    camera.position.copy(newPostion.add(orbitControls.target));
+    camera.lookAt(orbitControls.target);
+    orbitControls.update();
+  }
+
+  zoom(factor: number) {
+    let orbitControls = this.three.controls;
+    let camera = this.three.camera;
+    orbitControls.object.position.subVectors(camera.position, orbitControls.target).multiplyScalar(factor).add(orbitControls.target);
+    orbitControls.update();
+  }
+
+  constructor(
+    private three: ThreeService
+
+  ) {
     // Run it on contruction so if we have an active controller we set up values
-    this.animationLoopHandler();
+
+    this.three.addFrameCallback(()=>{this.animationLoopHandler();});
+    this.xAxisChanged.subscribe((data)=>{
+      console.log(`[joystick] x: ${data}`);
+    });
+    this.yAxisChanged.subscribe((data)=>{
+      console.log(`[joystick] y: ${data}`);
+    });
+
   }
 }

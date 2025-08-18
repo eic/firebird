@@ -12,6 +12,7 @@ import {ThreeEventProcessor} from '../data-pipelines/three-event.processor';
 import {DataModelPainter, DisplayMode} from '../painters/data-model-painter';
 import {AnimationManager} from "../animation/animation-manager";
 import {initGroupFactories} from "../model/default-group-init";
+import {Mesh, MeshBasicMaterial, SphereGeometry} from "three";
 
 
 @Injectable({
@@ -28,6 +29,9 @@ export class EventDisplayService {
   // Time
   //private eventDisplayMode: WritableSignal<DisplayMode> = signal(DisplayMode.Timeless);
   public eventTime: WritableSignal<number | null> = signal(0);
+
+  // Animation cycling
+  public animationIsCycling: WritableSignal<boolean> = signal(false);
 
 
   public maxTime = 200;
@@ -186,11 +190,68 @@ export class EventDisplayService {
     this.tween = new Tween({currentTime: this.eventTime() ?? this.minTime}, this.tweenGroup)
       .to({currentTime: targetTime}, duration)
       .onUpdate((obj) => {
-        console.log(obj.currentTime);
         this.eventTime.set(obj.currentTime);
+      }).onStop((time)=>{
+        console.log(`[eventDisplay]: time animation stopped at: ${time}`);
+      }).onComplete((time)=>{
+        if(this.animationIsCycling()) {
+          this.dataService.setNextEntry();
+          setTimeout(() => { this.animateWithCollision();}, 1);
+        }
       })
       // .easing(TWEEN.Easing.Quadratic.In) // This can be changed to other easing functions
       .start();
+  }
+
+  /**
+   * Animate the collision of two particles.
+   * @param tweenDuration Duration of the particle collision animation tween.
+   * @param particleSize Size of the particles.
+   * @param distanceFromOrigin Distance of the particles (along z-axes) from the origin.
+   * @param onEnd Callback to call when the particle collision ends.
+   */
+  public animateParticlesCollide(
+    tweenDuration: number,
+    particleSize: number = 30,
+    distanceFromOrigin: number = 5000,
+    onEnd?: () => void,
+  ) {
+
+    // Make electron
+    const electronGeometry = new SphereGeometry(particleSize, 32, 32);
+    const electronMaterial = new MeshBasicMaterial({ color: 0x0000FF, transparent: true, opacity: 0});
+    const electron = new Mesh(electronGeometry, electronMaterial);
+
+    // Make ion
+    const ionMaterial = new MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0});
+    const ionGeometry = new SphereGeometry(2*particleSize, 32, 32);
+    const ion = new Mesh(ionGeometry, ionMaterial);
+
+    electron.position.setZ(distanceFromOrigin);
+    ion.position.setZ(-distanceFromOrigin);
+
+    const particles = [electron, ion];
+
+    this.three.sceneEvent.add(...particles);
+
+    const particleTweens = [];
+
+    for (const particle of particles) {
+      new Tween(particle.material, this.tweenGroup)
+        .to({opacity: 1,},300,)
+        .start();
+
+      const particleToOrigin = new Tween(particle.position, this.tweenGroup)
+        .to({z: 0,}, tweenDuration,)
+        .start();
+
+      particleTweens.push(particleToOrigin);
+    }
+
+    particleTweens[0].onComplete(() => {
+      this.three.sceneEvent.remove(...particles);
+      onEnd?.();
+    });
   }
 
   animateWithCollision() {
@@ -201,16 +262,11 @@ export class EventDisplayService {
         trackInfo.trackNode.visible = false;
       }
     }
-    // TODO
-    // this.animationManager?.collideParticles(
-    //   this.beamAnimationTime,
-    //   30,
-    //   5000,
-    //   new Color(0xaaaaaa),
-    //   () => {
-    //     this.animateTime();
-    //   }
-    // );
+
+    const ed_this = this;
+    this.animateParticlesCollide(1000, undefined, undefined, ()=>{
+      ed_this.animateTime();
+    });
   }
 
   timeStepBack(): void {
@@ -236,6 +292,22 @@ export class EventDisplayService {
         trackInfo.newLine.geometry.instanceCount = Infinity;
       }
     }
+  }
+
+  // Animation cycling methods
+  startAnimationCycling() {
+    this.animationIsCycling.set(true);
+    // TODO: Implement animation cycling logic
+  }
+
+  stopAnimationCycling() {
+    this.animationIsCycling.set(false);
+    // TODO: Stop animation cycling logic
+  }
+
+  // Entry navigation
+  setNextEntry() {
+    this.dataService.setNextEntry();
   }
 
   // ****************************************************
@@ -267,52 +339,6 @@ export class EventDisplayService {
     sceneGeo.children.push(threeGeometry);
     this.lastLoadedGeometryUrl = url;
   }
-
-  /**
-   * Load events
-   * @private
-   */
-  private loadEvents() {
-    let eventSource = this.settings.dexJsonEventSource.value;
-    eventSource = this.urlService.resolveDownloadUrl(eventSource);
-    let eventConfig = {
-      eventFile:
-        'https://firebird-eic.org/py8_all_dis-cc_beam-5x41_minq2-100_nevt-5.evt.json.zip',
-      eventType: 'zip',
-    };
-    if (
-      eventSource != 'no-events' &&
-      !eventSource.endsWith('edm4hep.json')
-    ) {
-      let eventType = eventSource.endsWith('zip') ? 'zip' : 'json';
-      let eventFile = eventSource;
-      eventConfig = {eventFile, eventType};
-    }
-
-    if (typeof Worker !== 'undefined') {
-      // Create a new
-      const worker = new Worker(
-        new URL('../workers/event-loader.worker.ts', import.meta.url)
-      );
-      worker.onmessage = ({data}) => {
-        for (let key in data) {
-          this.eventsByName.set(key, data[key]);
-          this.eventsArray.push(data[key]);
-        }
-      };
-      worker.postMessage(eventConfig.eventFile);
-    } else {
-      // Web workers are not supported in this environment.
-    }
-  }
-
-  public loadEvent(eventName: string) {
-    const event = this.eventsByName.get(eventName);
-    if (event) {
-      this.buildEventDataFromJSON(event);
-    }
-  }
-
 
   async loadDexData(url: string) {
     this.lastLoadedDexUrl = null;
@@ -379,38 +405,17 @@ export class EventDisplayService {
 
     this.three.sceneEvent.clear();
 
-    // Use the ThreeService to handle object groups
-    const eventDataGroup = this.three.sceneEvent;
-
     // Event data collections by type
     for (const collectionType in eventData) {
       const collectionsOfType = eventData[collectionType];
 
       for (const collectionName in collectionsOfType) {
         const collection = collectionsOfType[collectionName];
-
-        // // THREE.Group for this collection
-        // const collectionGroup = new THREE.Group();
-        // collectionGroup.name = collectionName;
-        // eventDataGroup.add(collectionGroup);
-        //
-        // for (const item of collection) {
-        //   // Object for each item
-        //   const object = threeEventProcessor.makeObject(
-        //     collectionType,
-        //     collectionName,
-        //     item
-        //   );
-        //
-        //   if (object) {
-        //     collectionGroup.add(object);
-        //   }
-        // }
       }
     }
 
     // Post-processing for specific event data types
-    const mcTracksGroup = eventDataGroup.getObjectByName('mc_tracks');
+    const mcTracksGroup = this.three.sceneEvent.getObjectByName('mc_tracks');
     if (mcTracksGroup) {
       this.trackInfos = threeEventProcessor.processMcTracks(mcTracksGroup);
 
@@ -432,13 +437,6 @@ export class EventDisplayService {
       }
       console.timeEnd('Process tracks on event load');
     }
-
-    // Update event metadata (not really used for now)
-    // this.eventMetadata = {
-    //   eventNumber: eventData.eventNumber,
-    //   runNumber: eventData.runNumber,
-    //   startTime: eventData.startTime * 1000, // Convert UNIX time to milliseconds
-    // };
 
     console.timeEnd('[buildEventDataFromJSON] BUILD EVENT');
 

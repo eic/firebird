@@ -1,49 +1,49 @@
 import { Injectable } from '@angular/core';
-import { ConfigProperty } from '../utils/config-property';
+import { PersistentProperty } from '../utils/persistent-property';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LocalStorageService {
-  public geometryUrl: ConfigProperty<string>;
-  public geometryThemeName: ConfigProperty<string>;
-  public geometryCutListName: ConfigProperty<string>;
-  public geometryFastAndUgly: ConfigProperty<boolean>;
-  public geometryRootFilterName: ConfigProperty<string>;
-  public dexJsonEventSource: ConfigProperty<string>;
-  public rootEventSource: ConfigProperty<string>;
-  public rootEventRange: ConfigProperty<string>;
-  public localServerUseApi: ConfigProperty<boolean>;
-  public localServerUrl: ConfigProperty<string>;
+  public geometryUrl: PersistentProperty<string>;
+  public geometryThemeName: PersistentProperty<string>;
+  public geometryCutListName: PersistentProperty<string>;
+  public geometryFastAndUgly: PersistentProperty<boolean>;
+  public geometryRootFilterName: PersistentProperty<string>;
+  public dexJsonEventSource: PersistentProperty<string>;
+  public rootEventSource: PersistentProperty<string>;
+  public rootEventRange: PersistentProperty<string>;
+  public localServerUseApi: PersistentProperty<boolean>;
+  public localServerUrl: PersistentProperty<string>;
 
-  public clippingEnabled: ConfigProperty<boolean>;
-  public clippingStartAngle: ConfigProperty<number>;
-  public clippingOpeningAngle: ConfigProperty<number>;
-  public uiSelectedTheme: ConfigProperty<string>;
+  public clippingEnabled: PersistentProperty<boolean>;
+  public clippingStartAngle: PersistentProperty<number>;
+  public clippingOpeningAngle: PersistentProperty<number>;
+  public uiSelectedTheme: PersistentProperty<string>;
 
 
   constructor() {
-    this.geometryUrl = new ConfigProperty('geometry.selectedGeometry', 'https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root');
-    this.geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
-    this.geometryCutListName = new ConfigProperty('geometry.cutListName', "central");
-    this.geometryThemeName = new ConfigProperty('geometry.themeName', "cool2");
-    this.geometryRootFilterName = new ConfigProperty('geometry.rootFilterName', "default");
-    this.dexJsonEventSource = new ConfigProperty('events.dexEventsSource', '');
-    this.rootEventSource = new ConfigProperty('events.rootEventSource', '');
-    this.rootEventRange = new ConfigProperty('events.rootEventRange', '0-5');
-    this.localServerUseApi = new ConfigProperty('server.useApi', false);
-    this.localServerUrl = new ConfigProperty('server.url', 'http://localhost:5454');
-    this.clippingEnabled = new ConfigProperty<boolean>('geometry.clippingEnabled', true);
-    this.uiSelectedTheme = new ConfigProperty('ui.theme', 'system', undefined,
+    this.geometryUrl = new PersistentProperty('geometry.selectedGeometry', 'https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root');
+    this.geometryFastAndUgly = new PersistentProperty('geometry.FastDefaultMaterial', false);
+    this.geometryCutListName = new PersistentProperty('geometry.cutListName', "central");
+    this.geometryThemeName = new PersistentProperty('geometry.themeName', "cool2");
+    this.geometryRootFilterName = new PersistentProperty('geometry.rootFilterName', "default");
+    this.dexJsonEventSource = new PersistentProperty('events.dexEventsSource', '');
+    this.rootEventSource = new PersistentProperty('events.rootEventSource', '');
+    this.rootEventRange = new PersistentProperty('events.rootEventRange', '0-5');
+    this.localServerUseApi = new PersistentProperty('server.useApi', false);
+    this.localServerUrl = new PersistentProperty('server.url', 'http://localhost:5454');
+    this.clippingEnabled = new PersistentProperty<boolean>('geometry.clippingEnabled', true);
+    this.uiSelectedTheme = new PersistentProperty('ui.theme', 'system', undefined,
       /* validator */ (val) => val === 'dark' || val === 'light' || val === 'system'
       );
 
 
-    this.clippingStartAngle = new ConfigProperty<number>('geometry.clippingStartAngle', 90, undefined,
+    this.clippingStartAngle = new PersistentProperty<number>('geometry.clippingStartAngle', 90, undefined,
       /* validator */ (val) => val >= 0 && val <= 360 // Provide an optional validator ensuring 0 <= angle <= 360
     );
 
-    this.clippingOpeningAngle = new ConfigProperty<number>('clipping.openingAngle', 180, undefined,
+    this.clippingOpeningAngle = new PersistentProperty<number>('clipping.openingAngle', 180, undefined,
       /* validator */ (val) => val >= 0 && val <= 360 // Provide an optional validator ensuring 0 <= angle <= 360
     );
   }

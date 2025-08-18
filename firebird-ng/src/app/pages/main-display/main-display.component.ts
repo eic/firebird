@@ -34,7 +34,7 @@ import {NgIf} from "@angular/common";
 import {TrackPainterConfig} from "../../services/track-painter-config";
 import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
 import {MatProgressSpinner} from "@angular/material/progress-spinner";
-
+import GUI from 'lil-gui';
 
 /**
  * This MainDisplayComponent:
@@ -105,6 +105,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   loadingEdm     = signal(false);
   loadingGeometry = signal(false);
 
+  // lil GUI for right panel
+  lilGui = new GUI();
+  showGui = false;
+
   // Phoenix API
   private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
 
@@ -174,6 +178,17 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Loads the geometry (do it last as it might be long)
     this.initGeometry();
+
+    // Init gui
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'y').listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'z').listen();
+
+    // GUI settings
+    this.lilGui.domElement.style.top = '64px';
+    this.lilGui.domElement.style.right = '120px';
+    this.lilGui.domElement.style.display = 'none';
+
   }
 
   // 3) UI - Toggling panes
@@ -281,7 +296,23 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onDebugButton() {
-    this.showError("Error message works");
+    this.showGui = !this.showGui;
+
+    // Toggle GUI visibility
+    const guiElement = this.lilGui.domElement;
+    if (this.showGui) {
+      guiElement.style.display = 'block';
+    } else {
+      guiElement.style.display = 'none';
+    }
+  }
+
+  toggleAnimationCycling() {
+    if (this.eventDisplay.animationIsCycling()) {
+      this.eventDisplay.stopAnimationCycling();
+    } else {
+      this.eventDisplay.startAnimationCycling();
+    }
   }
 
 
@@ -394,5 +425,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
         this.loadingGeometry.set(false);   // switch off loading indicator
       });
     }
+  }
+
+  animateWithCollision() {
+    this.eventDisplay.animateWithCollision();
   }
 }

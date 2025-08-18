@@ -3,7 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { ThreeService } from './three.service';
 import * as THREE from 'three';
 import {LocalStorageService} from "./local-storage.service";
-import {ConfigProperty} from "../utils/config-property";
+import {PersistentProperty} from "../utils/persistent-property";
 
 export type Theme = 'light' | 'dark' | 'system';
 
@@ -31,7 +31,7 @@ export class ThemeService {
   private readonly threeLightBackground = new THREE.Color(0xFFFFFF);
 
   // What user has in local storage
-  private userSavedTheme: ConfigProperty<string>;
+  private userSavedTheme: PersistentProperty<string>;
 
   /**
    * Creates an instance of ThemeService.
