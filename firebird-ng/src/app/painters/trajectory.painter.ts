@@ -65,7 +65,7 @@ export class TrajectoryPainter extends EventGroupPainter {
     // Create base materials
     this.baseSolidMaterial = new LineMaterial({
       color: 0xffffff,
-      linewidth: 10,   // in world units
+      linewidth: 30,   // in world units
       worldUnits: true,
       dashed: false,
       alphaToCoverage: true
@@ -73,7 +73,7 @@ export class TrajectoryPainter extends EventGroupPainter {
 
     this.baseDashedMaterial = new LineMaterial({
       color: 0xffffff,
-      linewidth: 10,
+      linewidth: 30,
       worldUnits: true,
       dashed: true,
       dashSize: 100,
