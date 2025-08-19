@@ -42,7 +42,7 @@ export class StepTrackComponentPainter {
   /** This is primer, all other DASHED line materials take this and clone and change color */
   dashedLineMaterial = new LineMaterial( {
     color: 0xffff00,
-    linewidth: 20, // in world units with size attenuation, pixels otherwise
+    linewidth: 40, // in world units with size attenuation, pixels otherwise
     worldUnits: true,
     dashed: true,
     //dashScale: 100,     // ???? Need this? What is it?
@@ -54,7 +54,7 @@ export class StepTrackComponentPainter {
   /** This is primer, all other SOLID line materials take this and clone and change color */
   solidLineMaterial = new LineMaterial( {
     color: 0xffff00,
-    linewidth: 20, // in world units with size attenuation, pixels otherwise
+    linewidth: 40, // in world units with size attenuation, pixels otherwise
     worldUnits: true,
     dashed: false,
     //dashScale: 100,     // ???? Need this? What is it?
@@ -82,7 +82,7 @@ export class StepTrackComponentPainter {
 
     this.opticalMaterial = this.dashedLineMaterial.clone();
     this.opticalMaterial.color = new Color(NeonTrackColors.Salad);
-    this.opticalMaterial.linewidth = 1;
+    this.opticalMaterial.linewidth = 10;
 
     this.electronMaterial = this.solidLineMaterial.clone();
     this.electronMaterial.color = new Color(NeonTrackColors.Blue);

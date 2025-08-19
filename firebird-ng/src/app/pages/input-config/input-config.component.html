@@ -120,6 +120,28 @@
     </mat-card>
 
       <mat-card class="config-card">
+        <mat-card-title>Controls</mat-card-title>
+        <mat-card-content>
+          <div class="section">
+            <h3>Game Controller</h3>
+            <p>Enable game controller support for navigation</p>
+            <mat-slide-toggle [formControl]="useController">Use controller</mat-slide-toggle>
+            <div *ngIf="useController.value" style="margin-top: 10px; padding: 10px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
+              <p style="margin: 0 0 10px 0;"><strong>Controller Button Mapping:</strong></p>
+              <ul style="margin: 0; padding-left: 20px;">
+                <li>Left Stick: Rotate camera</li>
+                <li>A Button: Zoom out</li>
+                <li>X Button: Zoom in</li>
+                <li>B Button: Strafe left</li>
+                <li>RT Trigger: Strafe right</li>
+                <li>LT Trigger: Reset to default view</li>
+              </ul>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="config-card">
         <mat-card-title>Server API Configuration</mat-card-title>
         <mat-card-content>
           <mat-slide-toggle [formControl]="serverUseApi">Use specific backend</mat-slide-toggle>
