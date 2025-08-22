@@ -1,7 +1,7 @@
 # Created by: Dmitry Romanov, 2024
 # This file is part of Firebird Event Display and is licensed under the LGPLv3.
 # See the LICENSE file in the project root for full license information.
-
+import datetime
 import os
 import logging
 import time
@@ -334,6 +334,10 @@ def asset_config():
     config_dict['serverHost'] = host
     config_dict['servedByPyrobird'] = True
     config_dict['apiAvailable'] = True
+    config_dict['timestamp'] = datetime.datetime.now().isoformat();
+    config_dict['userConfigs'] = {
+        "experiment.haha": 5
+    }
     config_api_url = flask_app.config.get(CFG_API_BASE_URL)
     config_dict['apiBaseUrl'] = config_api_url if config_api_url else f"{request.scheme}://{host}:{port}"
 

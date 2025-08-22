@@ -1,6 +1,10 @@
 {
   // Flag indicates if python Flask server from Pyrobird package is in used. Set automatically by Pyrobird
   "servedByPyrobird": false,
+  "timestamp": "2021-03-29 15:00:00",
+  "userConfigs": {
+    "geometry.clippingEnabled": false   // Enable clipping of geometry
+  },
 
   "Configs": [
     {

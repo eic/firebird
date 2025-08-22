@@ -1,6 +1,11 @@
 import {BehaviorSubject, Observable} from 'rxjs';
 
 
+export interface ConfigPropertyBase {
+  // Common methods/properties that don't depend on T
+  getName?(): string;
+  // ... other non-generic methods
+}
 /**
  * Storage general interface for storing ConfigProperty-ies.
  * ConfigProperty uses the storage to save and load values.
@@ -42,11 +47,14 @@ class PersistentPropertyLocalStorage implements PersistentPropertyStorage {
  * @template T The type of the configuration value.
  */
 export class PersistentProperty<T> {
+
+  private valueType: string;
+
   public subject: BehaviorSubject<T>;
 
   /** Observable for subscribers to react to changes in the property value. */
   public changes$: Observable<T>;
-  
+
   /** Track last automatic timestamp to ensure uniqueness */
   private lastAutoTimestamp: number = 0;
 
@@ -69,7 +77,7 @@ export class PersistentProperty<T> {
     const value = this.loadValue();
     this.subject = new BehaviorSubject<T>(value);
     this.changes$ = this.subject.asObservable();
-
+    this.valueType = typeof value;
   }
 
 
@@ -158,7 +166,7 @@ export class PersistentProperty<T> {
       }
       this.lastAutoTimestamp = updateTime;
     }
-    
+
     const storedTime = this.getStoredTime();
 
     // Only update if no stored time exists or if the update time is newer
