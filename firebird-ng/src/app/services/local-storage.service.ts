@@ -22,7 +22,7 @@ export class LocalStorageService {
   public uiSelectedTheme: PersistentProperty<string>;
   public useController: PersistentProperty<boolean>;
 
-  public propertiesByName:  Map<string, PersistentProperty<unknown>> = new Map<string, PersistentProperty<unknown>>();
+  public propertiesByName: Map<string, PersistentProperty<string> | PersistentProperty<number> | PersistentProperty<boolean> | PersistentProperty<any>> = new Map();
 
 
   constructor() {
@@ -39,7 +39,9 @@ export class LocalStorageService {
     this.localServerUseApi = new PersistentProperty('server.useApi', false);
     this.localServerUrl = new PersistentProperty('server.url', 'http://localhost:5454');
     //this.clippingEnabled = new PersistentProperty<boolean>('geometry.clippingEnabled', true);
-    this.propertiesByName.set('geometry.clippingEnabled', new PersistentProperty<boolean>('geometry.clippingEnabled', true));
+
+    this.propertiesByName.set('geometry.clippingEnabled', new PersistentProperty<PersistentProperty<any>>('geometry.clippingEnabled', true));
+
     this.uiSelectedTheme = new PersistentProperty('ui.theme', 'system', undefined,
       /* validator */ (val) => val === 'dark' || val === 'light' || val === 'system'
       );
