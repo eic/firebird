@@ -12,7 +12,7 @@ import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
 import { Subscription } from 'rxjs';
 
 import { ThreeService } from '../../services/three.service';
-import { LocalStorageService } from '../../services/local-storage.service';
+import { ConfigService } from '../../services/config.service';
 import {MatMenuItem} from "@angular/material/menu";
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 
@@ -57,7 +57,7 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
 
   constructor(
     private threeService: ThreeService,
-    private config: LocalStorageService,
+    private config: ConfigService,
     private dialog: MatDialog,
     private viewContainerRef: ViewContainerRef,
     private cdr: ChangeDetectorRef

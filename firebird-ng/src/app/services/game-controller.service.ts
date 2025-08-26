@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import * as THREE from "three";
 import {BehaviorSubject, Observable, Subject} from "rxjs";
 import {ThreeService} from "./three.service";
-import {LocalStorageService} from "./local-storage.service";
+import {ConfigService} from "./config.service";
 
 
 export enum GamepadButtonIndexes {
@@ -122,7 +122,7 @@ export class GameControllerService {
           this.strafe(-0.5);
         }
 
-        // RT button for strafe right  
+        // RT button for strafe right
         if (this.buttonRT.state.pressed) {
           this.strafe(0.5);
         }
@@ -191,10 +191,10 @@ export class GameControllerService {
   strafe(amount: number) {
     const camera = this.three.camera;
     const controls = this.three.controls;
-    
+
     // Move along Z axis (right = positive Z, left = negative Z)
     const offset = new THREE.Vector3(0, 0, amount * 10); // Scale for reasonable movement
-    
+
     // Move camera and target together
     camera.position.add(offset);
     controls.target.add(offset);
@@ -204,38 +204,38 @@ export class GameControllerService {
   resetToDefaultView() {
     const camera = this.three.camera;
     const controls = this.three.controls;
-    
+
     // Reset camera to default position
     camera.position.set(-7000, 0, 0);
     controls.target.set(0, 0, 0);
-    
+
     // Update controls
     controls.update();
-    
+
     console.log('[GameController] Camera reset to default view');
   }
 
   constructor(
     private three: ThreeService,
-    private localStorageService: LocalStorageService
+    private localStorageService: ConfigService
   ) {
     // Check if controller should be enabled on initialization
     this.isControllerEnabled = this.localStorageService.useController?.value ?? false;
-    
+
     // Create the callback reference
     this.frameCallbackRef = () => { this.animationLoopHandler(); };
-    
+
     // Only attach handler if controller is enabled
     if (this.isControllerEnabled) {
       this.three.addFrameCallback(this.frameCallbackRef);
       console.log('[GameController] Controller enabled on initialization');
     }
-    
+
     // Subscribe to changes in the use controller setting
     this.localStorageService.useController?.changes$.subscribe((enabled) => {
       this.setControllerEnabled(enabled);
     });
-    
+
     this.xAxisChanged.subscribe((data)=>{
       if (this.isControllerEnabled) {
         console.log(`[joystick] x: ${data}`);
@@ -252,9 +252,9 @@ export class GameControllerService {
     if (this.isControllerEnabled === enabled) {
       return;
     }
-    
+
     this.isControllerEnabled = enabled;
-    
+
     if (enabled) {
       // Attach the frame callback
       if (this.frameCallbackRef) {

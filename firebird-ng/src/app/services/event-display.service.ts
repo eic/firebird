@@ -3,7 +3,7 @@ import {Group as TweenGroup, Tween} from '@tweenjs/tween.js';
 import {ThreeService} from './three.service';
 import {GeometryService} from './geometry.service';
 import {DataModelService} from './data-model.service';
-import {LocalStorageService} from './local-storage.service';
+import {ConfigService} from './config.service';
 import {UrlService} from './url.service';
 
 
@@ -66,7 +66,7 @@ export class EventDisplayService {
   constructor(
     public three: ThreeService,
     private geomService: GeometryService,
-    private settings: LocalStorageService,
+    private settings: ConfigService,
     private dataService: DataModelService,
     private urlService: UrlService
   ) {

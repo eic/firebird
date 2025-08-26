@@ -8,7 +8,7 @@ import {
 
 import {ALL_GROUPS} from '../../services/geometry.service';
 import {GameControllerService} from '../../services/game-controller.service';
-import {LocalStorageService} from '../../services/local-storage.service';
+import {ConfigService} from '../../services/config.service';
 
 import {SceneTreeComponent} from '../../components/scene-tree/scene-tree.component';
 import {ShellComponent} from '../../components/shell/shell.component';
@@ -35,6 +35,7 @@ import {TrackPainterConfig} from "../../services/track-painter-config";
 import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
 import {MatProgressSpinner} from "@angular/material/progress-spinner";
 import GUI from 'lil-gui';
+import {ConfigProperty} from "../../utils/config-property";
 
 /**
  * This MainDisplayComponent:
@@ -88,6 +89,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(CubeViewportControlComponent)
   private cubeControl!: CubeViewportControlComponent;
 
+  geometryUrl = new ConfigProperty('geometry.selectedGeometry', 'https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root');
+
+
   message = "";
 
   loaded: boolean = false;
@@ -115,11 +119,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private controller: GameControllerService,
     private snackBar: MatSnackBar,
-    public eventDisplay: EventDisplayService,
-    private userConfig: LocalStorageService,
+    public  eventDisplay: EventDisplayService,
+    private userConfig: ConfigService,
     private serverConfig: ServerConfigService,
   ) {
-
+    userConfig.addConfig(this.geometryUrl);
+    userConfig.addConfig(this.geometryFastAndUgly);
+    userConfig.addConfig(this.geometryCutListName);
   }
 
 

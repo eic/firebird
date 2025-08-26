@@ -6,7 +6,7 @@
  */
 
 import { Injectable } from '@angular/core';
-import { LocalStorageService } from "./local-storage.service";
+import { ConfigService } from "./config.service";
 import { ServerConfigService } from "./server-config.service";
 
 /**
@@ -63,7 +63,7 @@ export class UrlService {
   };
 
   constructor(
-    private userConfigService: LocalStorageService,
+    private userConfigService: ConfigService,
     private serverConfigService: ServerConfigService
   ) {
     this.initializeConfig();

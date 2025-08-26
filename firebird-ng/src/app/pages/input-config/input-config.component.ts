@@ -1,9 +1,9 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { LocalStorageService } from '../../services/local-storage.service';
+import { ConfigService } from '../../services/config.service';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { PersistentProperty } from '../../utils/persistent-property';
+import { ConfigProperty } from '../../utils/config-property';
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatFormField } from '@angular/material/form-field';
@@ -163,12 +163,19 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   }
 
   constructor(
-    private userConfigService: LocalStorageService,
+    private userConfigService: ConfigService,
     private firebirdConfigService: ServerConfigService
   ) {
   }
 
-  bindConfigToControl<Type>(control: FormControl<Type | null>, config: PersistentProperty<Type>) {
+  bindConfigToControl<Type>(control: FormControl<Type | null>, configName:string) {
+
+    let config = this.userConfigService.getConfig<Type>(configName);
+
+    if(typeof config === "undefined") {
+      console.error(`(!) Config '${configName}' not found for control: `, control);
+      return;
+    }
     control.setValue(config.value, { emitEvent: false });
 
     config.changes$.subscribe(value => {
@@ -197,14 +204,14 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   selectedPreset = 'Full ePIC detector geometry (no events)';
 
   ngOnInit(): void {
-    this.bindConfigToControl(this.onlyCentralDetector, this.userConfigService.geometryFastAndUgly);
+
     this.bindConfigToControl(this.serverUseApi, this.userConfigService.localServerUseApi);
     this.bindConfigToControl(this.serverApiUrl, this.userConfigService.localServerUrl);
     this.bindConfigToControl(this.rootEventRange, this.userConfigService.rootEventRange);
     this.bindConfigToControl(this.geometryThemeName, this.userConfigService.geometryThemeName);
     this.bindConfigToControl(this.geometryCutListName, this.userConfigService.geometryCutListName);
     this.bindConfigToControl(this.geometryRootFilterName, this.userConfigService.geometryRootFilterName);
-    this.bindConfigToControl(this.geometryFastAndUgly, this.userConfigService.geometryFastAndUgly);
+    this.bindConfigToControl(this.geometryFastAndUgly, 'geometry.FastDefaultMaterial');
     this.bindConfigToControl(this.useController, this.userConfigService.useController);
 
     this.firebirdConfig = this.firebirdConfigService.config;

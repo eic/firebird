@@ -6,7 +6,7 @@ import {
 } from '../../lib-root-geometry/root-geo-navigation';
 import {build} from 'jsroot/geom';
 import {pruneTopLevelDetectors, RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
-import {LocalStorageService} from "./local-storage.service";
+import {ConfigService} from "./config.service";
 import {Subdetector} from "../model/subdetector";
 import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, Plane} from "three";
 import {UrlService} from "./url.service";
@@ -20,6 +20,7 @@ import {monoColorRules} from "../theme/mono-geometry-ruleset";
 import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
 
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
+import {ConfigProperty} from "../utils/config-property";
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -222,6 +223,11 @@ export const DEFAULT_GEOMETRY = 'builtin://epic-central-optimized';
 })
 export class GeometryService {
 
+  geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
+  geometryCutListName = new ConfigProperty('geometry.cutListName', "central");
+  geometryThemeName = new ConfigProperty('geometry.themeName', "cool2");
+  geometryRootFilterName = new ConfigProperty('geometry.rootFilterName', "default");
+
   public rootGeometryProcessor = new RootGeometryProcessor();
 
   /** Collection of subdetectors */
@@ -243,7 +249,7 @@ export class GeometryService {
   public geometry:WritableSignal<Object3D|null> = signal(null)
 
   constructor(private urlService: UrlService,
-              private localStorage: LocalStorageService,
+              private localStorage: ConfigService,
               ) {
     this.groupsByDetName = new Map<string,string> ([
       ["SolenoidBarrel_assembly_0", GROUP_MAGNETS],
@@ -294,6 +300,11 @@ export class GeometryService {
       ["Magnet_B2BeR_assembly_58", GROUP_MAGNETS],
       ["Magnets_Q3eR_assembly_59", GROUP_MAGNETS],
     ])
+
+    this.localStorage.addConfig(this.geometryFastAndUgly);
+    this.localStorage.addConfig(this.geometryCutListName);
+    this.localStorage.addConfig(this.geometryThemeName);
+    this.localStorage.addConfig(this.geometryRootFilterName);
   }
 
   async loadGeometry(url:string): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
@@ -329,7 +340,7 @@ export class GeometryService {
 
 
     // Getting main detector nodes
-    if(this.localStorage.geometryCutListName.value === "central") {
+    if(this.geometryCutListName.value === "central") {
       let result = pruneTopLevelDetectors(this.rootGeometry, removeDetectorNames);
       console.log(`[GeometryService]: Done prune geometry. Nodes left: ${result.nodes.length}, Nodes removed: ${result.removedNodes.length}`);
     } else {
@@ -337,7 +348,7 @@ export class GeometryService {
 
     }
 
-    if(this.localStorage.geometryRootFilterName.value === "default") {
+    if(this.geometryRootFilterName.value === "default") {
       console.time('[GeometryService]: Root geometry pre-processing');
       this.rootGeometryProcessor.process(this.rootGeometry);
       console.timeEnd('[GeometryService]: Root geometry pre-processing');
@@ -423,7 +434,7 @@ export class GeometryService {
       // Handle the material of the child
       const color = getColorOrDefault(child.material, this.defaultColor);
 
-      if(this.localStorage.geometryFastAndUgly.value) {
+      if(this.geometryFastAndUgly.value) {
         child.material = new MeshLambertMaterial({
           color: color,
           side: DoubleSide,           // you said you can’t change this
@@ -460,14 +471,15 @@ export class GeometryService {
 
     // HERE WE DO POSTPROCESSING STEP
     // TODO this.threeGeometryProcessor.processRuleSets(defaultRules, this.subdetectors);
-    console.log(`[GeometryService]: Geometry theme name is set to '${this.localStorage.geometryThemeName.value}'`);
-    if(this.localStorage.geometryThemeName.value === "cool2") {
+    let geoTheme = this.geometryThemeName.value;
+    console.log(`[GeometryService]: Geometry theme name is set to '${geoTheme}'`);
+    if(geoTheme === "cool2") {
       this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
-    }else if(this.localStorage.geometryThemeName.value === "cool2no") {
+    }else if(geoTheme === "cool2no") {
       this.threeGeometryProcessor.processRuleSets(cool2NoOutlineColorRules, this.subdetectors);
-    } else if(this.localStorage.geometryThemeName.value === "cad") {
+    } else if(geoTheme === "cad") {
       this.threeGeometryProcessor.processRuleSets(cadColorRules, this.subdetectors);
-    } else if(this.localStorage.geometryThemeName.value === "grey") {
+    } else if(geoTheme === "grey") {
       this.threeGeometryProcessor.processRuleSets(monoColorRules, this.subdetectors);
     }
 

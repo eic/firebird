@@ -1,11 +1,6 @@
 import {BehaviorSubject, Observable} from 'rxjs';
 
 
-export interface ConfigPropertyBase {
-  // Common methods/properties that don't depend on T
-  getName?(): string;
-  // ... other non-generic methods
-}
 /**
  * Storage general interface for storing ConfigProperty-ies.
  * ConfigProperty uses the storage to save and load values.
@@ -46,7 +41,7 @@ class PersistentPropertyLocalStorage implements PersistentPropertyStorage {
  *
  * @template T The type of the configuration value.
  */
-export class PersistentProperty<T> {
+export class ConfigProperty<T> {
 
   private valueType: string;
 
@@ -61,14 +56,14 @@ export class PersistentProperty<T> {
   /**
    * Creates an instance of ConfigProperty.
    *
-   * @param {string} key The localStorage key under which the property value is stored.
+   * @param {string} _key The localStorage key under which the property value is stored.
    * @param {T} defaultValue The default value of the property if not previously stored.
    * @param storage
    * @param {() => void} saveCallback The callback to execute after setting a new value.
    * @param {(value: T) => boolean} [validator] Optional validator function to validate the property value.
    */
   constructor(
-    private key: string,
+    private _key: string,
     private defaultValue: T,
     private saveCallback?: () => void,
     private validator?: (value: T) => boolean,
@@ -90,7 +85,7 @@ export class PersistentProperty<T> {
     let storedValue: string|null = null;
     let parsedValue: any = undefined;
     try {
-      storedValue = this.storage.getItem(this.key);
+      storedValue = this.storage.getItem(this._key);
 
       if (storedValue !== null) {
         parsedValue = (typeof this.defaultValue) !== 'string' ? JSON.parse(storedValue) : storedValue;
@@ -99,7 +94,7 @@ export class PersistentProperty<T> {
       }
       return this.validator && !this.validator(parsedValue) ? this.defaultValue : parsedValue;
     } catch (error) {
-      console.error(`Error at ConfigProperty.loadValue, key='${this.key}'`);
+      console.error(`Error at ConfigProperty.loadValue, key='${this._key}'`);
       console.log('   storedValue', storedValue);
       console.log('   parsedValue', parsedValue);
       console.log('   Default value will be used: ', this.defaultValue);
@@ -116,7 +111,7 @@ export class PersistentProperty<T> {
    */
   private getStoredTime(): number | null {
     try {
-      const timeKey = `${this.key}.time`;
+      const timeKey = `${this._key}.time`;
       const storedTime = this.storage.getItem(timeKey);
       if (!storedTime) {
         return null;
@@ -125,7 +120,7 @@ export class PersistentProperty<T> {
       // Return null if the timestamp is invalid (NaN)
       return isNaN(parsedTime) ? null : parsedTime;
     } catch (error) {
-      console.error(`Error loading timestamp for key='${this.key}'`, error);
+      console.error(`Error loading timestamp for key='${this._key}'`, error);
       return null;
     }
   }
@@ -136,7 +131,7 @@ export class PersistentProperty<T> {
    * @param {number} timestamp The timestamp in milliseconds.
    */
   private saveTime(timestamp: number): void {
-    const timeKey = `${this.key}.time`;
+    const timeKey = `${this._key}.time`;
     this.storage.setItem(timeKey, timestamp.toString());
   }
 
@@ -171,7 +166,7 @@ export class PersistentProperty<T> {
 
     // Only update if no stored time exists or if the update time is newer
     if (storedTime === null || updateTime > storedTime) {
-      this.storage.setItem(this.key, typeof value !== 'string' ? JSON.stringify(value) : value);
+      this.storage.setItem(this._key, typeof value !== 'string' ? JSON.stringify(value) : value);
       this.saveTime(updateTime);
 
       if(this.saveCallback) {
@@ -180,7 +175,7 @@ export class PersistentProperty<T> {
 
       this.subject.next(value);
     } else {
-      console.log(`Skipping update for key='${this.key}': stored time (${storedTime}) is newer than update time (${updateTime})`);
+      console.log(`Skipping update for key='${this._key}': stored time (${storedTime}) is newer than update time (${updateTime})`);
     }
   }
 
@@ -203,11 +198,23 @@ export class PersistentProperty<T> {
     return this.subject.value;
   }
 
+  get key(): string {
+    return this._key;
+  }
+
 
   /**
    * Resets value to its default given at Config construction
    */
   public setDefault() {
     this.subject.next(this.defaultValue);
+  }
+
+  /**
+   * Gets the timestamp of the current stored value.
+   * @returns The timestamp in milliseconds, or null if not found.
+   */
+  public getTimestamp(): number | null {
+    return this.getStoredTime();
   }
 }
