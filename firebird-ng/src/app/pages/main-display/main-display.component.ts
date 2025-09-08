@@ -90,7 +90,11 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   private cubeControl!: CubeViewportControlComponent;
 
   geometryUrl = new ConfigProperty('geometry.selectedGeometry', 'https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root');
-
+  geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
+  geometryCutListName = new ConfigProperty('geometry.cutListName', "central");
+  dexJsonEventSource = new ConfigProperty('events.dexEventsSource', '');
+  rootEventSource = new ConfigProperty('events.rootEventSource', '');
+  rootEventRange = new ConfigProperty('events.rootEventRange', '0-5');
 
   message = "";
 
@@ -126,6 +130,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     userConfig.addConfig(this.geometryUrl);
     userConfig.addConfig(this.geometryFastAndUgly);
     userConfig.addConfig(this.geometryCutListName);
+    userConfig.addConfig(this.dexJsonEventSource);
+    userConfig.addConfig(this.rootEventSource);
+    userConfig.addConfig(this.rootEventRange);
   }
 
 
@@ -341,7 +348,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     // We set loadingDex=false to be safe
     this.loadingDex.set(false);
 
-    let dexUrl = this.userConfig.dexJsonEventSource.subject.getValue();
+    let dexUrl = this.userConfig.getConfig<string>('events.dexEventsSource')?.value;
 
     if (!dexUrl || dexUrl.trim().length === 0) {
       console.log("[main-display]: No event data source specified. Skip loadDexData.");

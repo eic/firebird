@@ -59,7 +59,7 @@ export class PersistentConfigService {
     this.localServerUrl = new ConfigProperty('server.url', 'http://localhost:5454');
     //this.clippingEnabled = new PersistentProperty<boolean>('geometry.clippingEnabled', true);
 
-    this.propertiesByName.set('geometry.clippingEnabled', new ConfigProperty<boolean>('geometry.clippingEnabled', true));
+    this.configsByName.set('geometry.clippingEnabled', new ConfigProperty<boolean>('geometry.clippingEnabled', true));
 
     this.uiSelectedTheme = new ConfigProperty('ui.theme', 'system', undefined,
       /* validator */ (val) => val === 'dark' || val === 'light' || val === 'system'
@@ -78,7 +78,7 @@ export class PersistentConfigService {
   }
 
   get clippingEnabled(): ConfigProperty<boolean> {
-    return this.propertiesByName.get('geometry.clippingEnabled') as ConfigProperty<boolean>;
+    return this.configsByName.get('geometry.clippingEnabled') as ConfigProperty<boolean>;
   }
 
 }

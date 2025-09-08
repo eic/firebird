@@ -20,6 +20,7 @@ export class ConfigService {
   public configsByName: Map<string, ConfigProperty<any>> = new Map();
 
   // Generic getter with type safety
+
   public getConfig<T>(key: string): ConfigProperty<T> | undefined {
     return this.configsByName.get(key) as ConfigProperty<T> | undefined;
   }

@@ -193,9 +193,9 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   ngAfterViewInit() {
     console.log('[ConfigPage] ngAfterViewInit');
 
-    this.bindConfigToControl(this.geometrySelect.value, this.userConfigService.geometryUrl);
-    this.bindConfigToControl(this.edm4eicSelect.value, this.userConfigService.rootEventSource);
-    this.bindConfigToControl(this.dexJsonSelect.value, this.userConfigService.dexJsonEventSource);
+    this.bindConfigToControl(this.geometrySelect.value, 'geometry.selectedGeometry');
+    this.bindConfigToControl(this.edm4eicSelect.value,'events.rootEventSource');
+    this.bindConfigToControl(this.dexJsonSelect.value, 'events.dexEventsSource');
 
 
     this.loadInitialConfig();
@@ -205,20 +205,21 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
 
-    this.bindConfigToControl(this.serverUseApi, this.userConfigService.localServerUseApi);
-    this.bindConfigToControl(this.serverApiUrl, this.userConfigService.localServerUrl);
-    this.bindConfigToControl(this.rootEventRange, this.userConfigService.rootEventRange);
-    this.bindConfigToControl(this.geometryThemeName, this.userConfigService.geometryThemeName);
-    this.bindConfigToControl(this.geometryCutListName, this.userConfigService.geometryCutListName);
-    this.bindConfigToControl(this.geometryRootFilterName, this.userConfigService.geometryRootFilterName);
+    this.bindConfigToControl(this.serverUseApi, 'server.useApi');
+    this.bindConfigToControl(this.serverApiUrl, 'server.url');
+    this.bindConfigToControl(this.rootEventRange, 'events.rootEventRange');
+    this.bindConfigToControl(this.geometryThemeName,'geometry.themeName');
+    this.bindConfigToControl(this.geometryCutListName, 'geometry.cutListName');
+    this.bindConfigToControl(this.geometryRootFilterName, 'geometry.rootFilterName');
     this.bindConfigToControl(this.geometryFastAndUgly, 'geometry.FastDefaultMaterial');
-    this.bindConfigToControl(this.useController, this.userConfigService.useController);
+    this.bindConfigToControl(this.useController, 'controls.useController');
 
     this.firebirdConfig = this.firebirdConfigService.config;
     setTimeout(() => {
-      this.geometrySelect?.value.setValue(this.userConfigService.geometryUrl.value);
-      this.edm4eicSelect?.value.setValue(this.userConfigService.rootEventSource.value);
-      this.dexJsonSelect?.value.setValue(this.userConfigService.dexJsonEventSource.value);
+      this.geometrySelect?.value.setValue(this.userConfigService.getConfig('geometry.selectedGeometry')?.value);
+      this.edm4eicSelect?.value.setValue(this.userConfigService.getConfig('events.rootEventSource')?.value);
+      this.dexJsonSelect?.value.setValue(this.userConfigService.getConfig('events.dexEventsSource')?.value);
+
     });
   }
 
@@ -227,11 +228,11 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   const config = this.quickLinks[newValue];
 
   if (config) {
-    this.userConfigService.geometryUrl.value = config.geometry;
-    this.userConfigService.dexJsonEventSource.value = config.dexjson;
-    this.userConfigService.rootEventSource.value = config.edm4eic;
+    this.userConfigService.getConfig('geometry.selectedGeometry')!.value = config.geometry;
+    this.userConfigService.getConfig('events.dexEventsSource')!.value = config.dexjson;
+    this.userConfigService.getConfig('events.rootEventSource')!.value = config.edm4eic;
     if(config.eventRange != null) {
-      this.userConfigService.rootEventRange.value = config.eventRange;
+      this.userConfigService.getConfig('events.rootEventRange')!.value = config.eventRange;
     }
 
     // setTimeout(() => {
@@ -250,8 +251,8 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
 }
 
   private loadInitialConfig() {
-    const savedDex = this.userConfigService.dexJsonEventSource.value;
-    const savedGeom = this.userConfigService.geometryUrl.value;
+    const savedDex = this.userConfigService.getConfig('events.dexEventsSource')?.value;
+    const savedGeom = this.userConfigService.getConfig('geometry.selectedGeometry')?.value;
 
     if (savedDex || savedGeom) {
       return;
@@ -264,8 +265,8 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   }
 
   resetGeometryToDefaults() {
-    this.userConfigService.geometryThemeName.setDefault();
-    this.userConfigService.geometryCutListName.setDefault();
-    this.userConfigService.geometryRootFilterName.setDefault();
+    this.userConfigService.getConfig('geometry.themeName')?.setDefault();
+    this.userConfigService.getConfig('geometry.cutListName')?.setDefault();
+    this.userConfigService.getConfig('geometry.rootFilterName')?.setDefault();
   }
 }
