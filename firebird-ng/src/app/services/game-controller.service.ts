@@ -220,7 +220,7 @@ export class GameControllerService {
     private localStorageService: ConfigService
   ) {
     // Check if controller should be enabled on initialization
-    this.isControllerEnabled = this.localStorageService.useController?.value ?? false;
+    this.isControllerEnabled = this.localStorageService.getConfig<boolean>('useController')?.value ?? false;
 
     // Create the callback reference
     this.frameCallbackRef = () => { this.animationLoopHandler(); };
@@ -232,7 +232,7 @@ export class GameControllerService {
     }
 
     // Subscribe to changes in the use controller setting
-    this.localStorageService.useController?.changes$.subscribe((enabled) => {
+    this.localStorageService.getConfig<boolean>('useController')?.changes$.subscribe((enabled) => {
       this.setControllerEnabled(enabled);
     });
 

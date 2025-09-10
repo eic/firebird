@@ -375,9 +375,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   private initRootData() {
-    let url = this.userConfig.rootEventSource.subject.getValue();
-    let eventRange = this.userConfig.rootEventRange.subject.getValue();
-
+    let url = (this.userConfig.getConfig<string>('rootEventSource')
+      ?? this.userConfig.createConfig('rootEventSource', '')).subject.getValue();
+    let eventRange = (this.userConfig.getConfig<string>('rootEventRange')
+      ?? this.userConfig.createConfig('rootEventRange', '')).subject.getValue();
     // Do we have url?
     if (!url || url.trim().length === 0) {
       console.log("[main-display]: No Edm4Eic source specified. Nothing to load");
@@ -414,7 +415,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   private initGeometry() {
-    let url = this.userConfig.geometryUrl.value;
+    let url = (this.userConfig.getConfig<string>('geometryUrl')
+      ?? this.userConfig.createConfig('geometryUrl', '')).value;
+
 
     if (!url || url.trim().length === 0) {
       console.log("[main-display]: No geometry specified. Skip loadGeometry ");

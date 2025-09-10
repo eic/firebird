@@ -48,7 +48,8 @@ export class ThemeService {
       this._htmlElement = document.documentElement as HTMLHtmlElement;
     }
 
-    this.userSavedTheme = this.userConfigService.uiSelectedTheme;
+    this.userSavedTheme = this.userConfigService.getConfig<string>('uiSelectedTheme')
+      ?? this.userConfigService.createConfig('uiSelectedTheme', 'dark');
     this.initializeTheme();
 
   }
