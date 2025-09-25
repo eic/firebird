@@ -375,10 +375,17 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   private initRootData() {
-    let url = (this.userConfig.getConfig<string>('rootEventSource')
-      ?? this.userConfig.createConfig('rootEventSource', '')).subject.getValue();
-    let eventRange = (this.userConfig.getConfig<string>('rootEventRange')
-      ?? this.userConfig.createConfig('rootEventRange', '')).subject.getValue();
+    let url = (
+      this.userConfig.getConfig<string>('events.rootEventSource')
+      ?? this.userConfig.createConfig('events.rootEventSource', '')
+    ).subject.getValue();
+
+    let eventRange = (
+      this.userConfig.getConfig<string>('events.rootEventRange')
+      ?? this.userConfig.createConfig('events.rootEventRange', '')
+    ).subject.getValue();
+
+
     // Do we have url?
     if (!url || url.trim().length === 0) {
       console.log("[main-display]: No Edm4Eic source specified. Nothing to load");
@@ -415,33 +422,35 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   private initGeometry() {
-    let url = (this.userConfig.getConfig<string>('geometryUrl')
-      ?? this.userConfig.createConfig('geometryUrl', '')).value;
-
+    const url = (
+      this.userConfig.getConfig<string>('geometry.selectedGeometry')
+      ?? this.userConfig.createConfig('geometry.selectedGeometry', '')
+    ).value;
 
     if (!url || url.trim().length === 0) {
       console.log("[main-display]: No geometry specified. Skip loadGeometry ");
+      return;
     }
-    // Check if we have the same data
-    else if (this.eventDisplay.lastLoadedGeometryUrl === url) {
-      console.log(`[main-display]: Geometry url is the same as before: '${url}', skip loading`);
-    } else {
-      // Load geometry
-      this.loadingGeometry.set(true);
-      this.eventDisplay.loadGeometry(url).catch(error => {
 
+    if (this.eventDisplay.lastLoadedGeometryUrl === url) {
+      console.log(`[main-display]: Geometry url is the same as before: '${url}', skip loading`);
+      return;
+    }
+
+    this.loadingGeometry.set(true);
+    this.eventDisplay.loadGeometry(url)
+      .catch(error => {
         const msg = `Error loading geometry: ${error}`;
         console.error(`[main-display]: ${msg}`);
         this.showError("Error loading Geometry. Open 'Configure' to change. Press F12->Console for logs");
-      }).then(() => {
+      })
+      .then(() => {
         this.updateSceneTreeComponent();
         console.log("[main-display]: Geometry loaded");
-
-      }).finally(()=>{
-        this.loadingGeometry.set(false);   // switch off loading indicator
-      });
-    }
+      })
+      .finally(() => this.loadingGeometry.set(false));
   }
+
 
   animateWithCollision() {
     this.eventDisplay.animateWithCollision();

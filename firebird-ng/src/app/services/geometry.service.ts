@@ -421,21 +421,31 @@ export class GeometryService {
   }
 
   public postProcessing(geometry: Object3D, clippingPlanes: Plane[]) {
-    let threeGeometry  = this.geometry();
-    if (!threeGeometry) return;
+  const threeGeometry = this.geometry();
+  if (!threeGeometry) return;
 
+  const isLineMaterial = (mat: any) =>
+    !!mat && (mat.isLineMaterial || mat.type === 'LineMaterial');
 
-    // Now we want to set default materials
-    threeGeometry.traverse((child: any) => {
-      if (child.type !== 'Mesh' || !child?.material?.isMaterial) {
-        return;
-      }
+  // Apply clipping only to mesh materials (skip LineMaterial completely)
+  const applyClippingToMaterial = (mat: any) => {
+    if (!mat || !mat.isMaterial) return;
 
-      // Handle the material of the child
-      const color = getColorOrDefault(child.material, this.defaultColor);
+    // Skip all line materials (they don't support clipping chunks)
+    if (isLineMaterial(mat)) {
+      if (typeof mat.clipping !== 'undefined') mat.clipping = false as any;
+      if (typeof mat.clippingPlanes !== 'undefined') mat.clippingPlanes = null as any;
+      return;
+    }
 
-      if(this.geometryFastAndUgly.value) {
-        child.material = new MeshLambertMaterial({
+    if (typeof mat.clippingPlanes !== 'undefined') mat.clippingPlanes = clippingPlanes;
+    if (typeof mat.clipIntersection !== 'undefined') mat.clipIntersection = true;
+    if (typeof mat.clipShadows !== 'undefined') mat.clipShadows = false;
+  };
+
+  const setMeshDefaultMaterial = (child: any, color: THREE.Color) => {
+    if (this.geometryFastAndUgly.value) {
+       child.material = new MeshLambertMaterial({
           color: color,
           side: DoubleSide,           // you said you can’t change this
           transparent: false,
@@ -450,62 +460,70 @@ export class GeometryService {
           vertexColors: false,        // disable vertex-color math
           flatShading: true,          // simpler “flat” shading
           toneMapped: false           // skip tone-mapping
-        });
-      } else {
-        child.material = new MeshLambertMaterial({
-          color: color,
-          side: DoubleSide,
-          transparent: true,
-          opacity: 0.7,
-          blending: NormalBlending,
-          depthTest: true,
-          depthWrite: true,
-          clippingPlanes: clippingPlanes,
-          clipIntersection: true,
-          clipShadows: false,
-        });
+      });
+    } else {
+      child.material = new MeshLambertMaterial({
+        color: color,
+        side: DoubleSide,
+        transparent: true,
+        opacity: 0.7,
+        blending: NormalBlending,
+        depthTest: true,
+        depthWrite: true,
+        clippingPlanes,          // ok for Mesh* materials
+        clipIntersection: true,
+        clipShadows: false
+      });
+    }
+  };
 
-      }
-    });
+
+  // Assign base materials only to Mesh objects
+  threeGeometry.traverse((child: any) => {
+    // Only meshes get the default MeshLambertMaterial here
+    if (!(child?.isMesh) || !child?.material) return;
+
+    const color = getColorOrDefault(child.material, this.defaultColor);
+    setMeshDefaultMaterial(child, color);
+  });
+
+  // Apply theme rule sets
+  const geoTheme = this.geometryThemeName.value;
+  console.log(`[GeometryService]: Geometry theme name is set to '${geoTheme}'`);
+  if (geoTheme === 'cool2') {
+    this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
+  } else if (geoTheme === 'cool2no') {
+    this.threeGeometryProcessor.processRuleSets(cool2NoOutlineColorRules, this.subdetectors);
+  } else if (geoTheme === 'cad') {
+    this.threeGeometryProcessor.processRuleSets(cadColorRules, this.subdetectors);
+  } else if (geoTheme === 'grey') {
+    this.threeGeometryProcessor.processRuleSets(monoColorRules, this.subdetectors);
+  }
 
 
-    // HERE WE DO POSTPROCESSING STEP
-    // TODO this.threeGeometryProcessor.processRuleSets(defaultRules, this.subdetectors);
-    let geoTheme = this.geometryThemeName.value;
-    console.log(`[GeometryService]: Geometry theme name is set to '${geoTheme}'`);
-    if(geoTheme === "cool2") {
-      this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
-    }else if(geoTheme === "cool2no") {
-      this.threeGeometryProcessor.processRuleSets(cool2NoOutlineColorRules, this.subdetectors);
-    } else if(geoTheme === "cad") {
-      this.threeGeometryProcessor.processRuleSets(cadColorRules, this.subdetectors);
-    } else if(geoTheme === "grey") {
-      this.threeGeometryProcessor.processRuleSets(monoColorRules, this.subdetectors);
+  threeGeometry.traverse((child: any) => {
+    const mat = child?.material;
+    if (!mat) return;
+
+    // If material is an array, iterate each one
+    if (Array.isArray(mat)) {
+      for (const m of mat) applyClippingToMaterial(m);
+      return;
     }
 
+    // Skip lines entirely (Line2/LineSegments2 nodes)
+    if (child?.type === 'Line2' || child?.type === 'LineSegments2') {
+      if (typeof mat.clipping !== 'undefined') (mat as any).clipping = false;
+      if (typeof mat.clippingPlanes !== 'undefined') (mat as any).clippingPlanes = null;
+      return;
+    }
 
+    // Regular single material case
+    applyClippingToMaterial(mat);
+  });
 
-    // Now we want to change the materials
-    threeGeometry.traverse((child: any) => {
-      if (!child?.material?.isMaterial) {
-        return;
-      }
-
-      if (child.material?.clippingPlanes !== undefined) {
-        child.material.clippingPlanes = clippingPlanes;
-      }
-
-      if (child.material?.clipIntersection !== undefined) {
-        child.material.clipIntersection = true;
-      }
-
-      if (child.material?.clipShadows !== undefined) {
-        child.material.clipShadows = false;
-      }
-    });
-
-    //this.simplifyAllMeshes(geometry, 0.5);
-  }
+  // this.simplifyAllMeshes(geometry, 0.5);
+}
 
   private stripIdFromName(name: string) {
       return name.replace(/_\d+$/, '');
