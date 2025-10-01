@@ -494,16 +494,24 @@ export class ThreeService implements OnDestroy {
       console.error('ThreeService: setSize called before initialization.');
       return;
     }
+
     this.renderer.setSize(width, height);
 
-    this.perspectiveCamera.aspect = width / height;
+    this.perspectiveCamera.aspect = width / Math.max(1, height);
     this.perspectiveCamera.updateProjectionMatrix();
 
-    this.orthographicCamera.left = width / -2;
-    this.orthographicCamera.right = width / 2;
-    this.orthographicCamera.top = height / 2;
-    this.orthographicCamera.bottom = height / -2;
-    this.orthographicCamera.updateProjectionMatrix();
+    if (this.camera === this.orthographicCamera) {
+      const ortho = this.orthographicCamera;
+      const effectiveWorldScreenHeight = (ortho.top - ortho.bottom) / Math.max(1e-9, ortho.zoom); // <<< ключ
+      const upp = effectiveWorldScreenHeight / Math.max(1, height);
+
+      const halfW = (width  * upp) / 2;
+      const halfH = (height * upp) / 2;
+
+      ortho.left = -halfW; ortho.right = halfW;
+      ortho.top  =  halfH; ortho.bottom = -halfH;
+      ortho.updateProjectionMatrix();
+    }
 
     this.controls.update();
   }
@@ -588,46 +596,88 @@ export class ThreeService implements OnDestroy {
    * @param useOrtho Whether to use the orthographic camera.
    */
   toggleOrthographicView(useOrtho: boolean): void {
+    const target = this.controls.target.clone();
+
+    // Get viewport size in CSS pixels (not render buffer size)
+    const el = this.renderer.domElement;
+    const vw = el.clientWidth  || 1;
+    const vh = el.clientHeight || 1;
+
+    // Calculate the current visible world height depending on the active camera
+    let worldScreenHeight: number;
+    if ((this.camera as any).isPerspectiveCamera) {
+      // Perspective: calculate visible height at the target distance from FOV
+      const persp = this.camera as THREE.PerspectiveCamera;
+      const dist   = persp.position.distanceTo(target);
+      const fovRad = THREE.MathUtils.degToRad(persp.fov);
+      worldScreenHeight = 2 * dist * Math.tan(fovRad / 2);
+    } else {
+      // Orthographic: calculate effective height considering zoom
+      const ortho = this.camera as THREE.OrthographicCamera;
+      worldScreenHeight = (ortho.top - ortho.bottom) / Math.max(1e-9, ortho.zoom);
+    }
 
     if (useOrtho) {
-      // When switching to orthographic, sync position and target from perspective
-      this.orthographicCamera.position.copy(this.perspectiveCamera.position);
-
-      // Get the current target from OrbitControls
-      const target = this.controls.target.clone();
-
+      // When switching to orthographic, sync position and target from the current perspective
+      const persp = this.perspectiveCamera;
 
       // Update orthographic camera to look in the same direction
+      this.orthographicCamera.position.copy(persp.position);
+      this.orthographicCamera.up.copy(persp.up);
       this.orthographicCamera.lookAt(target);
 
-      // Calculate suitable frustum size based on distance to target
-      const distance = this.orthographicCamera.position.distanceTo(target);
-      const orthoSize = distance * Math.tan(THREE.MathUtils.degToRad(this.perspectiveCamera.fov / 2));
+      // Calculate suitable frustum size based on distance to target and viewport size
+      const upp = worldScreenHeight / vh; // world units per pixel
+      const halfW = (vw * upp) / 2;
+      const halfH = (vh * upp) / 2;
 
-      // Update orthographic frustum based on aspect ratio
-      const aspect = this.renderer.domElement.width / this.renderer.domElement.height;
-      this.orthographicCamera.left = -orthoSize * aspect;
-      this.orthographicCamera.right = orthoSize * aspect;
-      this.orthographicCamera.top = orthoSize;
-      this.orthographicCamera.bottom = -orthoSize;
+      // Update orthographic frustum based on aspect ratio and UPP
+      this.orthographicCamera.left = -halfW;
+      this.orthographicCamera.right = halfW;
+      this.orthographicCamera.top = halfH;
+      this.orthographicCamera.bottom = -halfH;
+      this.orthographicCamera.zoom = 1; // keep zoom at 1, scale is encoded in frustum
 
       // Set a generous near/far plane range to ensure all geometry is visible
-      this.orthographicCamera.near = -10000;
-      this.orthographicCamera.far = 40000;
+      const dist = persp.position.distanceTo(target);
+      const clipSpan = Math.max(1e6, dist * 10);
+      this.orthographicCamera.near = -clipSpan;
+      this.orthographicCamera.far  =  clipSpan;
 
       this.orthographicCamera.updateProjectionMatrix();
       this.camera = this.orthographicCamera;
+
     } else {
-      // Switch back to perspective camera
-      this.camera = this.perspectiveCamera;
+      // When switching back to perspective, compute distance so the visible world height matches ortho
+      const persp = this.perspectiveCamera;
+      const fovRad = THREE.MathUtils.degToRad(persp.fov);
+      const dist = (worldScreenHeight / 2) / Math.tan(fovRad / 2);
+
+      // Keep the same viewing direction as ortho
+      const dir = new THREE.Vector3().subVectors(this.camera.position, target).normalize();
+      const newPos = new THREE.Vector3().copy(target).addScaledVector(dir, dist);
+
+      persp.position.copy(newPos);
+      persp.up.copy(this.camera.up);
+      persp.lookAt(target);
+
+      // Set near/far planes relative to distance for good depth precision
+      persp.near = Math.max(0.1, dist * 0.001);
+      persp.far  = Math.max(1000, dist * 1000);
+
+      persp.updateProjectionMatrix();
+      this.camera = persp;
     }
 
     // Update the controls to use the current camera
+    // @ts-ignore
     this.controls.object = this.camera;
     this.controls.update();
 
     this.cameraMode$.next(!useOrtho);
   }
+
+
 
   /**
    * Ensures the service has been initialized before performing operations.
