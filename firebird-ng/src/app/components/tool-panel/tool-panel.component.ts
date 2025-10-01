@@ -5,6 +5,8 @@ import { ViewOptionsComponent } from '../view-options/view-options.component';
 import { ThreeService } from '../../services/three.service';
 import {MatIconButton} from "@angular/material/button";
 import {MatTooltip} from "@angular/material/tooltip";
+import * as THREE from 'three';
+
 
 @Component({
     selector: 'app-tool-panel',
@@ -37,10 +39,38 @@ export class ToolPanelComponent {
    */
   private zoomTo(factor: number): void {
     const controls = this.threeService.controls;
-    const camera = this.threeService.camera;
-    // Basic logic: move camera closer/farther from controls.target
-    const newPos = camera.position.clone().sub(controls.target).multiplyScalar(factor).add(controls.target);
-    camera.position.copy(newPos);
+    const cam = this.threeService.camera as THREE.Camera;
+
+    // Ensure matrices are up to date
+    cam.updateMatrixWorld(true);
+
+    const target = controls.target;
+
+    if ((cam as any).isOrthographicCamera) {
+      const ortho = cam as THREE.OrthographicCamera;
+      const newZoom = ortho.zoom / Math.max(1e-6, factor);
+
+      ortho.zoom = THREE.MathUtils.clamp(newZoom, 0.01, 1e5);
+      ortho.updateProjectionMatrix();
+
+    } else if ((cam as any).isPerspectiveCamera) {
+      const persp = cam as THREE.PerspectiveCamera;
+
+      const dir = new THREE.Vector3().subVectors(persp.position, target).normalize();
+      const dist = persp.position.distanceTo(target);
+
+      let newDist = dist * factor;
+
+      const minD = (controls as any).minDistance ?? 0.001;
+      const maxD = (controls as any).maxDistance ?? Infinity;
+      newDist = THREE.MathUtils.clamp(newDist, minD, maxD);
+
+      const newPos = new THREE.Vector3().copy(target).addScaledVector(dir, newDist);
+      persp.position.copy(newPos);
+
+      persp.lookAt(target);
+    }
+
     controls.update();
   }
 
