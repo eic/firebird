@@ -44,7 +44,7 @@ Data exchange is both JSON and Javascript object compatible.
 It starts with `"type":"firebird-dex-json"` and the version, any custom origin info and a list of entries.
 In HENP physics `entry` may correspond to `event` data.
 
-```json
+```json5
 {
   "type":"firebird-dex-json",
   "version": "0.01",

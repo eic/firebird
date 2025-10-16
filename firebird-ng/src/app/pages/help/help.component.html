@@ -10,11 +10,13 @@
   <!-- Left pane with a list of doc pages -->
   <div leftPane>
     <mat-card style="padding: 10px"><mat-card-title>Documentation</mat-card-title></mat-card>
-    <mat-nav-list>
-      <a *ngFor="let page of docPages" (click)="selectPage(page)" mat-list-item>
-        - {{ page.title }}
-      </a>
-    </mat-nav-list>
+    @for (pageTitle of docPages; track pageTitle) {
+      <mat-nav-list>
+        <a (click)="selectPage(pageTitle)" mat-list-item>
+          - {{ pageTitle.title }}
+        </a>
+      </mat-nav-list>
+    }
   </div>
 
   <!-- Central pane shows markdown -->

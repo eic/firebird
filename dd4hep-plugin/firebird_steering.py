@@ -50,7 +50,9 @@ SIM.ui.commandsConfigure = [
     #'/vis/scene/add/trajectories rich'
 ]
 
-
+# Dear Debbie,
+#
+# As was asked in an
 # Instantiate the stepping action
 event_action = DDG4.EventAction(kernel, 'FirebirdTrajectoryWriterEventAction/TrajectoryWriter')
 event_action.ComponentName = "Geant4Trajectories"   # Tracks group name in firebird

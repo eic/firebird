@@ -1,4 +1,4 @@
-import {Component, SecurityContext} from '@angular/core';
+import {Component, OnInit, SecurityContext} from '@angular/core';
 import {ShellComponent} from "../../components/shell/shell.component";
 import {MatIcon} from "@angular/material/icon";
 import {MarkdownComponent, MARKED_OPTIONS, provideMarkdown} from "ngx-markdown";
@@ -6,13 +6,42 @@ import {MatIconButton} from "@angular/material/button";
 import {HttpClient} from "@angular/common/http";
 import {MatCard, MatCardTitle} from "@angular/material/card";
 import {MatListItem, MatNavList} from "@angular/material/list";
-import {NgForOf} from "@angular/common";
+
 
 interface DocPage {
   title: string;
   path: string;
 }
 
+// CRITICAL: Import order matters for Prism!
+// 1. Core Prism first
+import 'prismjs';
+
+// 2. Base languages that others depend on
+import 'prismjs/components/prism-markup';  // HTML/XML
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-clike';    // Required for C, JS, TS, CPP
+
+// 3. C language (required for C++)
+import 'prismjs/components/prism-c';        // Required for CPP!
+
+// 4. JavaScript (required for TS and JSON)
+import 'prismjs/components/prism-javascript';  // Required for TS and JSON
+
+// 5. Languages that extend JavaScript
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-json';  // Required for json5
+
+// 6. Languages that extend JSON
+import 'prismjs/components/prism-json5';  // Depends on prism-json
+
+// 7. C++ (depends on C)
+import 'prismjs/components/prism-cpp';  // Depends on prism-c
+
+// 8. Other languages
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-scss';
+import 'prismjs/components/prism-python';
 
 @Component({
   selector: 'app-page-help',
@@ -24,8 +53,7 @@ interface DocPage {
     MatCard,
     MatCardTitle,
     MatListItem,
-    MatNavList,
-    NgForOf,
+    MatNavList
   ],
   providers: [
       provideMarkdown({
@@ -44,7 +72,12 @@ interface DocPage {
   templateUrl: './help.component.html',
   styleUrl: './help.component.scss'
 })
-export class HelpComponent {
+export class HelpComponent implements OnInit{
+  ngOnInit(): void {
+    if (typeof window !== 'undefined' && (window as any).Prism) {
+      console.log('Prism languages loaded:', Object.keys((window as any).Prism.languages));
+    }
+  }
 
   /**
    * The current Markdown file being displayed

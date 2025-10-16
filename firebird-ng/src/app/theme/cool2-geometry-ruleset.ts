@@ -160,7 +160,7 @@ export const cool2ColorRules = [
 
   // DRICH - Different tone as requested (light peach)
   {
-    name: "DRICH_16",
+    name: "DRICH*",
     rules: [
       {
         color: 0xFFECB3,  // Amber 100 - light warm amber/peach
