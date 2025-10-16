@@ -43,6 +43,9 @@ import 'prismjs/components/prism-bash';
 import 'prismjs/components/prism-scss';
 import 'prismjs/components/prism-python';
 
+// Set theme scheme
+import 'prismjs/themes/prism-okaidia.css';
+
 @Component({
   selector: 'app-page-help',
   imports: [
