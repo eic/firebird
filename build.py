@@ -76,19 +76,18 @@ def copy_frontend(is_dry_run):
 
 
 def copy_docs(is_dry_run):
-    # Remove all files and folders in script_path/pyrobird/server/static
 
-
-    # Copy all files and directories from script_path/../firebird-ng/dist/firebird to script_path/pyrobird/server/static
+    # Copy all files and directories from script_path/firebird-ng/dist/firebird to script_path/pyrobird/server/static
     print(f"Copying '{doc_path}' to '{dist_doc_path}' ")
-    if is_dry_run:
-        return
 
-    if os.path.exists(dist_path):
-        shutil.copytree(doc_path, dist_doc_path, dirs_exist_ok=True)
-    else:
+    if not os.path.exists(dist_doc_path):
         print(f"Source directory {doc_path} does not exist.")
         sys.exit(1)
+
+    if not is_dry_run:
+        shutil.copytree(doc_path, dist_doc_path, dirs_exist_ok=True)
+
+
 
 
 def main():
@@ -102,8 +101,8 @@ def main():
     if args.mode in ["all", "build_ng", "build-ng"]:
         build_ng(is_dry_run=args.dry_run)
 
-    if args.mode in ["all", "doc", "docs"]:
-        copy_docs(is_dry_run=args.dry_run)
+    #if args.mode in ["all", "doc", "docs"]:
+    #    copy_docs(is_dry_run=args.dry_run)
 
     if args.mode in ["all", "cp_ng"]:
         copy_frontend(is_dry_run=args.dry_run)

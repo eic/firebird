@@ -98,6 +98,7 @@ export class HelpComponent implements OnInit{
     // ...add more as needed
   ];
 
+
   /**
    * When a user clicks on a page, update the docUrl so <markdown> reloads it.
    */

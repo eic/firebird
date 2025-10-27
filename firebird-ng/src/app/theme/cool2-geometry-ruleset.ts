@@ -5,7 +5,7 @@ import * as THREE from "three";
 export const cool2ColorRules = [
   // Solenoid components - Very light blue-gray
   {
-    names: ["SolenoidBarrel_assembly_0", "SolenoidEndcapP_1", "SolenoidEndcapN_2"],
+    names: ["SolenoidBarrel_assembly", "SolenoidEndcapP", "SolenoidEndcapN"],
     rules: [
       {
         color: 0xECEFF1,  // Blue Gray 50 - very light blue-gray
@@ -17,7 +17,7 @@ export const cool2ColorRules = [
 
   // Trackers - Warm light peach/orange
   {
-    names: ["InnerSiTrackerSubAssembly_4", "MiddleSiTrackerSubAssembly_5", "OuterSiTrackerSubAssembly_6", "B0TrackerSubAssembly_12"],
+    names: ["InnerSiTrackerSubAssembly*", "MiddleSiTrackerSubAssembly*", "OuterSiTrackerSubAssembly*", "B0TrackerSubAssembly*"],
     rules: [
       {
         color: 0xFFE0B2,  // Orange 100 - very light warm orange/peach
@@ -29,7 +29,7 @@ export const cool2ColorRules = [
 
   // MPGD Trackers - Light warm yellow
   {
-    names: ["EndcapMPGDSubAssembly_7", "InnerMPGDBarrelSubAssembly_8", "OuterBarrelMPGDSubAssembly_11"],
+    names: ["EndcapMPGDSubAssembly*", "InnerMPGDBarrelSubAssembly*", "OuterBarrelMPGDSubAssembly*"],
     rules: [
       {
         color: 0xFFF9C4,  // Yellow 100 - very light yellow
@@ -41,7 +41,7 @@ export const cool2ColorRules = [
 
   // TOF components - Very light blue
   {
-    names: ["EndcapTOFSubAssembly_9", "BarrelTOFSubAssembly_10"],
+    names: ["EndcapTOFSubAssembly*", "BarrelTOFSubAssembly*"],
     rules: [
       {
         color: 0xE1F5FE,  // Light Blue 50 - extremely light blue
@@ -54,7 +54,7 @@ export const cool2ColorRules = [
 
   // Inner tracker support - White with slight blue tint
   {
-    name: "InnerTrackerSupport_assembly_13",
+    name: "InnerTrackerSupport_assembly*",
     rules: [
       {
         material: new THREE.MeshStandardMaterial({
@@ -79,7 +79,7 @@ export const cool2ColorRules = [
 
   // DIRC - Light cyan/blue
   {
-    name: "DIRC_14",
+    name: "DIRC*",
     rules: [
       {
         patterns: ["**/*box*", "**/*prism*"],
@@ -148,7 +148,7 @@ export const cool2ColorRules = [
 
   // RICH Endcap - Very light violet-blue
   {
-    name: "RICHEndcapN_Vol_15",
+    name: "RICHEndcapN_Vol*",
     rules: [
       {
         color: 0xE8EAF6,  // Indigo 50 - extremely light indigo
@@ -172,7 +172,7 @@ export const cool2ColorRules = [
 
   // Ecal components - Very light lavender
   {
-    names: ["EcalEndcapP_17", "EcalEndcapPInsert_18", "EcalBarrelImaging_19", "EcalBarrelScFi_20", "B0ECal_43"],
+    names: ["EcalEndcapP_*", "EcalEndcapPInsert_*", "EcalBarrelImaging_*", "EcalBarrelScFi_*", "B0ECal_*"],
     rules: [
       {
         color: 0xF3E5F5,  // Purple 50 - extremely light purple
@@ -206,7 +206,7 @@ export const cool2ColorRules = [
 
   // Hcal components - Light blue (biggest components)
   {
-    names: ["LFHCAL_env_22", "HcalEndcapPInsert_23", "HcalBarrel_24", "HcalEndcapN_25"],
+    names: ["LFHCAL_env_*", "HcalEndcapPInsert_*", "HcalBarrel_*", "HcalEndcapN_*"],
     rules: [
       {
         color: 0x90CAF9,  // Blue 200 - light blue with more saturation
@@ -218,7 +218,7 @@ export const cool2ColorRules = [
 
   // Flux components - Light blue
   {
-    names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_26", "FluxEndcapN_28"],
+    names: ["FluxBarrel_env_*", "FluxEndcapP_*", "FluxEndcapN_*", "FluxEndcapN_*"],
     rules: [
       {
         color: 0xE3F2FD,  // Blue 50 - extremely light blue
@@ -231,13 +231,13 @@ export const cool2ColorRules = [
   // Beam Pipe components - Nearly white
   {
     names: [
-      "BeamPipe_assembly_27",
-      "BeamPipeB0_assembly_36",
-      "B0Window_vol_ExitWindow_37",
-      "Pipe_cen_to_pos_assembly_38",
-      "Pipe_Q1eR_to_B2BeR_assembly_53",
-      "Q0EF_vac_40",
-      "Q1EF_vac_42"
+      "BeamPipe_assembly_*",
+      "BeamPipeB0_assembly_*",
+      "B0Window_vol_ExitWindow_*",
+      "Pipe_cen_to_pos_assembly_*",
+      "Pipe_Q1eR_to_B2BeR_assembly_*",
+      "Q0EF_vac_*",
+      "Q1EF_vac_*"
     ],
     rules: [
       {
@@ -251,17 +251,17 @@ export const cool2ColorRules = [
   // Magnet components - Light green as requested (beamline magnets are typically green)
   {
     names: [
-      "B0PF_BeamlineMagnet_assembly_28",
-      "B0APF_BeamlineMagnet_assembly_29",
-      "Q1APF_BeamlineMagnet_assembly_30",
-      "Q1BPF_BeamlineMagnet_assembly_31",
-      "Q0EF_assembly_39",
-      "Q1EF_assembly_41",
-      "Magnet_Q1eR_assembly_54",
-      "Magnet_Q2eR_assembly_55",
-      "Magnet_B2AeR_assembly_56",
-      "Magnet_B2BeR_assembly_57",
-      "Magnets_Q3eR_assembly_58"
+      "B0PF_BeamlineMagnet_assembly_*",
+      "B0APF_BeamlineMagnet_assembly_*",
+      "Q1APF_BeamlineMagnet_assembly_*",
+      "Q1BPF_BeamlineMagnet_assembly_*",
+      "Q0EF_assembly_*",
+      "Q1EF_assembly_*",
+      "Magnet_Q1eR_assembly_*",
+      "Magnet_Q2eR_assembly_*",
+      "Magnet_B2AeR_assembly_*",
+      "Magnet_B2BeR_assembly_*",
+      "Magnets_Q3eR_assembly*8"
     ],
     rules: [
       {
@@ -274,7 +274,7 @@ export const cool2ColorRules = [
 
   // Vertex Barrel - Warm light amber
   {
-    name: "VertexBarrelSubAssembly_3",
+    name: "VertexBarrelSubAssembly_*",
     rules: [
       {
         color: 0xFFF8E1,  // Amber 50 - extremely light amber/peach
