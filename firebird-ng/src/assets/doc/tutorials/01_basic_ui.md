@@ -10,7 +10,7 @@ Let's start with a quick tour of the main features.
 When you first open Firebird, you'll see the main display page. This is where all the 3D visualization happens. Take a moment to look around - you should see:
 
 
-<img src="assets/doc/tutorials/01_01_basic_view.png" width="1000" alt="Basic Firebird View">
+<img src="assets/doc/tutorials/01_01_basic_view.png" width="1000" alt="Basic Firebird View" title="Firebird display window view">
 
 - A 3D view in the center showing the detector geometry
 - Control buttons in the header toolbar

@@ -6,11 +6,13 @@ import {MatIconButton} from "@angular/material/button";
 import {HttpClient} from "@angular/common/http";
 import {MatCard, MatCardTitle} from "@angular/material/card";
 import {MatListItem, MatNavList} from "@angular/material/list";
+import {ActivatedRoute, Router} from "@angular/router";
 
 
 interface DocPage {
   title: string;
   path: string;
+  slug: string;
 }
 
 // CRITICAL: Import order matters for Prism!
@@ -76,10 +78,29 @@ import 'prismjs/themes/prism-okaidia.css';
   styleUrl: './help.component.scss'
 })
 export class HelpComponent implements OnInit{
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router
+  ) {}
+
   ngOnInit(): void {
     if (typeof window !== 'undefined' && (window as any).Prism) {
       console.log('Prism languages loaded:', Object.keys((window as any).Prism.languages));
     }
+
+    // Subscribe to route parameter changes
+    this.route.params.subscribe(params => {
+      const pageSlug = params['page'];
+      if (pageSlug) {
+        const page = this.docPages.find(p => p.slug === pageSlug);
+        if (page) {
+          this.docUrl = page.path;
+        }
+      } else {
+        // Default to intro page when no parameter
+        this.docUrl = 'assets/doc/intro.md';
+      }
+    });
   }
 
   /**
@@ -90,20 +111,22 @@ export class HelpComponent implements OnInit{
   /**
    * A simple list of documentation pages to show in the left pane.
    * `path` should match your .md files in assets/docs folder.
+   * `slug` is used in the URL (e.g., /help/intro)
    */
   docPages: DocPage[] = [
-    { title: 'Introduction', path: 'assets/doc/intro.md' },
-    { title: 'Installation', path: 'assets/doc/pyrobird.md' },
-    { title: 'DD4Hep plugin', path: 'assets/doc/dd4hep-plugin.md' },
+    { title: 'Introduction', path: 'assets/doc/intro.md', slug: 'intro' },
+    { title: 'Installation', path: 'assets/doc/pyrobird.md', slug: 'pyrobird' },
+    { title: 'DD4Hep plugin', path: 'assets/doc/dd4hep-plugin.md', slug: 'dd4hep-plugin' },
     // ...add more as needed
   ];
 
 
   /**
-   * When a user clicks on a page, update the docUrl so <markdown> reloads it.
+   * When a user clicks on a page, navigate to the new URL.
+   * The route parameter subscription will handle updating docUrl.
    */
   selectPage(page: DocPage) {
-    this.docUrl = page.path;
+    this.router.navigate(['/help', page.slug]);
   }
 
   /**

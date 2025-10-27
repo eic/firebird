@@ -12,8 +12,8 @@
         <mat-icon>close_fullscreen</mat-icon>
     </button>
 
-    <button mat-icon-button 
-            matTooltip="Auto play animation" 
+    <button mat-icon-button
+            matTooltip="Auto play animation"
             class="panel-button"
             [class.active]="eventDisplay.animationIsCycling()"
             (click)="toggleAnimationCycling()">
@@ -63,22 +63,29 @@
 <div footer-right id="footerRight">
   <div class="loading-indicators">
     <!-- Dex JSON Loader -->
-    <div class="loader-container" *ngIf="loadingDex()">
-      <mat-spinner diameter="24" color="accent"></mat-spinner>
-      <div class="loader-label">loading json</div>
-    </div>
+    @if(loadingDex()) {
+      <div class="loader-container">
+        <mat-spinner diameter="24" color="accent"></mat-spinner>
+        <div class="loader-label">loading json</div>
+      </div>
+    }
 
     <!-- EDM4EIC Loader -->
-    <div class="loader-container" *ngIf="loadingEdm()">
-      <mat-spinner diameter="24" color="accent"></mat-spinner>
-      <div class="loader-label">loading root</div>
-    </div>
+    @if(loadingEdm()) {
+      <div class="loader-container">
+        <mat-spinner diameter="24" color="accent"></mat-spinner>
+        <div class="loader-label">loading root</div>
+      </div>
+    }
 
     <!-- Geometry Loader -->
-    <div class="loader-container" *ngIf="loadingGeometry()">
-      <mat-spinner diameter="24" color="accent"></mat-spinner>
-      <div class="loader-label">loading geo</div>
-    </div>
+    @if(loadingGeometry()){
+      <div class="loader-container">
+        <mat-spinner diameter="24" color="accent"></mat-spinner>
+        <div class="loader-label">loading geo</div>
+      </div>
+    }
+
   </div>
   <div class="theme-text">{{message}}</div>
 </div>

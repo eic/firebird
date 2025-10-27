@@ -82,8 +82,6 @@ export class ShellComponent {
   leftPaneWidth = 250;
   rightPaneWidth = 250;
 
-
-
   /** Top bar: whether the mobile menu is open */
   navOpen = false;
   /** Track current theme (light or dark) */
@@ -91,7 +89,7 @@ export class ShellComponent {
 
   /** Single place for nav items */
   navItems: NavItem[] = [
-    { label: 'Doc', route: '/help', icon: 'menu_book', alwaysVisible: true },
+    { label: 'Help', route: '/help', icon: 'menu_book', alwaysVisible: true },
     { label: 'Display', route: '/display', icon: 'monitor', alwaysVisible: true },
     { label: 'Configure', route: '/config', icon: 'tune', alwaysVisible: true },
     { label: 'GitHub Repo', route: 'https://github.com/eic/firebird', external: true, icon: 'code' },

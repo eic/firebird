@@ -17,6 +17,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
   },
   {
+    path: 'help/:page',
+    loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
+  },
+  {
     path: 'geometry',
     loadComponent: () => import('./components/scene-tree/scene-tree.component').then(m => m.SceneTreeComponent)
   },
