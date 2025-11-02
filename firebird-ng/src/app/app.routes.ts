@@ -14,11 +14,16 @@ export const routes: Routes = [
   },
   {
     path: 'help',
-    loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
-  },
-  {
-    path: 'help/:page',
-    loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
+      },
+      {
+        path: '**',
+        loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
+      }
+    ]
   },
   {
     path: 'geometry',

@@ -88,25 +88,42 @@ export class HelpComponent implements OnInit{
       console.log('Prism languages loaded:', Object.keys((window as any).Prism.languages));
     }
 
-    // Subscribe to route parameter changes
-    this.route.params.subscribe(params => {
-      const pageSlug = params['page'];
-      if (pageSlug) {
-        const page = this.docPages.find(p => p.slug === pageSlug);
-        if (page) {
-          this.docUrl = page.path;
-        }
-      } else {
-        // Default to intro page when no parameter
-        this.docUrl = 'assets/doc/intro.md';
-      }
+    // Subscribe to URL changes
+    this.router.events.subscribe(() => {
+      this.updateDocUrl();
     });
+
+    // Initial load
+    this.updateDocUrl();
+  }
+
+  private updateDocUrl(): void {
+    // Get the full URL path after /help/
+    const url = this.router.url;
+    const match = url.match(/^\/help\/(.+?)(?:\?|#|$)/);
+
+    if (match) {
+      const pageSlug = match[1];
+
+      // First try to find in docPages array
+      const page = this.docPages.find(p => p.slug === pageSlug);
+      if (page) {
+        this.docUrl = page.path;
+      } else {
+        // If not found, construct path from URL slug
+        // e.g., "tutorials/01_basic_ui" -> "assets/doc/tutorials/01_basic_ui.md"
+        this.docUrl = `assets/doc/${pageSlug}.md`;
+      }
+    } else {
+      // Default to intro page when no parameter
+      this.docUrl = 'assets/doc/index.md';
+    }
   }
 
   /**
    * The current Markdown file being displayed
    */
-  docUrl = 'assets/doc/intro.md';
+  docUrl = 'assets/doc/index.md';
 
   /**
    * A simple list of documentation pages to show in the left pane.
@@ -114,7 +131,7 @@ export class HelpComponent implements OnInit{
    * `slug` is used in the URL (e.g., /help/intro)
    */
   docPages: DocPage[] = [
-    { title: 'Introduction', path: 'assets/doc/intro.md', slug: 'intro' },
+    { title: 'Introduction', path: 'assets/doc/index.md', slug: 'intro' },
     { title: 'Installation', path: 'assets/doc/pyrobird.md', slug: 'pyrobird' },
     { title: 'DD4Hep plugin', path: 'assets/doc/dd4hep-plugin.md', slug: 'dd4hep-plugin' },
     // ...add more as needed

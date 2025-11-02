@@ -5,22 +5,38 @@ This tutorial will walk you through the basics of viewing
 particle physics event data and detector geometry. 
 Let's start with a quick tour of the main features.
 
-## First Look at the Display
+## 1. First Look at the Display
 
-When you first open Firebird, you'll see the main display page. This is where all the 3D visualization happens. Take a moment to look around - you should see:
+When you first open Firebird, you'll see the main display page. 
+This is where the 3D visualization happens. 
+Take a moment to look around - you should see:
 
 
 <img src="assets/doc/tutorials/01_01_basic_view.png" width="1000" alt="Basic Firebird View" title="Firebird display window view">
 
+> If you don't see a detector and trajectories, it might not be a problem, 
+> especially if you used Firebird before. Proceed with the tutorials 
+> to a configuration section. If you still don't see anything, after configuring
+> Firebird, proceed to [the Trobleshooting](help/troubleshoot) section. 
+
+We will go in details of how to control everything, for now press 
+**"Configure"** button to go into Firebird configuration. 
+
+<img src="assets/doc/tutorials/01_03_configure_menu.drawio.png" width="1000" alt="Basic Firebird View" title="Firebird display window view">
+
+
+## 2. Select geoemetry and data
+
 - A 3D view in the center showing the detector geometry
 - Control buttons in the header toolbar
 - Time controls at the bottom
-- A floating tool panel on the right side
+- A view tool panel on the right side
 
 Try these basic interactions:
 - **🖱️ Left-click and drag** to rotate the view
 - **🖱️ Right-click and drag** to pan
 - **🖱️ Scroll** to zoom in and out
+
 
 ## Setting Up Your Data
 

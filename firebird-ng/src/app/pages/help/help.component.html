@@ -8,19 +8,8 @@
   </ng-container>
 
   <!-- Left pane with a list of doc pages -->
-  <div leftPane>
-    <mat-card style="padding: 10px"><mat-card-title>Documentation</mat-card-title></mat-card>
-    @for (pageTitle of docPages; track pageTitle) {
-      <mat-nav-list>
-        <a (click)="selectPage(pageTitle)" mat-list-item>{{ pageTitle.title }}</a>
-      </mat-nav-list>
-    }
-    <mat-card style="padding: 10px"><mat-card-title>Tutorials</mat-card-title></mat-card>
-
-    <mat-nav-list><a (click)="this.docUrl='assets/doc/tutorials/01_basic_ui.md'" mat-list-item>Getting started</a></mat-nav-list>
-    <mat-nav-list><a (click)="this.docUrl='assets/doc/tutorials/01_basic_ui.md'" mat-list-item>Custom data</a></mat-nav-list>
-    <mat-nav-list><a (click)="this.docUrl='assets/doc/tutorials/01_basic_ui.md'" mat-list-item>DD4Hep visualization</a></mat-nav-list>
-
+  <div leftPane class="sidebar-nav">
+    <markdown src="assets/doc/_sidebar.md"></markdown>
   </div>
 
   <!-- Central pane shows markdown -->
