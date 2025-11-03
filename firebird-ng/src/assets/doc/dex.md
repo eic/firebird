@@ -42,7 +42,7 @@ data container for a time labeled data for particular time interval to be displa
 |   +-------------------+        |  hits b  |    |
 |                                +----------+    |
 |   +----------------------------------+         |
-|   |      tracks                      |         |
+|   |      trajectories c              |         |
 |   +----------------------------------+         |
 |                                                |
 +------------------------------------------------+

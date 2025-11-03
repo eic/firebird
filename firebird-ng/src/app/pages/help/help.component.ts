@@ -4,8 +4,6 @@ import {MatIcon} from "@angular/material/icon";
 import {MarkdownComponent, MARKED_OPTIONS, provideMarkdown} from "ngx-markdown";
 import {MatIconButton} from "@angular/material/button";
 import {HttpClient} from "@angular/common/http";
-import {MatCard, MatCardTitle} from "@angular/material/card";
-import {MatListItem, MatNavList} from "@angular/material/list";
 import {ActivatedRoute, Router} from "@angular/router";
 
 
@@ -54,11 +52,7 @@ import 'prismjs/themes/prism-okaidia.css';
     ShellComponent,
     MatIcon,
     MarkdownComponent,
-    MatIconButton,
-    MatCard,
-    MatCardTitle,
-    MatListItem,
-    MatNavList
+    MatIconButton
   ],
   providers: [
       provideMarkdown({
@@ -138,13 +132,6 @@ export class HelpComponent implements OnInit{
   ];
 
 
-  /**
-   * When a user clicks on a page, navigate to the new URL.
-   * The route parameter subscription will handle updating docUrl.
-   */
-  selectPage(page: DocPage) {
-    this.router.navigate(['/help', page.slug]);
-  }
 
   /**
    * (Optional) Suppose you also want a debug button in the header:

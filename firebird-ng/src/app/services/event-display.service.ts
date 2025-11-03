@@ -336,6 +336,8 @@ export class EventDisplayService {
 
     this.geomService.postProcessing(threeGeometry, this.three.clipPlanes);
 
+
+
     sceneGeo.children.push(threeGeometry);
     this.lastLoadedGeometryUrl = url;
   }

@@ -193,9 +193,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.initGeometry();
 
     // Init gui
-    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').listen();
-    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'y').listen();
-    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'z').listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').decimals(2).listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'y').decimals(2).listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'z').decimals(2).listen();
 
     // GUI settings
     this.lilGui.domElement.style.top = '64px';
