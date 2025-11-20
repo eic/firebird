@@ -13,7 +13,7 @@ pip install pyrobird
 
 Optional dependencies:
 
-- `batch` - install pyppeteer, that allows to make screenshots in batch mode
+- `batch` - install playwright, that allows to make screenshots in batch mode
 - `xrootd` - install libraries to read xrootd located files and URLs starting with `root://`
 - `dev` - install pytest and other development requirements, mainly to run tests
 

@@ -40,7 +40,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-batch = ["pyppeteer"]
+batch = ["playwright"]
 xrootd = ["fsspec-xrootd", "xrootd"]
 dev = [
   "build>=0.10.0",
