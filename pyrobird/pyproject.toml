@@ -47,6 +47,9 @@ dev = [
   "twine>=4.0.0",
   "coverage>=6.5.0"
 ]
+test = [
+  "pytest>=7.0.0"
+]
 
 [project.scripts]
 fbd = "pyrobird.cli:cli_app"

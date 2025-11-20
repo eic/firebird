@@ -2,8 +2,16 @@
 
 import pytest
 import os
+import sys
 from unittest.mock import patch, MagicMock
 from pyrobird.cli.screenshot import get_screenshot_path, capture_screenshot
+
+# Check if playwright is available
+try:
+    import playwright.sync_api
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
 
 
 @pytest.fixture
@@ -102,6 +110,7 @@ def test_capture_screenshot_missing_playwright():
         assert exc_info.value.code == 1
 
 
+@pytest.mark.skipif(not PLAYWRIGHT_AVAILABLE, reason="playwright not installed")
 @patch('playwright.sync_api.sync_playwright')
 def test_capture_screenshot_basic_workflow(mock_sync_playwright, tmp_path):
     """Test the basic workflow of capture_screenshot."""
@@ -130,6 +139,7 @@ def test_capture_screenshot_basic_workflow(mock_sync_playwright, tmp_path):
     mock_browser.close.assert_called_once()
 
 
+@pytest.mark.skipif(not PLAYWRIGHT_AVAILABLE, reason="playwright not installed")
 @patch('playwright.sync_api.sync_playwright')
 def test_capture_screenshot_wait_for_load_state(mock_sync_playwright, tmp_path):
     """Test that capture_screenshot waits for the page to load."""
@@ -152,6 +162,7 @@ def test_capture_screenshot_wait_for_load_state(mock_sync_playwright, tmp_path):
     mock_page.wait_for_load_state.assert_called_once_with("domcontentloaded", timeout=10_000)
 
 
+@pytest.mark.skipif(not PLAYWRIGHT_AVAILABLE, reason="playwright not installed")
 @patch('playwright.sync_api.sync_playwright')
 @patch('pyrobird.cli.screenshot.time.sleep')
 def test_capture_screenshot_fallback_to_selector(mock_sleep, mock_sync_playwright, tmp_path):
@@ -178,6 +189,7 @@ def test_capture_screenshot_fallback_to_selector(mock_sleep, mock_sync_playwrigh
     mock_page.wait_for_selector.assert_called_once_with('body', timeout=10_000)
 
 
+@pytest.mark.skipif(not PLAYWRIGHT_AVAILABLE, reason="playwright not installed")
 @patch('playwright.sync_api.sync_playwright')
 @patch('pyrobird.cli.screenshot.time.sleep')
 def test_capture_screenshot_double_fallback(mock_sleep, mock_sync_playwright, tmp_path):

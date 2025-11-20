@@ -61,8 +61,6 @@ def capture_screenshot(url, output_path):
         print("Google playwright-python if not sure. Exiting without screenshot now")
         exit(1)
 
-    from playwright.sync_api import sync_playwright
-
     # Launch a headless browser using Playwright's sync API
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
