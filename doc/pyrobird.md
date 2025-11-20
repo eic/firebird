@@ -17,6 +17,11 @@ Optional dependencies:
 - `xrootd` - install libraries to read xrootd located files and URLs starting with `root://`
 - `test` - install pytest, mainly to run tests in development build
 
+> If using `batch` for screenshots, after installing playwright, you need to install browser binaries:
+> ```bash
+> python -m playwright install chromium
+> ```
+
 > If installed via pip, `xrootd` library requires compilation, so the system should have cmake,
 > compiler and some xrootd dependencies installed.
 
