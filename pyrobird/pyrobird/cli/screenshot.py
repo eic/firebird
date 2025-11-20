@@ -72,10 +72,10 @@ def capture_screenshot(url, output_path):
 
         # Wait for the content to render
         try:
-            page.wait_for_load_state("domcontentloaded", timeout=10000)
+            page.wait_for_load_state("domcontentloaded", timeout=10_000)
         except:
             try:
-                page.wait_for_selector('body', timeout=10000)
+                page.wait_for_selector('body', timeout=10_000)
             except:
                 time.sleep(3)
 
