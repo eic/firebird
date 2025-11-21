@@ -40,12 +40,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-batch = ["pyppeteer"]
+batch = ["playwright"]
 xrootd = ["fsspec-xrootd", "xrootd"]
 dev = [
   "build>=0.10.0",
   "twine>=4.0.0",
   "coverage>=6.5.0"
+]
+test = [
+  "pytest>=7.0.0"
 ]
 
 [project.scripts]

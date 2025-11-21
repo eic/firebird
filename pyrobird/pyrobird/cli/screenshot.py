@@ -1,6 +1,5 @@
 import threading
 import time
-import asyncio
 import click
 import os
 import glob
@@ -49,41 +48,40 @@ def get_screenshot_path(output_path):
 
 
 
-async def capture_screenshot(url, output_path):
+def capture_screenshot(url, output_path):
     try:
-        from pyppeteer import launch
+        from playwright.sync_api import sync_playwright
     except ImportError:
-        print("Pyppeteer is not installed! Pyppeteer is a python library that controls Chrome browser")
+        print("Playwright is not installed! Playwright is a python library that controls Chrome browser")
         print("Running headless chrome is needed to make a screenshot in a batch mode")
-        print("You can install pyppeteer with command: ")
-        print("   python3 -m pip install --upgrade pyppeteer")
+        print("You can install playwright with command: ")
+        print("   python3 -m pip install --upgrade playwright")
+        print("   python3 -m playwright install chromium")
         print("Beware that on the first run, if chrome is not installed in the system it will try to download it")
-        print("Google pyppeteer if not sure. Exiting without screenshot now")
+        print("Google playwright-python if not sure. Exiting without screenshot now")
         exit(1)
 
-    from pyppeteer import launch
+    # Launch a headless browser using Playwright's sync API
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.set_viewport_size({"width": 1920, "height": 1080})
+        page.goto(url)
 
-    # Launch a headless browser
-    browser = await launch(headless=True)
-    # If necessary, adjust Pyppeteer launch options here
-    page = await browser.newPage()
-    await page.setViewport({'width': 1920, 'height': 1080})
-    await page.goto(url)
-
-    # Wait for the content to render
-    try:
-        await page.waitForFunction('document.readyState === "complete"', timeout=10000)
-    except:
+        # Wait for the content to render
         try:
-            await page.waitForSelector('body', timeout=10000)
+            page.wait_for_load_state("domcontentloaded", timeout=10_000)
         except:
-            await asyncio.sleep(3)
+            try:
+                page.wait_for_selector('body', timeout=10_000)
+            except:
+                time.sleep(3)
 
-    await asyncio.sleep(2)
+        time.sleep(2)
 
-    # Take a screenshot
-    await page.screenshot({'path': output_path, 'fullPage': True})
-    await browser.close()
+        # Take a screenshot
+        page.screenshot(path=output_path, full_page=True)
+        browser.close()
 
 
 @click.command()
@@ -96,7 +94,7 @@ async def capture_screenshot(url, output_path):
 @click.option('--url', default='http://localhost:5454', help='URL to take the screenshot of')
 def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_path, url):
     """
-    Start the Flask server, take a screenshot of the specified URL using Pyppeteer,
+    Start the Flask server, take a screenshot of the specified URL using Playwright,
     and then shut down the server.
 
     Screenshots are saved in the 'screenshots' folder with automatic numbering to prevent overwrites.
@@ -130,8 +128,8 @@ def screenshot(unsecure_files, allow_cors, disable_download, work_path, output_p
     # Get the next available screenshot path
     final_output_path = get_screenshot_path(output_path)
 
-    # Run Pyppeteer code to take screenshot
-    asyncio.get_event_loop().run_until_complete(capture_screenshot(url, final_output_path))
+    # Run Playwright code to take screenshot
+    capture_screenshot(url, final_output_path)
     print(f"Screenshot saved to {final_output_path}")
 
     # Shutdown Flask app
