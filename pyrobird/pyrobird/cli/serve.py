@@ -3,6 +3,7 @@ import click
 import pyrobird.server
 from pyrobird.server import CFG_DOWNLOAD_IS_UNRESTRICTED, CFG_DOWNLOAD_IS_DISABLED, CFG_DOWNLOAD_PATH, \
     CFG_CORS_IS_ALLOWED, CFG_API_BASE_URL, CFG_FIREBIRD_CONFIG_PATH
+from pyrobird.utils import is_running_in_container
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -17,8 +18,21 @@ unsecure_files_help = (
 
 allow_cors_help = (
     "Enable CORS for downloaded files. This option should be used if you need to support web "
+    "Enable CORS for downloaded files. This option should be used if you need to support web "
     "applications from different domains accessing the files. Such your server from central firebird server"
 )
+
+
+def get_default_host():
+    """
+    Determines the default host based on the environment.
+    
+    Returns:
+        str: '0.0.0.0' if running in a container, None otherwise.
+    """
+    if is_running_in_container():
+        return '0.0.0.0'
+    return None
 
 
 @click.command()
@@ -60,7 +74,7 @@ def serve(ctx, unsecure_files, allow_cors, disable_download, work_path, host, po
     logging.info(f"Work Path Set To: {work_path if work_path else 'Current Working Directory'}")
 
     if not host:
-        host = None
+        host = get_default_host()
 
     if not port:
         port = 5454
