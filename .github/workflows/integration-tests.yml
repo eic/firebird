@@ -61,7 +61,8 @@ jobs:
         run: |
           cd pyrobird          
           python -m pip install -e .[dev,batch]
-          python ng_build_copy.py
+          cd ..
+          python build.py all
 
       - name: Run integration tests
         run: |
