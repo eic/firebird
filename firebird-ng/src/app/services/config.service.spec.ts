@@ -248,7 +248,7 @@ describe('ConfigService', () => {
       service.addConfig(config);
 
       // Set a value with a recent timestamp
-      config.setValue('current', Date.now());
+      config.setValue('current', Date.now() - 1);
 
       // Load value regardless of timestamp
       const snapshot: ConfigSnapshot = {
@@ -329,6 +329,11 @@ describe('ConfigService', () => {
       const apiUrl = new ConfigProperty('api.url', 'http://localhost', undefined, undefined, mockStorage);
       const apiTimeout = new ConfigProperty('api.timeout', 5000, undefined, undefined, mockStorage);
 
+      console.log("Initial timestamp")
+      console.log(uiTheme.key)
+      console.log(uiTheme.value)
+      console.log(uiTheme.getTimestamp())
+
       service.addConfig(uiTheme);
       service.addConfig(uiFont);
       service.addConfig(apiUrl);
@@ -340,6 +345,11 @@ describe('ConfigService', () => {
       apiUrl.setValue('http://production');
       apiTimeout.setValue(10000);
 
+      console.log("timestamp after update (before save)")
+      console.log(uiTheme.key)
+      console.log(uiTheme.value)
+      console.log(uiTheme.getTimestamp())
+
       // Export current state
       const snapshot = service.saveToJson();
 
@@ -350,12 +360,22 @@ describe('ConfigService', () => {
       expect(apiUrl.value).toBe('http://production');
       expect(apiTimeout.value).toBe(10000);
 
+      console.log("timestamp after .loadDefaultsFor('ui');")
+      console.log(uiTheme.key)
+      console.log(uiTheme.value)
+      console.log(uiTheme.getTimestamp())
+
       // Restore from snapshot
       service.loadFromJson(snapshot);
       expect(uiTheme.value).toBe('dark');
       expect(uiFont.value).toBe('Roboto');
       expect(apiUrl.value).toBe('http://production');
       expect(apiTimeout.value).toBe(10000);
+
+
+      console.log("timestamp after loadFromJson")
+      console.log(uiTheme.value)
+      console.log(uiTheme.getTimestamp())
 
       // Reset all to defaults
       service.loadDefaults();
