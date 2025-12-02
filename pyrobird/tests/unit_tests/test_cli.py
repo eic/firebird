@@ -21,7 +21,6 @@ def test_import_pyrobird_cli():
     try:
         from pyrobird import cli
     except ImportError as e:
-    except ImportError as e:
         assert False, f"Failed to import pyrobird.cli: {e}"
 
 
