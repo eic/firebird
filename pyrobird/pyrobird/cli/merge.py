@@ -5,7 +5,7 @@ import logging
 import sys
 from typing import Dict, List, Any, Set, Union
 
-from pyrobird.dex_utils import load_dex_file, is_valid_dex_file
+from pyrobird.dex_utils import load_dex_file
 
 # Configure logging
 logger = logging.getLogger(__name__)
