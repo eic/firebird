@@ -60,6 +60,10 @@
     "typescript": "^5.8.3",
     "webpack-bundle-analyzer": "^4.10.2"
   },
+  "overrides": {
+    "glob": ">=13.0.0",
+    "jspdf": ">=3.0.2"
+  },
   "browser": {
     "fs": false,
     "os": false,
