@@ -101,8 +101,8 @@ def main():
     if args.mode in ["all", "build_ng", "build-ng"]:
         build_ng(is_dry_run=args.dry_run)
 
-    #if args.mode in ["all", "doc", "docs"]:
-    #    copy_docs(is_dry_run=args.dry_run)
+    
+    
 
     if args.mode in ["all", "cp_ng"]:
         copy_frontend(is_dry_run=args.dry_run)
