@@ -125,6 +125,223 @@ has access to files in your current directory or a directory provided via `--wor
   the file `/home/username/datafiles/filename.root` will be opened
 
 
+## Batch Screenshots
+
+The `pyrobird screenshot` command allows you to capture screenshots of Firebird visualizations in batch mode. This is particularly useful for:
+
+- Generating visualizations for publications and presentations
+- Creating automated documentation of event displays
+- Batch processing multiple events for comparison
+- Quality assurance and validation workflows
+
+### Installation
+
+To use the screenshot functionality, you need to install pyrobird with the `batch` optional dependency:
+
+```bash
+pip install pyrobird[batch]
+```
+
+After installing, you need to install the Chromium browser binaries used by Playwright:
+
+```bash
+python -m playwright install chromium
+```
+
+> **Note**: On the first run, Playwright will download Chromium (~100MB) if it's not already installed on your system.
+
+### Basic Usage
+
+The simplest way to capture a screenshot:
+
+```bash
+pyrobird screenshot
+```
+
+This command will:
+1. Start a local Firebird server on `http://localhost:5454`
+2. Wait for the page to load
+3. Capture a full-page screenshot
+4. Save it to `screenshots/screenshot.png`
+5. Automatically shut down the server
+
+Screenshots are saved in a `screenshots/` directory with automatic numbering to prevent overwrites.
+
+### Command Options
+
+The screenshot command accepts several options to customize its behavior:
+
+| Option                     | Type    | Default               | Description                                                                                                   |
+|----------------------------|---------|-----------------------|---------------------------------------------------------------------------------------------------------------|
+| `--url TEXT`               | String  | `http://localhost:5454` | URL to take the screenshot of. Use this if you want to screenshot a specific page or event.                    |
+| `--output-path TEXT`       | String  | `screenshot.png`      | Base filename for the screenshot. Will be saved in `screenshots/` directory with auto-numbering if file exists. |
+| `--work-path TEXT`         | String  | Current directory     | Set the base directory path for file downloads. Files in Firebird will be loaded relative to this path.        |
+| `--unsecure-files`         | Flag    | `False`               | Allow unrestricted file downloads. Use with caution - see security notes in the serve section.                 |
+| `--allow-cors`             | Flag    | `False`               | Enable CORS for downloaded files.                                                                              |
+| `--disable-download`       | Flag    | `False`               | Disable all file downloads from the server.                                                                    |
+
+### Examples
+
+#### 1. Basic Screenshot with Custom Output Name
+
+```bash
+pyrobird screenshot --output-path event_001.png
+```
+
+This saves the screenshot as `screenshots/event_001.png` (or `screenshots/event_001_001.png` if the file already exists).
+
+#### 2. Screenshot with Custom Data Directory
+
+```bash
+pyrobird screenshot --work-path=/path/to/data --output-path detector_view.png
+```
+
+This allows Firebird to access files in `/path/to/data` when loading event data.
+
+#### 3. Screenshot a Specific Event
+
+First, ensure your data file is accessible, then use a URL that opens a specific event:
+
+```bash
+pyrobird screenshot --work-path=/path/to/data \
+                    --url "http://localhost:5454/#/event?file=local://mydata.root&event=5" \
+                    --output-path event_5.png
+```
+
+#### 4. Batch Processing Multiple Events
+
+You can create a simple shell script to process multiple events:
+
+```bash
+#!/bin/bash
+# batch_screenshots.sh
+
+DATA_PATH="/path/to/data"
+DATA_FILE="myevents.root"
+
+for event in {0..9}; do
+    pyrobird screenshot \
+        --work-path="$DATA_PATH" \
+        --url "http://localhost:5454/#/event?file=local://$DATA_FILE&event=$event" \
+        --output-path "event_${event}.png"
+    
+    echo "Captured screenshot for event $event"
+done
+```
+
+Make the script executable and run it:
+
+```bash
+chmod +x batch_screenshots.sh
+./batch_screenshots.sh
+```
+
+#### 5. Screenshot with Different Server Configurations
+
+If you need to allow access to files outside the working directory:
+
+```bash
+pyrobird screenshot --unsecure-files --output-path system_files.png
+```
+
+> **Warning**: Use `--unsecure-files` only on trusted personal machines. Never use in production or shared environments.
+
+### Screenshot Configuration
+
+The screenshot functionality uses the following default settings:
+
+- **Viewport Size**: 1920x1080 pixels (Full HD)
+- **Page Mode**: Full page screenshot (captures entire scrollable content)
+- **Wait Strategy**: Waits for DOM content loaded (up to 10 seconds)
+- **Additional Wait**: 2 seconds after page load to ensure rendering completes
+- **Browser**: Headless Chromium
+
+These settings are optimized for high-quality event display captures but are currently hardcoded in the implementation.
+
+### Output Directory Structure
+
+Screenshots are automatically organized in a `screenshots/` directory with smart numbering:
+
+```
+screenshots/
+├── screenshot.png           # First screenshot
+├── event_001.png           # First screenshot with custom name
+├── event_001_001.png       # Second screenshot with same name (auto-numbered)
+├── event_001_002.png       # Third screenshot with same name
+└── detector_view.png       # Another screenshot
+```
+
+The auto-numbering system:
+- If `filename.png` doesn't exist, it's created as-is
+- If it exists, the next available number is found (e.g., `filename_001.png`)
+- Numbering continues sequentially even if there are gaps
+
+### Troubleshooting
+
+#### Playwright Not Installed
+
+If you see an error about Playwright not being installed:
+
+```bash
+pip install playwright
+python -m playwright install chromium
+```
+
+#### Server Won't Start
+
+If the Flask server fails to start, check if port 5454 is already in use:
+
+```bash
+# On Linux/Mac
+lsof -i :5454
+
+# Kill the process if needed
+kill -9 <PID>
+```
+
+#### Screenshots Are Black or Incomplete
+
+If screenshots appear black or don't show the expected content:
+
+1. The page might need more time to render. The command waits 2 seconds after page load, but complex visualizations might need longer.
+2. Try taking a screenshot manually first to verify the URL works correctly.
+3. Check that your data files are accessible from the `--work-path` directory.
+
+#### Permission Errors
+
+If you get permission errors when accessing files:
+
+1. Make sure the `--work-path` includes all necessary data files
+2. Check file permissions on your data files
+3. Consider using `--unsecure-files` for testing (on personal machines only)
+
+### Advanced: Programmatic Usage
+
+You can also use the screenshot functionality programmatically in Python:
+
+```python
+from pyrobird.cli.screenshot import capture_screenshot, get_screenshot_path
+
+# Generate unique output path
+output_path = get_screenshot_path("my_event.png")
+
+# Capture screenshot (requires server to be running)
+capture_screenshot("http://localhost:5454/#/event?file=local://data.root&event=5", output_path)
+
+print(f"Screenshot saved to {output_path}")
+```
+
+> **Note**: When using programmatically, you need to manage the Flask server lifecycle yourself.
+
+### Tips for Best Results
+
+1. **Consistent Naming**: Use descriptive names that include event numbers or identifiers
+2. **Batch Processing**: Write scripts to automate screenshot capture for multiple events
+3. **Resolution**: The default 1920x1080 viewport provides good quality for most purposes
+4. **Data Organization**: Keep your data files organized and use `--work-path` to point to the correct directory
+5. **Preview First**: Manually check one or two events in the browser before running batch operations
+
+
 ## API Documentation
 
 This is technical explanation of what is under the hood of the server part
