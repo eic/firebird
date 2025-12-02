@@ -302,7 +302,7 @@ Restrictive defaults prevent unauthorized file access:
 
 ### GitHub Pages Deployment
 
-1. Tests run first
+1. Tests run first `npm run test:headless`
 2. Build with `npm run build:ghpages` (sets `--base-href='/firebird/'`)
 3. Artifacts uploaded and deployed to https://eic.github.io/firebird/
 

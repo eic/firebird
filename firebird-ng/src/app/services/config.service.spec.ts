@@ -37,7 +37,7 @@ describe('ConfigService', () => {
     it('should add and retrieve config properties', () => {
       const config = new ConfigProperty('testKey', 'defaultValue', undefined, undefined, mockStorage);
 
-      service.addConfig('testKey', config);
+      service.addConfig(config);
 
       const retrieved = service.getConfig<string>('testKey');
       expect(retrieved).toBe(config);
@@ -56,7 +56,7 @@ describe('ConfigService', () => {
 
     it('should return config with getConfigOrThrow when it exists', () => {
       const config = new ConfigProperty('existingKey', 'value', undefined, undefined, mockStorage);
-      service.addConfig('existingKey', config);
+      service.addConfig(config);
 
       const retrieved = service.getConfigOrThrow<string>('existingKey');
       expect(retrieved).toBe(config);
@@ -68,8 +68,8 @@ describe('ConfigService', () => {
       const config1 = new ConfigProperty('key1', 'default1', undefined, undefined, mockStorage);
       const config2 = new ConfigProperty('key2', 100, undefined, undefined, mockStorage);
 
-      service.addConfig('key1', config1);
-      service.addConfig('key2', config2);
+      service.addConfig(config1);
+      service.addConfig(config2);
 
       // Change values
       config1.setValue('changed1');
@@ -96,9 +96,9 @@ describe('ConfigService', () => {
       const uiConfig2 = new ConfigProperty('ui.fontSize', 14, undefined, undefined, mockStorage);
       const apiConfig = new ConfigProperty('api.endpoint', 'http://localhost', undefined, undefined, mockStorage);
 
-      service.addConfig('ui.theme', uiConfig1);
-      service.addConfig('ui.fontSize', uiConfig2);
-      service.addConfig('api.endpoint', apiConfig);
+      service.addConfig(uiConfig1);
+      service.addConfig(uiConfig2);
+      service.addConfig(apiConfig);
 
       // Change values
       uiConfig1.setValue('dark');
@@ -115,7 +115,7 @@ describe('ConfigService', () => {
 
     it('should handle prefix with no matching configs', () => {
       const config = new ConfigProperty('api.endpoint', 'http://localhost', undefined, undefined, mockStorage);
-      service.addConfig('api.endpoint', config);
+      service.addConfig(config);
 
       config.setValue('http://production');
 
@@ -126,7 +126,7 @@ describe('ConfigService', () => {
 
     it('should handle empty prefix', () => {
       const config = new ConfigProperty('key', 'default', undefined, undefined, mockStorage);
-      service.addConfig('key', config);
+      service.addConfig(config);
 
       config.setValue('changed');
 
@@ -143,9 +143,9 @@ describe('ConfigService', () => {
       const config2 = new ConfigProperty('key2', 42, undefined, undefined, mockStorage);
       const config3 = new ConfigProperty('key3', { nested: 'object' }, undefined, undefined, mockStorage);
 
-      service.addConfig('key1', config1);
-      service.addConfig('key2', config2);
-      service.addConfig('key3', config3);
+      service.addConfig(config1);
+      service.addConfig(config2);
+      service.addConfig(config3);
 
       const snapshot = service.saveToJson();
 
@@ -182,8 +182,8 @@ describe('ConfigService', () => {
       const config1 = new ConfigProperty('key1', 'default1', undefined, undefined, mockStorage);
       const config2 = new ConfigProperty('key2', 0, undefined, undefined, mockStorage);
 
-      service.addConfig('key1', config1);
-      service.addConfig('key2', config2);
+      service.addConfig(config1);
+      service.addConfig(config2);
 
       const snapshot: ConfigSnapshot = {
         configs: {
@@ -203,7 +203,7 @@ describe('ConfigService', () => {
     it('should warn about configs not found in service', () => {
       const consoleWarnSpy = spyOn(console, 'warn');
       const config = new ConfigProperty('existing', 'value', undefined, undefined, mockStorage);
-      service.addConfig('existing', config);
+      service.addConfig(config);
 
       const snapshot: ConfigSnapshot = {
         configs: {
@@ -222,7 +222,7 @@ describe('ConfigService', () => {
 
     it('should respect timestamp-based conflict resolution when overwriteNewer is false', () => {
       const config = new ConfigProperty('key', 'default', undefined, undefined, mockStorage);
-      service.addConfig('key', config);
+      service.addConfig(config);
 
       // Set a value with a recent timestamp
       config.setValue('current', Date.now());
@@ -245,7 +245,7 @@ describe('ConfigService', () => {
 
     it('should force overwrite when overwriteNewer is true', () => {
       const config = new ConfigProperty('key', 'default', undefined, undefined, mockStorage);
-      service.addConfig('key', config);
+      service.addConfig(config);
 
       // Set a value with a recent timestamp
       config.setValue('current', Date.now());
@@ -276,7 +276,7 @@ describe('ConfigService', () => {
 
     it('should handle snapshot without timestamps', () => {
       const config = new ConfigProperty('key', 'default', undefined, undefined, mockStorage);
-      service.addConfig('key', config);
+      service.addConfig(config);
 
       const snapshot: ConfigSnapshot = {
         configs: {
@@ -298,10 +298,10 @@ describe('ConfigService', () => {
       const boolConfig = new ConfigProperty('bool', true, undefined, undefined, mockStorage);
       const objectConfig = new ConfigProperty('obj', { a: 1, b: 'test' }, undefined, undefined, mockStorage);
 
-      service.addConfig('str', stringConfig);
-      service.addConfig('num', numberConfig);
-      service.addConfig('bool', boolConfig);
-      service.addConfig('obj', objectConfig);
+      service.addConfig(stringConfig);
+      service.addConfig(numberConfig);
+      service.addConfig(boolConfig);
+      service.addConfig(objectConfig);
 
       // Export to JSON
       const exported = service.saveToJson();
@@ -329,10 +329,10 @@ describe('ConfigService', () => {
       const apiUrl = new ConfigProperty('api.url', 'http://localhost', undefined, undefined, mockStorage);
       const apiTimeout = new ConfigProperty('api.timeout', 5000, undefined, undefined, mockStorage);
 
-      service.addConfig('ui.theme', uiTheme);
-      service.addConfig('ui.font', uiFont);
-      service.addConfig('api.url', apiUrl);
-      service.addConfig('api.timeout', apiTimeout);
+      service.addConfig(uiTheme);
+      service.addConfig(uiFont);
+      service.addConfig(apiUrl);
+      service.addConfig(apiTimeout);
 
       // Modify values
       uiTheme.setValue('dark');
