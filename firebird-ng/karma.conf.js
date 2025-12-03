@@ -35,11 +35,12 @@ module.exports = function (config) {
     reporters: ['progress', 'kjhtml'],
     browsers: ['Chrome'],
     customLaunchers: {
-      FirefoxHeadless: {
-        base: 'Firefox',
-        flags: ['--headless']
-      }
     },
+    hostname: '127.0.0.1',
+    captureTimeout: 210000,
+    browserDisconnectTolerance: 3,
+    browserDisconnectTimeout: 210000,
+    browserNoActivityTimeout: 210000,
     restartOnFileChange: true
   });
 };

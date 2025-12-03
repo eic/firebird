@@ -10,7 +10,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:headless": "cross-env NODE_OPTIONS=--max-old-space-size=4096 ng test --browsers=ChromeHeadless --watch=false --code-coverage --progress=false",
-    "test:headless:firefox": "cross-env NODE_OPTIONS=--max-old-space-size=4096 ng test --browsers=FirefoxHeadless --watch=false --code-coverage --progress=false",
+    "test:headless:firefox": "cross-env MOZ_HEADLESS=1 NODE_OPTIONS=--max-old-space-size=4096 ng test --browsers=Firefox --watch=false --code-coverage --progress=false",
     "repomix:pages": "repomix"
   },
   "dependencies": {
