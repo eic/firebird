@@ -70,6 +70,9 @@ import {ConfigProperty} from "../../utils/config-property";
   ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
+  /** Automatically load geometry and event data on init (set to false for tests) */
+  @Input() isAutoLoadOnInit = true;
+
   @Input()
   eventDataImportOptions: string[] = []; // example, if you used them in UI
 
@@ -155,11 +158,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   // 2) AFTER VIEW INIT => handle resizing with DisplayShell or window
   ngAfterViewInit(): void {
 
-    // Load JSON based data files
-    this.initDexEventSource();
+    if (this.isAutoLoadOnInit) {
+      // Load JSON based data files
+      this.initDexEventSource();
 
-    // Load Root file based data files
-    this.initRootData();
+      // Load Root file based data files
+      this.initRootData();
+    }
 
     if (this.displayShellComponent) {
       const resizeInvoker = () => {
@@ -190,7 +195,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     resizeInvoker();
 
     // Loads the geometry (do it last as it might be long)
-    this.initGeometry();
+    if (this.isAutoLoadOnInit) {
+      this.initGeometry();
+    }
 
     // Init gui
     this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').decimals(2).listen();
