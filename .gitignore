@@ -147,3 +147,5 @@ pyrobird/pyrobird/server/static/assets/
 pyrobird/pyrobird/server/static/
 
 pyrobird/uv.lock
+
+firebird-ng/.claude/settings.local.json
