@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//mnt/c/dev/firebird/**)"
+      "Read(//mnt/c/dev/firebird/**)",
+      "Bash(npm run test:headless:firefox:*)"
     ],
     "deny": [],
     "ask": []
