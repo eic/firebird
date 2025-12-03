@@ -1,11 +1,15 @@
-# EIC Phoenix based event display
+# Electron Ion Collider dynamic visualization
+**(aka EIC Event Display)**
 
 [![Frontend CI/CD Workflow](https://github.com/eic/firebird/actions/workflows/frontend.yaml/badge.svg?branch=main)](https://github.com/eic/firebird/actions/workflows/frontend.yaml)
-
 
 Visit working display: 
 
 https://eic.github.io/firebird/
+
+<a href="https://eic.github.io/firebird/">
+<img src="firebird-ng/src/assets/doc/media/eic_dis_animation_v7.gif" title="EIC ePIC DIS event" />
+</a>
 
 
 ## Development server
