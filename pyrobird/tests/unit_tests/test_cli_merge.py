@@ -3,7 +3,7 @@ import os
 import tempfile
 import pytest
 from click.testing import CliRunner
-from pyrobird.cli.merge import merge, merge_events, merge_event_groups, create_merged_header
+from pyrobird.cli.merge import merge, merge_event_groups, create_merged_header
 from pyrobird.dex_utils import is_valid_dex_file
 
 # Sample Firebird DEX JSON data for testing
