@@ -247,10 +247,14 @@ describe('ConfigService', () => {
       const config = new ConfigProperty('key', 'default', undefined, undefined, mockStorage);
       service.addConfig(config);
 
-      // Set a value with a recent timestamp
-      config.setValue('current', Date.now() - 1);
+      // Set a value with an explicit far-future timestamp to ensure it's "newer"
+      const futureTime = Date.now() + 100000; // 100 seconds in the future
+      config.setValue('current', futureTime);
 
-      // Load value regardless of timestamp
+      // Verify the value was set
+      expect(config.value).toBe('current');
+
+      // Load value regardless of timestamp - the snapshot has an old timestamp
       const snapshot: ConfigSnapshot = {
         configs: {
           key: {
@@ -260,9 +264,10 @@ describe('ConfigService', () => {
         }
       };
 
+      // With overwriteNewer=true, should overwrite even though stored time is newer
       service.loadFromJson(snapshot, true);
 
-      // Value should be 'forced' despite older timestamp
+      // Value should be 'forced' despite the stored value having a newer timestamp
       expect(config.value).toBe('forced');
     });
 
@@ -312,8 +317,8 @@ describe('ConfigService', () => {
       boolConfig.setValue(false);
       objectConfig.setValue({ c: 3 } as any);
 
-      // Import back from JSON
-      service.loadFromJson(exported);
+      // Import back from JSON (use overwriteNewer=true to force restore)
+      service.loadFromJson(exported, true);
 
       // Verify original values restored
       expect(stringConfig.value).toBe('hello');
@@ -365,8 +370,8 @@ describe('ConfigService', () => {
       console.log(uiTheme.value)
       console.log(uiTheme.getTimestamp())
 
-      // Restore from snapshot
-      service.loadFromJson(snapshot);
+      // Restore from snapshot (use overwriteNewer=true to force restore)
+      service.loadFromJson(snapshot, true);
       expect(uiTheme.value).toBe('dark');
       expect(uiFont.value).toBe('Roboto');
       expect(apiUrl.value).toBe('http://production');

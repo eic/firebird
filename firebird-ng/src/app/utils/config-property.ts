@@ -139,8 +139,9 @@ export class ConfigProperty<T> {
    *
    * @param {T} value The new value to set for the property.
    * @param {number} [time] Optional timestamp in milliseconds. If not provided, Date.now() is used.
+   * @param {boolean} [ignoreTime=false] If true, bypasses timestamp-based conflict resolution.
    */
-  setValue(value: T, time?: number): void {
+  setValue(value: T, time?: number, ignoreTime: boolean = false): void {
     if (this.validator && !this.validator(value)) {
       console.error('Validation failed for:', value);
       return;
@@ -156,11 +157,11 @@ export class ConfigProperty<T> {
 
     const storedTime = this.getStoredTime();
 
-    // Only update if no stored time exists or if the update time is newer
+    // Only update if no stored time exists, if the update time is newer, or if ignoreTime is true
     // (!) There was a lot of thought on >=, it is considered the less of all complexities:
     //     What we want with these configs, is to not overwrite current configs with stale configs.
     //     >= is good for this. If one overwrites config several times (e.g. in tests) we don't care
-    if (storedTime === null || updateTime >= storedTime) {
+    if (ignoreTime || storedTime === null || updateTime >= storedTime) {
       this.storage.setItem(this._key, typeof value !== 'string' ? JSON.stringify(value) : value);
       this.saveTime(updateTime);
 

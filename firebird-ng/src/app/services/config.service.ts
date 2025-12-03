@@ -105,8 +105,8 @@ export class ConfigService {
       const config = this.configsByName.get(key);
       if (config) {
         if (overwriteNewer) {
-          // Force update by using a very recent timestamp
-          config.setValue(configData.value, Date.now());
+          // Force update, bypassing timestamp-based conflict resolution
+          config.setValue(configData.value, undefined, true);
         } else {
           // Use the stored timestamp for time-based conflict resolution
           config.setValue(configData.value, configData.timestamp || Date.now());
