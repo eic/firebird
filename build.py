@@ -167,9 +167,9 @@ def main():
     """Main is main! la-la la-la-la"""
 
     parser = argparse.ArgumentParser(description="Helper script that builds everything and places in the right places")
-    parser.add_argument("mode", default="all", help="all, build_ng, cp_ng, doc, test, test_frontend, test_backend, py_build, py_publish")
+    parser.add_argument("mode", nargs="*", default="", help="all, py, test Or itemized: build_ng, cp_ng, test_frontend, test_backend, py_build, py_publish")
     parser.add_argument("-d","--dry-run", action="store_true", help="Don't do actual files operations")
-    parser.add_argument("-v", "--version", type=str, help="Set version for both frontend and pyrobird packages")
+    parser.add_argument("-v", "--version", help="Set version for both frontend and pyrobird packages")
     args = parser.parse_args()
 
     # Update versions first if specified
@@ -177,25 +177,27 @@ def main():
         update_npm_version(args.version, is_dry_run=args.dry_run)
         update_py_version(args.version, is_dry_run=args.dry_run)
 
-    if args.mode in ["all", "build_ng", "build-ng"]:
+    # Next steps depend on mode
+    mode = args.mode[0] if args.mode else ""
+    if mode in ["all", "build_ng", "build-ng"]:
         build_ng(is_dry_run=args.dry_run)
 
-    if args.mode in ["all", "test"]:
+    if mode in ["all", "test"]:
         test_all(is_dry_run=args.dry_run)
 
-    if args.mode in ["test_frontend", "test-frontend"]:
+    if mode in ["test_frontend", "test-frontend"]:
         test_frontend(is_dry_run=args.dry_run)
 
-    if args.mode in ["test_backend", "test-backend"]:
+    if mode in ["test_backend", "test-backend"]:
         test_backend(is_dry_run=args.dry_run)
 
-    if args.mode in ["all", "cp_ng"]:
+    if mode in ["all", "cp_ng"]:
         copy_frontend(is_dry_run=args.dry_run)
 
-    if args.mode in ["all", "py_build", "py-build"]:
+    if mode in ["all", "py", "py_build", "py-build"]:
         build_py(is_dry_run=args.dry_run)
 
-    if args.mode in ["all", "py_publish", "py-publish"]:
+    if mode in ["all", "py", "py_publish", "py-publish"]:
         publish_py(is_dry_run=args.dry_run)
 
 if __name__ == "__main__":

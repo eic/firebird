@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-  "setuptools>=61.0",
+  "setuptools",
   "wheel"
 ]
 build-backend = "setuptools.build_meta"
@@ -11,14 +11,13 @@ dynamic = ["version"]
 description = "pyrobird is a python backend for Firebird HENP event display"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { file = "LICENSE" }
+license = "GPL-3.0-or-later"
 keywords = []
 authors = [
   { name = "Dmitry Romanov", email = "romanovda@gmail.com" }
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
-  "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
@@ -42,14 +41,7 @@ dependencies = [
 [project.optional-dependencies]
 batch = ["playwright"]
 xrootd = ["fsspec-xrootd", "xrootd"]
-dev = [
-  "build>=0.10.0",
-  "twine>=4.0.0",
-  "coverage>=6.5.0"
-]
-test = [
-  "pytest>=7.0.0"
-]
+dev = ["build", "twine", "coverage", "pytest"]
 
 [project.scripts]
 fbd = "pyrobird.cli:cli_app"
