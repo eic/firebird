@@ -68,7 +68,7 @@
       <mat-slider min="0" max="360" step="1">
         <input
           matSliderThumb
-          [value]="openingClippingAngle"
+          [value]="openingAngle"
           (input)="onSliderInput($event, 'opening')"
           (valueChange)="changeOpeningClippingAngle($event)"
         />
@@ -79,10 +79,10 @@
       <input
         class="angle-value-input"
         type="number"
-        [value]="openingClippingAngle"
+        [value]="openingAngle"
         [disabled]="!clippingEnabled"
-        (input)="openingClippingAngle = $any($event.target).valueAsNumber"
-        (change)="changeOpeningClippingAngle(openingClippingAngle)"
+        (input)="openingAngle = $any($event.target).valueAsNumber"
+        (change)="changeOpeningClippingAngle(openingAngle())"
       />
     </button>
 
@@ -113,10 +113,10 @@
       mat-menu-item
       [disabled]="!clippingEnabled"
     >
-      <mat-slider min="0" max="360" step="1" thumbLabel>
+      <mat-slider min="0" max="360" step="1">
         <input
           matSliderThumb
-          [value]="startClippingAngle"
+          [value]="startAngle"
           (input)="onSliderInput($event, 'start')"
           (valueChange)="changeStartClippingAngle($event)"
         />
@@ -127,10 +127,10 @@
       <input
         class="angle-value-input"
         type="number"
-        [value]="startClippingAngle"
+        [value]="startAngle"
         [disabled]="!clippingEnabled"
-        (input)="startClippingAngle = $any($event.target).valueAsNumber"
-        (change)="changeStartClippingAngle(startClippingAngle)"
+        (input)="startAngle = $any($event.target).valueAsNumber"
+        (change)="changeStartClippingAngle(startAngle())"
       />
     </button>
 

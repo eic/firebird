@@ -14,7 +14,7 @@ import {SceneTreeComponent} from '../../components/scene-tree/scene-tree.compone
 import {ShellComponent} from '../../components/shell/shell.component';
 import {ToolPanelComponent} from '../../components/tool-panel/tool-panel.component';
 import {EventSelectorComponent} from '../../components/event-selector/event-selector.component';
-import {ObjectClippingComponent} from '../../components/object-clipping/object-clipping.component';
+import {GeometryClippingComponent} from '../../components/object-clipping/geometry-clipping.component';
 import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
 
 import {MatSnackBar} from '@angular/material/snack-bar';
@@ -58,7 +58,7 @@ import {ConfigProperty} from "../../utils/config-property";
     ShellComponent,
     ToolPanelComponent,
     EventSelectorComponent,
-    ObjectClippingComponent,
+    GeometryClippingComponent,
     PerfStatsComponent,
     EventTimeControlComponent,
     CubeViewportControlComponent,

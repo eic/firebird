@@ -25,6 +25,14 @@ export class ConfigService {
     return this.configsByName.get(key) as ConfigProperty<T> | undefined;
   }
 
+  public getConfigOrCreate<T>(key: string, value: T): ConfigProperty<T> {
+    let property = this.configsByName.get(key);
+    if (!property) {
+      property = this.createConfig(key, value);
+    }
+    return property as ConfigProperty<T>;
+  }
+
   // Generic getter that throws if property doesn't exist
   public getConfigOrThrow<T>(key: string): ConfigProperty<T> {
     const property = this.configsByName.get(key);

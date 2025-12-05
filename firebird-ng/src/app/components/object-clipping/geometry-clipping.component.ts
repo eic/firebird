@@ -6,10 +6,12 @@ import {
   TemplateRef,
   ElementRef,
   ViewContainerRef,
-  ChangeDetectorRef
+  ChangeDetectorRef,
+  effect,
+  Signal
 } from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
-import { Subscription } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { ThreeService } from '../../services/three.service';
 import { ConfigService } from '../../services/config.service';
@@ -27,8 +29,8 @@ import {FormsModule} from "@angular/forms";
 
 @Component({
   selector: 'app-custom-object-clipping',
-  templateUrl: './object-clipping.component.html',
-  styleUrls: ['./object-clipping.component.scss'],
+  templateUrl: './geometry-clipping.component.html',
+  styleUrls: ['./geometry-clipping.component.scss'],
   imports: [
     MatSlider,
     MatMenuItem,
@@ -43,13 +45,12 @@ import {FormsModule} from "@angular/forms";
 
   ]
 })
-export class ObjectClippingComponent implements OnInit, OnDestroy {
+export class GeometryClippingComponent implements OnInit {
   /** Local copies that reflect the config property values. */
-  clippingEnabled = false;
-  startClippingAngle = 0;
-  openingClippingAngle = 180;
 
-  private subscriptions: Subscription[] = [];
+  clippingEnabled!: Signal<boolean>;
+  startAngle!: Signal<number>;
+  openingAngle!: Signal<number>;
 
   @ViewChild('openBtn', { read: ElementRef }) openBtn!: ElementRef;
   @ViewChild('dialogTemplate') dialogTemplate!: TemplateRef<any>;
@@ -61,75 +62,37 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private viewContainerRef: ViewContainerRef,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) {
+
+        // Get configs
+    const configClippingEnabled = this.config.getConfigOrCreate<boolean>('clippingEnabled', true);
+    const configStartAngle = this.config.getConfigOrCreate<number>('clippingStartAngle', 0);
+    const configOpeningAngle = this.config.getConfigOrCreate<number>('clippingOpeningAngle', 180);
+
+    this.clippingEnabled = toSignal(configClippingEnabled.subject, { requireSync: true });
+    this.startAngle = toSignal(configStartAngle.subject, { requireSync: true });
+    this.openingAngle = toSignal(configOpeningAngle.subject, { requireSync: true });
+
+    // Changes in enable/disable clipping
+    effect(() => {
+      this.threeService.enableClipping(this.clippingEnabled());
+      if(this.clippingEnabled()) {
+        this.threeService.setClippingAngle(this.startAngle(), this.openingAngle());
+      }
+    });
+
+    // changes in start or opening angles
+    effect(()=> {
+      this.threeService.setClippingAngle(this.startAngle(), this.openingAngle());
+    });
+
+  }
 
   // In your ObjectClippingComponent ngOnInit, replace the getConfigOrThrow calls with:
 
   ngOnInit(): void {
-    // Ensure config properties exist, create with defaults if they don't
-    const clippingEnabledConfig = this.config.getConfig<boolean>('clippingEnabled')
-      ?? this.config.createConfig('clippingEnabled', false);
-    const clippingStartAngleConfig = this.config.getConfig<number>('clippingStartAngle')
-      ?? this.config.createConfig('clippingStartAngle', 0);
-    const clippingOpeningAngleConfig = this.config.getConfig<number>('clippingOpeningAngle')
-      ?? this.config.createConfig('clippingOpeningAngle', 360);
-
-    // 1) Initialize local values from the config
-    this.clippingEnabled = clippingEnabledConfig.value;
-    this.startClippingAngle = clippingStartAngleConfig.value;
-    this.openingClippingAngle = clippingOpeningAngleConfig.value;
-
-    // 2) Subscribe to config changes
-    this.subscriptions.push(
-      clippingEnabledConfig.changes$.subscribe((enabled) => {
-        this.clippingEnabled = enabled;
-        this.threeService.enableClipping(enabled);
-        if (enabled) {
-          this.threeService.setClippingAngle(
-            clippingStartAngleConfig.value,
-            clippingOpeningAngleConfig.value
-          );
-        }
-      })
-    );
-
-    this.subscriptions.push(
-      clippingStartAngleConfig.changes$.subscribe((value) => {
-        this.startClippingAngle = value;
-        if (clippingEnabledConfig.value) {
-          this.threeService.setClippingAngle(
-            value,
-            clippingOpeningAngleConfig.value
-          );
-        }
-      })
-    );
-
-    this.subscriptions.push(
-      clippingOpeningAngleConfig.changes$.subscribe((value) => {
-        this.openingClippingAngle = value;
-        if (clippingEnabledConfig.value) {
-          this.threeService.setClippingAngle(
-            clippingStartAngleConfig.value,
-            value
-          );
-        }
-      })
-    );
 
 
-    // 3) Optionally trigger an initial clipping if was enabled:
-    if (this.clippingEnabled) {
-      this.threeService.enableClipping(true);
-      this.threeService.setClippingAngle(this.startClippingAngle, this.openingClippingAngle);
-    }
-  }
-
-  ngOnDestroy(): void {
-    // Unsubscribe from config property streams to avoid memory leaks.
-    for (const sub of this.subscriptions) {
-      sub.unsubscribe();
-    }
   }
 
   /**
@@ -157,10 +120,10 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
 
 
   openDialog(): void {
-  if (this.dialogRef) {
-    this.dialogRef.close();
-    return;
-  }
+    if (this.dialogRef) {
+      this.dialogRef.close();
+      return;
+    }
 
     const rect = this.openBtn.nativeElement.getBoundingClientRect();
     const dialogWidth = 320;
@@ -207,12 +170,10 @@ export class ObjectClippingComponent implements OnInit, OnDestroy {
     if (newValue !== null && !isNaN(newValue)) {
       // Update the appropriate property based on which slider was moved
       if (sliderType === 'start') {
-        this.startClippingAngle = newValue;
+        // this.startAngle..(newValue);
       } else if (sliderType === 'opening') {
-        this.openingClippingAngle = newValue;
+        // this.openingAngle = newValue;
       }
     }
   }
-
-
 }
