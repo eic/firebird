@@ -1,6 +1,6 @@
 {
   "name": "firebird",
-  "version": "0.2.7",
+  "version": "2025.12.rc1",
   "scripts": {
     "ng": "ng",
     "serve": "ng serve",

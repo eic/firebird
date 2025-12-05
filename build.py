@@ -28,6 +28,24 @@ print(f"NG dist doc:        {dist_doc_path}")
 print(f"Flask static Path:  {static_path}")
 
 
+def _run(command, cwd, prefix):
+    """Run a subprocess command with output prefixing. Raises on failure."""
+    proc = subprocess.Popen(
+        command,
+        cwd=cwd,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    for line in proc.stdout:
+        print(f"[{prefix}] " + line, end="")
+
+    proc.wait()
+    if proc.returncode:
+        raise subprocess.CalledProcessError(proc.returncode, command)
+
+
 def update_npm_version(version, is_dry_run):
     """Update version in firebird-ng/package.json"""
     print(f"Updating {package_json_path} to version {version}")
@@ -56,30 +74,12 @@ def update_py_version(version, is_dry_run):
 
 
 def build_ng(is_dry_run):
-    # Angular can start asking
+    """Build Angular frontend"""
     print("Running build at firebird-ng")
     if is_dry_run:
         return
 
-    # Run `ng build` in script_path/firebird-ng directory
-    try:
-        proc = subprocess.Popen(
-            ["npm", "run", "build"],
-            cwd=firebird_ng_path,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-
-        for line in proc.stdout:
-            print("[ng] " + line, end="")
-
-        proc.wait()
-        if proc.returncode:
-            sys.exit(proc.returncode)
-    except subprocess.CalledProcessError as e:
-        print(f"Error running 'build' phase: {e}")
-        sys.exit(1)
+    _run(["npm", "run", "build"], cwd=firebird_ng_path, prefix="ng")
 
 
 def test_frontend(is_dry_run):
@@ -88,26 +88,8 @@ def test_frontend(is_dry_run):
     if is_dry_run:
         return
 
-    try:
-        proc = subprocess.Popen(
-            ["npm", "run", "test:headless"],
-            cwd=firebird_ng_path,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-
-        for line in proc.stdout:
-            print("[ng-test] " + line, end="")
-
-        proc.wait()
-        if proc.returncode:
-            print(f"Frontend tests failed with exit code {proc.returncode}")
-            sys.exit(proc.returncode)
-        print("Frontend tests passed!")
-    except subprocess.CalledProcessError as e:
-        print(f"Error running frontend tests: {e}")
-        sys.exit(1)
+    _run(["npm", "run", "test:headless"], cwd=firebird_ng_path, prefix="ng-test")
+    print("Frontend tests passed!")
 
 
 def test_backend(is_dry_run):
@@ -117,27 +99,8 @@ def test_backend(is_dry_run):
         return
 
     print(f"Using Python: {sys.executable}")
-
-    try:
-        proc = subprocess.Popen(
-            [sys.executable, "-m", "pytest", "./tests/unit_tests", "-v"],
-            cwd=pyrobird_path,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-
-        for line in proc.stdout:
-            print("[pytest] " + line, end="")
-
-        proc.wait()
-        if proc.returncode:
-            print(f"Backend tests failed with exit code {proc.returncode}")
-            sys.exit(proc.returncode)
-        print("Backend tests passed!")
-    except subprocess.CalledProcessError as e:
-        print(f"Error running backend tests: {e}")
-        sys.exit(1)
+    _run([sys.executable, "-m", "pytest", "./tests/unit_tests", "-v"], cwd=pyrobird_path, prefix="pytest")
+    print("Backend tests passed!")
 
 
 def test_all(is_dry_run):
@@ -184,13 +147,35 @@ def copy_docs(is_dry_run):
         shutil.copytree(doc_path, dist_doc_path, dirs_exist_ok=True)
 
 
+def build_py(is_dry_run):
+    """Build pyrobird package using uv"""
+    print("Building pyrobird package with uv")
+    if is_dry_run:
+        return
+
+    _run(["uv", "build"], cwd=pyrobird_path, prefix="uv-build")
+    print("Python build completed!")
+
+
+def publish_py(is_dry_run):
+    """Print the command to publish pyrobird package"""
+    print("To publish pyrobird package, run:")
+    print(f"  cd {pyrobird_path} && uv publish")
+
+
 def main():
     """Main is main! la-la la-la-la"""
 
     parser = argparse.ArgumentParser(description="Helper script that builds everything and places in the right places")
-    parser.add_argument("mode", default="all", help="all, build_ng, cp_ng, doc, test, test_frontend, test_backend")
+    parser.add_argument("mode", default="all", help="all, build_ng, cp_ng, doc, test, test_frontend, test_backend, py_build, py_publish")
     parser.add_argument("-d","--dry-run", action="store_true", help="Don't do actual files operations")
+    parser.add_argument("-v", "--version", type=str, help="Set version for both frontend and pyrobird packages")
     args = parser.parse_args()
+
+    # Update versions first if specified
+    if args.version:
+        update_npm_version(args.version, is_dry_run=args.dry_run)
+        update_py_version(args.version, is_dry_run=args.dry_run)
 
     if args.mode in ["all", "build_ng", "build-ng"]:
         build_ng(is_dry_run=args.dry_run)
@@ -206,6 +191,12 @@ def main():
 
     if args.mode in ["all", "cp_ng"]:
         copy_frontend(is_dry_run=args.dry_run)
+
+    if args.mode in ["all", "py_build", "py-build"]:
+        build_py(is_dry_run=args.dry_run)
+
+    if args.mode in ["all", "py_publish", "py-publish"]:
+        publish_py(is_dry_run=args.dry_run)
 
 if __name__ == "__main__":
     main()

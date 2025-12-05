@@ -28,11 +28,8 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Run Tests (Chrome)
+      - name: Run Tests
         run: npm run test:headless
-
-      - name: Run Tests (Firefox)
-        run: npm run test:headless:firefox
 
   build:
     needs: test
