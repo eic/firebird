@@ -3,6 +3,8 @@ import shutil
 import subprocess
 import sys
 import argparse
+import json
+import re
 
 # Identify the script's path
 script_path = os.path.dirname(os.path.abspath(__file__))
@@ -13,6 +15,8 @@ dist_path = os.path.join(firebird_ng_path, 'dist', 'firebird', 'browser')
 static_path = os.path.join(script_path, 'pyrobird', 'pyrobird', 'server', 'static')
 doc_path = os.path.join(script_path, 'doc')
 dist_doc_path = os.path.join(dist_path, 'assets', 'doc')
+package_json_path = os.path.join(firebird_ng_path, 'package.json')
+pyrobird_version_path = os.path.join(script_path, 'pyrobird', 'pyrobird', '__version__.py')
 
 # Print the paths
 print(f"Script Path:        {script_path}")
@@ -21,6 +25,33 @@ print(f"Firebird NG:        {firebird_ng_path}")
 print(f"NG dist:            {dist_path}")
 print(f"NG dist doc:        {dist_doc_path}")
 print(f"Flask static Path:  {static_path}")
+
+
+def update_npm_version(version, is_dry_run):
+    """Update version in firebird-ng/package.json"""
+    print(f"Updating {package_json_path} to version {version}")
+    if not is_dry_run:
+        with open(package_json_path, 'r') as f:
+            package_data = json.load(f)
+        package_data['version'] = version
+        with open(package_json_path, 'w') as f:
+            json.dump(package_data, f, indent=2)
+            f.write('\n')
+
+
+def update_py_version(version, is_dry_run):
+    """Update version in pyrobird/__version__.py"""
+    print(f"Updating {pyrobird_version_path} to version {version}")
+    if not is_dry_run:
+        with open(pyrobird_version_path, 'r') as f:
+            content = f.read()
+        content = re.sub(
+            r'__version__\s*=\s*["\'][^"\']*["\']',
+            f'__version__ = "{version}"',
+            content
+        )
+        with open(pyrobird_version_path, 'w') as f:
+            f.write(content)
 
 
 def build_ng(is_dry_run):
@@ -86,8 +117,6 @@ def copy_docs(is_dry_run):
 
     if not is_dry_run:
         shutil.copytree(doc_path, dist_doc_path, dirs_exist_ok=True)
-
-
 
 
 def main():

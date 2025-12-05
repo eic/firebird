@@ -4,9 +4,16 @@
 
 ## Overview
 
-Firebird is a modern, web-based event display framework (built on [Phoenix event display](http://phoenix-dev.surge.sh) library) designed specifically for the Electron-Ion Collider (EIC) experiments. Built to serve both scientific and outreach purposes, Firebird provides a versatile platform for visualizing detector geometries, particle interactions, and physics processes in an intuitive and accessible manner.
+**Firebird** is a web-based event display framework for particle physics experiments, 
+specifically designed for the Electron-Ion Collider (EIC). 
 
-As a core visualization tool for the EIC project, Firebird supports the needs of detector experts, physicists, and science communicators by offering a modular, extensible architecture that can adapt to evolving research requirements while maintaining ease of use.
+Actually, it is better to say "Event player" rather than event display, as it can work with full 4D and play 
+how realistically nuclear physics events and detector responses develop in time.
+While traditional "event display-s" static picture of events available too.
+
+As a core visualization tool for the EIC project, 
+Firebird supports the needs of detector experts, 
+physicists, and science communications.
 
 ## Key Features
 
