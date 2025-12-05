@@ -17,6 +17,7 @@ doc_path = os.path.join(script_path, 'doc')
 dist_doc_path = os.path.join(dist_path, 'assets', 'doc')
 package_json_path = os.path.join(firebird_ng_path, 'package.json')
 pyrobird_version_path = os.path.join(script_path, 'pyrobird', 'pyrobird', '__version__.py')
+pyrobird_path = os.path.join(script_path, 'pyrobird')
 
 # Print the paths
 print(f"Script Path:        {script_path}")
@@ -81,6 +82,70 @@ def build_ng(is_dry_run):
         sys.exit(1)
 
 
+def test_frontend(is_dry_run):
+    """Run headless tests for the Angular frontend"""
+    print("Running headless tests for firebird-ng")
+    if is_dry_run:
+        return
+
+    try:
+        proc = subprocess.Popen(
+            ["npm", "run", "test:headless"],
+            cwd=firebird_ng_path,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+        for line in proc.stdout:
+            print("[ng-test] " + line, end="")
+
+        proc.wait()
+        if proc.returncode:
+            print(f"Frontend tests failed with exit code {proc.returncode}")
+            sys.exit(proc.returncode)
+        print("Frontend tests passed!")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running frontend tests: {e}")
+        sys.exit(1)
+
+
+def test_backend(is_dry_run):
+    """Run pytest tests for pyrobird backend"""
+    print("Running pytest tests for pyrobird")
+    if is_dry_run:
+        return
+
+    print(f"Using Python: {sys.executable}")
+
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "pytest", "./tests/unit_tests", "-v"],
+            cwd=pyrobird_path,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+        for line in proc.stdout:
+            print("[pytest] " + line, end="")
+
+        proc.wait()
+        if proc.returncode:
+            print(f"Backend tests failed with exit code {proc.returncode}")
+            sys.exit(proc.returncode)
+        print("Backend tests passed!")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running backend tests: {e}")
+        sys.exit(1)
+
+
+def test_all(is_dry_run):
+    """Run all tests (frontend and backend)"""
+    test_frontend(is_dry_run)
+    test_backend(is_dry_run)
+
+
 def copy_frontend(is_dry_run):
     # Remove all files and folders in script_path/pyrobird/server/static
 
@@ -123,12 +188,21 @@ def main():
     """Main is main! la-la la-la-la"""
 
     parser = argparse.ArgumentParser(description="Helper script that builds everything and places in the right places")
-    parser.add_argument("mode", default="all", help="all, build_ng, cp_ng, doc")
+    parser.add_argument("mode", default="all", help="all, build_ng, cp_ng, doc, test, test_frontend, test_backend")
     parser.add_argument("-d","--dry-run", action="store_true", help="Don't do actual files operations")
     args = parser.parse_args()
 
     if args.mode in ["all", "build_ng", "build-ng"]:
         build_ng(is_dry_run=args.dry_run)
+
+    if args.mode in ["all", "test"]:
+        test_all(is_dry_run=args.dry_run)
+
+    if args.mode in ["test_frontend", "test-frontend"]:
+        test_frontend(is_dry_run=args.dry_run)
+
+    if args.mode in ["test_backend", "test-backend"]:
+        test_backend(is_dry_run=args.dry_run)
 
     if args.mode in ["all", "cp_ng"]:
         copy_frontend(is_dry_run=args.dry_run)
