@@ -6,6 +6,7 @@
 
 ## Tutorials
 - [01 User Interface](help/tutorials/01_basic_ui "Basic UI tutorial")
+- [02 Run Locally](help/tutorials/02_run_local "Run Firebird locally with Pyrobird")
 
 ## Howto-s
 - [Troubleshoot](help/troubleshoot "Fix problems in event display")
