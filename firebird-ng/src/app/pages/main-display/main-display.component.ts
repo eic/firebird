@@ -14,7 +14,7 @@ import {SceneTreeComponent} from '../../components/scene-tree/scene-tree.compone
 import {ShellComponent} from '../../components/shell/shell.component';
 import {ToolPanelComponent} from '../../components/tool-panel/tool-panel.component';
 import {EventSelectorComponent} from '../../components/event-selector/event-selector.component';
-import {GeometryClippingComponent} from '../../components/object-clipping/geometry-clipping.component';
+import {GeometryClippingComponent} from '../../components/geometry-clipping/geometry-clipping.component';
 import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
 
 import {MatSnackBar} from '@angular/material/snack-bar';
@@ -127,15 +127,15 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     private controller: GameControllerService,
     private snackBar: MatSnackBar,
     public  eventDisplay: EventDisplayService,
-    private userConfig: ConfigService,
+    private config: ConfigService,
     private serverConfig: ServerConfigService,
   ) {
-    userConfig.addConfig(this.geometryUrl);
-    userConfig.addConfig(this.geometryFastAndUgly);
-    userConfig.addConfig(this.geometryCutListName);
-    userConfig.addConfig(this.dexJsonEventSource);
-    userConfig.addConfig(this.rootEventSource);
-    userConfig.addConfig(this.rootEventRange);
+    config.addConfig(this.geometryUrl);
+    config.addConfig(this.geometryFastAndUgly);
+    config.addConfig(this.geometryCutListName);
+    config.addConfig(this.dexJsonEventSource);
+    config.addConfig(this.rootEventSource);
+    config.addConfig(this.rootEventRange);
   }
 
 
@@ -355,7 +355,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     // We set loadingDex=false to be safe
     this.loadingDex.set(false);
 
-    let dexUrl = this.userConfig.getConfig<string>('events.dexEventsSource')?.value;
+    let dexUrl = this.config.getConfig<string>('events.dexEventsSource')?.value;
 
     if (!dexUrl || dexUrl.trim().length === 0) {
       console.log("[main-display]: No event data source specified. Skip loadDexData.");
@@ -383,13 +383,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private initRootData() {
     let url = (
-      this.userConfig.getConfig<string>('events.rootEventSource')
-      ?? this.userConfig.createConfig('events.rootEventSource', '')
+      this.config.getConfig<string>('events.rootEventSource')
+      ?? this.config.createConfig('events.rootEventSource', '')
     ).subject.getValue();
 
     let eventRange = (
-      this.userConfig.getConfig<string>('events.rootEventRange')
-      ?? this.userConfig.createConfig('events.rootEventRange', '')
+      this.config.getConfig<string>('events.rootEventRange')
+      ?? this.config.createConfig('events.rootEventRange', '')
     ).subject.getValue();
 
 
@@ -429,10 +429,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   private initGeometry() {
-    const url = (
-      this.userConfig.getConfig<string>('geometry.selectedGeometry')
-      ?? this.userConfig.createConfig('geometry.selectedGeometry', '')
-    ).value;
+    const url = (this.config.getConfigOrCreate<string>('geometry.selectedGeometry', '')).value;
 
     if (!url || url.trim().length === 0) {
       console.log("[main-display]: No geometry specified. Skip loadGeometry ");

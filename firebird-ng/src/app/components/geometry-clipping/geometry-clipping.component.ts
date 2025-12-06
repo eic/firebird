@@ -28,7 +28,7 @@ import {FormsModule} from "@angular/forms";
 
 
 @Component({
-  selector: 'app-custom-object-clipping',
+  selector: 'app-geometry-clipping',
   templateUrl: './geometry-clipping.component.html',
   styleUrls: ['./geometry-clipping.component.scss'],
   imports: [

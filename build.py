@@ -179,13 +179,13 @@ def main():
 
     # Next steps depend on mode
     mode = args.mode[0] if args.mode else ""
-    if mode in ["all", "build_ng", "build-ng"]:
+    if mode in ["all", "ng", "build_ng", "build-ng"]:
         build_ng(is_dry_run=args.dry_run)
 
     if mode in ["all", "test"]:
         test_all(is_dry_run=args.dry_run)
 
-    if mode in ["test_frontend", "test-frontend"]:
+    if mode in ["test_frontend", "ng", "test-frontend"]:
         test_frontend(is_dry_run=args.dry_run)
 
     if mode in ["test_backend", "test-backend"]:
