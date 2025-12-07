@@ -6,7 +6,7 @@ import {
   ViewChild, OnDestroy, TemplateRef, ElementRef, signal
 } from '@angular/core';
 
-import {ALL_GROUPS} from '../../services/geometry.service';
+import {ALL_GROUPS, GeometryService} from '../../services/geometry.service';
 import {GameControllerService} from '../../services/game-controller.service';
 import {ConfigService} from '../../services/config.service';
 
@@ -36,6 +36,7 @@ import {ObjectRaycastComponent} from "../../components/object-raycast/object-ray
 import {MatProgressSpinner} from "@angular/material/progress-spinner";
 import GUI from 'lil-gui';
 import {ConfigProperty} from "../../utils/config-property";
+import {arrangeEpicDetectors} from "../../utils/epic-geometry-arranger";
 
 /**
  * This MainDisplayComponent:
@@ -129,6 +130,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     public  eventDisplay: EventDisplayService,
     private config: ConfigService,
     private serverConfig: ServerConfigService,
+    public  geomService: GeometryService,
   ) {
     config.addConfig(this.geometryUrl);
     config.addConfig(this.geometryFastAndUgly);
@@ -428,6 +430,16 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
 
+  /**
+   * Cancel any ongoing geometry loading operation
+   */
+  cancelGeometryLoading(): void {
+    if (this.geomService.isLoading()) {
+      console.log("[main-display]: Cancelling geometry loading...");
+      this.geomService.cancelLoading();
+    }
+  }
+
   private initGeometry() {
     const url = (this.config.getConfigOrCreate<string>('geometry.selectedGeometry', '')).value;
 
@@ -441,16 +453,24 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // Cancel any existing geometry load before starting a new one
+    this.cancelGeometryLoading();
+
     this.loadingGeometry.set(true);
     this.eventDisplay.loadGeometry(url)
+      .then((result) => {
+        // Only update UI if geometry was actually loaded (not cancelled)
+        if (result !== undefined) {
+          this.updateSceneTreeComponent();
+          console.log("[main-display]: Geometry loaded");
+        } else {
+          console.log("[main-display]: Geometry loading was cancelled");
+        }
+      })
       .catch(error => {
         const msg = `Error loading geometry: ${error}`;
         console.error(`[main-display]: ${msg}`);
         this.showError("Error loading Geometry. Open 'Configure' to change. Press F12->Console for logs");
-      })
-      .then(() => {
-        this.updateSceneTreeComponent();
-        console.log("[main-display]: Geometry loaded");
       })
       .finally(() => this.loadingGeometry.set(false));
   }

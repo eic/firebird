@@ -1,26 +1,26 @@
 import {Injectable, signal, WritableSignal} from '@angular/core';
-import {openFile} from 'jsroot';
-import {
-  analyzeGeoNodes,
-  findGeoManager, getGeoNodesByLevel
-} from '../../lib-root-geometry/root-geo-navigation';
-import {build} from 'jsroot/geom';
-import {pruneTopLevelDetectors, RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
 import {ConfigService} from "./config.service";
 import {Subdetector} from "../model/subdetector";
-import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, Plane} from "three";
+import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, ObjectLoader, Plane} from "three";
 import {UrlService} from "./url.service";
 import {DetectorThreeRuleSet, ThreeGeometryProcessor} from "../data-pipelines/three-geometry.processor";
 import * as THREE from "three";
-import {disposeHierarchy, getColorOrDefault} from "../utils/three.utils";
+import {getColorOrDefault} from "../utils/three.utils";
 
 import {cool2ColorRules} from "../theme/cool2-geometry-ruleset";
 import {cadColorRules} from "../theme/cad-geometry-ruleset";
 import {monoColorRules} from "../theme/mono-geometry-ruleset";
 import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
 
-import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 import {ConfigProperty} from "../utils/config-property";
+
+import type {
+  WorkerRequest,
+  WorkerResponse,
+  GeometryLoadRequest,
+  GeometryCancelRequest,
+  SubdetectorInfo
+} from "../workers/geometry-loader.worker";
 
 export const GROUP_CALORIMETRY = "Calorimeters";
 export const GROUP_TRACKING = "Tracking";
@@ -218,6 +218,15 @@ const removeDetectorNames: string[] = [
 // constants.ts
 export const DEFAULT_GEOMETRY = 'builtin://epic-central-optimized';
 
+/** Result returned by loadGeometry */
+export interface GeometryLoadResult {
+  threeGeometry: Object3D | null;
+  cancelled: boolean;
+}
+
+/** Progress callback type */
+export type GeometryProgressCallback = (stage: string, progress: number) => void;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -228,16 +237,11 @@ export class GeometryService {
   geometryThemeName = new ConfigProperty('geometry.themeName', "cool2");
   geometryRootFilterName = new ConfigProperty('geometry.rootFilterName', "default");
 
-  public rootGeometryProcessor = new RootGeometryProcessor();
-
   /** Collection of subdetectors */
   public subdetectors: Subdetector[] = [];
 
-  /** TGeoManager if available */
-  public rootGeometry: any|null = null;
-
-  /** Main/entry/root THREEJS geometry tree node with the whole geometry */
-  // public geometry:
+  /** TGeoManager - no longer available when using worker (kept for API compatibility) */
+  public rootGeometry: any | null = null;
 
   public groupsByDetName: Map<string, string>;
 
@@ -246,12 +250,35 @@ export class GeometryService {
 
   private defaultColor: Color = new Color(0x68698D);
 
-  public geometry:WritableSignal<Object3D|null> = signal(null)
+  public geometry: WritableSignal<Object3D | null> = signal(null);
 
-  constructor(private urlService: UrlService,
-              private localStorage: ConfigService,
-              ) {
-    this.groupsByDetName = new Map<string,string> ([
+  /** Loading progress signal (0-100) */
+  public loadingProgress: WritableSignal<number> = signal(0);
+
+  /** Current loading stage description */
+  public loadingStage: WritableSignal<string> = signal('');
+
+  /** Worker instance for geometry loading */
+  private worker: Worker | null = null;
+
+  /** Current active request ID */
+  private currentRequestId: string | null = null;
+
+  /** Pending promise resolvers for geometry loading */
+  private pendingResolvers: Map<string, {
+    resolve: (result: GeometryLoadResult) => void;
+    reject: (error: Error) => void;
+    onProgress?: GeometryProgressCallback;
+  }> = new Map();
+
+  /** ObjectLoader for deserializing geometry from worker */
+  private objectLoader = new ObjectLoader();
+
+  constructor(
+    private urlService: UrlService,
+    private config: ConfigService,
+  ) {
+    this.groupsByDetName = new Map<string, string>([
       ["SolenoidBarrel_assembly_0", GROUP_MAGNETS],
       ["SolenoidEndcapP_1", GROUP_MAGNETS],
       ["SolenoidEndcapN_2", GROUP_MAGNETS],
@@ -299,125 +326,249 @@ export class GeometryService {
       ["Magnet_B2AeR_assembly_57", GROUP_MAGNETS],
       ["Magnet_B2BeR_assembly_58", GROUP_MAGNETS],
       ["Magnets_Q3eR_assembly_59", GROUP_MAGNETS],
-    ])
+    ]);
 
-    this.localStorage.addConfig(this.geometryFastAndUgly);
-    this.localStorage.addConfig(this.geometryCutListName);
-    this.localStorage.addConfig(this.geometryThemeName);
-    this.localStorage.addConfig(this.geometryRootFilterName);
+    this.config.addConfig(this.geometryFastAndUgly);
+    this.config.addConfig(this.geometryCutListName);
+    this.config.addConfig(this.geometryThemeName);
+    this.config.addConfig(this.geometryRootFilterName);
+
+    this.initWorker();
   }
 
-  async loadGeometry(url:string): Promise<{rootGeometry: any|null, threeGeometry: Object3D|null}> {
+  /**
+   * Initialize the geometry loader worker
+   */
+  private initWorker(): void {
+    if (typeof Worker === 'undefined') {
+      console.warn('[GeometryService]: Web Workers not supported in this environment');
+      return;
+    }
+
+    this.worker = new Worker(new URL('../workers/geometry-loader.worker', import.meta.url), {type: 'module'});
+
+    this.worker.onmessage = ({data}: MessageEvent<WorkerResponse>) => {
+      this.handleWorkerMessage(data);
+    };
+
+    this.worker.onerror = (error) => {
+      console.error('[GeometryService]: Worker error:', error);
+      // Reject all pending promises
+      for (const [requestId, resolvers] of this.pendingResolvers) {
+        resolvers.reject(new Error(`Worker error: ${error.message}`));
+      }
+      this.pendingResolvers.clear();
+      this.currentRequestId = null;
+    };
+  }
+
+  /**
+   * Handle messages from the worker
+   */
+  private handleWorkerMessage(data: WorkerResponse): void {
+    const resolvers = this.pendingResolvers.get(data.requestId);
+
+    if (data.type === 'progress') {
+      this.loadingProgress.set(data.progress);
+      this.loadingStage.set(data.stage);
+      if (resolvers?.onProgress) {
+        resolvers.onProgress(data.stage, data.progress);
+      }
+      return;
+    }
+
+    if (!resolvers) {
+      console.warn(`[GeometryService]: No pending request for ${data.requestId}`);
+      return;
+    }
+
+    this.pendingResolvers.delete(data.requestId);
+
+    if (data.requestId === this.currentRequestId) {
+      this.currentRequestId = null;
+    }
+
+    if (data.type === 'success') {
+      try {
+        // Deserialize the geometry using ObjectLoader
+        console.time('[GeometryService]: Parse geometry from JSON');
+        const geometry = this.objectLoader.parse(data.geometryJson) as Object3D;
+        console.timeEnd('[GeometryService]: Parse geometry from JSON');
+
+        // jsroot creates objects with matrixAutoUpdate=false and sets matrices directly.
+        // After deserialization, we need to ensure all matrices are properly applied.
+        console.time('[GeometryService]: Update matrix world');
+        this.restoreMatrixState(geometry);
+        console.timeEnd('[GeometryService]: Update matrix world');
+
+        // Build subdetectors from the worker's metadata
+        this.buildSubdetectors(geometry, data.subdetectorInfos);
+
+        this.geometry.set(geometry);
+        this.loadingProgress.set(100);
+        this.loadingStage.set('Complete');
+
+        resolvers.resolve({threeGeometry: geometry, cancelled: false});
+      } catch (error: any) {
+        resolvers.reject(new Error(`Failed to parse geometry: ${error.message}`));
+      }
+    } else if (data.type === 'cancelled') {
+      console.log(`[GeometryService]: Load cancelled for ${data.requestId}`);
+      this.loadingProgress.set(0);
+      this.loadingStage.set('Cancelled');
+      resolvers.resolve({threeGeometry: null, cancelled: true});
+    } else if (data.type === 'error') {
+      this.loadingProgress.set(0);
+      this.loadingStage.set('Error');
+      resolvers.reject(new Error(data.error));
+    }
+  }
+
+  /**
+   * Build subdetector objects from worker metadata and deserialized geometry
+   */
+  private buildSubdetectors(geometry: Object3D, infos: SubdetectorInfo[]): void {
+    this.subdetectors = [];
+
+    if (!geometry.children.length || !geometry.children[0].children.length) {
+      return;
+    }
+
+    const topDetectorNodes = geometry.children[0].children;
+
+    for (let i = 0; i < topDetectorNodes.length && i < infos.length; i++) {
+      const topNode = topDetectorNodes[i];
+      const info = infos[i];
+
+      const subdetector: Subdetector = {
+        sourceGeometry: null,  // Not available when using worker
+        sourceGeometryName: info.originalName,
+        geometry: topNode,
+        name: info.name,
+        groupName: info.groupName
+      };
+
+      this.subdetectors.push(subdetector);
+    }
+  }
+
+  /**
+   * Generate a unique request ID
+   */
+  private generateRequestId(): string {
+    return `geo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Restore matrix state after deserialization.
+   * jsroot creates objects with matrixAutoUpdate=false and sets matrices directly.
+   * Three.js ObjectLoader restores the matrix, but we need to ensure it's properly applied.
+   */
+  private restoreMatrixState(object: Object3D): void {
+    // Traverse all objects and ensure matrices are properly set up
+    object.traverse((child) => {
+      // jsroot geometry uses matrixAutoUpdate = false
+      child.matrixAutoUpdate = false;
+      // Decompose the matrix to position/rotation/scale for proper rendering
+      child.matrix.decompose(child.position, child.quaternion, child.scale);
+    });
+
+    // Update the world matrices for the entire hierarchy
+    object.updateMatrixWorld(true);
+  }
+
+  /**
+   * Cancel the current geometry loading operation.
+   * The loading promise will resolve with cancelled: true.
+   */
+  cancelLoading(): void {
+    if (!this.currentRequestId || !this.worker) {
+      return;
+    }
+
+    console.log(`[GeometryService]: Cancelling load request ${this.currentRequestId}`);
+
+    const cancelRequest: GeometryCancelRequest = {
+      type: 'cancel',
+      requestId: this.currentRequestId
+    };
+
+    this.worker.postMessage(cancelRequest);
+  }
+
+  /**
+   * Check if geometry is currently being loaded
+   */
+  isLoading(): boolean {
+    return this.currentRequestId !== null;
+  }
+
+  /**
+   * Load geometry from a URL using a background worker.
+   * This method keeps the UI responsive during loading.
+   *
+   * @param url The URL to load geometry from
+   * @param onProgress Optional callback for progress updates
+   * @returns Promise resolving to the loaded geometry or null if cancelled
+   */
+  async loadGeometry(
+    url: string,
+    onProgress?: GeometryProgressCallback
+  ): Promise<{rootGeometry: any | null, threeGeometry: Object3D | null}> {
 
     this.subdetectors = [];
-    //let url: string = 'assets/epic_pid_only.root';
-    //let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_dirc_only.root';
-    // let url: string = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
-    // >oO let objectName = 'default';
+    this.rootGeometry = null;
 
-    if(url === DEFAULT_GEOMETRY) {
+    // Handle the default geometry alias
+    if (url === DEFAULT_GEOMETRY) {
       url = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
     }
-    // TODO check aliases
 
     const finalUrl = this.urlService.resolveDownloadUrl(url);
 
+    console.log(`[GeometryService]: Loading geometry from ${finalUrl}`);
     console.time('[GeometryService]: Total load geometry time');
-    console.log(`[GeometryService]: Loading file ${finalUrl}`)
 
-    console.time('[GeometryService]: Open root file');
-    const file = await openFile(finalUrl);
-    // >oO debug console.log(file);
-    console.timeEnd('[GeometryService]: Open root file');
-
-
-    console.time('[GeometryService]: Reading geometry from file');
-    this.rootGeometry = await findGeoManager(file) // await file.readObject(objectName);
-    // >oO
-    // console.log("Got TGeoManager. For inspection:")
-    // console.log(this.rootGeometry);
-    console.timeEnd('[GeometryService]: Reading geometry from file');
-
-
-    // Getting main detector nodes
-    if(this.geometryCutListName.value === "central") {
-      let result = pruneTopLevelDetectors(this.rootGeometry, removeDetectorNames);
-      console.log(`[GeometryService]: Done prune geometry. Nodes left: ${result.nodes.length}, Nodes removed: ${result.removedNodes.length}`);
-    } else {
-      console.log("[GeometryService]: Prune geometry IS OFF");
-
+    // Cancel any existing load operation
+    if (this.currentRequestId) {
+      this.cancelLoading();
     }
 
-    if(this.geometryRootFilterName.value === "default") {
-      console.time('[GeometryService]: Root geometry pre-processing');
-      this.rootGeometryProcessor.process(this.rootGeometry);
-      console.timeEnd('[GeometryService]: Root geometry pre-processing');
-    } else {
-      console.log("[GeometryService]: Root geometry pre-processing IS OFF");
+    // Check if worker is available
+    if (!this.worker) {
+      throw new Error('Geometry loader worker is not available');
     }
 
+    const requestId = this.generateRequestId();
+    this.currentRequestId = requestId;
 
-    console.log("[GeometryService]: Number of tree elements analysis:");
-    analyzeGeoNodes(this.rootGeometry, 1);
+    this.loadingProgress.set(0);
+    this.loadingStage.set('Starting');
 
-    //
-    console.time('[GeometryService]: Build geometry');
-    const geometry = build(this.rootGeometry,
-      {
-        numfaces: 5000000000,
-        numnodes: 5000000000,
-        instancing:-1,
-        dflt_colors: false,
-        vislevel: 200,
-        doubleside:true,
-        transparency:true
-      });
-    console.timeEnd('[GeometryService]: Build geometry');
-
-    // Validate the geometry
-    if(!geometry) {
-      throw new Error("Geometry is null or undefined after TGeoPainter.build");
-    }
-
-    if(!geometry.children.length) {
-      throw new Error("Geometry is converted but empty. Anticipated 'world_volume' but got nothing");
-    }
-
-    if(!geometry.children[0].children.length) {
-      throw new Error("Geometry is converted but empty. Anticipated array of top level nodes (usually subdetectors) but got nothing");
-    }
-
-    // We now know it is not empty array
-    console.time('[GeometryService]: Map root geometry to threejs geometry');
-    let topDetectorNodes = geometry.children[0].children;
-    for(const topNode of topDetectorNodes) {
-
-      // Process name
-      const originalName = topNode.name;
-      const name = this.stripIdFromName(originalName);   // Remove id in the end EcalN_21 => Ecal
-
-      const rootGeoNodes = getGeoNodesByLevel(this.rootGeometry, 1).map(obj=>obj.geoNode);
-      const rootNode = rootGeoNodes.find(obj => obj.fName === originalName);
-
-      let subdetector: Subdetector = {
-        sourceGeometry: rootNode,
-        sourceGeometryName: rootNode?.fName ?? "",
-        geometry: topNode,
-        name: this.stripIdFromName(originalName),
-        groupName: this.groupsByDetName.get(originalName) || ""
+    // Create the load request
+    const request: GeometryLoadRequest = {
+      type: 'load',
+      requestId,
+      url: finalUrl,
+      options: {
+        cutListName: this.geometryCutListName.value,
+        rootFilterName: this.geometryRootFilterName.value
       }
-      // console.log(subdetector.sourceGeometryName);
-      this.subdetectors.push(subdetector);
-    }
-    console.timeEnd('[GeometryService]: Map root geometry to threejs geometry');
+    };
 
-
+    // Create a promise that will be resolved by the worker message handler
+    const result = await new Promise<GeometryLoadResult>((resolve, reject) => {
+      this.pendingResolvers.set(requestId, {resolve, reject, onProgress});
+      this.worker!.postMessage(request);
+    });
 
     console.timeEnd('[GeometryService]: Total load geometry time');
 
-    this.geometry.set(geometry);
+    if (result.cancelled) {
+      return {rootGeometry: null, threeGeometry: null};
+    }
 
-    return {rootGeometry: this.rootGeometry, threeGeometry: geometry};
+    return {rootGeometry: null, threeGeometry: result.threeGeometry};
   }
 
   public postProcessing(geometry: Object3D, clippingPlanes: Plane[]) {
