@@ -276,7 +276,7 @@ Screenshots are automatically organized in a `screenshots/` directory with smart
 
 ```
 screenshots/
-├── screenshot.png           # First screenshot
+├── screenshot.png          # First screenshot
 ├── event_001.png           # First screenshot with custom name
 ├── event_001_001.png       # Second screenshot with same name (auto-numbered)
 ├── event_001_002.png       # Third screenshot with same name
