@@ -265,7 +265,7 @@ The screenshot functionality uses the following default settings:
 - **Viewport Size**: 1920x1080 pixels (Full HD)
 - **Page Mode**: Full page screenshot (captures entire scrollable content)
 - **Wait Strategy**: Waits for DOM content loaded (up to 10 seconds)
-- **Additional Wait**: 2 seconds after page load to ensure rendering completes
+- **Additional Wait**: 2 seconds after page load to ensure rendering completes (in normal cases). If both page load and selector detection fail, a fallback mechanism applies: the code waits for 3 seconds, then an additional 2 seconds, totaling up to 5 seconds before capturing the screenshot.
 - **Browser**: Headless Chromium
 
 These settings are optimized for high-quality event display captures but are currently hardcoded in the implementation.
@@ -315,7 +315,7 @@ kill -9 <PID>
 
 If screenshots appear black or don't show the expected content:
 
-1. The page might need more time to render. The command waits 2 seconds after page load, but complex visualizations might need longer.
+1. The page might need more time to render. The command waits 2 seconds after page load, but complex visualizations might need longer. If the page fails to load, the command waits an additional 3 seconds (totaling 5 seconds) before taking the screenshot.
 2. Try taking a screenshot manually first to verify the URL works correctly.
 3. Check that your data files are accessible from the `--work-path` directory.
 
