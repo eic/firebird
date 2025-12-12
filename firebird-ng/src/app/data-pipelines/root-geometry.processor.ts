@@ -56,6 +56,16 @@ export class RootGeometryProcessor {
       ]
     },
     {
+      namePattern: "*/EcalBarrelTracker*",
+      editRules: [
+        {pattern: "*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+        {pattern: "*/stave*", action: EditActions.RemoveChildren},
+        {pattern: "*/stave*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+        {pattern: "*/stave*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
+        {pattern: "*/stave*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+      ]
+    },
+    {
       namePattern: "*/EcalBarrelImaging*",
       editRules: [
         {pattern: "*/stav*", action: EditActions.RemoveChildren},

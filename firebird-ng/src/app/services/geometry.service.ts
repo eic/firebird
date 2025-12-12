@@ -35,184 +35,6 @@ export const ALL_GROUPS = [
   GROUP_SUPPORT,
 ]
 
-export const defaultRules: DetectorThreeRuleSet[] = [
-  {
-    names: ["FluxBarrel_env_25", "FluxEndcapP_26", "FluxEndcapN_28"],
-    rules: [
-      {
-        color: 0x373766,
-
-      }
-    ]
-  },
-  {
-    name: "EcalEndcapN*",
-    rules: [
-      {
-        patterns: ["**/crystal_vol_0"],
-        color: 0xffef8b,
-        material: new THREE.MeshStandardMaterial({
-          color: 0xffef8b,
-          roughness: 0.7,
-          metalness: 0.869,
-          transparent: true,
-          opacity: 0.8,
-          side: THREE.DoubleSide
-        })
-      },
-      {
-        patterns: ["**/inner_support*", "**/ring*"],
-        material: new THREE.MeshStandardMaterial({
-          color: 0x19a5f5,
-          roughness: 0.7,
-          metalness: 0.869,
-          transparent: true,
-          opacity: 0.8,
-          side: THREE.DoubleSide
-        })
-      }
-
-    ]
-  },
-  {
-    name: "InnerTrackerSupport_assembly_13",
-    rules: [
-      {
-        material: new THREE.MeshStandardMaterial({
-          color: 0xEEEEEE,
-          roughness: 0.7,
-          metalness: 0.3,
-          transparent: true,
-          opacity: 0.8,
-          blending: THREE.NormalBlending,
-          // premultipliedAlpha: true,
-          depthWrite: false, // Ensures correct blending
-          polygonOffset: true,
-          polygonOffsetFactor: 1,
-          side: THREE.DoubleSide
-        }),
-        outline: true,
-        outlineColor: 0x666666,
-        merge: true,
-        newName: "InnerTrackerSupport"
-      }
-    ]
-  },
-  {
-    name: "DIRC_14",
-    rules: [
-      {
-        patterns:     ["**/*box*", "**/*prism*"],
-        material: new THREE.MeshPhysicalMaterial({
-          color: 0xe5ba5d,
-          metalness: .9,
-          roughness: .05,
-          envMapIntensity: 0.9,
-          clearcoat: 1,
-          transparent: true,
-          //transmission: .60,
-          opacity: .6,
-          reflectivity: 0.2,
-          //refr: 0.985,
-          ior: 0.9,
-          side: THREE.DoubleSide,
-        }),
-        newName: "DIRC_barAndPrisms"
-      },
-      {
-        patterns: ["**/*rail*"],
-        newName: "DIRC_rails",
-        color: 0xAAAACC
-      },
-      {
-        patterns: ["**/*mcp*"],
-        newName: "DIRC_mcps"
-      }
-    ]
-
-  },
-  {
-    // This is when DIRC geometry is standalone
-    name: "DIRC_0",
-    rules: [
-      {
-        patterns:     ["**/*box*", "**/*prism*"],
-        material: new THREE.MeshPhysicalMaterial({
-          color: 0xe5ba5d,
-          metalness: .9,
-          roughness: .05,
-          envMapIntensity: 0.9,
-          clearcoat: 1,
-          transparent: true,
-          //transmission: .60,
-          opacity: .6,
-          reflectivity: 0.2,
-          //refr: 0.985,
-          ior: 0.9,
-          side: THREE.DoubleSide,
-        }),
-        newName: "DIRC_barAndPrisms",
-        merge: false,
-        outline: true
-      },
-      {
-        patterns: ["**/*rail*"],
-        newName: "DIRC_rails",
-        color: 0xAAAACC
-      },
-      {
-        patterns: ["**/*mcp*"],
-        newName: "DIRC_mcps"
-      }
-    ]
-
-  },
-  {
-    name: "VertexBarrelSubAssembly_3",
-    rules: [
-      {
-        merge: true,
-        outline: true
-      }
-    ]
-  },
-  {
-    name: "*",
-    rules: [
-      {
-        merge: true,
-        outline: true
-      }
-    ]
-  }
-]
-
-/**
- * Detectors (top level TGeo nodes) to be removed.
- * (!) startsWith function is used for filtering (aka: detector.fName.startsWith(removeDetectorNames[i]) ... )
- */
-const removeDetectorNames: string[] = [
-  "Lumi",
-  //"Magnet",
-  //"B0",
-  "B1",
-  "B2",
-  //"Q0",
-  //"Q1",
-  "Q2",
-  //"BeamPipe",
-  //"Pipe",
-  "ForwardOffM",
-  "Forward",
-  "Backward",
-  "Vacuum",
-  "SweeperMag",
-  "AnalyzerMag",
-  "ZDC",
-  //"LFHCAL",
-  "HcalFarForward",
-  "InnerTrackingSupport"
-];
 
 
 // constants.ts
@@ -368,21 +190,39 @@ export class GeometryService {
   private handleWorkerMessage(data: WorkerResponse): void {
     const resolvers = this.pendingResolvers.get(data.requestId);
 
+    // Check if this response is for an old/stale request (not the current one)
+    const isStaleRequest = data.requestId !== this.currentRequestId;
+
     if (data.type === 'progress') {
-      this.loadingProgress.set(data.progress);
-      this.loadingStage.set(data.stage);
-      if (resolvers?.onProgress) {
-        resolvers.onProgress(data.stage, data.progress);
+      // Only update progress for current request
+      if (!isStaleRequest) {
+        this.loadingProgress.set(data.progress);
+        this.loadingStage.set(data.stage);
+        if (resolvers?.onProgress) {
+          resolvers.onProgress(data.stage, data.progress);
+        }
       }
       return;
     }
 
     if (!resolvers) {
-      console.warn(`[GeometryService]: No pending request for ${data.requestId}`);
+      // This can happen for stale requests that were already resolved
+      if (isStaleRequest) {
+        console.log(`[GeometryService]: Ignoring stale response for ${data.requestId} (current: ${this.currentRequestId})`);
+      } else {
+        console.warn(`[GeometryService]: No pending request for ${data.requestId}`);
+      }
       return;
     }
 
     this.pendingResolvers.delete(data.requestId);
+
+    // If this is a stale request, resolve as cancelled without processing
+    if (isStaleRequest && data.type === 'success') {
+      console.log(`[GeometryService]: Discarding stale geometry for ${data.requestId} (current: ${this.currentRequestId})`);
+      resolvers.resolve({threeGeometry: null, cancelled: true});
+      return;
+    }
 
     if (data.requestId === this.currentRequestId) {
       this.currentRequestId = null;
@@ -414,12 +254,18 @@ export class GeometryService {
       }
     } else if (data.type === 'cancelled') {
       console.log(`[GeometryService]: Load cancelled for ${data.requestId}`);
-      this.loadingProgress.set(0);
-      this.loadingStage.set('Cancelled');
+      // Only reset progress if this is the current request
+      if (!isStaleRequest) {
+        this.loadingProgress.set(0);
+        this.loadingStage.set('Cancelled');
+      }
       resolvers.resolve({threeGeometry: null, cancelled: true});
     } else if (data.type === 'error') {
-      this.loadingProgress.set(0);
-      this.loadingStage.set('Error');
+      // Only reset progress if this is the current request
+      if (!isStaleRequest) {
+        this.loadingProgress.set(0);
+        this.loadingStage.set('Error');
+      }
       resolvers.reject(new Error(data.error));
     }
   }
@@ -529,8 +375,15 @@ export class GeometryService {
     console.log(`[GeometryService]: Loading geometry from ${finalUrl}`);
     console.time('[GeometryService]: Total load geometry time');
 
-    // Cancel any existing load operation
+    // Cancel any existing load operation and immediately resolve old promise
     if (this.currentRequestId) {
+      const oldRequestId = this.currentRequestId;
+      const oldResolvers = this.pendingResolvers.get(oldRequestId);
+      if (oldResolvers) {
+        console.log(`[GeometryService]: Immediately resolving old request ${oldRequestId} as cancelled`);
+        this.pendingResolvers.delete(oldRequestId);
+        oldResolvers.resolve({threeGeometry: null, cancelled: true});
+      }
       this.cancelLoading();
     }
 

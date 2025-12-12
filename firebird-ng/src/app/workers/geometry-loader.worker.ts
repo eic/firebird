@@ -146,6 +146,7 @@ const groupsByDetName = new Map<string, string>([
 // Track active requests for cancellation
 let activeRequestId: string | null = null;
 let cancellationRequested = false;
+let isProcessing = false;  // Prevents concurrent processing
 
 const rootGeometryProcessor = new RootGeometryProcessor();
 
@@ -166,6 +167,18 @@ function sendProgress(requestId: string, stage: string, progress: number) {
 async function loadGeometry(request: GeometryLoadRequest): Promise<void> {
   const {requestId, url, options} = request;
 
+  // If already processing, mark for cancellation and wait for it to finish
+  if (isProcessing) {
+    console.log(`[GeometryWorker]: Already processing ${activeRequestId}, marking for cancellation`);
+    cancellationRequested = true;
+
+    // Wait for current processing to finish before starting new one
+    while (isProcessing) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+
+  isProcessing = true;
   activeRequestId = requestId;
   cancellationRequested = false;
 
@@ -216,7 +229,7 @@ async function loadGeometry(request: GeometryLoadRequest): Promise<void> {
     checkCancellation();
     sendProgress(requestId, 'Analyzing geometry', 50);
 
-    console.log("[GeometryWorker]: Number of tree elements analysis:");
+    console.log("[GeometryWorker]: Number of tree elements analysis (after root geometry prune):");
     analyzeGeoNodes(rootGeometry, 1);
 
     checkCancellation();
@@ -307,6 +320,7 @@ async function loadGeometry(request: GeometryLoadRequest): Promise<void> {
   } finally {
     activeRequestId = null;
     cancellationRequested = false;
+    isProcessing = false;
   }
 }
 
