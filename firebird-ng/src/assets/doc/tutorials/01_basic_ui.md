@@ -1,8 +1,7 @@
 # Getting Started with Firebird Event Display
 
 Welcome to Firebird! 
-This tutorial will walk you through the basics of viewing 
-particle physics event data and detector geometry. 
+This tutorial will walk you through the basics of the user interface. 
 Let's start with a quick tour of the main features.
 
 ## 1. First Look at the Display

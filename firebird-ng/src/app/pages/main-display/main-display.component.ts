@@ -34,6 +34,7 @@ import {NgIf} from "@angular/common";
 import {TrackPainterConfig} from "../../services/track-painter-config";
 import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
 import {MatProgressSpinner} from "@angular/material/progress-spinner";
+import {SceneExportComponent} from "../../components/scene-export/scene-export";
 import GUI from 'lil-gui';
 import {ConfigProperty} from "../../utils/config-property";
 import {arrangeEpicDetectors} from "../../utils/epic-geometry-arranger";
@@ -68,6 +69,7 @@ import {arrangeEpicDetectors} from "../../utils/epic-geometry-arranger";
     NgIf,
     ObjectRaycastComponent,
     MatProgressSpinner,
+    SceneExportComponent,
   ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
