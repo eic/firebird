@@ -1,16 +1,11 @@
 <div class="display-shell">
   <!-- TOP BAR / HEADER -->
   <mat-toolbar class="mat-elevation-z4 top-toolbar">
-    <!-- Logo -->
-<!--    <button mat-icon-button [routerLink]="['/']" class="logo-button" aria-label="App Logo" >-->
-<!--      <img src="assets/firebird/firebird-simplified-circle.png" width="32" height="32" alt="App Logo" />-->
-<!--    </button>-->
-
+    <!-- Logo (desktop) -->
     <button mat-icon-button [matMenuTriggerFor]="logoMenu" class="logo-button hide-mobile" matTooltip="App Logo">
       <img src="assets/firebird/firebird-simplified-circle.png" alt="App Logo" />
     </button>
 
-    <!-- Always visible nav items on desktop -->
     <mat-menu #logoMenu="matMenu">
       <ng-container *ngFor="let item of navItems">
         <button mat-menu-item *ngIf="!item.alwaysVisible" (click)="onNavItemClick(item)">
@@ -19,6 +14,26 @@
         </button>
       </ng-container>
     </mat-menu>
+
+    <!-- Navigation hamburger (mobile only, left side) -->
+    <button
+      mat-icon-button
+      class="nav-hamburger hide-desktop"
+      (click)="toggleNavMenu()"
+      aria-label="Toggle navigation menu"
+    >
+      <mat-icon>{{ navOpen ? 'close' : 'menu' }}</mat-icon>
+    </button>
+
+    <!-- Tools hamburger (mobile only, next to nav) -->
+    <button
+      mat-icon-button
+      class="tools-hamburger hide-desktop"
+      (click)="toggleToolsMenu()"
+      aria-label="Toggle tools menu"
+    >
+      <mat-icon>{{ toolsOpen ? 'close' : 'build' }}</mat-icon>
+    </button>
 
     <!-- Always visible nav items on desktop -->
     <div class="nav-items visible-nav hide-mobile">
@@ -35,9 +50,14 @@
       </ng-container>
     </div>
 
-    <!-- Middle section for page-specific controls -->
+    <!-- Middle section for page-specific controls (desktop) -->
     <div class="middle-section hide-mobile">
       <ng-content select="[header]"></ng-content>
+    </div>
+
+    <!-- Mobile header section (always visible items like event selector) -->
+    <div class="mobile-header-section hide-desktop">
+      <ng-content select="[mobileHeader]"></ng-content>
     </div>
 
     <!-- Spacer to push the theme toggle to the far right -->
@@ -45,22 +65,11 @@
 
     <!-- Theme toggle (desktop) -->
     <app-theme-switcher class="theme-toggle hide-mobile"></app-theme-switcher>
-
-    <!-- Hamburger menu button (mobile only) -->
-    <button
-      mat-icon-button
-      class="hamburger-btn hide-desktop"
-      (click)="toggleNavConfig()"
-      aria-label="Toggle navigation menu"
-    >
-      <mat-icon>{{ navOpen ? 'close' : 'menu' }}</mat-icon>
-    </button>
   </mat-toolbar>
 
-  <!-- Mobile menu overlay -->
-  <div class="mobile-menu" [class.open]="navOpen">
+  <!-- Navigation menu overlay (mobile) -->
+  <div class="mobile-menu nav-menu" [class.open]="navOpen">
     <ng-container *ngFor="let item of navItems">
-      <!-- On mobile, show all items in the hamburger -->
       <button
         mat-button
         (click)="onNavItemClick(item)"
@@ -70,12 +79,12 @@
         {{ item.label }}
       </button>
     </ng-container>
-
-    <div class="middle-section-mobile">
-      <ng-content select="[header]"></ng-content>
-    </div>
-    <!-- Theme toggle inside mobile menu -->
     <app-theme-switcher class="theme-toggle-mobile"></app-theme-switcher>
+  </div>
+
+  <!-- Tools menu overlay (mobile) -->
+  <div class="mobile-menu tools-menu" [class.open]="toolsOpen">
+    <ng-content select="[mobileTools]"></ng-content>
   </div>
 
   <!-- MAIN CONTENT AREA (split into leftPane, center, rightPane) -->
