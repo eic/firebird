@@ -47,9 +47,8 @@ jobs:
       - name: Install the project
         run: |
           cd pyrobird
-          uv sync --all-extras --dev
-          cd ..
-          uv run build.py all
+          uv sync --extra=dev --dev
+          uv run ../build.py all
 
       # - name: Install Python dependencies and Build Frontend
       #   run: |
