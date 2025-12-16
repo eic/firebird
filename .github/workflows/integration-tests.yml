@@ -59,4 +59,5 @@ jobs:
 
       - name: Run integration tests
         run: |
-          python pyrobird/tests/integration_tests/run_integration_tests.py
+          cd pyrobird
+          uv run tests/integration_tests/run_integration_tests.py
