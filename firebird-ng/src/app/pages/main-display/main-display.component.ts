@@ -37,7 +37,6 @@ import {MatProgressSpinner} from "@angular/material/progress-spinner";
 import {SceneExportComponent} from "../../components/scene-export/scene-export";
 import GUI from 'lil-gui';
 import {ConfigProperty} from "../../utils/config-property";
-import {arrangeEpicDetectors} from "../../utils/epic-geometry-arranger";
 
 /**
  * This MainDisplayComponent:
