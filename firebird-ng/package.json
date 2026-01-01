@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "~20.3.12",
-    "@angular/cli": "~20.3.12",
+    "@angular/cli": "~20.3.13",
     "@angular/compiler-cli": "~20.3.15",
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
