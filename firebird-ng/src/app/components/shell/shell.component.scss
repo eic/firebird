@@ -15,10 +15,14 @@
 .top-toolbar {
   position: relative;
   z-index: 20;
-  padding: 0 16px;
+  padding: 8px 16px;
+  min-height: 56px;
+  height: auto; /* Allow expansion when buttons wrap */
   background-color: var(--mat-sys-surface-container);
   color: var(--mat-sys-on-surface-container);
   box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3);
+  flex-wrap: wrap; /* Allow wrapping on tablet */
+  align-content: flex-start;
 }
 
 /** Left and right panels separator (which is movable by mouse) */
@@ -113,7 +117,7 @@
 
 /* Hamburger vs. desktop nav style toggles */
 .hide-desktop {
-  display: none;
+  display: none !important;
 }
 
 .hide-mobile {
@@ -224,7 +228,15 @@
 
 
 
-/* Responsive breakpoints for small screens */
+/* Tablet breakpoint - buttons may wrap */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .middle-section {
+    flex: 1 1 auto;
+    margin-left: 12px;
+  }
+}
+
+/* Responsive breakpoints for small screens (mobile) */
 @media (max-width: 768px) {
   .hide-desktop {
     display: inline-flex !important;
@@ -237,13 +249,14 @@
   }
 
   .top-toolbar {
-    flex-wrap: nowrap; /* Single row */
+    flex-wrap: nowrap; /* Single row on mobile */
     height: 56px;
     min-height: 56px;
     padding: 8px 12px;
     position: relative;
     z-index: 60;
     gap: 4px;
+    align-content: center;
   }
 
   /* Hide spacer on mobile - not needed */

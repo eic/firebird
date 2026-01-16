@@ -57,6 +57,10 @@ mat-slider{
     gap: 8px;
     justify-content: flex-start;
   }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
 }
 
 @media (max-width: 630px) {
