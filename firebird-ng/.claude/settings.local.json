@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//mnt/c/dev/firebird/**)"
-    ],
-    "deny": [],
-    "ask": []
-  }
-}

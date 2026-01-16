@@ -1,0 +1,9 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/firebird-ng"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "glob"
+        versions: [">= 13.0.0"]

@@ -1,4 +1,3 @@
-
 # Firebird Data Exchange format
 
 Data exchange is both JSON and Javascript object compatible.

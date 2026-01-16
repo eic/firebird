@@ -1,13 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ObjectClippingComponent } from './object-clipping.component';
+import { GeometryClippingComponent } from './geometry-clipping.component';
 import { MatCheckboxChange } from '@angular/material/checkbox';
 import { EventDisplayService } from '../../../services/event-display.service';
 import { PhoenixUIModule } from '../../phoenix-ui.module';
 
 describe('ObjectClippingComponent', () => {
-  let component: ObjectClippingComponent;
-  let fixture: ComponentFixture<ObjectClippingComponent>;
+  let component: GeometryClippingComponent;
+  let fixture: ComponentFixture<GeometryClippingComponent>;
 
   const mockUIManager = {
     rotateStartAngleClipping: jest.fn(),
@@ -39,12 +39,12 @@ describe('ObjectClippingComponent', () => {
           useValue: mockEventDisplay,
         },
       ],
-      declarations: [ObjectClippingComponent],
+      declarations: [GeometryClippingComponent],
     }).compileComponents();
   });
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(ObjectClippingComponent);
+    fixture = TestBed.createComponent(GeometryClippingComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

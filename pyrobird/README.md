@@ -13,9 +13,15 @@ pip install pyrobird
 
 Optional dependencies:
 
-- `batch` - install pyppeteer, that allows to make screenshots in batch mode
+- `batch` - install playwright, that allows to make screenshots in batch mode
 - `xrootd` - install libraries to read xrootd located files and URLs starting with `root://`
 - `dev` - install pytest and other development requirements, mainly to run tests
+
+If using `batch` for screenshots, after installing playwright, you need to install browser binaries:
+
+```bash
+python -m playwright install chromium
+```
 
 If installed via pip, `xrootd` library requires compilation, so the system should have cmake,
 compiler and some xrootd dependencies installed.
@@ -28,6 +34,17 @@ sudo apt install build-essential libxrootd-client-dev cmake zlib1g-dev uuid-dev 
 ```
 
 Development installation 
+
+It is recommended to use [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+```bash
+cd pyrobird                 # directory inside main firebird repo. NOT pyrobird/pyrobird - this is lib
+uv venv                     # create virtual environment
+source .venv/bin/activate   # activate it
+uv sync                     # install all requirements
+```
+
+Still possible without uv
 
 ```bash
 python -m pip install --editable .[dev,batch]

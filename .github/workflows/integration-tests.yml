@@ -24,6 +24,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -41,28 +44,20 @@ jobs:
           npm install -g @angular/cli
           ng build
 
-#      - name: Install Frontend dependencies
-#        run: |
-#          cd firebird-ng
-#          npm install
-#
-#      - name: Try build and show all output
-#        run: |
-#          cd firebird-ng
-#          npm run build
-#
-#      - name: Clean backend static and copy frontend build
-#        run: |
-#          rm -rf pyrobird/server/static/*
-#          ls -la pyrobird/server/static
-#          cp -r firebird-ng/dist/firebird/browser/* pyrobird/server/static/
-
-      - name: Install Python dependencies and Build Frontend
+      - name: Install the project
         run: |
-          cd pyrobird          
-          python -m pip install -e .[dev,batch]
-          python ng_build_copy.py
+          cd pyrobird
+          uv sync --extra=dev --dev
+          uv run ../build.py all
+
+      # - name: Install Python dependencies and Build Frontend
+      #   run: |
+      #     cd pyrobird          
+      #     python -m pip install -e .[dev,batch]
+      #     cd ..
+      #     python build.py all
 
       - name: Run integration tests
         run: |
-          python pyrobird/tests/integration_tests/run_integration_tests.py
+          cd pyrobird
+          uv run tests/integration_tests/run_integration_tests.py

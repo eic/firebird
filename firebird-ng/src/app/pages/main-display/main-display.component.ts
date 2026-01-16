@@ -6,7 +6,7 @@ import {
   ViewChild, OnDestroy, TemplateRef, ElementRef, signal
 } from '@angular/core';
 
-import {ALL_GROUPS} from '../../services/geometry.service';
+import {ALL_GROUPS, GeometryService} from '../../services/geometry.service';
 import {GameControllerService} from '../../services/game-controller.service';
 import {ConfigService} from '../../services/config.service';
 
@@ -14,7 +14,7 @@ import {SceneTreeComponent} from '../../components/scene-tree/scene-tree.compone
 import {ShellComponent} from '../../components/shell/shell.component';
 import {ToolPanelComponent} from '../../components/tool-panel/tool-panel.component';
 import {EventSelectorComponent} from '../../components/event-selector/event-selector.component';
-import {ObjectClippingComponent} from '../../components/object-clipping/object-clipping.component';
+import {GeometryClippingComponent} from '../../components/geometry-clipping/geometry-clipping.component';
 import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
 
 import {MatSnackBar} from '@angular/material/snack-bar';
@@ -34,6 +34,7 @@ import {NgIf} from "@angular/common";
 import {TrackPainterConfig} from "../../services/track-painter-config";
 import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
 import {MatProgressSpinner} from "@angular/material/progress-spinner";
+import {SceneExportComponent} from "../../components/scene-export/scene-export";
 import GUI from 'lil-gui';
 import {ConfigProperty} from "../../utils/config-property";
 
@@ -58,7 +59,7 @@ import {ConfigProperty} from "../../utils/config-property";
     ShellComponent,
     ToolPanelComponent,
     EventSelectorComponent,
-    ObjectClippingComponent,
+    GeometryClippingComponent,
     PerfStatsComponent,
     EventTimeControlComponent,
     CubeViewportControlComponent,
@@ -67,9 +68,13 @@ import {ConfigProperty} from "../../utils/config-property";
     NgIf,
     ObjectRaycastComponent,
     MatProgressSpinner,
+    SceneExportComponent,
   ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
+  /** Automatically load geometry and event data on init (set to false for tests) */
+  @Input() isAutoLoadOnInit = true;
+
   @Input()
   eventDataImportOptions: string[] = []; // example, if you used them in UI
 
@@ -124,15 +129,16 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     private controller: GameControllerService,
     private snackBar: MatSnackBar,
     public  eventDisplay: EventDisplayService,
-    private userConfig: ConfigService,
+    private config: ConfigService,
     private serverConfig: ServerConfigService,
+    public  geomService: GeometryService,
   ) {
-    userConfig.addConfig(this.geometryUrl);
-    userConfig.addConfig(this.geometryFastAndUgly);
-    userConfig.addConfig(this.geometryCutListName);
-    userConfig.addConfig(this.dexJsonEventSource);
-    userConfig.addConfig(this.rootEventSource);
-    userConfig.addConfig(this.rootEventRange);
+    config.addConfig(this.geometryUrl);
+    config.addConfig(this.geometryFastAndUgly);
+    config.addConfig(this.geometryCutListName);
+    config.addConfig(this.dexJsonEventSource);
+    config.addConfig(this.rootEventSource);
+    config.addConfig(this.rootEventRange);
   }
 
 
@@ -155,11 +161,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   // 2) AFTER VIEW INIT => handle resizing with DisplayShell or window
   ngAfterViewInit(): void {
 
-    // Load JSON based data files
-    this.initDexEventSource();
+    if (this.isAutoLoadOnInit) {
+      // Load JSON based data files
+      this.initDexEventSource();
 
-    // Load Root file based data files
-    this.initRootData();
+      // Load Root file based data files
+      this.initRootData();
+    }
 
     if (this.displayShellComponent) {
       const resizeInvoker = () => {
@@ -190,7 +198,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     resizeInvoker();
 
     // Loads the geometry (do it last as it might be long)
-    this.initGeometry();
+    if (this.isAutoLoadOnInit) {
+      this.initGeometry();
+    }
 
     // Init gui
     this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').decimals(2).listen();
@@ -348,7 +358,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     // We set loadingDex=false to be safe
     this.loadingDex.set(false);
 
-    let dexUrl = this.userConfig.getConfig<string>('events.dexEventsSource')?.value;
+    let dexUrl = this.config.getConfig<string>('events.dexEventsSource')?.value;
 
     if (!dexUrl || dexUrl.trim().length === 0) {
       console.log("[main-display]: No event data source specified. Skip loadDexData.");
@@ -376,13 +386,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private initRootData() {
     let url = (
-      this.userConfig.getConfig<string>('events.rootEventSource')
-      ?? this.userConfig.createConfig('events.rootEventSource', '')
+      this.config.getConfig<string>('events.rootEventSource')
+      ?? this.config.createConfig('events.rootEventSource', '')
     ).subject.getValue();
 
     let eventRange = (
-      this.userConfig.getConfig<string>('events.rootEventRange')
-      ?? this.userConfig.createConfig('events.rootEventRange', '')
+      this.config.getConfig<string>('events.rootEventRange')
+      ?? this.config.createConfig('events.rootEventRange', '')
     ).subject.getValue();
 
 
@@ -421,11 +431,18 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
 
+  /**
+   * Cancel any ongoing geometry loading operation
+   */
+  cancelGeometryLoading(): void {
+    if (this.geomService.isLoading()) {
+      console.log("[main-display]: Cancelling geometry loading...");
+      this.geomService.cancelLoading();
+    }
+  }
+
   private initGeometry() {
-    const url = (
-      this.userConfig.getConfig<string>('geometry.selectedGeometry')
-      ?? this.userConfig.createConfig('geometry.selectedGeometry', '')
-    ).value;
+    const url = (this.config.getConfigOrCreate<string>('geometry.selectedGeometry', '')).value;
 
     if (!url || url.trim().length === 0) {
       console.log("[main-display]: No geometry specified. Skip loadGeometry ");
@@ -437,16 +454,24 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // Cancel any existing geometry load before starting a new one
+    this.cancelGeometryLoading();
+
     this.loadingGeometry.set(true);
     this.eventDisplay.loadGeometry(url)
+      .then((result) => {
+        // Only update UI if geometry was actually loaded (not cancelled)
+        if (result !== undefined) {
+          this.updateSceneTreeComponent();
+          console.log("[main-display]: Geometry loaded");
+        } else {
+          console.log("[main-display]: Geometry loading was cancelled");
+        }
+      })
       .catch(error => {
         const msg = `Error loading geometry: ${error}`;
         console.error(`[main-display]: ${msg}`);
         this.showError("Error loading Geometry. Open 'Configure' to change. Press F12->Console for logs");
-      })
-      .then(() => {
-        this.updateSceneTreeComponent();
-        console.log("[main-display]: Geometry loaded");
       })
       .finally(() => this.loadingGeometry.set(false));
   }

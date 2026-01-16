@@ -125,6 +125,7 @@
         "test": {
           "builder": "@angular/build:karma",
           "options": {
+            "karmaConfig": "karma.conf.js",
             "tsConfig": "tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
             "polyfills": [

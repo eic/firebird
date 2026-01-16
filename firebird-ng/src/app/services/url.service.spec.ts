@@ -5,7 +5,7 @@ import { UrlService } from './url.service';
 import { ConfigService } from './config.service';
 import { ServerConfigService } from './server-config.service';
 import { BehaviorSubject } from 'rxjs';
-import {HttpClientModule} from "@angular/common/http";
+import { HttpClientModule } from "@angular/common/http";
 
 describe('UrlService', () => {
   let service: UrlService;
@@ -26,6 +26,11 @@ describe('UrlService', () => {
         get value() {
           return this.subject.value;
         }
+      },
+      getConfig: (key: string) => {
+        if (key === 'localServerUrl') return userConfigService.localServerUrl;
+        if (key === 'localServerUseApi') return userConfigService.localServerUseApi;
+        return undefined;
       }
     };
 

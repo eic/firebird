@@ -1,0 +1,66 @@
+.custom-position-dialog {
+  padding: 45px 24px 24px 24px;
+  border-radius: 18px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+  font-family: Arial, sans-serif;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.close-round-btn {
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  border-radius: 50%;
+  z-index: 10;
+  border: none;
+  background: none;
+  box-shadow: var(--mat-sys-level2);
+}
+
+.close-round-btn:hover {
+  color: #bec2ff;
+}
+
+.export-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.format-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  .format-label {
+    font-size: 13px;
+    color: #888;
+    transition: color 0.2s;
+
+    &.active {
+      color: inherit;
+      font-weight: 500;
+    }
+  }
+}
+
+.export-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.export-buttons button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.exporting-indicator {
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+}

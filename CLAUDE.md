@@ -19,6 +19,9 @@ This is a **monorepo** containing three interdependent components:
 - **pyrobird/** - Python Flask backend (file server, ROOT conversion)
 - **dd4hep-plugin/** - C++ Geant4/DD4Hep plugin (trajectory extraction during simulation)
 
+The documentation source lives in 
+- firebird-ng/src/assets/doc
+
 ## Common Development Commands
 
 ### Frontend (firebird-ng)
@@ -31,7 +34,7 @@ ng serve                       # http://localhost:4200
 
 # Testing
 npm test                       # Interactive tests (Karma)
-npm run test:headless         # CI mode (headless Chrome)
+npm run test:headless          # CI mode (headless Chrome)
 ng test --include='**/my-component.spec.ts'  # Run single test file
 
 # Building
@@ -96,6 +99,9 @@ ddsim --steeringFile=firebird_steering.py \
 # Root level orchestration
 python build.py all              # Build frontend and copy to pyrobird
 python build.py --dry-run all    # Test build without changes
+
+# build all with changing version (source files will be changed)
+python build.py all --version=v2025.12.1
 ```
 
 ## High-Level Architecture
@@ -302,7 +308,7 @@ Restrictive defaults prevent unauthorized file access:
 
 ### GitHub Pages Deployment
 
-1. Tests run first
+1. Tests run first `npm run test:headless`
 2. Build with `npm run build:ghpages` (sets `--base-href='/firebird/'`)
 3. Artifacts uploaded and deployed to https://eic.github.io/firebird/
 

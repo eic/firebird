@@ -1,8 +1,7 @@
 # Getting Started with Firebird Event Display
 
 Welcome to Firebird! 
-This tutorial will walk you through the basics of viewing 
-particle physics event data and detector geometry. 
+This tutorial will walk you through the basics of the user interface. 
 Let's start with a quick tour of the main features.
 
 ## 1. First Look at the Display
@@ -27,22 +26,11 @@ We will go in details of how to control everything, for now press
 
 ## 2. Select geoemetry and data
 
-- A 3D view in the center showing the detector geometry
-- Control buttons in the header toolbar
-- Time controls at the bottom
-- A view tool panel on the right side
 
-Try these basic interactions:
-- **🖱️ Left-click and drag** to rotate the view
-- **🖱️ Right-click and drag** to pan
-- **🖱️ Scroll** to zoom in and out
+... navigate to Configure page, explain that for event display to work it needs geometry and events file.
+For this tutorial we will use ready presets in the upper most menu ... 
 
 
-## Setting Up Your Data
-
-Before diving into the visualization tools, let's configure what data you want to view. Click on the **Configure** button in the top navigation bar.
-
-### Selecting a Preset Configuration
 
 The easiest way to start is with a preset configuration:
 
@@ -54,25 +42,19 @@ The easiest way to start is with a preset configuration:
 
 When you select a preset, it automatically fills in the geometry and event sources below.
 
-### Manual Configuration (Optional)
+## 3. Overview the interface
 
-If you want to customize your setup:
+... By this moment geometry should be loaded ...
 
-**Geometry:** Use the geometry dropdown to select a detector configuration. The URLs ending in `.root` contain different detector subsystems.
+- A 3D view in the center showing the detector geometry
+- Control buttons in the header toolbar
+- Time controls at the bottom
+- A view tool panel on the right side
 
-**Event Data:** You have two options:
-- **JSON files** - Pre-converted event data that loads quickly
-- **EDM4EIC ROOT files** - Raw simulation output (requires backend server)
-
-For EDM4EIC files, you can specify which events to load using the range field (e.g., "0-5" for the first 6 events).
-
-### Applying Your Configuration
-
-Click the **DISPLAY** button to return to the main view with your selected data loaded.
-
-## Navigating the Main Display
-
-Now let's explore the main visualization tools:
+Try these basic interactions:
+- **🖱️ Left-click and drag** to rotate the view
+- **🖱️ Right-click and drag** to pan
+- **🖱️ Scroll** to zoom in and out
 
 ### View Controls
 
@@ -133,7 +115,32 @@ Click the **eye icon** on the right panel to access:
 - **Axis indicators** - Show coordinate axes
 - **Labels** - Component names in 3D space
 
-## Performance Considerations
+
+## 4. More configuration
+
+### Manual Configuration (Optional)
+
+We may select 
+
+**Geometry:** Use the geometry dropdown to select a detector configuration. The URLs ending in `.root` contain different detector subsystems.
+
+**Event Data:** You have two options:
+- **JSON files** - Pre-converted event data that loads quickly
+- **EDM4EIC ROOT files** - Raw simulation output (requires backend server)
+
+For EDM4EIC files, you can specify which events to load using the range field (e.g., "0-5" for the first 6 events).
+
+... here we have changes from that ...
+
+Click the **DISPLAY** button to return to the main view with your selected data loaded.
+
+
+
+
+
+### Performance Considerations
+
+... here we have a lot of updates, check firebird-ng/src/app/pages/input-config for details ...
 
 In the bottom-left corner, you'll see performance statistics (FPS, triangles, etc.). If performance is slow:
 
@@ -141,12 +148,11 @@ In the bottom-left corner, you'll see performance statistics (FPS, triangles, et
 2. Go to Configure and enable "Performance over quality"
 3. Reduce the number of loaded events
 
+## 5. EIC simulation campaigns
+
+... How to selct and navigate simulation campaign files
+
 ## Next Steps
 
-Now that you know the basics:
-- Try different preset configurations to explore various physics processes
-- Use the clipping tool to create cutaway views
-- Experiment with the time animation to understand particle trajectories
-- Load your own data files if you have them
+... The next tutorial on how to install on local machine and use with your data via pyrobird.... 
 
-Remember: The legend window (info icon in the header) shows the color coding for different particle types!

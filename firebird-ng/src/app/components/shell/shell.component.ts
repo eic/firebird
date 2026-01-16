@@ -6,10 +6,12 @@ import {
   ComponentRef,
   Type,
   EventEmitter,
-  Output, ElementRef, Input,
+  Output, ElementRef, Input, OnInit, OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {Router} from '@angular/router';
+import {Router, NavigationStart} from '@angular/router';
+import {Subscription} from 'rxjs';
+import {filter} from 'rxjs/operators';
 // Angular Material imports for the top bar
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -43,7 +45,9 @@ interface NavItem {
     MatTooltip
   ],
 })
-export class ShellComponent {
+export class ShellComponent implements OnInit, OnDestroy {
+
+  private routerSubscription?: Subscription;
 
   /** The reference to the left container, for programmatic component creation */
   @ViewChild('leftPaneContainer', { read: ViewContainerRef, static: true })
@@ -82,8 +86,10 @@ export class ShellComponent {
   leftPaneWidth = 250;
   rightPaneWidth = 250;
 
-  /** Top bar: whether the mobile menu is open */
+  /** Top bar: whether the mobile nav menu is open */
   navOpen = false;
+  /** Top bar: whether the mobile tools menu is open */
+  toolsOpen = false;
   /** Track current theme (light or dark) */
   isDarkTheme = false;
 
@@ -99,6 +105,20 @@ export class ShellComponent {
   constructor(
     private router: Router
   ) {}
+
+  ngOnInit() {
+    // Close mobile menus on any navigation
+    this.routerSubscription = this.router.events.pipe(
+      filter(event => event instanceof NavigationStart)
+    ).subscribe(() => {
+      this.navOpen = false;
+      this.toolsOpen = false;
+    });
+  }
+
+  ngOnDestroy() {
+    this.routerSubscription?.unsubscribe();
+  }
 
   /** Resizing logic for left pane */
   onMouseDownLeft(event: MouseEvent) {
@@ -171,9 +191,20 @@ export class ShellComponent {
     this.onVisibilityChangeRight.emit(this.isRightPaneVisible);
   }
 
-  /** Toggle the mobile hamburger menu */
-  toggleNavConfig() {
+  /** Toggle the mobile navigation menu */
+  toggleNavMenu() {
     this.navOpen = !this.navOpen;
+    if (this.navOpen) {
+      this.toolsOpen = false; // Close tools when opening nav
+    }
+  }
+
+  /** Toggle the mobile tools menu */
+  toggleToolsMenu() {
+    this.toolsOpen = !this.toolsOpen;
+    if (this.toolsOpen) {
+      this.navOpen = false; // Close nav when opening tools
+    }
   }
 
   /**

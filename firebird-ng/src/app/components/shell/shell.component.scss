@@ -8,6 +8,7 @@
   width: 100%;
   overflow: hidden;
   box-sizing: border-box;
+  position: relative; /* Needed for mobile-menu absolute positioning */
 }
 
 /* TOP BAR (header) styling */
@@ -131,6 +132,8 @@
   margin-left: 24px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 /* Fills space to push theme toggle or hamburger to the right */
@@ -148,8 +151,8 @@
   display: none;
   flex-direction: column;
   position: absolute;
-  top: 56px; /* same height as .top-toolbar */
-  right: 16px;
+  top: 56px;
+  z-index: 50;
   background-color: var(--mat-sys-surface);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   padding: 16px;
@@ -161,7 +164,19 @@
   gap: 12px;
 }
 
-/* Show it if .open is set */
+/* Navigation menu positioned on the left */
+.mobile-menu.nav-menu {
+  left: 8px;
+  right: auto;
+}
+
+/* Tools menu positioned on the left (below tools hamburger) */
+.mobile-menu.tools-menu {
+  left: 56px;
+  right: auto;
+}
+
+/* Show menu if .open is set */
 .mobile-menu.open {
   transform: translateY(0%);
   opacity: 1;
@@ -170,6 +185,14 @@
 
 .theme-toggle-mobile {
   margin-top: 16px;
+}
+
+/* Mobile header section (event selector etc) */
+.mobile-header-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
 }
 
 .logo-button {
@@ -213,6 +236,28 @@
     display: flex;
   }
 
+  .top-toolbar {
+    flex-wrap: nowrap; /* Single row */
+    height: 56px;
+    min-height: 56px;
+    padding: 8px 12px;
+    position: relative;
+    z-index: 60;
+    gap: 4px;
+  }
+
+  /* Hide spacer on mobile - not needed */
+  .flex-spacer {
+    display: none;
+  }
+
+  /* Mobile header section takes remaining space */
+  .mobile-header-section {
+    flex: 1;
+    justify-content: flex-start;
+    margin-left: 8px;
+  }
+
   .footer {
     flex-direction: column;
     align-items: stretch;
@@ -230,6 +275,4 @@
     justify-content: space-between;
     flex-wrap: wrap;
   }
-
-
 }

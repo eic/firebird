@@ -1,8 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
+import { of } from 'rxjs';
 
 import { HelpComponent } from './help.component';
-import {HttpHandler, provideHttpClient, withInterceptorsFromDi} from "@angular/common/http";
-import {provideHttpClientTesting} from "@angular/common/http/testing";
+import { HttpHandler, provideHttpClient, withInterceptorsFromDi } from "@angular/common/http";
+import { provideHttpClientTesting } from "@angular/common/http/testing";
 
 describe('HelpComponent', () => {
   let component: HelpComponent;
@@ -12,12 +15,24 @@ describe('HelpComponent', () => {
     await TestBed.configureTestingModule({
       imports: [HelpComponent],
       providers: [
+        provideRouter([]),
         provideHttpClient(withInterceptorsFromDi()),
         provideHttpClientTesting(),
-        { provide: HttpHandler, useClass: class MockHttpHandler {} }
+        { provide: HttpHandler, useClass: class MockHttpHandler { } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            params: of({}),
+            queryParams: of({}),
+            snapshot: {
+              params: {},
+              queryParams: {}
+            }
+          }
+        }
       ]
     })
-    .compileComponents();
+      .compileComponents();
 
     fixture = TestBed.createComponent(HelpComponent);
     component = fixture.componentInstance;

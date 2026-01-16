@@ -50,9 +50,6 @@ export class ConfigProperty<T> {
   /** Observable for subscribers to react to changes in the property value. */
   public changes$: Observable<T>;
 
-  /** Track last automatic timestamp to ensure uniqueness */
-  private lastAutoTimestamp: number = 0;
-
   /**
    * Creates an instance of ConfigProperty.
    *
@@ -63,11 +60,11 @@ export class ConfigProperty<T> {
    * @param {(value: T) => boolean} [validator] Optional validator function to validate the property value.
    */
   constructor(
-    private _key: string,
-    private defaultValue: T,
-    private saveCallback?: () => void,
-    private validator?: (value: T) => boolean,
-    private storage: PersistentPropertyStorage = new PersistentPropertyLocalStorage(),
+      private _key: string,
+      private defaultValue: T,
+      private saveCallback?: () => void,
+      private validator?: (value: T) => boolean,
+      private storage: PersistentPropertyStorage = new PersistentPropertyLocalStorage(),
     ) {
     const value = this.loadValue();
     this.subject = new BehaviorSubject<T>(value);
@@ -142,8 +139,9 @@ export class ConfigProperty<T> {
    *
    * @param {T} value The new value to set for the property.
    * @param {number} [time] Optional timestamp in milliseconds. If not provided, Date.now() is used.
+   * @param {boolean} [ignoreTime=false] If true, bypasses timestamp-based conflict resolution.
    */
-  setValue(value: T, time?: number): void {
+  setValue(value: T, time?: number, ignoreTime: boolean = false): void {
     if (this.validator && !this.validator(value)) {
       console.error('Validation failed for:', value);
       return;
@@ -155,17 +153,15 @@ export class ConfigProperty<T> {
       updateTime = time;
     } else {
       updateTime = Date.now();
-      // Ensure timestamp is always increasing for automatic timestamps
-      if (updateTime <= this.lastAutoTimestamp) {
-        updateTime = this.lastAutoTimestamp + 1;
-      }
-      this.lastAutoTimestamp = updateTime;
     }
 
     const storedTime = this.getStoredTime();
 
-    // Only update if no stored time exists or if the update time is newer
-    if (storedTime === null || updateTime > storedTime) {
+    // Only update if no stored time exists, if the update time is newer, or if ignoreTime is true
+    // (!) There was a lot of thought on >=, it is considered the less of all complexities:
+    //     What we want with these configs, is to not overwrite current configs with stale configs.
+    //     >= is good for this. If one overwrites config several times (e.g. in tests) we don't care
+    if (ignoreTime || storedTime === null || updateTime >= storedTime) {
       this.storage.setItem(this._key, typeof value !== 'string' ? JSON.stringify(value) : value);
       this.saveTime(updateTime);
 
@@ -204,10 +200,11 @@ export class ConfigProperty<T> {
 
 
   /**
-   * Resets value to its default given at Config construction
+   * Resets value to its default given at Config construction.
+   * This also updates the storage and timestamp.
    */
   public setDefault() {
-    this.subject.next(this.defaultValue);
+    this.setValue(this.defaultValue);
   }
 
   /**
