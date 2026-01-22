@@ -151,3 +151,9 @@ pyrobird/uv.lock
 firebird-ng/.claude/settings.local.json
 
 .claude/settings.local.json
+
+# docs rspress
+
+docs/node_modules/*
+docs/doc_build
+

@@ -3,7 +3,12 @@
 
 [![Frontend CI/CD Workflow](https://github.com/eic/firebird/actions/workflows/frontend.yaml/badge.svg?branch=main)](https://github.com/eic/firebird/actions/workflows/frontend.yaml)
 
-Visit working display: 
+
+WORKING DISPLAY IS NOW HERE: 
+
+[seeEIC.org](seeeic.org)
+
+The documentation 
 
 https://eic.github.io/firebird/
 
@@ -29,6 +34,7 @@ This is a **monorepo** containing three interdependent components:
 - **firebird-ng/** - Angular frontend (TypeScript, Three.js, RxJS)
 - **pyrobird/** - Python Flask backend (file server for local run, ROOT conversion)
 - **dd4hep-plugin/** - C++ Geant4/DD4Hep plugin (trajectory extraction during simulation)
+- **docs/** - rspress markdown based documentation (hosted on github-pages)
 
 The documentation source lives in 
 - `firebird-ng/src/assets/doc`
