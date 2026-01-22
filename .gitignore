@@ -152,8 +152,9 @@ firebird-ng/.claude/settings.local.json
 
 .claude/settings.local.json
 
-# docs rspress
+# docs vitepress
 
 docs/node_modules/*
 docs/doc_build
+docs/.vitepress/cache
 
