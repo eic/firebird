@@ -1,0 +1,67 @@
+name: Deploy VitePress Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yaml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build VitePress docs
+        run: npm run build
+
+      - name: Upload Docs Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-build
+          path: ./docs/.vitepress/dist/
+
+  deploy:
+    permissions:
+      id-token: write
+      contents: read
+      pages: write
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download Docs Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-build
+          path: ./dist/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

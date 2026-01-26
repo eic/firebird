@@ -9,7 +9,8 @@ specifically designed for the Electron-Ion Collider (EIC).
 It visualizes detector geometries, particle trajectories, and physics processes using modern web technologies. 
 Firebird serves research, debugging/QC, and educational purposes.
 
-**Live deployment:** https://eic.github.io/firebird/
+**Live deployment:** https://seeeic.org (Firebird Event Display application)
+**Documentation:** https://eic.github.io/firebird/ (VitePress documentation site)
 
 ## Repository Structure
 
@@ -19,8 +20,9 @@ This is a **monorepo** containing three interdependent components:
 - **pyrobird/** - Python Flask backend (file server, ROOT conversion)
 - **dd4hep-plugin/** - C++ Geant4/DD4Hep plugin (trajectory extraction during simulation)
 
-The documentation source lives in 
-- firebird-ng/src/assets/doc
+The documentation source lives in:
+- **docs/** - VitePress documentation site (deployed to GitHub Pages)
+- **firebird-ng/src/assets/doc** - Documentation embedded in the Angular application
 
 ## Common Development Commands
 
@@ -302,15 +304,32 @@ Restrictive defaults prevent unauthorized file access:
 
 ### GitHub Actions Workflows
 
-- **frontend.yaml** - Build and test Angular app, deploy to GitHub Pages on `main` branch
+- **frontend.yaml** - Build and test Angular app (CI only, no deployment)
+- **docs.yaml** - Build and deploy VitePress documentation to GitHub Pages
 - **pyrobird.yaml** - Test Python package on multiple Python versions
 - **integration-tests.yml** - Run full integration test suite
 
-### GitHub Pages Deployment
+### Deployment Architecture
 
-1. Tests run first `npm run test:headless`
-2. Build with `npm run build:ghpages` (sets `--base-href='/firebird/'`)
-3. Artifacts uploaded and deployed to https://eic.github.io/firebird/
+The Firebird project uses a split deployment model:
+
+1. **Firebird Event Display Application** - Hosted on https://seeeic.org (separate server)
+2. **VitePress Documentation** - Deployed to https://eic.github.io/firebird/ via GitHub Pages
+
+### GitHub Pages Deployment (Documentation)
+
+The `docs.yaml` workflow handles documentation deployment:
+1. Triggered on push to `main` branch (when `docs/` changes) or manually via `workflow_dispatch`
+2. Builds VitePress documentation from `docs/` directory
+3. Deploys to https://eic.github.io/firebird/
+
+To build documentation locally:
+```bash
+cd docs
+npm install
+npm run build      # Build for production
+npm run dev        # Development server with hot reload
+```
 
 ## Working with ROOT Files
 
@@ -387,4 +406,4 @@ pyrobird convert simulation.edm4hep.root output.json
 - **XRootD support:** Install with `pip install pyrobird[xrootd]` for remote file access.
 - **Docker for DD4Hep:** EIC provides `eicweb/eic_xl:nightly` with full HENP stack.
 - **Git LFS:** This repository may use Git LFS for large binary files.
-- **Documentation:** User-facing documentation is in `doc/` (also copied to `firebird-ng/src/assets/doc/`), including tutorials.
+- **Documentation:** User-facing documentation is in `docs/` (VitePress site) and also in `firebird-ng/src/assets/doc/` (embedded in app), including tutorials.

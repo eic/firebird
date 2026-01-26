@@ -1,4 +1,4 @@
-name: Frontend CI/CD Workflow
+name: Frontend CI Workflow
 
 on:
   push:
@@ -22,8 +22,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          # cache: 'npm'
-          # cache-dependency-path: ./firebird-ng/package-lock.json
 
       - name: Install Dependencies
         run: npm install
@@ -45,103 +43,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          # cache: 'npm'
-          # cache-dependency-path: ./firebird-ng/package-lock.json
 
       - name: Install Dependencies
         run: npm install
 
-      - name: Set EIC config
-        run: cp src/assets/config-eic.jsonc src/assets/config.jsonc
-
       - name: Build
-        run: npm run build:ghpages
+        run: npm run build
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: firebird-ng-build
           path: ./firebird-ng/dist/
-
-  build-docs:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docs
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build VitePress docs
-        run: npm run build
-
-      - name: Upload Docs Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: docs-build
-          path: ./docs/.vitepress/dist/
-
-  deploy:
-    if: github.ref == 'refs/heads/main'
-    permissions:
-      id-token: write
-      contents: read
-      pages: write
-    needs: [build, build-docs]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: false
-
-      - name: Download Frontend Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: firebird-ng-build
-          path: ./dist/
-
-      - name: Download Docs Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: docs-build
-          path: ./dist/firebird/browser/docs/
-
-      - name: Introspect
-        run: |
-          echo "--- pwd"
-          pwd
-          echo "--- ls"
-          ls
-          echo "--- ls ./dist/"
-          ls -latrh ./dist
-          echo "--- ls ./dist/firebird"
-          ls -latrh ./dist/firebird
-          echo "--- ls ./dist/firebird/browser"
-          ls -latrh ./dist/firebird/browser
-          echo "--- ls ./dist/firebird/browser/docs"
-          ls -latrh ./dist/firebird/browser/docs
-
-      - name: Fix dynamic routing
-        run: |
-          cp ./dist/firebird/browser/index.html ./dist/firebird/browser/404.html
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist/firebird/browser'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
