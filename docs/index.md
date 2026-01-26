@@ -41,7 +41,7 @@ physicists, and science communications.
 - **Performance Optimized**: BVH acceleration for fast raycasting, web workers for data loading, and time-based filtering for efficient rendering.
 
 The goal development of this software is to fulfill the 
-[Requirements for the Event Display for Electron Ion Collider](help/eic-requirements) and then go beyond them. 
+[Requirements for the Event Display for Electron Ion Collider](eic-requirements) and then go beyond them. 
 
 ## Use Cases
 
