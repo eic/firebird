@@ -4,7 +4,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "Firebird Event Display documentation",
   description: "Firebird Event Display documentation",
-  base: '/firebird/',
+  base: '/firebird/docs/',
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
