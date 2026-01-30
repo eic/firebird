@@ -50,6 +50,7 @@
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@types/jasmine": "~5.1.13",
     "@types/three": "^0.181.0",
+    "baseline-browser-mapping": "^2.9.19",
     "cross-env": "^10.1.0",
     "jasmine-core": "^5.13.0",
     "karma": "^6.4.4",
