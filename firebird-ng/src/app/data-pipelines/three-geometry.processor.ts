@@ -117,9 +117,12 @@ export class ThreeGeometryProcessor {
   public processRuleSets(ruleSets: DetectorThreeRuleSet[], detectors: Subdetector[]) {
     let detRulesMap = matchRulesToDetectors(ruleSets, detectors);
     for (let [detector, ruleSet] of detRulesMap) {
+      const consoleMessage = `[processRuleSet] Applying rules for ${detector.name}`;
+      console.time(consoleMessage)
       for(let rule of ruleSet) {
         editThreeNodeContent(detector.geometry, rule);
       }
+      console.timeEnd(consoleMessage)
     }
   }
 }
