@@ -57,9 +57,6 @@ export class ThreeService implements OnDestroy {
   public profileBeginFunc: (() => void) | null = null;
   public profileEndFunc: (() => void) | null = null;
 
-
-
-
   /** Animation loop control */
   private animationFrameId: number | null = null;
   private shouldRender = false;
@@ -83,7 +80,7 @@ export class ThreeService implements OnDestroy {
   private spotLight!: SpotLight; // Optional
 
   /** BVH wizard */
-  private boundsViz!: MeshBVHHelper;
+  public showBVHDebug: boolean = false;
 
    // Raycasting properties
   private raycaster = new THREE.Raycaster();
@@ -224,15 +221,9 @@ export class ThreeService implements OnDestroy {
     this.sceneHelpers.name = 'Helpers';
     this.scene.add(this.sceneHelpers);
 
-    // BVH helper
-    // this.boundsViz = new MeshBVHHelper( knots[ 0 ] );
-    // containerObj.add( boundsViz );
-
     // Create cameras
     this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 10, 40000);
     this.perspectiveCamera.position.set(-7000, 0 , 0);
-
-
 
     // Better orthographic camera initialization
     const orthoSize = 1000; // Start with a large enough size to see the detector
@@ -825,6 +816,25 @@ export class ThreeService implements OnDestroy {
       if (obj instanceof THREE.Mesh && obj.geometry && !obj.geometry.boundsTree) {
         // @ts-ignore
         obj.geometry.computeBoundsTree?.();
+        let mesh = obj as THREE.Mesh;
+
+        if (this.showBVHDebug && mesh.geometry.boundsTree) {
+          // Create the helper
+          const helper = new MeshBVHHelper(mesh);
+
+          // Optional: Style it so it isn't too overwhelming
+          // (MeshBVHHelper creates a LineBasicMaterial)
+          // if (helper['material'] && helper['material'] instanceof THREE.Material) {
+          //    helper['material'].opacity = 0.5;
+          //    helper['material'].transparent = true;
+          //    // helper.depth = 10; // Uncomment to limit how deep down the tree to visualize
+          //    // helper.color.setHex(0xff0000);
+          // }
+          console.log(helper);
+
+          // Add to the mesh itself so it transforms (moves/rotates) with the object
+          mesh.add(helper);
+        }
       }
     };
 
