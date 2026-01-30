@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "Firebird Event Display documentation",
+  title: "Firebird Doc",
   description: "Firebird Event Display documentation",
   base: '/firebird/',
   themeConfig: {
