@@ -135,6 +135,15 @@ export class RootGeometryProcessor {
       ]
     },
     {
+      namePattern: "*/VertexBarrelSubAssembly*",
+      editRules: [
+        {pattern: "*/biasing*", action: EditActions.Remove},
+        {pattern: "*/readout*", action: EditActions.Remove},
+        {pattern: "*/backbone*", action: EditActions.Remove},
+      ]
+
+    },
+    {
       namePattern: "*/BarrelTOF*",
       editRules: [
         {pattern: "*/component_sensor*", action: EditActions.Remove},
