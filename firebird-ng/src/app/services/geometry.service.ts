@@ -8,6 +8,7 @@ import * as THREE from "three";
 import {getColorOrDefault} from "../utils/three.utils";
 
 import {cool2ColorRules} from "../theme/cool2-geometry-ruleset";
+import {cool3ColorRules} from "../theme/cool3-geometry-ruleset";
 import {cadColorRules} from "../theme/cad-geometry-ruleset";
 import {monoColorRules} from "../theme/mono-geometry-ruleset";
 import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
@@ -476,6 +477,8 @@ export class GeometryService {
 
     if(geoTheme === "cool2") {
       this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
+    } else if(geoTheme === "cool3") {
+      this.threeGeometryProcessor.processRuleSets(cool3ColorRules, this.subdetectors);
     } else if(geoTheme === "cool2no") {
       this.threeGeometryProcessor.processRuleSets(cool2NoOutlineColorRules, this.subdetectors);
     } else if(geoTheme === "cad") {
