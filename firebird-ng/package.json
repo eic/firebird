@@ -9,7 +9,7 @@
     "build:watch": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "test:ci": "ng test --watch=false --coverage",
+    "test:headless": "ng test --watch=false --coverage",
     "repomix:pages": "repomix"
   },
   "dependencies": {
@@ -50,6 +50,7 @@
     "baseline-browser-mapping": "^2.9.19",
     "cross-env": "^10.1.0",
     "typescript": "^5.8.3",
+    "@vitest/coverage-v8": "^4.0.8",
     "vitest": "^4.0.8",
     "webpack-bundle-analyzer": "^5.2.0"
   },

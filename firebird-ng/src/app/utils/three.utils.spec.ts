@@ -1,5 +1,5 @@
 import type { Mock } from "vitest";
-import { walkObject3DNodes, NodeWalkCallback, findObject3DNodes } from './three.utils';
+import { walkObject3DNodes, findObject3DNodes } from './three.utils';
 import * as THREE from 'three';
 import { isColorable, getColorOrDefault } from './three.utils';
 

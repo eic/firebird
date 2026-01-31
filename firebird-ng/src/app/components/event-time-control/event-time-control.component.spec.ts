@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { EventTimeControlComponent } from './event-time-control.component';
 import { provideHttpClientTesting } from "@angular/common/http/testing";
-import { HttpClient, HttpClientModule } from "@angular/common/http";
+import { HttpClientModule } from "@angular/common/http";
 
 describe('EventTimeControlComponent', () => {
     let component: EventTimeControlComponent;

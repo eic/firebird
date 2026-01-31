@@ -81,7 +81,6 @@ describe('ThreeService', () => {
             return;
         }
         service.init(testContainer);
-        const initialAspect = service['perspectiveCamera'].aspect;
         service.setSize(1000, 1000);
         expect(service['perspectiveCamera'].aspect).toBeCloseTo(1, 0.1);
     });

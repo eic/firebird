@@ -132,8 +132,6 @@ describe('ConfigProperty', () => {
         });
 
         it('should accept update when no timestamp exists in storage', () => {
-            const config = new ConfigProperty('test', 'default', undefined, undefined, mockStorageInterface);
-
             // Manually set a value without timestamp (simulating old data)
             mockStorage['test'] = '"oldValue"';
 
@@ -155,7 +153,6 @@ describe('ConfigProperty', () => {
             expect(config1.value).toBe('update1');
 
             // Source 2 tries to update with older timestamp - should fail
-            const consoleSpy = vi.spyOn(console, 'log');
             config2.setValue('update2', 900);
 
             // Reload config2 to get the latest value
@@ -260,6 +257,7 @@ describe('ConfigProperty', () => {
             // Should still allow updates when timestamp is corrupted
             config.setValue('newValue', 1000);
             expect(config.value).toBe('newValue');
+            expect(consoleSpy).toHaveBeenCalled();
         });
 
         it('should handle missing storage gracefully', () => {
