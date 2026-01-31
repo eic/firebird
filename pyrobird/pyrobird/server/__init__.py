@@ -144,11 +144,8 @@ def download_file(filename=None):
 
     filename = unquote(filename)
 
-    # All checks and flags that user can download the file
-    if not _can_user_download_file(filename):
-        abort(404)
-
     # If it is relative, combine it with PYROBIRD_DOWNLOAD_PATH
+    # This MUST happen before the security check to ensure path traversal protection
     if not os.path.isabs(filename):
         download_path = flask.current_app.config.get(CFG_DOWNLOAD_PATH)
         if not download_path:
@@ -159,6 +156,11 @@ def download_file(filename=None):
 
         # combine the file path
         filename = os.path.join(download_path, filename)
+
+    # All checks and flags that user can download the file
+    # Security check uses realpath() to prevent path traversal attacks
+    if not _can_user_download_file(filename):
+        abort(403)  # Forbidden
 
     # Check if the file exists and is a file
     if os.path.exists(filename) and os.path.isfile(filename):
