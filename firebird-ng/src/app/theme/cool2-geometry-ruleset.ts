@@ -1,6 +1,22 @@
 
 import * as THREE from "three";
 
+/** COLORS WE USE (we use specifically "cool" colors)
+ * 0xECEFF1,  // Blue Gray 50 - very light blue-gray
+ * 0xE1F5FE,  // Light Blue 50 - extremely light blue
+ * 0xFFE0B2,  // Orange 100 - very light warm orange/peach
+ * 0xFFF9C4,  // Yellow 100 - very light yellow
+ * 0xF5F9FF,  // Custom ultra-light blue-white
+ * 0xE0F7FA,  // Cyan 50 - extremely light cyan
+ * 0xF5F5F5   // Gray 100 - almost white
+ * 0xE8EAF6,  // Indigo 50 - extremely light indigo
+ * 0xF5F5F5,  // Gray 100 - very light gray
+ * 0xFFF8E1,  // Amber 50 - extremely light amber/peach
+ * 0xC8E6C9,  // Green 100 - light green
+ * 0xFAFAFA,  // Gray 50 - almost white
+ * 0xF3E5F5,  // Purple 50 - extremely light purple
+ * 0x90CAF9,  // Blue 200 - light blue with more saturation
+ */
 
 export const cool2ColorRules = [
   // Solenoid components - Very light blue-gray

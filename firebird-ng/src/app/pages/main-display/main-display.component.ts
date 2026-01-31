@@ -203,9 +203,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Init gui
-    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').decimals(2).listen();
-    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'y').decimals(2).listen();
-    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'z').decimals(2).listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').name('Camera x[mm]').decimals(2).listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'y').name('Camera y[mm]').decimals(2).listen();
+    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'z').name('Camera z[mm]').decimals(2).listen();
+
+    this.lilGui.add(this.eventDisplay.three.controls.target, 'x').name("Pivot x[mm]").decimals(1).listen();
+    this.lilGui.add(this.eventDisplay.three.controls.target, 'y').name("Pivot y[mm]").decimals(1).listen();
+    this.lilGui.add(this.eventDisplay.three.controls.target, 'z').name("Pivot z[mm]").decimals(1).listen();
 
     this.lilGui.add(this.eventDisplay.three, "showBVHDebug");
 

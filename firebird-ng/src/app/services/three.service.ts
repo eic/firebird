@@ -812,11 +812,16 @@ export class ThreeService implements OnDestroy {
    * Sets up the raycasting functionality with proper clipping support
    */
   private setupRaycasting(): void {
-    const buildBVHIfNeeded = (obj: THREE.Object3D) => {
-      if (obj instanceof THREE.Mesh && obj.geometry && !obj.geometry.boundsTree) {
-        // @ts-ignore
-        obj.geometry.computeBoundsTree?.();
+    const buildBVHIfNeeded = (obj: any) => {
+      // Ensure normals and bounding boxes are accurate for small details
+
+      if (obj.isMesh && obj.geometry && !obj.geometry.boundsTree) {
         let mesh = obj as THREE.Mesh;
+        if (!mesh.geometry.attributes['normal']) mesh.geometry.computeVertexNormals();
+
+        // @ts-ignore
+        obj.geometry.computeBoundsTree?.({maxLeafTris: 1});  // Better precision for small details
+
 
         if (this.showBVHDebug && mesh.geometry.boundsTree) {
           // Create the helper

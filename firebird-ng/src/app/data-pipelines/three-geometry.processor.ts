@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import {wildCardCheck} from "../utils/wildcard";
-import {CalorimetryGeometryPrettifier} from "./calorimetry.prettifier";
 import {editThreeNodeContent, EditThreeNodeRule} from "../utils/three-geometry-editor";
 import {Subdetector} from "../model/subdetector";
 
@@ -115,14 +114,26 @@ export class ThreeGeometryProcessor {
   }
 
   public processRuleSets(ruleSets: DetectorThreeRuleSet[], detectors: Subdetector[]) {
+    console.log(`[processRuleSets] Applying ${ruleSets.length} theme rules...`)
+    const totalTimePerfMessage = "[processRuleSets] Time applying rules";
+    console.time(totalTimePerfMessage);
     let detRulesMap = matchRulesToDetectors(ruleSets, detectors);
     for (let [detector, ruleSet] of detRulesMap) {
-      const consoleMessage = `[processRuleSet] Applying rules for ${detector.name}`;
-      console.time(consoleMessage)
+      // Some performance metrics
+      const start = performance.now();
+
+      // Actually apply rules
       for(let rule of ruleSet) {
         editThreeNodeContent(detector.geometry, rule);
       }
-      console.timeEnd(consoleMessage)
+
+      // Check the rule didn't take too long
+      const end = performance.now();
+      const elapsed = end - start;
+      if(elapsed > 500) {
+        console.log(`[processRuleSet] Applying rules took >0.5s: ${elapsed.toFixed(1)} for ${detector.name}`);
+      }
     }
+    console.timeEnd(totalTimePerfMessage);
   }
 }

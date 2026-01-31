@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Palette</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: #1a1a2e; 
+            color: #eee;
+            padding: 2rem;
+        }
+        h1 { margin-bottom: 1rem; color: #fff; }
+        h2 { margin: 2rem 0 1rem; color: #aaa; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; }
+        .palette { display: flex; flex-wrap: wrap; gap: 1rem; }
+        .color-card {
+            width: 140px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #2a2a4a;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .color-swatch { height: 80px; }
+        .color-info { padding: 0.75rem; font-size: 0.75rem; }
+        .color-name { font-weight: 600; margin-bottom: 0.25rem; color: #fff; }
+        .color-hex { color: #888; font-family: monospace; }
+        pre {
+            background: #2a2a4a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+        .comment { color: #6a9955; }
+        .const { color: #569cd6; }
+        .name { color: #9cdcfe; }
+        .hex { color: #ce9178; }
+    </style>
+</head>
+<body>
+    <h1>Color Palette</h1>
+
+    <h2>JavaScript/TypeScript Variables</h2>
+    <pre id="code"></pre>
+
+    <h2>Cool Colors (Light/Pastel)</h2>
+    <div class="palette" id="cool-palette"></div>
+
+    <h2>Medium Colors (Moderate Saturation)</h2>
+    <div class="palette" id="medium-palette"></div>
+
+    <h2>Warm Colors (Saturated/Heavy)</h2>
+    <div class="palette" id="warm-palette"></div>
+
+    <h2>Metallic Colors</h2>
+    <div class="palette" id="metallic-palette"></div>
+
+    <h2>All Colors Sorted by Hue</h2>
+    <div class="palette" id="all-palette"></div>
+
+    <script>
+// ============================================================
+// COOL COLORS (Light/Pastel)
+// ============================================================
+const GRAY_50         = 0xFAFAFA;  // Almost white
+const GRAY_100        = 0xF5F5F5;  // Very light gray
+const BLUE_GRAY_50    = 0xECEFF1;  // Very light blue-gray
+const INDIGO_50       = 0xE8EAF6;  // Extremely light indigo
+const BLUE_WHITE      = 0xF5F9FF;  // Custom ultra-light blue-white
+const LIGHT_BLUE_50   = 0xE1F5FE;  // Extremely light blue
+const BLUE_200        = 0x90CAF9;  // Light blue with more saturation
+const CYAN_50         = 0xE0F7FA;  // Extremely light cyan
+const GREEN_100       = 0xC8E6C9;  // Light green
+const YELLOW_100      = 0xFFF9C4;  // Very light yellow
+const AMBER_50        = 0xFFF8E1;  // Extremely light amber/peach
+const ORANGE_100      = 0xFFE0B2;  // Very light warm orange/peach
+const PURPLE_50       = 0xF3E5F5;  // Extremely light purple
+const RED_50          = 0xFFEBEE;  // Extremely light red/pink
+const PINK_50         = 0xFCE4EC;  // Extremely light pink
+const BROWN_50        = 0xEFEBE9;  // Extremely light brown/cream
+const TAN_LIGHT       = 0xE6D5C3;  // Light tan/beige
+
+// ============================================================
+// MEDIUM COLORS (Moderate Saturation - Between Cool and Warm)
+// ============================================================
+const GRAY_300        = 0xE0E0E0;  // Light-medium gray
+const BLUE_GRAY_200   = 0xB0BEC5;  // Light-medium blue-gray
+const INDIGO_100      = 0xC5CAE9;  // Light indigo
+const BLUE_300        = 0x64B5F6;  // Medium-light blue
+const LIGHT_BLUE_200  = 0x81D4FA;  // Medium-light cyan-blue
+const CYAN_200        = 0x80DEEA;  // Medium-light cyan
+const TEAL_200        = 0x80CBC4;  // Medium-light teal
+const GREEN_200       = 0xA5D6A7;  // Medium-light green
+const YELLOW_200      = 0xFFF59D;  // Medium-light yellow
+const AMBER_200       = 0xFFE082;  // Medium-light amber
+const ORANGE_200      = 0xFFCC80;  // Medium-light orange
+const DEEP_ORANGE_200 = 0xFFAB91;  // Medium-light deep orange
+const PURPLE_100      = 0xE1BEE7;  // Light purple
+const RED_100         = 0xFFCDD2;  // Very light red
+const PINK_100        = 0xF8BBD0;  // Very light pink
+const BROWN_100       = 0xD7CCC8;  // Very light brown/taupe
+const TAN_MEDIUM      = 0xC4A77D;  // Medium tan/camel
+
+// ============================================================
+// WARM COLORS (Saturated/Heavy)
+// ============================================================
+const GRAY_500        = 0x9E9E9E;  // Medium gray
+const BLUE_GRAY_400   = 0x78909C;  // Medium-dark blue-gray
+const INDIGO_400      = 0x5C6BC0;  // Medium indigo
+const BLUE_500        = 0x2196F3;  // Strong blue
+const CYAN_500        = 0x00BCD4;  // Strong cyan
+const TEAL_500        = 0x009688;  // Strong teal
+const GREEN_500       = 0x4CAF50;  // Strong green
+const YELLOW_500      = 0xFFEB3B;  // Strong yellow
+const AMBER_500       = 0xFFC107;  // Strong amber
+const ORANGE_500      = 0xFF9800;  // Strong orange
+const DEEP_ORANGE_500 = 0xFF5722;  // Strong deep orange
+const PURPLE_400      = 0xAB47BC;  // Medium purple
+const RED_500         = 0xF44336;  // Strong red
+const PINK_400        = 0xEC407A;  // Strong pink
+const BROWN_500       = 0x795548;  // Strong brown
+const SIENNA          = 0xA0522D;  // Sienna
+const TERRACOTTA      = 0xE2725B;  // Terracotta
+
+// ============================================================
+// METALLIC COLORS (Desaturated with metallic character)
+// ============================================================
+// Bluish Metallics (2 requested)
+const STEEL_BLUE      = 0x4682B4;  // Steel blue - industrial metal
+const TITANIUM        = 0x878F99;  // Titanium - blue-gray metal
+const GUNMETAL_BLUE   = 0x5C6274;  // Gunmetal with blue tint
+const PEWTER          = 0x8A9A9E;  // Pewter (blue-gray)
+
+// Reddish Metallics (2 requested)
+const COPPER          = 0xB87333;  // Classic copper
+const ROSE_GOLD       = 0xB76E79;  // Classic rose gold
+const COPPER_BRIGHT   = 0xDA8A67;  // Bright/polished copper
+const RUST_METAL      = 0x8C4A3D;  // Oxidized rust metal
+
+// Neutral/Gold Metallics
+const SILVER          = 0xC0C0C0;  // Classic silver
+const CHROME          = 0xDBE4EB;  // Chrome / polished silver
+const GUNMETAL        = 0x53565A;  // Neutral gunmetal gray
+const GOLD            = 0xD4AF37;  // Classic gold
+const CHAMPAGNE       = 0xF5E6A3;  // Champagne gold (light)
+const BRASS           = 0xB5A642;  // Brass
+const BRONZE          = 0xCD7F32;  // Classic bronze
+const ANTIQUE_BRONZE  = 0x8C7853;  // Aged/antique bronze
+
+// ============================================================
+// COLOR COLLECTIONS
+// ============================================================
+const METALLIC_COLORS = {
+    // Bluish
+    STEEL_BLUE, TITANIUM, GUNMETAL_BLUE, PEWTER,
+    // Reddish
+    COPPER, ROSE_GOLD, COPPER_BRIGHT, RUST_METAL,
+    // Neutral/Gold
+    SILVER, CHROME, GUNMETAL, GOLD, CHAMPAGNE, BRASS, BRONZE, ANTIQUE_BRONZE
+};
+
+const COOL_COLORS = {
+    GRAY_50, GRAY_100, BLUE_GRAY_50, INDIGO_50, BLUE_WHITE,
+    LIGHT_BLUE_50, BLUE_200, CYAN_50, GREEN_100, YELLOW_100,
+    AMBER_50, ORANGE_100, PURPLE_50, RED_50, PINK_50,
+    BROWN_50, TAN_LIGHT
+};
+
+const MEDIUM_COLORS = {
+    GRAY_300, BLUE_GRAY_200, INDIGO_100, BLUE_300, LIGHT_BLUE_200,
+    CYAN_200, TEAL_200, GREEN_200, YELLOW_200, AMBER_200,
+    ORANGE_200, DEEP_ORANGE_200, PURPLE_100, RED_100, PINK_100,
+    BROWN_100, TAN_MEDIUM
+};
+
+const WARM_COLORS = {
+    GRAY_500, BLUE_GRAY_400, INDIGO_400, BLUE_500, CYAN_500,
+    TEAL_500, GREEN_500, YELLOW_500, AMBER_500, ORANGE_500,
+    DEEP_ORANGE_500, PURPLE_400, RED_500, PINK_400,
+    BROWN_500, SIENNA, TERRACOTTA
+};
+
+const ALL_COLORS = { ...COOL_COLORS, ...MEDIUM_COLORS, ...WARM_COLORS, ...METALLIC_COLORS };
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+function hexToRgb(hex) {
+    return {
+        r: (hex >> 16) & 255,
+        g: (hex >> 8) & 255,
+        b: hex & 255
+    };
+}
+
+function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+        h = s = 0;
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+        }
+    }
+    return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+function getHue(hex) {
+    const { r, g, b } = hexToRgb(hex);
+    return rgbToHsl(r, g, b);
+}
+
+function toHexString(num) {
+    return '#' + num.toString(16).padStart(6, '0').toUpperCase();
+}
+
+function sortByHue(colors) {
+    return Object.entries(colors).sort((a, b) => {
+        const hslA = getHue(a[1]);
+        const hslB = getHue(b[1]);
+        if (Math.abs(hslA.h - hslB.h) < 10) {
+            return hslB.l - hslA.l;
+        }
+        return hslA.h - hslB.h;
+    });
+}
+
+function createColorCard(name, value) {
+    const hexStr = toHexString(value);
+    return `
+        <div class="color-card">
+            <div class="color-swatch" style="background: ${hexStr}"></div>
+            <div class="color-info">
+                <div class="color-name">${name}</div>
+                <div class="color-hex">${hexStr} / 0x${value.toString(16).toUpperCase()}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderPalette(containerId, colors) {
+    const sorted = sortByHue(colors);
+    document.getElementById(containerId).innerHTML = 
+        sorted.map(([name, value]) => createColorCard(name, value)).join('');
+}
+
+function generateCode() {
+    const coolSorted = sortByHue(COOL_COLORS);
+    const mediumSorted = sortByHue(MEDIUM_COLORS);
+    const warmSorted = sortByHue(WARM_COLORS);
+    const metallicSorted = sortByHue(METALLIC_COLORS);
+    
+    let code = `<span class="comment">// ============================================================</span>
+<span class="comment">// COOL COLORS (Light/Pastel) - Sorted by Hue</span>
+<span class="comment">// ============================================================</span>
+`;
+    coolSorted.forEach(([name, value]) => {
+        const pad = ' '.repeat(Math.max(0, 18 - name.length));
+        code += `<span class="const">const</span> <span class="name">${name}</span>${pad} = <span class="hex">0x${value.toString(16).toUpperCase()}</span>;
+`;
+    });
+
+    code += `
+<span class="comment">// ============================================================</span>
+<span class="comment">// MEDIUM COLORS (Moderate Saturation) - Sorted by Hue</span>
+<span class="comment">// ============================================================</span>
+`;
+    mediumSorted.forEach(([name, value]) => {
+        const pad = ' '.repeat(Math.max(0, 18 - name.length));
+        code += `<span class="const">const</span> <span class="name">${name}</span>${pad} = <span class="hex">0x${value.toString(16).toUpperCase()}</span>;
+`;
+    });
+
+    code += `
+<span class="comment">// ============================================================</span>
+<span class="comment">// WARM COLORS (Saturated/Heavy) - Sorted by Hue</span>
+<span class="comment">// ============================================================</span>
+`;
+    warmSorted.forEach(([name, value]) => {
+        const pad = ' '.repeat(Math.max(0, 18 - name.length));
+        code += `<span class="const">const</span> <span class="name">${name}</span>${pad} = <span class="hex">0x${value.toString(16).toUpperCase()}</span>;
+`;
+    });
+
+    code += `
+<span class="comment">// ============================================================</span>
+<span class="comment">// METALLIC COLORS - Sorted by Hue</span>
+<span class="comment">// ============================================================</span>
+`;
+    metallicSorted.forEach(([name, value]) => {
+        const pad = ' '.repeat(Math.max(0, 18 - name.length));
+        code += `<span class="const">const</span> <span class="name">${name}</span>${pad} = <span class="hex">0x${value.toString(16).toUpperCase()}</span>;
+`;
+    });
+
+    document.getElementById('code').innerHTML = code;
+}
+
+// Render everything
+generateCode();
+renderPalette('cool-palette', COOL_COLORS);
+renderPalette('medium-palette', MEDIUM_COLORS);
+renderPalette('warm-palette', WARM_COLORS);
+renderPalette('metallic-palette', METALLIC_COLORS);
+renderPalette('all-palette', ALL_COLORS);
+    </script>
+</body>
+</html>

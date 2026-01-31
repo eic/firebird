@@ -152,6 +152,13 @@ export class RootGeometryProcessor {
       ]
     },
 
+    {
+      namePattern: "*/LumiSpecCAL*",
+      editRules: [
+        {pattern: "*/module_vol*", action: EditActions.RemoveChildren}
+      ]
+    },
+
   ]
 
   public process(rootGeoManager:any):any {
