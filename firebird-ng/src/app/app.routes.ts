@@ -13,19 +13,6 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/playground/playground.component').then(m => m.PlaygroundComponent)
   },
   {
-    path: 'help',
-    children: [
-      {
-        path: '',
-        loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
-      },
-      {
-        path: '**',
-        loadComponent: () => import('./pages/help/help.component').then(m => m.HelpComponent)
-      }
-    ]
-  },
-  {
     path: 'geometry',
     loadComponent: () => import('./components/scene-tree/scene-tree.component').then(m => m.SceneTreeComponent)
   },

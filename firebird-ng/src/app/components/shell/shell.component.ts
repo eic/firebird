@@ -95,7 +95,7 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   /** Single place for nav items */
   navItems: NavItem[] = [
-    { label: 'Help', route: '/help', icon: 'menu_book', alwaysVisible: true },
+    { label: 'Help', route: 'https://eic.github.io/firebird/', external: true, icon: 'menu_book', alwaysVisible: true },
     { label: 'Display', route: '/display', icon: 'monitor', alwaysVisible: true },
     { label: 'Configure', route: '/config', icon: 'tune', alwaysVisible: true },
     { label: 'GitHub Repo', route: 'https://github.com/eic/firebird', external: true, icon: 'code' },
