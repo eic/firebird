@@ -273,9 +273,9 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
         # Extract the event data
         event = edm4eic_to_dex_dict(tree, entries_index_list)
     except Exception as e:
-        err_msg = f"Error processing events {entries} from file {filename}: {e}"
-        logger.error(err_msg)
-        return {"error": err_msg}, 400
+        # Log detailed error server-side, return generic message to client
+        logger.error(f"Error processing events {entries} from file {filename}: {e}")
+        return {"error": "Error processing events from file."}, 400
 
     # This function conversion time to milliseconds
     elapsed_time_ms = (time.perf_counter() - start_time) * 1000
