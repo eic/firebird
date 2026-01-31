@@ -1,7 +1,7 @@
 import outmatch from 'outmatch';
 
 import * as THREE from "three";
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { GeoNodeWalkCallback, walkGeoNodes } from "../../lib-root-geometry/root-geo-navigation";
 import { MergeResult } from "./three-geometry-merge";
 

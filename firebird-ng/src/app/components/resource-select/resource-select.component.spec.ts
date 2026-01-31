@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+
 import { ResourceSelectComponent } from './resource-select.component';
 
 
@@ -9,7 +9,7 @@ describe('ResourceSelectComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ResourceSelectComponent, NoopAnimationsModule]
+      imports: [ResourceSelectComponent]
     })
     .compileComponents();
 

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { ShellExampleComponent } from './shell-example.component';
-import {provideNoopAnimations} from "@angular/platform-browser/animations";
+
 
 describe('ShellExampleComponent', () => {
   let component: ShellExampleComponent;
@@ -10,7 +10,7 @@ describe('ShellExampleComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ShellExampleComponent],
-      providers: [provideNoopAnimations()]
+      providers: []
     })
     .compileComponents();
 

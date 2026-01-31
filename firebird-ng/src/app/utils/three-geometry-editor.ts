@@ -2,7 +2,7 @@ import {Color, Material, Mesh, Object3D} from "three";
 import {createOutline, disposeOriginalMeshesAfterMerge, findObject3DNodes, pruneEmptyNodes} from "./three.utils";
 import {mergeBranchGeometries, mergeMeshList, MergeResult} from "./three-geometry-merge";
 import * as THREE from "three";
-import {ColorRepresentation} from "three/src/math/Color";
+import {ColorRepresentation} from "three";
 import {SimplifyModifier} from "three/examples/jsm/modifiers/SimplifyModifier.js";
 
 export enum EditThreeNodeActions {
