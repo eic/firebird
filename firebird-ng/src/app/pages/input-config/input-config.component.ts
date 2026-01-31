@@ -64,7 +64,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   rootEventRange = new FormControl<string>('0');
 
   // Add form controls and options
-  geometryThemeName = new FormControl<string>('cool2');
+  geometryThemeName = new FormControl<string>('cool3');
   geometryCutListName = new FormControl<string>('off');
   geometryRootFilterName = new FormControl<string>('default');
   geometryFastAndUgly = new FormControl<boolean>(false);
@@ -226,7 +226,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     this.bindConfigToControl(this.serverUseApi, 'server.useApi', false);
     this.bindConfigToControl(this.serverApiUrl, 'server.url', 'http://localhost:5454');
     this.bindConfigToControl(this.rootEventRange, 'events.rootEventRange', '0');
-    this.bindConfigToControl(this.geometryThemeName, 'geometry.themeName', 'cool2');
+    this.bindConfigToControl(this.geometryThemeName, 'geometry.themeName', 'cool3');
     this.bindConfigToControl(this.geometryCutListName, 'geometry.cutListName', 'off');
     this.bindConfigToControl(this.geometryRootFilterName, 'geometry.rootFilterName', 'default');
     this.bindConfigToControl(this.geometryFastAndUgly, 'geometry.FastDefaultMaterial', false);

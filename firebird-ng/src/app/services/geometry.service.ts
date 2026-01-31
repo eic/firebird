@@ -57,7 +57,7 @@ export class GeometryService {
 
   geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
   geometryCutListName = new ConfigProperty('geometry.cutListName', "central");
-  geometryThemeName = new ConfigProperty('geometry.themeName', "cool2");
+  geometryThemeName = new ConfigProperty('geometry.themeName', "cool3");
   geometryRootFilterName = new ConfigProperty('geometry.rootFilterName', "default");
 
   /** Collection of subdetectors */
