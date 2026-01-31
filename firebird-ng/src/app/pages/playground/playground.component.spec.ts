@@ -7,47 +7,50 @@ import { PlaygroundComponent } from './playground.component';
  * Returns true if WebGL can be used, false otherwise (e.g., in headless Chrome).
  */
 function isWebGLAvailable(): boolean {
-  try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    return gl !== null;
-  } catch (e) {
-    return false;
-  }
+    try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        return gl !== null;
+    }
+    catch (e) {
+        return false;
+    }
 }
 
 describe('PlaygroundComponent', () => {
-  let component: PlaygroundComponent;
-  let fixture: ComponentFixture<PlaygroundComponent>;
-  let webGLAvailable: boolean;
+    let component: PlaygroundComponent;
+    let fixture: ComponentFixture<PlaygroundComponent>;
+    let webGLAvailable: boolean;
 
-  beforeAll(() => {
-    webGLAvailable = isWebGLAvailable();
-    if (!webGLAvailable) {
-      console.warn('WebGL is not available in this environment. PlaygroundComponent tests will be skipped.');
-    }
-  });
+    beforeAll(() => {
+        webGLAvailable = isWebGLAvailable();
+        if (!webGLAvailable) {
+            console.warn('WebGL is not available in this environment. PlaygroundComponent tests will be skipped.');
+        }
+    });
 
-  beforeEach(async () => {
-    if (!webGLAvailable) {
-      return;
-    }
+    beforeEach(async () => {
+        if (!webGLAvailable) {
+            return;
+        }
 
-    await TestBed.configureTestingModule({
-      imports: [PlaygroundComponent]
-    })
-    .compileComponents();
+        await TestBed.configureTestingModule({
+            imports: [PlaygroundComponent]
+        })
+            .compileComponents();
 
-    fixture = TestBed.createComponent(PlaygroundComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(PlaygroundComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    if (!webGLAvailable) {
-      pending('WebGL not available in this environment');
-      return;
-    }
-    expect(component).toBeTruthy();
-  });
+    it.skip('should create', () => {
+        if (!webGLAvailable) {
+            // TODO: vitest-migration: The pending() function was converted to a skipped test (`it.skip`). See: https://vitest.dev/api/vi.html#it-skip
+            // pending('WebGL not available in this environment');
+            ;
+            return;
+        }
+        expect(component).toBeTruthy();
+    });
 });

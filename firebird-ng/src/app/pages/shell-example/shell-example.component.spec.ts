@@ -4,22 +4,22 @@ import { ShellExampleComponent } from './shell-example.component';
 
 
 describe('ShellExampleComponent', () => {
-  let component: ShellExampleComponent;
-  let fixture: ComponentFixture<ShellExampleComponent>;
+    let component: ShellExampleComponent;
+    let fixture: ComponentFixture<ShellExampleComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [ShellExampleComponent],
-      providers: []
-    })
-    .compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [ShellExampleComponent],
+            providers: []
+        })
+            .compileComponents();
 
-    fixture = TestBed.createComponent(ShellExampleComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(ShellExampleComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

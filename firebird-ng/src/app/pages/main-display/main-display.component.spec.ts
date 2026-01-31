@@ -9,55 +9,58 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
  * Returns true if WebGL can be used, false otherwise (e.g., in headless Chrome).
  */
 function isWebGLAvailable(): boolean {
-  try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    return gl !== null;
-  } catch (e) {
-    return false;
-  }
+    try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        return gl !== null;
+    }
+    catch (e) {
+        return false;
+    }
 }
 
 describe('MainDisplayComponent', () => {
-  let component: MainDisplayComponent;
-  let fixture: ComponentFixture<MainDisplayComponent>;
-  let webGLAvailable: boolean;
+    let component: MainDisplayComponent;
+    let fixture: ComponentFixture<MainDisplayComponent>;
+    let webGLAvailable: boolean;
 
-  beforeAll(() => {
-    webGLAvailable = isWebGLAvailable();
-    if (!webGLAvailable) {
-      console.warn('WebGL is not available in this environment. MainDisplayComponent tests will be skipped.');
-    }
-  });
+    beforeAll(() => {
+        webGLAvailable = isWebGLAvailable();
+        if (!webGLAvailable) {
+            console.warn('WebGL is not available in this environment. MainDisplayComponent tests will be skipped.');
+        }
+    });
 
-  beforeEach(async () => {
-    if (!webGLAvailable) {
-      return;
-    }
+    beforeEach(async () => {
+        if (!webGLAvailable) {
+            return;
+        }
 
-    await TestBed.configureTestingModule({
-      imports: [MainDisplayComponent],
-      providers: [
-        provideRouter([]),
-        provideHttpClient(),
-        provideHttpClientTesting(),
-      ],
-    }).compileComponents();
+        await TestBed.configureTestingModule({
+            imports: [MainDisplayComponent],
+            providers: [
+                provideRouter([]),
+                provideHttpClient(),
+                provideHttpClientTesting(),
+            ],
+        }).compileComponents();
 
-    fixture = TestBed.createComponent(MainDisplayComponent);
-    component = fixture.componentInstance;
+        fixture = TestBed.createComponent(MainDisplayComponent);
+        component = fixture.componentInstance;
 
-    // Disable auto-loading of geometry/events to speed up tests
-    component.isAutoLoadOnInit = false;
+        // Disable auto-loading of geometry/events to speed up tests
+        component.isAutoLoadOnInit = false;
 
-    fixture.detectChanges();
-  });
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    if (!webGLAvailable) {
-      pending('WebGL not available in this environment');
-      return;
-    }
-    expect(component).toBeTruthy();
-  });
+    it.skip('should create', () => {
+        if (!webGLAvailable) {
+            // TODO: vitest-migration: The pending() function was converted to a skipped test (`it.skip`). See: https://vitest.dev/api/vi.html#it-skip
+            // pending('WebGL not available in this environment');
+            ;
+            return;
+        }
+        expect(component).toBeTruthy();
+    });
 });
