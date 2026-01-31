@@ -6,7 +6,7 @@
  */
 
 import { Injectable } from '@angular/core';
-import { LocalStorageService } from "./local-storage.service";
+import { ConfigService } from "./config.service";
 import { ServerConfigService } from "./server-config.service";
 
 /**
@@ -63,7 +63,7 @@ export class UrlService {
   };
 
   constructor(
-    private userConfigService: LocalStorageService,
+    private userConfigService: ConfigService,
     private serverConfigService: ServerConfigService
   ) {
     this.initializeConfig();
@@ -76,10 +76,10 @@ export class UrlService {
     this.updateServerConfig();
 
     // Subscribe to user configuration changes
-    this.userConfigService.localServerUrl.subject.subscribe(() => {
+    this.userConfigService.getConfig<string>('localServerUrl')?.subject.subscribe(() => {
       this.updateServerConfig();
     });
-    this.userConfigService.localServerUseApi.subject.subscribe(() => {
+    this.userConfigService.getConfig<boolean>('localServerUseApi')?.subject.subscribe(() => {
       this.updateServerConfig();
     });
   }
@@ -89,8 +89,8 @@ export class UrlService {
    */
   private updateServerConfig() {
     const servedByPyrobird = this.serverConfigService.config.servedByPyrobird;
-    const userUseApi = this.userConfigService.localServerUseApi.value;
-    const userServerUrl = this.userConfigService.localServerUrl.value;
+    const userUseApi = this.userConfigService.getConfig<boolean>('localServerUseApi')?.value ?? false;
+    const userServerUrl = this.userConfigService.getConfig<string>('localServerUrl')?.value ?? '';
 
     this.isBackendAvailable = servedByPyrobird || userUseApi;
 

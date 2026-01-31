@@ -3,6 +3,8 @@
 # See the LICENSE file in the project root for full license information.
 
 import pytest
+from unittest.mock import patch
+from pyrobird.cli.serve import get_default_host
 
 
 def raises_value_error():
@@ -20,3 +22,15 @@ def test_import_pyrobird_cli():
         from pyrobird import cli
     except ImportError as e:
         assert False, f"Failed to import pyrobird.cli: {e}"
+
+
+def test_get_default_host():
+    """Test get_default_host logic."""
+    
+    # Case 1: Running in container
+    with patch('pyrobird.cli.serve.is_running_in_container', return_value=True):
+        assert get_default_host() == '0.0.0.0'
+        
+    # Case 2: Not running in container
+    with patch('pyrobird.cli.serve.is_running_in_container', return_value=False):
+        assert get_default_host() is None

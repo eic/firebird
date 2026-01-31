@@ -25,3 +25,7 @@
 .mat-tree {
   background-color: transparent !important;
 }
+
+.mat-tree-node {
+  min-height: var(--mat-tree-node-min-height, 5px);
+}

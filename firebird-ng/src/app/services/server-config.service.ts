@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import * as jsoncParser from 'jsonc-parser';
 import {deepCopy} from "../utils/deep-copy";
 import {firstValueFrom} from "rxjs";
+import { ConfigService } from './config.service';
 
 
 export interface ServerConfig {
@@ -30,7 +31,10 @@ export class ServerConfigService {
   private _config = deepCopy(defaultFirebirdConfig);
   private triedLoading = false;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private configService: ConfigService
+  ) {}
 
   get config(): ServerConfig {
     if (!this.triedLoading) {
@@ -50,6 +54,9 @@ export class ServerConfigService {
 
       // Merge loadedConfig over default config
       this._config = { ...defaultFirebirdConfig, ...loadedConfig };
+
+      this.registerConfigs();
+
       console.log("[ServerConfigService] Server config loaded file");
       console.log(`[ServerConfigService] Subsystems configs loaded: ${this._config?.configs?.length}`);
     } catch (error) {
@@ -57,6 +64,16 @@ export class ServerConfigService {
       console.log(`[ServerConfigService] Default config will be used`);
     } finally {
       this.triedLoading = true;
+    }
+  }
+
+  private registerConfigs(): void {
+    if (this._config.configs && Array.isArray(this._config.configs)) {
+      this._config.configs.forEach(configItem => {
+        if (configItem.key && configItem.hasOwnProperty('value')) {
+          this.configService.createConfig(configItem.key, configItem.value);
+        }
+      });
     }
   }
 

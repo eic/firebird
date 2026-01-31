@@ -1,9 +1,9 @@
 import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { LocalStorageService } from '../../services/local-storage.service';
+import { ConfigService } from '../../services/config.service';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { PersistentProperty } from '../../utils/persistent-property';
+import { ConfigProperty } from '../../utils/config-property';
 import { MatCard, MatCardContent, MatCardTitle } from '@angular/material/card';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { MatFormField } from '@angular/material/form-field';
@@ -57,18 +57,18 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
 
   @ViewChild('premadeGeometry') premadeGeometry!: ResourceSelectComponent;
 
-  selectedEventSource = new FormControl('');
-  onlyCentralDetector: FormControl<boolean | null> = new FormControl(true);
-  serverUseApi: FormControl<boolean | null> = new FormControl(false);
-  serverApiUrl = new FormControl('http://localhost:5454');
-  rootEventRange: FormControl<string | null> = new FormControl('0');
+  selectedEventSource = new FormControl<string>('');
+  onlyCentralDetector = new FormControl<boolean>(true);
+  serverUseApi = new FormControl<boolean>(false);
+  serverApiUrl = new FormControl<string>('http://localhost:5454');
+  rootEventRange = new FormControl<string>('0');
 
   // Add form controls and options
-  geometryThemeName = new FormControl('cool2');
-  geometryCutListName = new FormControl('off');
-  geometryRootFilterName = new FormControl('default');
-  geometryFastAndUgly: FormControl<boolean | null> = new FormControl(false);
-  useController: FormControl<boolean | null> = new FormControl(false);
+  geometryThemeName = new FormControl<string>('cool3');
+  geometryCutListName = new FormControl<string>('off');
+  geometryRootFilterName = new FormControl<string>('default');
+  geometryFastAndUgly = new FormControl<boolean>(false);
+  useController = new FormControl<boolean>(false);
 
 
   firebirdConfig: ServerConfig = defaultFirebirdConfig;
@@ -163,19 +163,46 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   }
 
   constructor(
-    private userConfigService: LocalStorageService,
+    private userConfigService: ConfigService,
     private firebirdConfigService: ServerConfigService
-  ) {
+  ) {}
+
+   bindConfigToControl<T>(control: FormControl<T | null>, configName: string, defaultValue?: T): void {
+    const existing = this.userConfigService.getConfig(configName);
+
+    if (!existing) {
+      // If default provided — create silently and continue
+      if (defaultValue !== undefined) {
+        try {
+          const created = this.userConfigService.createConfig(
+            configName,
+            defaultValue
+          );
+          if (created) {
+            this.setupConfigBinding(control, created as any);
+          }
+        } catch (error) {
+          console.error(`Failed to create config '${configName}':`, error);
+        }
+      } else {
+        console.error(
+          `Config '${configName}' not found and no default value provided`
+        );
+      }
+      return;
+    }
+
+    this.setupConfigBinding(control, existing as any);
   }
 
-  bindConfigToControl<Type>(control: FormControl<Type | null>, config: PersistentProperty<Type>) {
-    control.setValue(config.value, { emitEvent: false });
+  private setupConfigBinding<T>(control: FormControl<T | null>, config: any): void {
+    control.setValue(config.value as T, { emitEvent: false });
 
-    config.changes$.subscribe(value => {
+    config.changes$.subscribe((value: T) => {
       control.setValue(value, { emitEvent: false });
     });
 
-    control.valueChanges.subscribe(value => {
+    control.valueChanges.subscribe((value: T | null) => {
       if (value !== null) {
         config.value = value;
       }
@@ -183,13 +210,12 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   }
 
 
-  ngAfterViewInit() {
+  ngAfterViewInit(): void {
     console.log('[ConfigPage] ngAfterViewInit');
 
-    this.bindConfigToControl(this.geometrySelect.value, this.userConfigService.geometryUrl);
-    this.bindConfigToControl(this.edm4eicSelect.value, this.userConfigService.rootEventSource);
-    this.bindConfigToControl(this.dexJsonSelect.value, this.userConfigService.dexJsonEventSource);
-
+    this.bindConfigToControl<string>(this.geometrySelect.value, 'geometry.selectedGeometry', '');
+    this.bindConfigToControl<string>(this.edm4eicSelect.value, 'events.rootEventSource', '');
+    this.bindConfigToControl<string>(this.dexJsonSelect.value, 'events.dexEventsSource', '');
 
     this.loadInitialConfig();
   }
@@ -197,68 +223,51 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   selectedPreset = 'Full ePIC detector geometry (no events)';
 
   ngOnInit(): void {
-    this.bindConfigToControl(this.onlyCentralDetector, this.userConfigService.geometryFastAndUgly);
-    this.bindConfigToControl(this.serverUseApi, this.userConfigService.localServerUseApi);
-    this.bindConfigToControl(this.serverApiUrl, this.userConfigService.localServerUrl);
-    this.bindConfigToControl(this.rootEventRange, this.userConfigService.rootEventRange);
-    this.bindConfigToControl(this.geometryThemeName, this.userConfigService.geometryThemeName);
-    this.bindConfigToControl(this.geometryCutListName, this.userConfigService.geometryCutListName);
-    this.bindConfigToControl(this.geometryRootFilterName, this.userConfigService.geometryRootFilterName);
-    this.bindConfigToControl(this.geometryFastAndUgly, this.userConfigService.geometryFastAndUgly);
-    this.bindConfigToControl(this.useController, this.userConfigService.useController);
+    this.bindConfigToControl(this.serverUseApi, 'server.useApi', false);
+    this.bindConfigToControl(this.serverApiUrl, 'server.url', 'http://localhost:5454');
+    this.bindConfigToControl(this.rootEventRange, 'events.rootEventRange', '0');
+    this.bindConfigToControl(this.geometryThemeName, 'geometry.themeName', 'cool3');
+    this.bindConfigToControl(this.geometryCutListName, 'geometry.cutListName', 'off');
+    this.bindConfigToControl(this.geometryRootFilterName, 'geometry.rootFilterName', 'default');
+    this.bindConfigToControl(this.geometryFastAndUgly, 'geometry.FastDefaultMaterial', false);
+    this.bindConfigToControl(this.useController, 'controls.useController', false);
 
     this.firebirdConfig = this.firebirdConfigService.config;
+
     setTimeout(() => {
-      this.geometrySelect?.value.setValue(this.userConfigService.geometryUrl.value);
-      this.edm4eicSelect?.value.setValue(this.userConfigService.rootEventSource.value);
-      this.dexJsonSelect?.value.setValue(this.userConfigService.dexJsonEventSource.value);
+      this.geometrySelect?.value.setValue(this.userConfigService.getConfig('geometry.selectedGeometry')?.value);
+      this.edm4eicSelect?.value.setValue(this.userConfigService.getConfig('events.rootEventSource')?.value);
+      this.dexJsonSelect?.value.setValue(this.userConfigService.getConfig('events.dexEventsSource')?.value);
     });
   }
 
+
   onPresetChange(newValue: string) {
-  this.selectedPreset = newValue;
-  const config = this.quickLinks[newValue];
+    this.selectedPreset = newValue;
+    const config = this.quickLinks[newValue];
+    if (!config) return;
 
-  if (config) {
-    this.userConfigService.geometryUrl.value = config.geometry;
-    this.userConfigService.dexJsonEventSource.value = config.dexjson;
-    this.userConfigService.rootEventSource.value = config.edm4eic;
-    if(config.eventRange != null) {
-      this.userConfigService.rootEventRange.value = config.eventRange;
+    this.userConfigService.getConfig('geometry.selectedGeometry')!.value = config.geometry;
+    this.userConfigService.getConfig('events.dexEventsSource')!.value = config.dexjson;
+    this.userConfigService.getConfig('events.rootEventSource')!.value = config.edm4eic;
+    if (config.eventRange != null) {
+      this.userConfigService.getConfig('events.rootEventRange')!.value = config.eventRange;
     }
-
-    // setTimeout(() => {
-    //   if (this.geometrySelect) {
-    //     this.geometrySelect.value.setValue(config.geometry);
-    //   }
-    //   if (this.dexJsonSelect) {
-    //     this.dexJsonSelect.value.setValue(config.dexjson);
-    //   }
-    //   if (this.edm4eicSelect) {
-    //     this.edm4eicSelect.value.setValue(config.edm4eic);
-    //   }
-    //
-    // });
   }
-}
 
   private loadInitialConfig() {
-    const savedDex = this.userConfigService.dexJsonEventSource.value;
-    const savedGeom = this.userConfigService.geometryUrl.value;
+    const savedDex = this.userConfigService.getConfig('events.dexEventsSource')?.value;
+    const savedGeom = this.userConfigService.getConfig('geometry.selectedGeometry')?.value;
+    if (savedDex || savedGeom) return;
 
-    if (savedDex || savedGeom) {
-      return;
-    }
-
-    const preset = this.quickLinks[this.selectedPreset];
-    if (preset) {
+    if (this.quickLinks[this.selectedPreset]) {
       this.onPresetChange(this.selectedPreset);
     }
   }
 
   resetGeometryToDefaults() {
-    this.userConfigService.geometryThemeName.setDefault();
-    this.userConfigService.geometryCutListName.setDefault();
-    this.userConfigService.geometryRootFilterName.setDefault();
+    this.userConfigService.getConfig('geometry.themeName')?.setDefault();
+    this.userConfigService.getConfig('geometry.cutListName')?.setDefault();
+    this.userConfigService.getConfig('geometry.rootFilterName')?.setDefault();
   }
 }

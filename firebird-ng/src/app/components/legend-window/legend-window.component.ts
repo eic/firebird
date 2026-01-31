@@ -2,7 +2,7 @@ import {Component, OnInit, OnDestroy, ViewChild, TemplateRef, ViewContainerRef} 
 
 
 import { ThreeService } from '../../services/three.service';
-import { LocalStorageService } from '../../services/local-storage.service';
+import { ConfigService } from '../../services/config.service';
 
 
 import {MatIconButton} from "@angular/material/button";
@@ -34,7 +34,7 @@ export class LegendWindowComponent implements OnInit, OnDestroy {
 
   constructor(
     private threeService: ThreeService,
-    private config: LocalStorageService,
+    private config: ConfigService,
     private dialog: MatDialog,
     private viewContainerRef: ViewContainerRef
   ) {}

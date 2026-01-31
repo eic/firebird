@@ -1,0 +1,48 @@
+<button #openBtn mat-icon-button matTooltip="Export Scene" (click)="openDialog()" class="panel-button">
+  <mat-icon>file_download</mat-icon>
+</button>
+
+<ng-template #dialogTemplate>
+  <button mat-dialog-close aria-label="Close dialog" class="close-round-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <div class="mat-menu custom-position-dialog">
+    <div class="export-title">Export to GLTF</div>
+
+    <div class="format-toggle">
+      <span class="format-label" [class.active]="!useBinaryFormat">GLTF</span>
+      <mat-slide-toggle
+        [(ngModel)]="useBinaryFormat"
+        color="primary"
+      ></mat-slide-toggle>
+      <span class="format-label" [class.active]="useBinaryFormat">GLB</span>
+    </div>
+
+    <div class="export-buttons">
+      <button
+        mat-menu-item
+        (click)="exportFullScene()"
+        [disabled]="isExporting"
+      >
+        <mat-icon>public</mat-icon>
+        Export Full Scene
+      </button>
+
+      <button
+        mat-menu-item
+        (click)="exportGeometryOnly()"
+        [disabled]="isExporting"
+      >
+        <mat-icon>view_in_ar</mat-icon>
+        Export Geometry Only
+      </button>
+    </div>
+
+    @if (isExporting) {
+      <div class="exporting-indicator">
+        Exporting...
+      </div>
+    }
+  </div>
+</ng-template>

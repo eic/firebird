@@ -1,0 +1,17 @@
+{
+  "name": "firebird-docs",
+  "private": true,
+
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.27"
+  },
+  "devDependencies": {
+    "vitepress": "^2.0.0-alpha.15",
+    "typescript": "^5.9.3"
+  }
+}

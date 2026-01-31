@@ -15,6 +15,7 @@
 <mat-tree [dataSource]="dataSource" [treeControl]="treeControl" >
   <!-- This is the tree node template for leaf nodes -->
   <mat-tree-node *matTreeNodeDef="let node" matTreeNodePadding
+                 [matTreeNodePaddingIndent]="20"
                  (mouseenter)="onMouseEnterNode(node)"
                  (mouseleave)="onMouseLeaveNode(node)"
                  [class.event-track-node]="isTrackNode(node)">
@@ -32,9 +33,9 @@
 
   <!-- This is the tree node template for expandable nodes -->
   <mat-tree-node *matTreeNodeDef="let node; when: hasChild" matTreeNodePadding
+                 [matTreeNodePaddingIndent]="20"
                  (mouseenter)="onMouseEnterNode(node)"
                  (mouseleave)="onMouseLeaveNode(node)"
-
                  [class.event-track-node]="isTrackNode(node)">
     <button mat-icon-button matTreeNodeToggle
             [attr.aria-label]="'Toggle ' + node.name">

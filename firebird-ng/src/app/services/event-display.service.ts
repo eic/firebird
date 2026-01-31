@@ -3,7 +3,7 @@ import {Group as TweenGroup, Tween} from '@tweenjs/tween.js';
 import {ThreeService} from './three.service';
 import {GeometryService} from './geometry.service';
 import {DataModelService} from './data-model.service';
-import {LocalStorageService} from './local-storage.service';
+import {ConfigService} from './config.service';
 import {UrlService} from './url.service';
 
 
@@ -13,6 +13,7 @@ import {DataModelPainter, DisplayMode} from '../painters/data-model-painter';
 import {AnimationManager} from "../animation/animation-manager";
 import {initGroupFactories} from "../model/default-group-init";
 import {Mesh, MeshBasicMaterial, SphereGeometry} from "three";
+import {arrangeEpicDetectors} from "../utils/epic-geometry-arranger";
 
 
 @Injectable({
@@ -66,7 +67,7 @@ export class EventDisplayService {
   constructor(
     public three: ThreeService,
     private geomService: GeometryService,
-    private settings: LocalStorageService,
+    private config: ConfigService,
     private dataService: DataModelService,
     private urlService: UrlService
   ) {
@@ -322,10 +323,7 @@ export class EventDisplayService {
     let {rootGeometry, threeGeometry} = await this.geomService.loadGeometry(url);
     if (!threeGeometry) return;
 
-    // Set geometry scale
-    if (scale) {
-      threeGeometry.scale.setScalar(scale);
-    }
+
 
     const sceneGeo = this.three.sceneGeometry;
 
@@ -336,7 +334,20 @@ export class EventDisplayService {
 
     this.geomService.postProcessing(threeGeometry, this.three.clipPlanes);
 
-    sceneGeo.children.push(threeGeometry);
+    sceneGeo.add(threeGeometry);
+
+    // Set geometry scale (ROOT uses cm, we want mm, so scale by 10)
+    if (scale) {
+      sceneGeo.scale.setScalar(scale);
+      // Since matrixAutoUpdate is false on worker-loaded geometry,
+      // we must manually update the matrix after changing scale
+      sceneGeo.updateMatrix();
+      sceneGeo.updateMatrixWorld(true);
+    }
+
+    // Arrange by category
+    arrangeEpicDetectors(sceneGeo);
+
     this.lastLoadedGeometryUrl = url;
   }
 

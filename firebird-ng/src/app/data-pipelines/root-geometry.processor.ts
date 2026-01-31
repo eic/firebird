@@ -56,6 +56,16 @@ export class RootGeometryProcessor {
       ]
     },
     {
+      namePattern: "*/EcalBarrelTracker*",
+      editRules: [
+        {pattern: "*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+        {pattern: "*/stave*", action: EditActions.RemoveChildren},
+        {pattern: "*/stave*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+        {pattern: "*/stave*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisNone},
+        {pattern: "*/stave*", action: EditActions.UnsetGeoBit, geoBit: GeoAttBits.kVisDaughters},
+      ]
+    },
+    {
       namePattern: "*/EcalBarrelImaging*",
       editRules: [
         {pattern: "*/stav*", action: EditActions.RemoveChildren},
@@ -125,11 +135,27 @@ export class RootGeometryProcessor {
       ]
     },
     {
+      namePattern: "*/VertexBarrelSubAssembly*",
+      editRules: [
+        {pattern: "*/biasing*", action: EditActions.Remove},
+        {pattern: "*/readout*", action: EditActions.Remove},
+        {pattern: "*/backbone*", action: EditActions.Remove},
+      ]
+
+    },
+    {
       namePattern: "*/BarrelTOF*",
       editRules: [
         {pattern: "*/component_sensor*", action: EditActions.Remove},
         {pattern: "*/component_ASIC*", action: EditActions.Remove},
         {pattern: "*/cooling*", action: EditActions.Remove},
+      ]
+    },
+
+    {
+      namePattern: "*/LumiSpecCAL*",
+      editRules: [
+        {pattern: "*/module_vol*", action: EditActions.RemoveChildren}
       ]
     },
 

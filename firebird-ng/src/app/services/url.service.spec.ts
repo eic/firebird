@@ -2,10 +2,10 @@
 
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { UrlService } from './url.service';
-import { LocalStorageService } from './local-storage.service';
+import { ConfigService } from './config.service';
 import { ServerConfigService } from './server-config.service';
 import { BehaviorSubject } from 'rxjs';
-import {HttpClientModule} from "@angular/common/http";
+import { HttpClientModule } from "@angular/common/http";
 
 describe('UrlService', () => {
   let service: UrlService;
@@ -26,6 +26,11 @@ describe('UrlService', () => {
         get value() {
           return this.subject.value;
         }
+      },
+      getConfig: (key: string) => {
+        if (key === 'localServerUrl') return userConfigService.localServerUrl;
+        if (key === 'localServerUseApi') return userConfigService.localServerUseApi;
+        return undefined;
       }
     };
 
@@ -41,7 +46,7 @@ describe('UrlService', () => {
       imports: [HttpClientModule], // Add this line
       providers: [
         UrlService,
-        { provide: LocalStorageService, useValue: userConfigService },
+        { provide: ConfigService, useValue: userConfigService },
         { provide: ServerConfigService, useValue: serverConfigService }
       ]
     });
