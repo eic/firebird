@@ -80,7 +80,7 @@ Firebird and Pyrobird work together to support various file formats:
 - **ROOT Files (`.root`)**: Standard ROOT geometry files (TGeo). This is the primary format for detector geometry.
 
 ### Events
-- **DEX (JSON)**: The native ["Display Event Exchange"](help/dex) format. It's a JSON-based format optimized for web display.
+- **DEX (JSON)**: The native ["Display Event Exchange"](../dex) format. It's a JSON-based format optimized for web display.
 - **Zipped DEX (`.zip`)**: A compressed archive containing DEX JSON files. This is efficient for sharing multiple events and large datasets.
 - **EDM4EIC (`.root`)**: The standard data model for the EIC. Pyrobird can automatically convert these files to DEX format on-the-fly when you request them.
 
@@ -90,6 +90,5 @@ Firebird and Pyrobird work together to support various file formats:
 
 Now that you have a local setup, you can explore more advanced topics:
 
-- **[Merging Event Contents](/help/tutorials/03_merging_events)**: How to combine different data sources into a single view, e.g. true particles and reconstructed tracks.
-- **[Visualizing Custom Objects](/help/tutorials/05_custom_objects)**: Adding your own markers and shapes to the display.
-- **[Generating Trajectories](/help/dd4hep-plugin)**: Learn how to use the DD4Hep plugin to generate true particles trajectories from your simulations.
+- **[Generating Trajectories](../dd4hep-plugin)**: Learn how to use the DD4Hep plugin to generate true particle trajectories from your simulations.
+- **[DEX Format](../dex)**: Learn about the Firebird Display Event Exchange format for event data.
