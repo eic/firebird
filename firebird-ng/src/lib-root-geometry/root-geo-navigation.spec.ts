@@ -10,7 +10,7 @@ import type { Mock } from "vitest";
  * @summary Unit tests for CERN ROOT geometry navigation functions
  */
 
-import { walkGeoNodes, GeoNodeWalkCallback, findGeoNodes } from './root-geo-navigation';
+import { walkGeoNodes, findGeoNodes } from './root-geo-navigation';
 
 describe('walkGeoNodes', () => {
     let mockCallback: Mock;
