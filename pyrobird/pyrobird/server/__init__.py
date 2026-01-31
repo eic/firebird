@@ -5,7 +5,6 @@ import datetime
 import os
 import logging
 import time
-from csv import excel
 from urllib.parse import unquote
 
 import werkzeug.exceptions
@@ -41,6 +40,7 @@ CFG_DOWNLOAD_IS_UNRESTRICTED = "PYROBIRD_DOWNLOAD_IS_UNRESTRICTED"
 CFG_DOWNLOAD_IS_DISABLED = "PYROBIRD_DOWNLOAD_IS_DISABLED"
 CFG_DOWNLOAD_PATH = "PYROBIRD_DOWNLOAD_PATH"
 CFG_CORS_IS_ALLOWED = "PYROBIRD_CORS_IS_ALLOWED"
+CFG_SHUTDOWN_IS_ALLOWED = "PYROBIRD_SHUTDOWN_IS_ALLOWED"
 CFG_API_BASE_URL = "PYROBIRD_API_BASE_URL"
 CFG_FIREBIRD_CONFIG_PATH = "PYROBIRD_FIREBIRD_CONFIG_PATH"
 
@@ -381,13 +381,24 @@ def static_file(path):
 
 @flask_app.route('/shutdown', methods=['GET', 'POST'])
 def shutdown():
-    """Shutdowns the server"""
+    """Shutdowns the server.
+
+    Controlled by PYROBIRD_SHUTDOWN_IS_ALLOWED config flag.
+    Default is True (allowed) for local user workflows like batch screenshots.
+    Set to False for production/shared server deployments.
+    """
+
+    # Check if shutdown is allowed (default: True for local user workflows)
+    shutdown_allowed = flask.current_app.config.get(CFG_SHUTDOWN_IS_ALLOWED, True)
+    if shutdown_allowed is False:
+        logger.warning("Shutdown request rejected. PYROBIRD_SHUTDOWN_IS_ALLOWED=False")
+        abort(403, description="Shutdown is disabled on this server.")
 
     func = request.environ.get('werkzeug.server.shutdown')
     if func is not None:
         func()
     else:
-        print("Werkzeug shutdown not available. Forcing exit.")
+        logger.info("Werkzeug shutdown not available. Forcing exit.")
         os._exit(0)
     return 'Server shutting down...'
 
