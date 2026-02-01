@@ -1,0 +1,78 @@
+.palette-container {
+  padding: 2rem;
+  background: var(--mat-sys-surface, #1a1a2e);
+  color: var(--mat-sys-on-surface, #eee);
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+h1 {
+  margin-bottom: 0.5rem;
+  color: var(--mat-sys-on-surface, #fff);
+}
+
+.subtitle {
+  margin-bottom: 2rem;
+  color: var(--mat-sys-on-surface-variant, #aaa);
+
+  code {
+    background: var(--mat-sys-surface-container, #2a2a4a);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+  }
+}
+
+section {
+  margin-bottom: 2rem;
+}
+
+h2 {
+  margin: 2rem 0 1rem;
+  color: var(--mat-sys-on-surface-variant, #aaa);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.color-card {
+  width: 140px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--mat-sys-surface-container, #2a2a4a);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.color-swatch {
+  height: 80px;
+}
+
+.color-info {
+  padding: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.color-name {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--mat-sys-on-surface, #fff);
+  word-break: break-word;
+}
+
+.color-hex {
+  color: var(--mat-sys-on-surface-variant, #888);
+  font-family: monospace;
+  font-size: 0.7rem;
+}

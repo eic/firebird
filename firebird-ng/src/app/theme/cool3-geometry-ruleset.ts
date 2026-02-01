@@ -1,92 +1,205 @@
 import * as THREE from "three";
 
 // ============================================================
-// COOL COLORS (Light/Pastel)
+// COOL COLORS (Light/Pastel) - Sorted by saturation level, then name
 // ============================================================
-const GRAY_50         = 0xFAFAFA;  // Almost white
-const GRAY_100        = 0xF5F5F5;  // Very light gray
-const BLUE_GRAY_50    = 0xECEFF1;  // Very light blue-gray
-const INDIGO_50       = 0xE8EAF6;  // Extremely light indigo
-const BLUE_WHITE      = 0xF5F9FF;  // Custom ultra-light blue-white
-const LIGHT_BLUE_50   = 0xE1F5FE;  // Extremely light blue
-const BLUE_200        = 0x90CAF9;  // Light blue with more saturation
-const CYAN_50         = 0xE0F7FA;  // Extremely light cyan
-const GREEN_100       = 0xC8E6C9;  // Light green
-const YELLOW_100      = 0xFFF9C4;  // Very light yellow
-const AMBER_50        = 0xFFF8E1;  // Extremely light amber/peach
-const ORANGE_100      = 0xFFE0B2;  // Very light warm orange/peach
-const PURPLE_50       = 0xF3E5F5;  // Extremely light purple
-const RED_50          = 0xFFEBEE;  // Extremely light red/pink
-const PINK_50         = 0xFCE4EC;  // Extremely light pink
-const BROWN_50        = 0xEFEBE9;  // Extremely light brown/cream
-const TAN_LIGHT       = 0xE6D5C3;  // Light tan/beige
+// Level 50 (lightest)
+export const AMBER_50        = 0xFFF8E1;  // Extremely light amber/peach
+export const BLUE_50         = 0xE3F2FD;  // Extremely light blue
+export const BLUE_GRAY_50    = 0xECEFF1;  // Very light blue-gray
+export const BLUE_LIGHT_50   = 0xE1F5FE;  // Extremely light blue (cyan-ish)
+export const BLUE_WHITE      = 0xF5F9FF;  // Custom ultra-light blue-white
+export const BROWN_50        = 0xEFEBE9;  // Extremely light brown/cream
+export const CYAN_50         = 0xE0F7FA;  // Extremely light cyan
+export const GRAY_50         = 0xFAFAFA;  // Almost white
+export const INDIGO_50       = 0xE8EAF6;  // Extremely light indigo
+export const PINK_50         = 0xFCE4EC;  // Extremely light pink
+export const PURPLE_50       = 0xF3E5F5;  // Extremely light purple
+export const RED_50          = 0xFFEBEE;  // Extremely light red/pink
+// Level 100
+export const GRAY_100        = 0xF5F5F5;  // Very light gray
+export const GREEN_100       = 0xC8E6C9;  // Light green
+export const ORANGE_100      = 0xFFE0B2;  // Very light warm orange/peach
+export const TAN_LIGHT       = 0xE6D5C3;  // Light tan/beige
+export const YELLOW_100      = 0xFFF9C4;  // Very light yellow
+// Level 200
+export const BLUE_200        = 0x90CAF9;  // Light blue with more saturation
 
 // ============================================================
-// MEDIUM COLORS (Moderate Saturation)
+// MEDIUM COLORS (Moderate Saturation) - Sorted by saturation level, then name
 // ============================================================
-const GRAY_300        = 0xE0E0E0;  // Light-medium gray
-const BLUE_GRAY_200   = 0xB0BEC5;  // Light-medium blue-gray
-const INDIGO_100      = 0xC5CAE9;  // Light indigo
-const BLUE_300        = 0x64B5F6;  // Medium-light blue
-const LIGHT_BLUE_200  = 0x81D4FA;  // Medium-light cyan-blue
-const CYAN_200        = 0x80DEEA;  // Medium-light cyan
-const TEAL_200        = 0x80CBC4;  // Medium-light teal
-const GREEN_200       = 0xA5D6A7;  // Medium-light green
-const YELLOW_200      = 0xFFF59D;  // Medium-light yellow
-const AMBER_200       = 0xFFE082;  // Medium-light amber
-const ORANGE_200      = 0xFFCC80;  // Medium-light orange
-const DEEP_ORANGE_200 = 0xFFAB91;  // Medium-light deep orange
-const PURPLE_100      = 0xE1BEE7;  // Light purple
-const RED_100         = 0xFFCDD2;  // Very light red
-const PINK_100        = 0xF8BBD0;  // Very light pink
-const BROWN_100       = 0xD7CCC8;  // Very light brown/taupe
-const TAN_MEDIUM      = 0xC4A77D;  // Medium tan/camel
+// Level 100
+export const BROWN_100       = 0xD7CCC8;  // Very light brown/taupe
+export const INDIGO_100      = 0xC5CAE9;  // Light indigo
+export const PINK_100        = 0xF8BBD0;  // Very light pink
+export const PURPLE_100      = 0xE1BEE7;  // Light purple
+export const RED_100         = 0xFFCDD2;  // Very light red
+// Level 200
+export const AMBER_200       = 0xFFE082;  // Medium-light amber
+export const BLUE_GRAY_200   = 0xB0BEC5;  // Light-medium blue-gray
+export const BLUE_LIGHT_200  = 0x81D4FA;  // Medium-light cyan-blue
+export const CYAN_200        = 0x80DEEA;  // Medium-light cyan
+export const GREEN_200       = 0xA5D6A7;  // Medium-light green
+export const ORANGE_200      = 0xFFCC80;  // Medium-light orange
+export const ORANGE_DEEP_200 = 0xFFAB91;  // Medium-light deep orange
+export const TEAL_200        = 0x80CBC4;  // Medium-light teal
+export const YELLOW_200      = 0xFFF59D;  // Medium-light yellow
+// Level 300
+export const BLUE_300        = 0x64B5F6;  // Medium-light blue
+export const GRAY_300        = 0xE0E0E0;  // Light-medium gray
+// Other
+export const TAN_MEDIUM      = 0xC4A77D;  // Medium tan/camel
 
 // ============================================================
-// WARM COLORS (Saturated/Heavy)
+// WARM COLORS (Saturated/Heavy) - Sorted by saturation level, then name
 // ============================================================
-const GRAY_500        = 0x9E9E9E;  // Medium gray
-const BLUE_GRAY_400   = 0x78909C;  // Medium-dark blue-gray
-const INDIGO_400      = 0x5C6BC0;  // Medium indigo
-const BLUE_500        = 0x2196F3;  // Strong blue
-const CYAN_500        = 0x00BCD4;  // Strong cyan
-const TEAL_500        = 0x009688;  // Strong teal
-const GREEN_500       = 0x4CAF50;  // Strong green
-const YELLOW_500      = 0xFFEB3B;  // Strong yellow
-const AMBER_500       = 0xFFC107;  // Strong amber
-const ORANGE_500      = 0xFF9800;  // Strong orange
-const DEEP_ORANGE_500 = 0xFF5722;  // Strong deep orange
-const PURPLE_400      = 0xAB47BC;  // Medium purple
-const RED_500         = 0xF44336;  // Strong red
-const PINK_400        = 0xEC407A;  // Strong pink
-const BROWN_500       = 0x795548;  // Strong brown
-const SIENNA          = 0xA0522D;  // Sienna
-const TERRACOTTA      = 0xE2725B;  // Terracotta
+// Level 400
+export const BLUE_GRAY_400   = 0x78909C;  // Medium-dark blue-gray
+export const INDIGO_400      = 0x5C6BC0;  // Medium indigo
+export const PINK_400        = 0xEC407A;  // Strong pink
+export const PURPLE_400      = 0xAB47BC;  // Medium purple
+// Level 500
+export const AMBER_500       = 0xFFC107;  // Strong amber
+export const BLUE_500        = 0x2196F3;  // Strong blue
+export const BROWN_500       = 0x795548;  // Strong brown
+export const CYAN_500        = 0x00BCD4;  // Strong cyan
+export const GRAY_500        = 0x9E9E9E;  // Medium gray
+export const GREEN_500       = 0x4CAF50;  // Strong green
+export const ORANGE_500      = 0xFF9800;  // Strong orange
+export const ORANGE_DEEP_500 = 0xFF5722;  // Strong deep orange
+export const RED_500         = 0xF44336;  // Strong red
+export const TEAL_500        = 0x009688;  // Strong teal
+export const YELLOW_500      = 0xFFEB3B;  // Strong yellow
+// Other warm colors
+export const SIENNA          = 0xA0522D;  // Sienna
+export const TERRACOTTA      = 0xE2725B;  // Terracotta
 
 // ============================================================
-// METALLIC COLORS
+// METALLIC COLORS - Sorted alphabetically within subcategories
 // ============================================================
 // Bluish Metallics
-const STEEL_BLUE      = 0x4682B4;  // Steel blue - industrial metal
-const TITANIUM        = 0x878F99;  // Titanium - blue-gray metal
-const GUNMETAL_BLUE   = 0x5C6274;  // Gunmetal with blue tint
-const PEWTER          = 0x8A9A9E;  // Pewter (blue-gray)
-
+export const GUNMETAL_BLUE   = 0x5C6274;  // Gunmetal with blue tint
+export const PEWTER          = 0x8A9A9E;  // Pewter (blue-gray)
+export const STEEL_BLUE      = 0x4682B4;  // Steel blue - industrial metal
+export const TITANIUM        = 0x878F99;  // Titanium - blue-gray metal
 // Reddish Metallics
-const COPPER          = 0xB87333;  // Classic copper
-const ROSE_GOLD       = 0xB76E79;  // Classic rose gold
-const COPPER_BRIGHT   = 0xDA8A67;  // Bright/polished copper
-const RUST_METAL      = 0x8C4A3D;  // Oxidized rust metal
-
+export const COPPER          = 0xB87333;  // Classic copper
+export const COPPER_BRIGHT   = 0xDA8A67;  // Bright/polished copper
+export const ROSE_GOLD       = 0xB76E79;  // Classic rose gold
+export const RUST_METAL      = 0x8C4A3D;  // Oxidized rust metal
 // Neutral/Gold Metallics
-const SILVER          = 0xC0C0C0;  // Classic silver
-const CHROME          = 0xDBE4EB;  // Chrome / polished silver
-const GUNMETAL        = 0x53565A;  // Neutral gunmetal gray
-const GOLD            = 0xD4AF37;  // Classic gold
-const CHAMPAGNE       = 0xF5E6A3;  // Champagne gold (light)
-const BRASS           = 0xB5A642;  // Brass
-const BRONZE          = 0xCD7F32;  // Classic bronze
-const ANTIQUE_BRONZE  = 0x8C7853;  // Aged/antique bronze
+export const ANTIQUE_BRONZE  = 0x8C7853;  // Aged/antique bronze
+export const BRASS           = 0xB5A642;  // Brass
+export const BRONZE          = 0xCD7F32;  // Classic bronze
+export const CHAMPAGNE       = 0xF5E6A3;  // Champagne gold (light)
+export const CHROME          = 0xDBE4EB;  // Chrome / polished silver
+export const GOLD            = 0xD4AF37;  // Classic gold
+export const GUNMETAL        = 0x53565A;  // Neutral gunmetal gray
+export const SILVER          = 0xC0C0C0;  // Classic silver
+
+// ============================================================
+// COLOR COLLECTIONS (exported for use in palette and other components)
+// ============================================================
+export const COOL_COLORS: Record<string, number> = {
+  // Level 50
+  AMBER_50,
+  BLUE_50,
+  BLUE_GRAY_50,
+  BLUE_LIGHT_50,
+  BLUE_WHITE,
+  BROWN_50,
+  CYAN_50,
+  GRAY_50,
+  INDIGO_50,
+  PINK_50,
+  PURPLE_50,
+  RED_50,
+  // Level 100
+  GRAY_100,
+  GREEN_100,
+  ORANGE_100,
+  TAN_LIGHT,
+  YELLOW_100,
+  // Level 200
+  BLUE_200,
+};
+
+export const MEDIUM_COLORS: Record<string, number> = {
+  // Level 100
+  BROWN_100,
+  INDIGO_100,
+  PINK_100,
+  PURPLE_100,
+  RED_100,
+  // Level 200
+  AMBER_200,
+  BLUE_GRAY_200,
+  BLUE_LIGHT_200,
+  CYAN_200,
+  GREEN_200,
+  ORANGE_200,
+  ORANGE_DEEP_200,
+  TEAL_200,
+  YELLOW_200,
+
+  // Level 300
+  BLUE_300,
+  GRAY_300,
+  // Other
+  TAN_MEDIUM,
+};
+
+export const WARM_COLORS: Record<string, number> = {
+  // Level 400
+  BLUE_GRAY_400,
+  INDIGO_400,
+  PINK_400,
+  PURPLE_400,
+  // Level 500
+  AMBER_500,
+  BLUE_500,
+  BROWN_500,
+  CYAN_500,
+  GRAY_500,
+  GREEN_500,
+  ORANGE_500,
+  ORANGE_DEEP_500,
+  RED_500,
+  TEAL_500,
+  YELLOW_500,
+  // Other
+  SIENNA,
+  TERRACOTTA,
+};
+
+export const METALLIC_COLORS: Record<string, number> = {
+  // Bluish
+  GUNMETAL_BLUE,
+  PEWTER,
+  STEEL_BLUE,
+  TITANIUM,
+  // Reddish
+  COPPER,
+  COPPER_BRIGHT,
+  ROSE_GOLD,
+  RUST_METAL,
+  // Neutral/Gold
+  ANTIQUE_BRONZE,
+  BRASS,
+  BRONZE,
+  CHAMPAGNE,
+  CHROME,
+  GOLD,
+  GUNMETAL,
+  SILVER,
+};
+
+export const ALL_COLORS: Record<string, number> = {
+  ...COOL_COLORS,
+  ...MEDIUM_COLORS,
+  ...WARM_COLORS,
+  ...METALLIC_COLORS,
+};
 
 
 /**
@@ -297,7 +410,7 @@ export const cool3ColorRules = [
     names: ["LFHCAL*", "HcalEndcapPInsert*", "HcalBarrel*", "HcalEndcapN*"],
     rules: [
       {
-        color: BLUE_300,  // Medium-light blue
+        color: BLUE_200,  // Medium-light blue
         merge: true,
         outline: true
       }
@@ -311,7 +424,7 @@ export const cool3ColorRules = [
     names: ["FluxBarrel*", "FluxEndcapP*", "FluxEndcapN*"],
     rules: [
       {
-        color: GRAY_300,  // Light-medium gray
+        color: BLUE_50,  // Light-medium gray
         merge: true,
         outline: true
       }
@@ -501,7 +614,7 @@ export const cool3ColorRules = [
     name: "ZDC_Crystal_envelope*",
     rules: [
       {
-        color: LIGHT_BLUE_200,  // Medium-light cyan-blue
+        color: BLUE_LIGHT_200,  // Medium-light cyan-blue
         merge: true,
         outline: true
       }

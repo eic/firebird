@@ -1,0 +1,84 @@
+<div class="palette-container">
+  <h1>Color Palette</h1>
+  <p class="subtitle">Colors from <code>cool3-geometry-ruleset.ts</code></p>
+
+  <section>
+    <h2>Cool Colors (Light/Pastel)</h2>
+    <div class="palette">
+      @for (color of coolColors; track color.name) {
+        <div class="color-card">
+          <div class="color-swatch" [style.background-color]="color.hexString"></div>
+          <div class="color-info">
+            <div class="color-name">{{ color.name }}</div>
+            <div class="color-hex">{{ color.hexString }}</div>
+            <div class="color-hex">{{ formatHexValue(color.value) }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section>
+    <h2>Medium Colors (Moderate Saturation)</h2>
+    <div class="palette">
+      @for (color of mediumColors; track color.name) {
+        <div class="color-card">
+          <div class="color-swatch" [style.background-color]="color.hexString"></div>
+          <div class="color-info">
+            <div class="color-name">{{ color.name }}</div>
+            <div class="color-hex">{{ color.hexString }}</div>
+            <div class="color-hex">{{ formatHexValue(color.value) }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section>
+    <h2>Warm Colors (Saturated/Heavy)</h2>
+    <div class="palette">
+      @for (color of warmColors; track color.name) {
+        <div class="color-card">
+          <div class="color-swatch" [style.background-color]="color.hexString"></div>
+          <div class="color-info">
+            <div class="color-name">{{ color.name }}</div>
+            <div class="color-hex">{{ color.hexString }}</div>
+            <div class="color-hex">{{ formatHexValue(color.value) }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section>
+    <h2>Metallic Colors</h2>
+    <div class="palette">
+      @for (color of metallicColors; track color.name) {
+        <div class="color-card">
+          <div class="color-swatch" [style.background-color]="color.hexString"></div>
+          <div class="color-info">
+            <div class="color-name">{{ color.name }}</div>
+            <div class="color-hex">{{ color.hexString }}</div>
+            <div class="color-hex">{{ formatHexValue(color.value) }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section>
+    <h2>All Colors (Sorted by Hue)</h2>
+    <div class="palette">
+      @for (color of allColors; track color.name) {
+        <div class="color-card">
+          <div class="color-swatch" [style.background-color]="color.hexString"></div>
+          <div class="color-info">
+            <div class="color-name">{{ color.name }}</div>
+            <div class="color-hex">{{ color.hexString }}</div>
+            <div class="color-hex">{{ formatHexValue(color.value) }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+</div>
