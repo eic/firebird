@@ -6,7 +6,7 @@ import {
   WARM_COLORS,
   METALLIC_COLORS,
   ALL_COLORS,
-} from '../../theme/cool3-geometry-ruleset';
+} from '../../theme/cool2-geometry-ruleset';
 
 interface ColorEntry {
   name: string;

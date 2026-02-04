@@ -179,6 +179,7 @@ function mergeWhatever(node: Object3D, rule: EditThreeNodeRule): MergeResult | u
 }
 
 
+
 export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
   let {
     patterns,
@@ -251,7 +252,6 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
 
           if (applyToDescendants) {
             // Collect this node and all descendant meshes
-            // Use a temporary set to collect meshes from this branch
             matchedNode.traverse((child: Object3D) => {
               if ((child as any)?.geometry && !meshSet.has(child as Mesh)) {
                 meshSet.add(child as Mesh);

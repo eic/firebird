@@ -154,7 +154,9 @@ export class RootGeometryProcessor {
     {
       namePattern: "*/BeamPipe_assembly*",
       editRules: [
-        {pattern: "*/*vacuum*", action: EditActions.Remove},
+        //{pattern: "*/*vacuum*", action: EditActions.Remove},
+        {pattern: "*/*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+
       ]
     },
 

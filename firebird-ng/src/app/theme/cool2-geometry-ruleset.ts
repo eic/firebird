@@ -1,112 +1,331 @@
-
 import * as THREE from "three";
 
-/** COLORS WE USE (we use specifically "cool" colors)
- * 0xECEFF1,  // Blue Gray 50 - very light blue-gray
- * 0xE1F5FE,  // Light Blue 50 - extremely light blue
- * 0xFFE0B2,  // Orange 100 - very light warm orange/peach
- * 0xFFF9C4,  // Yellow 100 - very light yellow
- * 0xF5F9FF,  // Custom ultra-light blue-white
- * 0xE0F7FA,  // Cyan 50 - extremely light cyan
- * 0xF5F5F5   // Gray 100 - almost white
- * 0xE8EAF6,  // Indigo 50 - extremely light indigo
- * 0xF5F5F5,  // Gray 100 - very light gray
- * 0xFFF8E1,  // Amber 50 - extremely light amber/peach
- * 0xC8E6C9,  // Green 100 - light green
- * 0xFAFAFA,  // Gray 50 - almost white
- * 0xF3E5F5,  // Purple 50 - extremely light purple
- * 0x90CAF9,  // Blue 200 - light blue with more saturation
+// ============================================================
+// COOL COLORS (Light/Pastel) - Sorted by saturation level, then name
+// ============================================================
+// Level 50 (lightest)
+export const AMBER_50        = 0xFFF8E1;  // Extremely light amber/peach
+export const BLUE_50         = 0xE3F2FD;  // Extremely light blue
+export const BLUE_GRAY_50    = 0xECEFF1;  // Very light blue-gray
+export const BLUE_LIGHT_50   = 0xE1F5FE;  // Extremely light blue (cyan-ish)
+export const BLUE_WHITE      = 0xF5F9FF;  // Custom ultra-light blue-white
+export const BROWN_50        = 0xEFEBE9;  // Extremely light brown/cream
+export const CYAN_50         = 0xE0F7FA;  // Extremely light cyan
+export const GRAY_50         = 0xFAFAFA;  // Almost white
+export const INDIGO_80       = 0xD1D9F0;  // Light indigo (more blue than 50)
+export const INDIGO_150      = 0xB2BBE0;  // Light-medium indigo
+export const PINK_50         = 0xFCE4EC;  // Extremely light pink
+export const PURPLE_50       = 0xF3E5F5;  // Extremely light purple
+export const RED_50          = 0xFFEBEE;  // Extremely light red/pink
+// Level 100
+export const GRAY_100        = 0xF5F5F5;  // Very light gray
+export const GREEN_100       = 0xC8E6C9;  // Light green
+export const ORANGE_100      = 0xFFE0B2;  // Very light warm orange/peach
+export const TAN_LIGHT       = 0xE6D5C3;  // Light tan/beige
+export const YELLOW_100      = 0xFFF9C4;  // Very light yellow
+// Level 200
+export const BLUE_200        = 0x90CAF9;  // Light blue with more saturation
+
+// ============================================================
+// MEDIUM COLORS (Moderate Saturation) - Sorted by saturation level, then name
+// ============================================================
+// Level 100
+export const BROWN_100       = 0xD7CCC8;  // Very light brown/taupe
+export const PINK_100        = 0xF8BBD0;  // Very light pink
+export const PURPLE_100      = 0xE1BEE7;  // Light purple
+export const RED_100         = 0xFFCDD2;  // Very light red
+// Level 200
+export const AMBER_200       = 0xFFE082;  // Medium-light amber
+export const BLUE_GRAY_200   = 0xB0BEC5;  // Light-medium blue-gray
+export const INDIGO_200      = 0x9FA8DA;  // Medium-light indigo
+export const BLUE_LIGHT_200  = 0x81D4FA;  // Medium-light cyan-blue
+export const CYAN_200        = 0x80DEEA;  // Medium-light cyan
+export const GREEN_200       = 0xA5D6A7;  // Medium-light green
+export const ORANGE_200      = 0xFFCC80;  // Medium-light orange
+export const ORANGE_DEEP_200 = 0xFFAB91;  // Medium-light deep orange
+export const TEAL_200        = 0x80CBC4;  // Medium-light teal
+export const YELLOW_200      = 0xFFF59D;  // Medium-light yellow
+// Level 300
+export const BLUE_300        = 0x64B5F6;  // Medium-light blue
+export const GRAY_300        = 0xE0E0E0;  // Light-medium gray
+// Other
+export const TAN_MEDIUM      = 0xC4A77D;  // Medium tan/camel
+
+// ============================================================
+// WARM COLORS (Saturated/Heavy) - Sorted by saturation level, then name
+// ============================================================
+// Level 400
+export const BLUE_GRAY_400   = 0x78909C;  // Medium-dark blue-gray
+export const INDIGO_400      = 0x5C6BC0;  // Medium indigo
+export const PINK_400        = 0xEC407A;  // Strong pink
+export const PURPLE_400      = 0xAB47BC;  // Medium purple
+// Level 500
+export const AMBER_500       = 0xFFC107;  // Strong amber
+export const BLUE_500        = 0x2196F3;  // Strong blue
+export const BROWN_500       = 0x795548;  // Strong brown
+export const CYAN_500        = 0x00BCD4;  // Strong cyan
+export const GRAY_500        = 0x9E9E9E;  // Medium gray
+export const GREEN_500       = 0x4CAF50;  // Strong green
+export const ORANGE_500      = 0xFF9800;  // Strong orange
+export const ORANGE_DEEP_500 = 0xFF5722;  // Strong deep orange
+export const RED_500         = 0xF44336;  // Strong red
+export const TEAL_500        = 0x009688;  // Strong teal
+export const YELLOW_500      = 0xFFEB3B;  // Strong yellow
+// Other warm colors
+export const SIENNA          = 0xA0522D;  // Sienna
+export const TERRACOTTA      = 0xE2725B;  // Terracotta
+
+// ============================================================
+// METALLIC COLORS - Sorted alphabetically within subcategories
+// ============================================================
+// Bluish Metallics
+export const GUNMETAL_BLUE      = 0x5C6274;  // Gunmetal with blue tint
+export const INDIGO_METALLIC_LITE = 0x9FA8DA;  // Light metallic indigo
+export const PEWTER             = 0x8A9A9E;  // Pewter (blue-gray)
+export const STEEL_BLUE         = 0x4682B4;  // Steel blue - industrial metal
+export const TITANIUM           = 0x878F99;  // Titanium - blue-gray metal
+// Reddish Metallics
+export const COPPER          = 0xB87333;  // Classic copper
+export const COPPER_BRIGHT   = 0xDA8A67;  // Bright/polished copper
+export const ROSE_GOLD       = 0xB76E79;  // Classic rose gold
+export const RUST_METAL      = 0x8C4A3D;  // Oxidized rust metal
+// Neutral/Gold Metallics
+export const ANTIQUE_BRONZE  = 0x8C7853;  // Aged/antique bronze
+export const BRASS           = 0xB5A642;  // Brass
+export const BRONZE          = 0xCD7F32;  // Classic bronze
+export const CHAMPAGNE       = 0xF5E6A3;  // Champagne gold (light)
+export const CHROME          = 0xDBE4EB;  // Chrome / polished silver
+export const GOLD            = 0xD4AF37;  // Classic gold
+export const GUNMETAL        = 0x53565A;  // Neutral gunmetal gray
+export const SILVER          = 0xC0C0C0;  // Classic silver
+
+// ============================================================
+// COLOR COLLECTIONS (exported for use in palette and other components)
+// ============================================================
+export const COOL_COLORS: Record<string, number> = {
+  // Level 50
+  AMBER_50,
+  BLUE_50,
+  BLUE_GRAY_50,
+  BLUE_LIGHT_50,
+  BLUE_WHITE,
+  BROWN_50,
+  CYAN_50,
+  GRAY_50,
+  INDIGO_80,
+  INDIGO_150,
+  PINK_50,
+  PURPLE_50,
+  RED_50,
+  // Level 100
+  GRAY_100,
+  GREEN_100,
+  ORANGE_100,
+  TAN_LIGHT,
+  YELLOW_100,
+  // Level 200
+  BLUE_200,
+};
+
+export const MEDIUM_COLORS: Record<string, number> = {
+  // Level 100
+  BROWN_100,
+  PINK_100,
+  PURPLE_100,
+  RED_100,
+  // Level 200
+  AMBER_200,
+  BLUE_GRAY_200,
+  BLUE_LIGHT_200,
+  CYAN_200,
+  GREEN_200,
+  INDIGO_200,
+  ORANGE_200,
+  ORANGE_DEEP_200,
+  TEAL_200,
+  YELLOW_200,
+
+  // Level 300
+  BLUE_300,
+  GRAY_300,
+  // Other
+  TAN_MEDIUM,
+};
+
+export const WARM_COLORS: Record<string, number> = {
+  // Level 400
+  BLUE_GRAY_400,
+  INDIGO_400,
+  PINK_400,
+  PURPLE_400,
+  // Level 500
+  AMBER_500,
+  BLUE_500,
+  BROWN_500,
+  CYAN_500,
+  GRAY_500,
+  GREEN_500,
+  ORANGE_500,
+  ORANGE_DEEP_500,
+  RED_500,
+  TEAL_500,
+  YELLOW_500,
+  // Other
+  SIENNA,
+  TERRACOTTA,
+};
+
+export const METALLIC_COLORS: Record<string, number> = {
+  // Bluish
+  GUNMETAL_BLUE,
+  INDIGO_METALLIC_LITE,
+  PEWTER,
+  STEEL_BLUE,
+  TITANIUM,
+  // Reddish
+  COPPER,
+  COPPER_BRIGHT,
+  ROSE_GOLD,
+  RUST_METAL,
+  // Neutral/Gold
+  ANTIQUE_BRONZE,
+  BRASS,
+  BRONZE,
+  CHAMPAGNE,
+  CHROME,
+  GOLD,
+  GUNMETAL,
+  SILVER,
+};
+
+export const ALL_COLORS: Record<string, number> = {
+  ...COOL_COLORS,
+  ...MEDIUM_COLORS,
+  ...WARM_COLORS,
+  ...METALLIC_COLORS,
+};
+
+
+/**
+ * COOL2 Color Rules - Modern palette based on detector categories
+ *
+ * Color scheme:
+ * - Tracking detectors: yellowish-orange (AMBER, ORANGE, YELLOW)
+ * - PID detectors: greenish (GREEN, TEAL)
+ * - Electron calorimeters (Ecal): pink/violetish (PINK, PURPLE)
+ * - HCALs: bluish (BLUE)
+ * - Flux return: grey (GRAY)
+ * - Electron beampipe: saturated blue metallic (STEEL_BLUE)
+ * - Magnets and support: neutral metal or light colors
  */
-
 export const cool2ColorRules = [
-  // Solenoid components - Very light blue-gray
+
+  // ============================================================
+  // CENTRAL DETECTOR - MAGNETS
+  // ============================================================
   {
-    names: ["SolenoidBarrel_assembly", "SolenoidEndcapP", "SolenoidEndcapN"],
+    names: ["SolenoidBarrel_assembly*", "SolenoidEndcapP*", "SolenoidEndcapN*"],
     rules: [
       {
-        color: 0xECEFF1,  // Blue Gray 50 - very light blue-gray
+        color: CHROME,  // Neutral metal for main solenoid
         merge: true,
         outline: true
       }
     ]
   },
 
-  // Trackers - Warm light peach/orange
+  // ============================================================
+  // CENTRAL DETECTOR - TRACKING (Yellowish-Orange)
+  // ============================================================
+
+  // Vertex detectors - warmest orange tone
   {
-    names: ["InnerSiTrackerSubAssembly*", "MiddleSiTrackerSubAssembly*", "OuterSiTrackerSubAssembly*", "B0TrackerSubAssembly*"],
+    name: "VertexBarrelSubAssembly*",
     rules: [
       {
-        color: 0xFFE0B2,  // Orange 100 - very light warm orange/peach
+        color: ORANGE_DEEP_200,  // Medium-light orange
         merge: true,
         outline: true
       }
     ]
   },
 
-  // MPGD Trackers - Light warm yellow
+  // Silicon trackers - amber/orange tones
   {
-    names: ["EndcapMPGDSubAssembly*", "InnerMPGDBarrelSubAssembly*", "OuterBarrelMPGDSubAssembly*"],
+    names: [
+      "InnerSiTrackerSubAssembly*",
+      "MiddleSiBarrelSubAssembly*",
+      "OuterSiBarrelSubAssembly*",
+      "MiddleSiEndcapSubAssembly*",
+      "OuterSiEndcapSubAssembly*"
+    ],
     rules: [
       {
-        color: 0xFFF9C4,  // Yellow 100 - very light yellow
+        color: AMBER_200,  // Medium-light amber
         merge: true,
         outline: true
       }
     ]
   },
 
-  // TOF components - Very light blue
+  // MPGD Trackers - yellowish
+  {
+    names: [
+      "EndcapMPGDSubAssembly*",
+      "InnerMPGDBarrelSubAssembly*",
+      "OuterBarrelMPGDSubAssembly*"
+    ],
+    rules: [
+      {
+        color: YELLOW_200,  // Medium-light yellow
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // Ecal Barrel Tracker (imaging part) - yellowish as it's tracking
+  {
+    name: "EcalBarrelTrackerSubAssembly*",
+    rules: [
+      {
+        color: YELLOW_100,  // Very light yellow
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // ============================================================
+  // CENTRAL DETECTOR - PID (Greenish)
+  // ============================================================
+
+  // TOF components - teal green
   {
     names: ["EndcapTOFSubAssembly*", "BarrelTOFSubAssembly*"],
     rules: [
       {
-        color: 0xE1F5FE,  // Light Blue 50 - extremely light blue
+        color: TEAL_200,  // Medium-light teal
         merge: true,
-        outline: true,
-        // simplifyMeshes: true
+        outline: true
       }
     ]
   },
 
-  // Inner tracker support - White with slight blue tint
-  {
-    name: "InnerTrackerSupport_assembly*",
-    rules: [
-      {
-        material: new THREE.MeshStandardMaterial({
-          color: 0xF5F9FF,  // Custom ultra-light blue-white
-          roughness: 0.5,
-          metalness: 0.1,
-          transparent: true,
-          opacity: 0.5,
-          blending: THREE.NormalBlending,
-          depthWrite: true,
-          polygonOffset: true,
-          polygonOffsetFactor: 1,
-          side: THREE.DoubleSide
-        }),
-        outline: true,
-        outlineColor: 0xEEEEEE,  // Light gray outline
-        merge: true,
-        newName: "InnerTrackerSupport"
-      }
-    ]
-  },
-
-  // DIRC - Light cyan/blue
+  // DIRC - Green with glass effect
   {
     name: "DIRC*",
     rules: [
       {
         patterns: ["**/*box*", "**/*prism*"],
         material: new THREE.MeshPhysicalMaterial({
-          color: 0xE0F7FA,  // Cyan 50 - extremely light cyan
-          metalness: .4,
-          roughness: .2,
+          color: GREEN_200,  // Medium-light green
+          metalness: 0.3,
+          roughness: 0.2,
           envMapIntensity: 0.5,
           clearcoat: 0.8,
           transparent: true,
-          opacity: .5,
+          opacity: 0.5,
           reflectivity: 0.2,
           ior: 0.9,
           side: THREE.DoubleSide,
@@ -116,102 +335,108 @@ export const cool2ColorRules = [
       {
         patterns: ["**/*rail*"],
         newName: "DIRC_rails",
-        color: 0xF5F5F5  // Gray 100 - almost white
+        color: SILVER  // Metal rails
       },
       {
         patterns: ["**/*mcp*"],
         newName: "DIRC_mcps",
-        color: 0xE1F5FE  // Light Blue 50 - extremely light blue
-      }
-    ]
-  },
-  {
-    // This is when DIRC geometry is standalone
-    name: "DIRC_0",
-    rules: [
-      {
-        patterns:     ["**/*box*", "**/*prism*"],
-        material: new THREE.MeshPhysicalMaterial({
-          color: 0xFFF8E1,
-          metalness: .2,
-          roughness: .05,
-          envMapIntensity: 0.3,
-          clearcoat: 1,
-          transparent: true,
-          transmission: .2,
-          opacity: .25,
-          reflectivity: 0.2,
-          //refr: 0.985,
-          ior: 0.9,
-          side: THREE.DoubleSide,
-        }),
-        merge: false,
-        outline: true,
-        newName: "DIRC_barAndPrisms",
-      },
-      {
-        patterns: ["**/*rail*"],
-        newName: "DIRC_rails",
-        color: 0xAAAACC
-      },
-      {
-        patterns: ["**/*mcp*"],
-        newName: "DIRC_mcps"
-      }
-    ]
-
-  },
-
-  // RICH Endcap - Very light violet-blue
-  {
-    name: "RICHEndcapN_Vol*",
-    rules: [
-      {
-        color: 0xE8EAF6,  // Indigo 50 - extremely light indigo
-        merge: true,
-        outline: true
+        color: GREEN_100  // Light green
       }
     ]
   },
 
-  // DRICH - Different tone as requested (light peach)
+  // DRICH
   {
     name: "DRICH*",
+
     rules: [
       {
-        color: 0xFFECB3,  // Amber 100 - light warm amber/peach
-        merge: true,
+        color: GREEN_100,  // Light green
+        merge: false,
         outline: true
-      }
+      },
+      {
+        patterns: ["**/DRICH_mirror*"],
+        color: SILVER,  // Simple silver color for fast mode; prettifier handles reflections
+        merge: true,
+        outline: false,
+        newName: "DRICH_mirror"
+      },
+      {
+        patterns: ["**/DRICH*pdu*"],
+        color: TEAL_200,
+        merge: true,
+        newName: "DRICH_pdu"
+      },
+
     ]
   },
 
-  // Ecal components - Very light lavender
+  // Modular RICH (Negative endcap)
   {
-    names: ["EcalEndcapP_*", "EcalEndcapPInsert_*", "EcalBarrelImaging_*", "EcalBarrelScFi_*", "B0ECal_*"],
+    name: "RICHEndcapN*",
     rules: [
       {
-        color: 0xF3E5F5,  // Purple 50 - extremely light purple
+        color: GREEN_100,  // Medium-light teal
         merge: true,
         outline: true
       }
     ]
   },
 
-  // EcalEndcapN - Light blue crystal
+  // ============================================================
+  // CENTRAL DETECTOR - ECAL (Pink/Violetish)
+  // ============================================================
+  {
+    name:"EcalBarrelSciFi*",
+    rules: [
+      {
+        color: PURPLE_50,
+        merge: true,
+        outline: true
+      }
+    ]
+
+  },
+
+  // Ecal Forward and Barrel
+  {
+    name: "EcalEndcapP*",
+    rules: [
+      {
+        color: INDIGO_80,  // Very light pink
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+  {
+    name: "EcalEndcapPInsert*",
+    rules: [
+      {
+        color: INDIGO_200,  // Very light pink
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // Ecal Backward - slightly different pink/violet
   {
     name: "EcalEndcapN*",
     rules: [
       {
         patterns: ["**/crystal_vol_0"],
-        color: 0xE3F2FD  // Blue 50 - extremely light blue
+        color: INDIGO_80,  // Light purple for crystals
+        outlineColor: GUNMETAL_BLUE,
+        merge: true,
       },
       {
         patterns: ["**/inner_support*", "**/ring*"],
         material: new THREE.MeshStandardMaterial({
-          color: 0xF5F5F5,  // Gray 100 - almost white
+          color: SILVER,  // Metal support
           roughness: 0.5,
-          metalness: 0.1,
+          metalness: 0.3,
           transparent: true,
           opacity: 0.5,
           side: THREE.DoubleSide
@@ -220,95 +445,377 @@ export const cool2ColorRules = [
     ]
   },
 
-  // Hcal components - Light blue (biggest components)
+  // ============================================================
+  // CENTRAL DETECTOR - HCAL (Bluish)
+  // ============================================================
   {
-    names: ["LFHCAL_env_*", "HcalEndcapPInsert_*", "HcalBarrel_*", "HcalEndcapN_*"],
+    names: ["LFHCAL*", "HcalEndcapPInsert*", "HcalBarrel*", "HcalEndcapN*"],
     rules: [
       {
-        color: 0x90CAF9,  // Blue 200 - light blue with more saturation
+        color: BLUE_200,  // Medium-light blue
         merge: true,
         outline: true
       }
     ]
   },
 
-  // Flux components - Light blue
+  // ============================================================
+  // CENTRAL DETECTOR - FLUX (Grey)
+  // ============================================================
   {
-    names: ["FluxBarrel_env_*", "FluxEndcapP_*", "FluxEndcapN_*", "FluxEndcapN_*"],
+    names: ["FluxBarrel*", "FluxEndcapP*", "FluxEndcapN*"],
     rules: [
       {
-        color: 0xE3F2FD,  // Blue 50 - extremely light blue
+        color: BLUE_50,  // Light-medium gray
         merge: true,
         outline: true
       }
     ]
   },
 
-  // Beam Pipe components - Nearly white
+  // ============================================================
+  // CENTRAL DETECTOR - SUPPORT (Neutral metal/light)
+  // ============================================================
+
+  // Tracking supports - light metal
   {
     names: [
-      "BeamPipe_assembly_*",
-      "BeamPipeB0_assembly_*",
-      "B0Window_vol_ExitWindow_*",
-      "Pipe_cen_to_pos_assembly_*",
-      "Pipe_Q1eR_to_B2BeR_assembly_*",
-      "Q0EF_vac_*",
-      "Q1EF_vac_*"
+      "SVT_IB_Support_L2_assembly*",
+      "SVT_IB_Support_L1_assembly*",
+      "SVT_IB_Support_L0_L1_assembly*"
     ],
     rules: [
       {
-        color: 0xFAFAFA,  // Gray 50 - almost white
+        color: SILVER,  // Silver metal
         merge: true,
         outline: true
       }
     ]
   },
 
-  // Magnet components - Light green as requested (beamline magnets are typically green)
+  // Inner tracker support - semi-transparent
+  {
+    name: "InnerTrackerSupport_assembly*",
+    rules: [
+      {
+        material: new THREE.MeshStandardMaterial({
+          color: TITANIUM,  // Chrome metallic
+          roughness: 0.4,
+          metalness: 0.2,
+          transparent: true,
+          opacity: 0.7,
+          blending: THREE.NormalBlending,
+          depthWrite: true,
+          polygonOffset: true,
+          polygonOffsetFactor: 1,
+          side: THREE.DoubleSide
+        }),
+        outline: true,
+        outlineColor: CHROME,
+        merge: true,
+        newName: "InnerTrackerSupport"
+      }
+    ]
+  },
+
+  // Central beam pipe
+  {
+    name: "BeamPipe_assembly*",
+    rules: [
+      {
+        // Match v_upstream nodes - applyToDescendants (default true) includes all children
+        patterns: ["**/v_upstream*"],
+        color: BROWN_100,
+        merge: false,
+        outline: true
+      },
+      {
+        // "The rest" - uses hierarchical skip, so v_upstream descendants are skipped
+        color: BROWN_100,
+        merge: false,
+        outline: true
+      }
+    ]
+  },
+
+  // ============================================================
+  // FORWARD DETECTOR
+  // ============================================================
+
+  // Electron beampipe (forward) - Saturated blue metallic
+  {
+    name: "Pipe_cen_to_pos_assembly*",
+    rules: [
+      {
+        color: BROWN_100,
+        merge: true,
+        outline: true,
+        outlineColor: BLUE_GRAY_400
+      }
+    ]
+  },
+
+  // B0 Window
+  {
+    name: "B0Window_vol_ExitWindow*",
+    rules: [
+      {
+        color: BROWN_100,  // Light-medium blue-gray
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // B0 Tracker - yellowish-orange (tracking)
+  {
+    name: "B0TrackerSubAssembly*",
+    rules: [
+      {
+        color: ORANGE_100,  // Very light warm orange
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // B0 ECal - pink/violetish (calorimeter)
+  {
+    name: "B0ECal*",
+    rules: [
+      {
+        color: BLUE_300,  // Extremely light pink
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // Forward magnets - neutral metal/greenish
   {
     names: [
-      "B0PF_BeamlineMagnet_assembly_*",
-      "B0APF_BeamlineMagnet_assembly_*",
-      "Q1APF_BeamlineMagnet_assembly_*",
-      "Q1BPF_BeamlineMagnet_assembly_*",
-      "Q0EF_assembly_*",
-      "Q1EF_assembly_*",
-      "Magnet_Q1eR_assembly_*",
-      "Magnet_Q2eR_assembly_*",
-      "Magnet_B2AeR_assembly_*",
-      "Magnet_B2BeR_assembly_*",
-      "Magnets_Q3eR_assembly*8"
+      "B0PF_BeamlineMagnet_assembly*",
+      "B0APF_BeamlineMagnet_assembly*",
+      "Q0EF_BeamlineMagnet_assembly*",
+      "Q1APF_BeamlineMagnet_assembly*",
+      "Q1BPF_BeamlineMagnet_assembly*",
+      "Q1EF_BeamlineMagnet_assembly*",
+      "Q2PF_BeamlineMagnet_assembly*",
+      "B1PF_BeamlineMagnet_assembly*",
+      "B1APF_BeamlineMagnet_assembly*"
     ],
     rules: [
       {
-        color: 0xC8E6C9,  // Green 100 - light green
+        color: GRAY_50,  // Light green (beamline magnets traditionally green)
         merge: true,
         outline: true
       }
     ]
   },
 
-  // Vertex Barrel - Warm light amber
+  // Forward beampipe (hadron side)
   {
-    name: "VertexBarrelSubAssembly_*",
+    name: "BeamPipeB0_assembly*",
     rules: [
       {
-        color: 0xFFF8E1,  // Amber 50 - extremely light amber/peach
+        color: BROWN_100,  // Very light gray
         merge: true,
         outline: true
       }
     ]
   },
 
-  // Default rule for anything not matched above
+  // Off-momentum trackers - yellowish-orange (tracking)
+  {
+    names: [
+      "ForwardOffMTracker_station_1*",
+      "ForwardOffMTracker_station_2*",
+      "ForwardOffMTracker_station_3*",
+      "ForwardOffMTracker_station_4*"
+    ],
+    rules: [
+      {
+        color: AMBER_500,  // Extremely light amber
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // Roman pots - yellowish-orange (tracking)
+  {
+    names: ["ForwardRomanPot_Station_1*", "ForwardRomanPot_Station_2*"],
+    rules: [
+      {
+        color: ORANGE_200,  // Very light warm orange
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // ZDC Crystal - bluish (calorimeter)
+  {
+    name: "ZDC_Crystal_envelope*",
+    rules: [
+      {
+        color: PURPLE_400,  // Medium-light cyan-blue
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // ZDC HCal - bluish (HCAL)
+  {
+    name: "HcalFarForwardZDC_SiPMonTile*",
+    rules: [
+      {
+        color: BLUE_200,  // Light blue with more saturation
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // Vacuum magnet element
+  {
+    name: "VacuumMagnetElement_assembly*",
+    rules: [
+      {
+        color: GRAY_300,  // Light-medium gray
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // ============================================================
+  // BACKWARD DETECTOR
+  // ============================================================
+
+  // Electron pipe (backward) - Saturated blue metallic
+  {
+    name: "Pipe_Q1eR_to_B2BeR_assembly*",
+    rules: [
+      {
+        color: BROWN_100,
+        merge: true,
+        outline: true,
+        outlineColor: BLUE_GRAY_400
+      }
+    ]
+  },
+
+  // Backward magnets - neutral metal/greenish
+  {
+    names: [
+      "Q1ER_BeamlineMagnet_assembly*",
+      "Q1APR_BeamlineMagnet_assembly*",
+      "Q2ER_BeamlineMagnet_assembly*",
+      "Q1BPR_BeamlineMagnet_assembly*",
+      "Q2PR_BeamlineMagnet_assembly*",
+      "Magnets_Q3eR_assembly*"
+    ],
+    rules: [
+      {
+        color: GRAY_50,  // Light green
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // Tagger
+  {
+    names: ["BackwardsTaggerVacuum_assembly*", "BackwardsTaggerAssembly*"],
+    rules: [
+      {
+        color: AMBER_50,  // Extremely light amber (tracking/tagging)
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // Lumi components
+  {
+    name: "LumiWindow_vol_ExitWindow*",
+    rules: [
+      {
+        color: GRAY_100,  // Very light gray
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  {
+    name: "LumiCollimator_assembly*",
+    rules: [
+      {
+        color: PEWTER,  // Metallic gray
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  {
+    names: ["SweeperMag_assembly*", "AnalyzerMag_assembly*"],
+    rules: [
+      {
+        color: GREEN_100,  // Light green (magnets)
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  {
+    name: "LumiSpecTracker*",
+    rules: [
+      {
+        color: YELLOW_100,  // Very light yellow (tracking)
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  {
+    name: "LumiPhotonChamber*",
+    rules: [
+      {
+        color: GRAY_300,  // Light-medium gray
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  {
+    name: "LumiDirectPCAL*",
+    rules: [
+      {
+        color: PINK_50,  // Extremely light pink (calorimeter)
+        merge: true,
+        outline: true
+      }
+    ]
+  },
+
+  // ============================================================
+  // DEFAULT RULE
+  // ============================================================
   {
     name: "*",
     rules: [
       {
-        color: 0xF5F5F5,  // Gray 100 - very light gray
+        color: GRAY_100,  // Very light gray default
         merge: true,
         outline: true
       }
     ]
   }
-]
+];
