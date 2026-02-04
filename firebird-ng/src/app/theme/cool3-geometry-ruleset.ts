@@ -407,7 +407,8 @@ export const cool3ColorRules = [
       {
         patterns: ["**/crystal_vol_0"],
         color: INDIGO_80,  // Light purple for crystals
-        outlineColor: 0xFFFFFF,
+        outlineColor: GUNMETAL_BLUE,
+        merge: true,
       },
       {
         patterns: ["**/inner_support*", "**/ring*"],
@@ -501,15 +502,15 @@ export const cool3ColorRules = [
     name: "BeamPipe_assembly*",
     rules: [
       {
-         patterns: ["**/v_upstream*"],
-       // color: GRAY_100,  // Nearly white
-        color: INDIGO_200 ,
+        // Match v_upstream nodes - applyToDescendants (default true) includes all children
+        patterns: ["**/v_upstream*"],
+        color: BROWN_100,
         merge: false,
         outline: true
       },
       {
-       // color: GRAY_100,  // Nearly white
-        color: INDIGO_80,
+        // "The rest" - uses hierarchical skip, so v_upstream descendants are skipped
+        color: BROWN_100,
         merge: false,
         outline: true
       }
@@ -525,12 +526,7 @@ export const cool3ColorRules = [
     name: "Pipe_cen_to_pos_assembly*",
     rules: [
       {
-        material: new THREE.MeshStandardMaterial({
-          color: STEEL_BLUE,  // Saturated blue metal
-          roughness: 0.3,
-          metalness: 0.7,
-          side: THREE.DoubleSide
-        }),
+        color: BROWN_100,
         merge: true,
         outline: true,
         outlineColor: BLUE_GRAY_400
@@ -543,7 +539,7 @@ export const cool3ColorRules = [
     name: "B0Window_vol_ExitWindow*",
     rules: [
       {
-        color: BLUE_GRAY_200,  // Light-medium blue-gray
+        color: BROWN_100,  // Light-medium blue-gray
         merge: true,
         outline: true
       }
@@ -589,7 +585,7 @@ export const cool3ColorRules = [
     ],
     rules: [
       {
-        color: BLUE_LIGHT_50,  // Light green (beamline magnets traditionally green)
+        color: GRAY_50,  // Light green (beamline magnets traditionally green)
         merge: true,
         outline: true
       }
@@ -601,7 +597,7 @@ export const cool3ColorRules = [
     name: "BeamPipeB0_assembly*",
     rules: [
       {
-        color: GRAY_100,  // Very light gray
+        color: BROWN_100,  // Very light gray
         merge: true,
         outline: true
       }
@@ -642,7 +638,7 @@ export const cool3ColorRules = [
     name: "ZDC_Crystal_envelope*",
     rules: [
       {
-        color: BLUE_200,  // Medium-light cyan-blue
+        color: PURPLE_400,  // Medium-light cyan-blue
         merge: true,
         outline: true
       }
@@ -654,7 +650,7 @@ export const cool3ColorRules = [
     name: "HcalFarForwardZDC_SiPMonTile*",
     rules: [
       {
-        color: GUNMETAL_BLUE,  // Light blue with more saturation
+        color: BLUE_200,  // Light blue with more saturation
         merge: true,
         outline: true
       }
@@ -682,12 +678,7 @@ export const cool3ColorRules = [
     name: "Pipe_Q1eR_to_B2BeR_assembly*",
     rules: [
       {
-        material: new THREE.MeshStandardMaterial({
-          color: STEEL_BLUE,  // Saturated blue metal
-          roughness: 0.3,
-          metalness: 0.7,
-          side: THREE.DoubleSide
-        }),
+        color: BROWN_100,
         merge: true,
         outline: true,
         outlineColor: BLUE_GRAY_400
@@ -707,7 +698,7 @@ export const cool3ColorRules = [
     ],
     rules: [
       {
-        color: BLUE_LIGHT_50,  // Light green
+        color: GRAY_50,  // Light green
         merge: true,
         outline: true
       }

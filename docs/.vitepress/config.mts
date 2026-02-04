@@ -28,6 +28,7 @@ export default defineConfig({
       { text: "Development",
         items: [
           { text: "Data Format", link: "/dex"},
+          { text: "Geometry Rules", link: "/geometry-rules"},
           { text: "Roadmap", link: "/eic-requirements" }
         ]
       }

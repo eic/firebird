@@ -35,6 +35,59 @@ function createBeamPipeStructure(): Group {
 }
 
 /**
+ * Helper to create a hierarchical test node structure
+ * BeamPipe_assembly
+ *   └── v_upstream_coating (Group)
+ *       ├── Left (Mesh)
+ *       └── Right (Mesh)
+ *   └── v_downstream_section (Mesh)
+ *   └── center_pipe (Mesh)
+ */
+function createHierarchicalBeamPipe(): Group {
+  const root = new Group();
+  root.name = 'BeamPipe_assembly';
+
+  // v_upstream_coating group with child meshes
+  const upstreamGroup = new Group();
+  upstreamGroup.name = 'v_upstream_coating';
+  upstreamGroup.add(createTestMesh('Left'));
+  upstreamGroup.add(createTestMesh('Right'));
+
+  // Other meshes at root level
+  const downstream = createTestMesh('v_downstream_section');
+  const center = createTestMesh('center_pipe');
+
+  root.add(upstreamGroup, downstream, center);
+
+  return root;
+}
+
+/**
+ * Helper to create a structure where parent Group and child Mesh have same name pattern
+ * This simulates real detector geometry where naming can be like:
+ * BeamPipe_assembly
+ *   └── v_upstream_coating (Group)
+ *       └── v_upstream_coating (Mesh with same name as parent!)
+ *   └── other_pipe (Mesh)
+ */
+function createSameNameHierarchy(): Group {
+  const root = new Group();
+  root.name = 'BeamPipe_assembly';
+
+  // Group and its child mesh have the same name - this is valid in Three.js
+  const upstreamGroup = new Group();
+  upstreamGroup.name = 'v_upstream_coating';
+  const upstreamMesh = createTestMesh('v_upstream_coating'); // Same name as parent!
+  upstreamGroup.add(upstreamMesh);
+
+  const otherPipe = createTestMesh('other_pipe');
+
+  root.add(upstreamGroup, otherPipe);
+
+  return root;
+}
+
+/**
  * Count meshes matching a pattern in the tree
  */
 function countMeshesWithPattern(root: Object3D, pattern: RegExp): number {
@@ -223,6 +276,170 @@ describe('three-geometry-editor', () => {
       const names = getAllNames(root);
       const doubleOutlines = names.filter(n => n.includes('outline_outline') || n.includes('_outline_outlin'));
       expect(doubleOutlines).toEqual([]);
+    });
+  });
+
+  describe('editThreeNodeContent with hierarchical structure', () => {
+
+    it('should apply style to descendants when applyToDescendants is true (default)', () => {
+      const root = createHierarchicalBeamPipe();
+      clearGeometryEditingFlags(root);
+
+      // Rule matching v_upstream_coating (a Group)
+      const rule: EditThreeNodeRule = {
+        patterns: ['**/v_upstream*'],
+        color: 0xff0000,  // Red
+        merge: false,
+        outline: false
+        // applyToDescendants defaults to true
+      };
+
+      editThreeNodeContent(root, rule);
+
+      // Children of v_upstream_coating should be red
+      root.traverse((child) => {
+        if (child instanceof Mesh && (child.name === 'Left' || child.name === 'Right')) {
+          expect((child.material as MeshBasicMaterial).color.getHex()).toBe(0xff0000);
+        }
+      });
+    });
+
+    it('should skip descendants in "the rest" rule when parent was processed', () => {
+      const root = createHierarchicalBeamPipe();
+      clearGeometryEditingFlags(root);
+
+      // First rule: match v_upstream_coating
+      const rule1: EditThreeNodeRule = {
+        patterns: ['**/v_upstream_coating'],
+        color: 0xff0000,  // Red
+        merge: false,
+        outline: false
+      };
+      editThreeNodeContent(root, rule1);
+
+      // Second rule: "the rest" (no pattern)
+      const rule2: EditThreeNodeRule = {
+        color: 0x00ff00,  // Green
+        merge: false,
+        outline: false
+      };
+      editThreeNodeContent(root, rule2);
+
+      // v_upstream_coating children (Left, Right) should still be red
+      // They should not be overwritten by rule2 due to hierarchical skip
+      root.traverse((child) => {
+        if (child instanceof Mesh && (child.name === 'Left' || child.name === 'Right')) {
+          expect((child.material as MeshBasicMaterial).color.getHex()).toBe(0xff0000);
+        }
+      });
+
+      // Other meshes should be green
+      root.traverse((child) => {
+        if (child instanceof Mesh && child.name === 'center_pipe') {
+          expect((child.material as MeshBasicMaterial).color.getHex()).toBe(0x00ff00);
+        }
+      });
+    });
+
+    it('should handle parent and child with same name pattern without duplicates', () => {
+      const root = createSameNameHierarchy();
+      clearGeometryEditingFlags(root);
+
+      const initialCount = countObjectsWithGeometry(root);
+      expect(initialCount).toBe(2); // v_upstream_coating mesh + other_pipe mesh
+
+      // Rule matching both the Group and its child Mesh (same name pattern)
+      const rule: EditThreeNodeRule = {
+        patterns: ['**/v_upstream*'],
+        color: 0xff0000,  // Red
+        merge: false,
+        outline: true
+      };
+
+      editThreeNodeContent(root, rule);
+
+      // Should create only ONE outline (for the one mesh)
+      const afterCount = countObjectsWithGeometry(root);
+      expect(afterCount).toBe(initialCount + 1); // +1 outline for the mesh
+
+      // The mesh should be styled
+      let styledMeshCount = 0;
+      root.traverse((child) => {
+        if (child instanceof Mesh && child.name === 'v_upstream_coating') {
+          expect((child.material as MeshBasicMaterial).color.getHex()).toBe(0xff0000);
+          styledMeshCount++;
+        }
+      });
+      expect(styledMeshCount).toBe(1); // Only one mesh with that name
+    });
+
+    it('should skip child in "the rest" when parent was matched even with same name', () => {
+      const root = createSameNameHierarchy();
+      clearGeometryEditingFlags(root);
+
+      // First rule: match v_upstream pattern
+      const rule1: EditThreeNodeRule = {
+        patterns: ['**/v_upstream*'],
+        color: 0xff0000,  // Red
+        merge: false,
+        outline: false
+      };
+      editThreeNodeContent(root, rule1);
+
+      // Second rule: "the rest"
+      const rule2: EditThreeNodeRule = {
+        color: 0x00ff00,  // Green
+        merge: false,
+        outline: false
+      };
+      editThreeNodeContent(root, rule2);
+
+      // v_upstream_coating mesh should still be red
+      root.traverse((child) => {
+        if (child instanceof Mesh && child.name === 'v_upstream_coating') {
+          expect((child.material as MeshBasicMaterial).color.getHex()).toBe(0xff0000);
+        }
+      });
+
+      // other_pipe should be green
+      root.traverse((child) => {
+        if (child instanceof Mesh && child.name === 'other_pipe') {
+          expect((child.material as MeshBasicMaterial).color.getHex()).toBe(0x00ff00);
+        }
+      });
+    });
+
+    it('should not apply to descendants when applyToDescendants is false', () => {
+      const root = createHierarchicalBeamPipe();
+      clearGeometryEditingFlags(root);
+
+      // Rule matching v_upstream_coating (a Group) with applyToDescendants=false
+      const rule: EditThreeNodeRule = {
+        patterns: ['**/v_upstream*'],
+        color: 0xff0000,  // Red
+        merge: false,
+        outline: false,
+        applyToDescendants: false
+      };
+
+      editThreeNodeContent(root, rule);
+
+      // When applyToDescendants is false and the matched node is a Group (not Mesh),
+      // no styling is applied because Groups don't have geometry.
+      // Children of v_upstream_coating (Left, Right) should NOT be red
+      root.traverse((child) => {
+        if (child instanceof Mesh && (child.name === 'Left' || child.name === 'Right')) {
+          expect((child.material as MeshBasicMaterial).color.getHex()).toBe(0xffffff);  // Original color
+        }
+      });
+
+      // v_downstream_section also matches the pattern (**/v_upstream* doesn't match it - it's v_DOWNstream)
+      // so it should remain original color
+      root.traverse((child) => {
+        if (child instanceof Mesh && child.name === 'v_downstream_section') {
+          expect((child.material as MeshBasicMaterial).color.getHex()).toBe(0xffffff);  // Original color
+        }
+      });
     });
   });
 

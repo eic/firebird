@@ -40,6 +40,22 @@ export function isAlreadyProcessed(obj: Object3D): boolean {
   return obj.userData?.[GEOMETRY_EDITING_SKIP_FLAG] === true;
 }
 
+/**
+ * Checks if an object or any of its ancestors has been marked as processed.
+ * This implements hierarchical skipping - if a parent branch was processed,
+ * all descendants should be skipped too.
+ */
+export function isInProcessedBranch(obj: Object3D): boolean {
+  let current: Object3D | null = obj;
+  while (current) {
+    if (current.userData?.[GEOMETRY_EDITING_SKIP_FLAG] === true) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
 export enum EditThreeNodeActions {
 
   Merge,   /** Merge children matching patterns (if patterns are provided) or all meshes of the node*/
@@ -57,6 +73,13 @@ export interface EditThreeNodeRule {
   outlineThresholdAngle?: number;
   simplifyMeshes?: boolean;
   simplifyRatio?: number;
+
+  /**
+   * When true and merge=false, if a pattern matches a node, all descendant meshes
+   * of that node will also be included (styled the same way).
+   * Defaults to true when merge=false and patterns are provided.
+   */
+  applyToDescendants?: boolean;
 
   /** [degrees] */
   outlineColor?: ColorRepresentation;
@@ -169,10 +192,18 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
     material,
     color,
     merge = true,
-    newName = ""
+    newName = "",
+    applyToDescendants
   } = rule;
 
+  // Default applyToDescendants to true when merge=false and patterns are provided
+  if (applyToDescendants === undefined) {
+    applyToDescendants = !merge && !!patterns;
+  }
+
   let targetMeshes: Mesh[] = [];
+  // Track nodes to mark as processed (for hierarchical skip)
+  const nodesToMarkProcessed: Object3D[] = [];
 
   if (merge) {
     // Existing merge logic
@@ -188,27 +219,57 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
     // Find all meshes that match the patterns, similar to mergeWhatever
     if (!patterns) {
       // If no patterns given, collect all meshes with geometry in the node
-      // BUT skip meshes that have already been processed (have the skip flag)
+      // Skip meshes that are in a processed branch (hierarchical skip)
+      // This means if a parent was processed, all descendants are skipped too
       node.traverse((child) => {
-        if ((child as any)?.geometry && !isAlreadyProcessed(child)) {
+        if ((child as any)?.geometry && !isInProcessedBranch(child)) {
           targetMeshes.push(child as Mesh);
         }
       });
     } else {
-      // If patterns are given, find all meshes that match
-      // Also skip already-processed meshes (e.g., outlines created by previous rules)
+      // If patterns are given, find all meshes/nodes that match
       if (typeof patterns === "string") {
         patterns = [patterns];
       }
 
+      // Use a Set to avoid duplicates when multiple patterns match the same mesh
+      const meshSet = new Set<Mesh>();
+
       for (const pattern of patterns) {
-        const found = findObject3DNodes(node, pattern, "Mesh").nodes;
-        for (const mesh of found) {
-          if (!isAlreadyProcessed(mesh)) {
-            targetMeshes.push(mesh);
+        // Find all nodes (not just meshes) matching the pattern
+        const found = findObject3DNodes(node, pattern, "").nodes;
+
+        for (const matchedNode of found) {
+          // Skip if this node or any ancestor is already processed
+          // This handles cases where parent and child both match the pattern
+          if (isInProcessedBranch(matchedNode)) {
+            continue;
           }
+
+          // Track this node for hierarchical skip
+          nodesToMarkProcessed.push(matchedNode);
+
+          if (applyToDescendants) {
+            // Collect this node and all descendant meshes
+            // Use a temporary set to collect meshes from this branch
+            matchedNode.traverse((child: Object3D) => {
+              if ((child as any)?.geometry && !meshSet.has(child as Mesh)) {
+                meshSet.add(child as Mesh);
+              }
+            });
+          } else {
+            // Only add if it's a mesh itself
+            if ((matchedNode as any)?.geometry) {
+              meshSet.add(matchedNode as Mesh);
+            }
+          }
+
+          // Mark the matched node AFTER collecting meshes
+          // This prevents child nodes from being re-processed if they also match the pattern
+          markAsProcessed(matchedNode);
         }
       }
+      targetMeshes = Array.from(meshSet);
     }
   }
 
@@ -235,7 +296,7 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
       createOutline(targetMesh, {color: outlineColor, thresholdAngle: outlineThresholdAngle, markAsProcessed: true});
     }
 
-    // Mark this mesh as processed so subsequent rules without patterns skip it
+    // Mark as processed (may already be marked for pattern-based rules, but needed for merge and no-pattern cases)
     markAsProcessed(targetMesh);
   }
 
