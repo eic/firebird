@@ -159,17 +159,30 @@ function mergeWhatever(node: Object3D, rule: EditThreeNodeRule): MergeResult | u
   }
 
   // If we are here, we need to collect what to merge first
+  // Use a Set to avoid duplicates
+  const meshSet = new Set<Mesh>();
 
-  let mergeSubjects = [];
-  // merge whole node
-  if (typeof rule.patterns === "string") {
-    rule.patterns = [rule.patterns];
+  let patterns = rule.patterns;
+  if (typeof patterns === "string") {
+    patterns = [patterns];
   }
 
-  for (const pattern of rule.patterns) {
-    mergeSubjects.push(...findObject3DNodes(node, pattern, "Mesh").nodes);
+  for (const pattern of patterns) {
+    // Find any nodes matching the pattern (not just Meshes)
+    // This allows patterns to match Groups that contain meshes
+    const matchedNodes = findObject3DNodes(node, pattern, "").nodes;
+
+    for (const matchedNode of matchedNodes) {
+      // Collect all descendant meshes from each matched node
+      matchedNode.traverse((child: Object3D) => {
+        if ((child as Mesh).isMesh && (child as Mesh).geometry) {
+          meshSet.add(child as Mesh);
+        }
+      });
+    }
   }
 
+  const mergeSubjects = Array.from(meshSet);
   let result = mergeMeshList(mergeSubjects, node, newName, rule.material);
   const deleteOrigins = rule?.deleteOrigins ?? true;
   if (result && deleteOrigins) {
@@ -278,8 +291,15 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
 
     // Change color
     if (color !== undefined && color !== null) {
-      if (targetMesh.material) {
-        (targetMesh.material as any).color = new Color(color);
+      const mat = targetMesh.material as any;
+      if (mat) {
+        if (mat.color) {
+          // Use setHex for more reliable color updates
+          mat.color.setHex(color);
+        } else {
+          mat.color = new Color(color);
+        }
+        mat.needsUpdate = true;
       }
     }
 

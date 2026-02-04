@@ -34,6 +34,11 @@ export const BROWN_100       = 0xD7CCC8;  // Very light brown/taupe
 export const PINK_100        = 0xF8BBD0;  // Very light pink
 export const PURPLE_100      = 0xE1BEE7;  // Light purple
 export const RED_100         = 0xFFCDD2;  // Very light red
+// Level 150 (pink-to-indigo gradient)
+export const ORCHID_150      = 0xE2B6D3;  // Light orchid (pink-purple, pinkest)
+export const MAUVE_150       = 0xDBB5D3;  // Light mauve (dusty pink-purple)
+export const LAVENDER_150    = 0xCCB2D5;  // Light lavender (balanced pink-indigo)
+export const LILAC_150       = 0xBDAED7;  // Light lilac (purple, closest to indigo)
 // Level 200
 export const AMBER_200       = 0xFFE082;  // Medium-light amber
 export const BLUE_GRAY_200   = 0xB0BEC5;  // Light-medium blue-gray
@@ -133,6 +138,11 @@ export const MEDIUM_COLORS: Record<string, number> = {
   PINK_100,
   PURPLE_100,
   RED_100,
+  // Level 150 (pink-to-indigo gradient)
+  LAVENDER_150,
+  LILAC_150,
+  MAUVE_150,
+  ORCHID_150,
   // Level 200
   AMBER_200,
   BLUE_GRAY_200,
@@ -348,13 +358,8 @@ export const cool2ColorRules = [
   // DRICH
   {
     name: "DRICH*",
-
     rules: [
-      {
-        color: GREEN_100,  // Light green
-        merge: false,
-        outline: true
-      },
+      // Pattern-specific rules FIRST (order matters!)
       {
         patterns: ["**/DRICH_mirror*"],
         color: SILVER,  // Simple silver color for fast mode; prettifier handles reflections
@@ -368,7 +373,12 @@ export const cool2ColorRules = [
         merge: true,
         newName: "DRICH_pdu"
       },
-
+      // "The rest" rule LAST - processes remaining unprocessed nodes
+      {
+        color: GREEN_100,  // Light green
+        merge: false,
+        outline: true
+      }
     ]
   },
 
@@ -391,7 +401,7 @@ export const cool2ColorRules = [
     name:"EcalBarrelSciFi*",
     rules: [
       {
-        color: PURPLE_50,
+        color: GUNMETAL_BLUE,
         merge: true,
         outline: true
       }
@@ -606,7 +616,7 @@ export const cool2ColorRules = [
     ],
     rules: [
       {
-        color: GRAY_50,  // Light green (beamline magnets traditionally green)
+        color: BLUE_50,  // Light green (beamline magnets traditionally green)
         merge: true,
         outline: true
       }
@@ -719,7 +729,7 @@ export const cool2ColorRules = [
     ],
     rules: [
       {
-        color: GRAY_50,  // Light green
+        color: BLUE_50,  // Light green
         merge: true,
         outline: true
       }
