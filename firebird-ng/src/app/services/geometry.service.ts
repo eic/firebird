@@ -14,6 +14,7 @@ import {monoColorRules} from "../theme/mono-geometry-ruleset";
 import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
 
 import {ConfigProperty} from "../utils/config-property";
+import {prettify, PrettifyOptions} from "../utils/eic-geometry-prettifier";
 
 import type {
   WorkerRequest,
@@ -425,7 +426,7 @@ export class GeometryService {
     return {rootGeometry: null, threeGeometry: result.threeGeometry};
   }
 
-  public postProcessing(geometry: Object3D, clippingPlanes: Plane[]) {
+  public async postProcessing(geometry: Object3D, clippingPlanes: Plane[], prettifyOptions?: Omit<PrettifyOptions, 'clippingPlanes'>): Promise<void> {
     let threeGeometry = this.geometry();
     if (!threeGeometry) return;
 
@@ -485,6 +486,14 @@ export class GeometryService {
       this.threeGeometryProcessor.processRuleSets(cadColorRules, this.subdetectors);
     } else if(geoTheme === "grey") {
       this.threeGeometryProcessor.processRuleSets(monoColorRules, this.subdetectors);
+    }
+
+    // Apply prettification (reflective materials, environment maps) if not in fast mode
+    if (!this.geometryFastAndUgly.value && prettifyOptions) {
+      await prettify(threeGeometry, {
+        ...prettifyOptions,
+        clippingPlanes: clippingPlanes,
+      });
     }
 
     threeGeometry.traverse((child: any) => {

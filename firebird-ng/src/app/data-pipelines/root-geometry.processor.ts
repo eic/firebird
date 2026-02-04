@@ -151,6 +151,12 @@ export class RootGeometryProcessor {
         {pattern: "*/cooling*", action: EditActions.Remove},
       ]
     },
+    {
+      namePattern: "*/BeamPipe_assembly*",
+      editRules: [
+        {pattern: "*/*vacuum*", action: EditActions.Remove},
+      ]
+    },
 
     {
       namePattern: "*/LumiSpecCAL*",

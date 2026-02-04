@@ -12,7 +12,8 @@ export const BLUE_WHITE      = 0xF5F9FF;  // Custom ultra-light blue-white
 export const BROWN_50        = 0xEFEBE9;  // Extremely light brown/cream
 export const CYAN_50         = 0xE0F7FA;  // Extremely light cyan
 export const GRAY_50         = 0xFAFAFA;  // Almost white
-export const INDIGO_50       = 0xE8EAF6;  // Extremely light indigo
+export const INDIGO_80       = 0xD1D9F0;  // Light indigo (more blue than 50)
+export const INDIGO_150      = 0xB2BBE0;  // Light-medium indigo
 export const PINK_50         = 0xFCE4EC;  // Extremely light pink
 export const PURPLE_50       = 0xF3E5F5;  // Extremely light purple
 export const RED_50          = 0xFFEBEE;  // Extremely light red/pink
@@ -30,13 +31,13 @@ export const BLUE_200        = 0x90CAF9;  // Light blue with more saturation
 // ============================================================
 // Level 100
 export const BROWN_100       = 0xD7CCC8;  // Very light brown/taupe
-export const INDIGO_100      = 0xC5CAE9;  // Light indigo
 export const PINK_100        = 0xF8BBD0;  // Very light pink
 export const PURPLE_100      = 0xE1BEE7;  // Light purple
 export const RED_100         = 0xFFCDD2;  // Very light red
 // Level 200
 export const AMBER_200       = 0xFFE082;  // Medium-light amber
 export const BLUE_GRAY_200   = 0xB0BEC5;  // Light-medium blue-gray
+export const INDIGO_200      = 0x9FA8DA;  // Medium-light indigo
 export const BLUE_LIGHT_200  = 0x81D4FA;  // Medium-light cyan-blue
 export const CYAN_200        = 0x80DEEA;  // Medium-light cyan
 export const GREEN_200       = 0xA5D6A7;  // Medium-light green
@@ -78,10 +79,11 @@ export const TERRACOTTA      = 0xE2725B;  // Terracotta
 // METALLIC COLORS - Sorted alphabetically within subcategories
 // ============================================================
 // Bluish Metallics
-export const GUNMETAL_BLUE   = 0x5C6274;  // Gunmetal with blue tint
-export const PEWTER          = 0x8A9A9E;  // Pewter (blue-gray)
-export const STEEL_BLUE      = 0x4682B4;  // Steel blue - industrial metal
-export const TITANIUM        = 0x878F99;  // Titanium - blue-gray metal
+export const GUNMETAL_BLUE      = 0x5C6274;  // Gunmetal with blue tint
+export const INDIGO_METALLIC_LITE = 0x9FA8DA;  // Light metallic indigo
+export const PEWTER             = 0x8A9A9E;  // Pewter (blue-gray)
+export const STEEL_BLUE         = 0x4682B4;  // Steel blue - industrial metal
+export const TITANIUM           = 0x878F99;  // Titanium - blue-gray metal
 // Reddish Metallics
 export const COPPER          = 0xB87333;  // Classic copper
 export const COPPER_BRIGHT   = 0xDA8A67;  // Bright/polished copper
@@ -110,7 +112,8 @@ export const COOL_COLORS: Record<string, number> = {
   BROWN_50,
   CYAN_50,
   GRAY_50,
-  INDIGO_50,
+  INDIGO_80,
+  INDIGO_150,
   PINK_50,
   PURPLE_50,
   RED_50,
@@ -127,7 +130,6 @@ export const COOL_COLORS: Record<string, number> = {
 export const MEDIUM_COLORS: Record<string, number> = {
   // Level 100
   BROWN_100,
-  INDIGO_100,
   PINK_100,
   PURPLE_100,
   RED_100,
@@ -137,6 +139,7 @@ export const MEDIUM_COLORS: Record<string, number> = {
   BLUE_LIGHT_200,
   CYAN_200,
   GREEN_200,
+  INDIGO_200,
   ORANGE_200,
   ORANGE_DEEP_200,
   TEAL_200,
@@ -175,6 +178,7 @@ export const WARM_COLORS: Record<string, number> = {
 export const METALLIC_COLORS: Record<string, number> = {
   // Bluish
   GUNMETAL_BLUE,
+  INDIGO_METALLIC_LITE,
   PEWTER,
   STEEL_BLUE,
   TITANIUM,
@@ -239,7 +243,7 @@ export const cool3ColorRules = [
     name: "VertexBarrelSubAssembly*",
     rules: [
       {
-        color: ORANGE_200,  // Medium-light orange
+        color: ORANGE_DEEP_200,  // Medium-light orange
         merge: true,
         outline: true
       }
@@ -341,24 +345,39 @@ export const cool3ColorRules = [
     ]
   },
 
-  // RICH Endcap - Lighter green
+  // DRICH
+  {
+    name: "DRICH*",
+
+    rules: [
+      {
+        color: GREEN_100,  // Light green
+        merge: false,
+        outline: true
+      },
+      {
+        patterns: ["**/DRICH_mirror*"],
+        color: SILVER,  // Simple silver color for fast mode; prettifier handles reflections
+        merge: true,
+        outline: false,
+        newName: "DRICH_mirror"
+      },
+      {
+        patterns: ["**/DRICH*pdu*"],
+        color: TEAL_200,
+        merge: true,
+        newName: "DRICH_pdu"
+      },
+
+    ]
+  },
+
+  // Modular RICH (Negative endcap)
   {
     name: "RICHEndcapN*",
     rules: [
       {
-        color: GREEN_100,  // Light green
-        merge: true,
-        outline: true
-      }
-    ]
-  },
-
-  // DRICH - Different green tone
-  {
-    name: "DRICH*",
-    rules: [
-      {
-        color: TEAL_200,  // Medium-light teal
+        color: GREEN_100,  // Medium-light teal
         merge: true,
         outline: true
       }
@@ -374,7 +393,7 @@ export const cool3ColorRules = [
     names: ["EcalEndcapP*", "EcalEndcapPInsert*", "EcalBarrelScFi*"],
     rules: [
       {
-        color: PINK_100,  // Very light pink
+        color: INDIGO_150,  // Very light pink
         merge: true,
         outline: true
       }
@@ -387,7 +406,8 @@ export const cool3ColorRules = [
     rules: [
       {
         patterns: ["**/crystal_vol_0"],
-        color: PURPLE_100  // Light purple for crystals
+        color: INDIGO_80,  // Light purple for crystals
+        outlineColor: 0xFFFFFF,
       },
       {
         patterns: ["**/inner_support*", "**/ring*"],
@@ -457,11 +477,11 @@ export const cool3ColorRules = [
     rules: [
       {
         material: new THREE.MeshStandardMaterial({
-          color: CHROME,  // Chrome metallic
+          color: TITANIUM,  // Chrome metallic
           roughness: 0.4,
           metalness: 0.2,
           transparent: true,
-          opacity: 0.5,
+          opacity: 0.7,
           blending: THREE.NormalBlending,
           depthWrite: true,
           polygonOffset: true,
@@ -469,7 +489,7 @@ export const cool3ColorRules = [
           side: THREE.DoubleSide
         }),
         outline: true,
-        outlineColor: GRAY_300,
+        outlineColor: CHROME,
         merge: true,
         newName: "InnerTrackerSupport"
       }
@@ -481,8 +501,16 @@ export const cool3ColorRules = [
     name: "BeamPipe_assembly*",
     rules: [
       {
-        color: GRAY_100,  // Nearly white
-        merge: true,
+         patterns: ["**/v_upstream*"],
+       // color: GRAY_100,  // Nearly white
+        color: INDIGO_200 ,
+        merge: false,
+        outline: true
+      },
+      {
+       // color: GRAY_100,  // Nearly white
+        color: INDIGO_80,
+        merge: false,
         outline: true
       }
     ]
@@ -539,7 +567,7 @@ export const cool3ColorRules = [
     name: "B0ECal*",
     rules: [
       {
-        color: PINK_50,  // Extremely light pink
+        color: BLUE_300,  // Extremely light pink
         merge: true,
         outline: true
       }
@@ -561,7 +589,7 @@ export const cool3ColorRules = [
     ],
     rules: [
       {
-        color: GREEN_100,  // Light green (beamline magnets traditionally green)
+        color: BLUE_LIGHT_50,  // Light green (beamline magnets traditionally green)
         merge: true,
         outline: true
       }
@@ -590,7 +618,7 @@ export const cool3ColorRules = [
     ],
     rules: [
       {
-        color: AMBER_50,  // Extremely light amber
+        color: AMBER_500,  // Extremely light amber
         merge: true,
         outline: true
       }
@@ -602,7 +630,7 @@ export const cool3ColorRules = [
     names: ["ForwardRomanPot_Station_1*", "ForwardRomanPot_Station_2*"],
     rules: [
       {
-        color: ORANGE_100,  // Very light warm orange
+        color: ORANGE_200,  // Very light warm orange
         merge: true,
         outline: true
       }
@@ -614,7 +642,7 @@ export const cool3ColorRules = [
     name: "ZDC_Crystal_envelope*",
     rules: [
       {
-        color: BLUE_LIGHT_200,  // Medium-light cyan-blue
+        color: BLUE_200,  // Medium-light cyan-blue
         merge: true,
         outline: true
       }
@@ -626,7 +654,7 @@ export const cool3ColorRules = [
     name: "HcalFarForwardZDC_SiPMonTile*",
     rules: [
       {
-        color: BLUE_200,  // Light blue with more saturation
+        color: GUNMETAL_BLUE,  // Light blue with more saturation
         merge: true,
         outline: true
       }
@@ -679,7 +707,7 @@ export const cool3ColorRules = [
     ],
     rules: [
       {
-        color: GREEN_100,  // Light green
+        color: BLUE_LIGHT_50,  // Light green
         merge: true,
         outline: true
       }

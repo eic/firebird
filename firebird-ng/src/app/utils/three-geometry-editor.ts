@@ -5,6 +5,41 @@ import * as THREE from "three";
 import {ColorRepresentation} from "three";
 import {SimplifyModifier} from "three/examples/jsm/modifiers/SimplifyModifier.js";
 
+/**
+ * Flag name used to mark objects that have already been processed by geometry editing rules.
+ * When set to true, subsequent rules without patterns ("the rest") will skip this object.
+ */
+export const GEOMETRY_EDITING_SKIP_FLAG = 'geometryEditingSkipRules';
+
+/**
+ * Clears the geometryEditingSkipRules flag on all nodes in the tree.
+ * Should be called at the start of processing a new ruleset for a detector.
+ */
+export function clearGeometryEditingFlags(root: Object3D): void {
+  root.traverse((child) => {
+    if (child.userData && child.userData[GEOMETRY_EDITING_SKIP_FLAG] !== undefined) {
+      delete child.userData[GEOMETRY_EDITING_SKIP_FLAG];
+    }
+  });
+}
+
+/**
+ * Marks an object as processed by geometry editing rules.
+ */
+export function markAsProcessed(obj: Object3D): void {
+  if (!obj.userData) {
+    obj.userData = {};
+  }
+  obj.userData[GEOMETRY_EDITING_SKIP_FLAG] = true;
+}
+
+/**
+ * Checks if an object has been marked as already processed.
+ */
+export function isAlreadyProcessed(obj: Object3D): boolean {
+  return obj.userData?.[GEOMETRY_EDITING_SKIP_FLAG] === true;
+}
+
 export enum EditThreeNodeActions {
 
   Merge,   /** Merge children matching patterns (if patterns are provided) or all meshes of the node*/
@@ -153,19 +188,26 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
     // Find all meshes that match the patterns, similar to mergeWhatever
     if (!patterns) {
       // If no patterns given, collect all meshes with geometry in the node
+      // BUT skip meshes that have already been processed (have the skip flag)
       node.traverse((child) => {
-        if ((child as any)?.geometry) {
+        if ((child as any)?.geometry && !isAlreadyProcessed(child)) {
           targetMeshes.push(child as Mesh);
         }
       });
     } else {
       // If patterns are given, find all meshes that match
+      // Also skip already-processed meshes (e.g., outlines created by previous rules)
       if (typeof patterns === "string") {
         patterns = [patterns];
       }
 
       for (const pattern of patterns) {
-        targetMeshes.push(...findObject3DNodes(node, pattern, "Mesh").nodes);
+        const found = findObject3DNodes(node, pattern, "Mesh").nodes;
+        for (const mesh of found) {
+          if (!isAlreadyProcessed(mesh)) {
+            targetMeshes.push(mesh);
+          }
+        }
       }
     }
   }
@@ -190,8 +232,11 @@ export function editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule) {
     }
 
     if (outline) {
-      createOutline(targetMesh, {color: outlineColor, thresholdAngle: outlineThresholdAngle});
+      createOutline(targetMesh, {color: outlineColor, thresholdAngle: outlineThresholdAngle, markAsProcessed: true});
     }
+
+    // Mark this mesh as processed so subsequent rules without patterns skip it
+    markAsProcessed(targetMesh);
   }
 
   if (cleanupNodes) {
