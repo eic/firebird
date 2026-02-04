@@ -56,7 +56,7 @@ export type GeometryProgressCallback = (stage: string, progress: number) => void
 export class GeometryService {
 
   geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
-  geometryCutListName = new ConfigProperty('geometry.cutListName', "central");
+  geometryCutListName = new ConfigProperty('geometry.cutListName', "off");
   geometryThemeName = new ConfigProperty('geometry.themeName', "cool2");
   geometryRootFilterName = new ConfigProperty('geometry.rootFilterName', "default");
 

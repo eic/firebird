@@ -398,10 +398,10 @@ export const cool2ColorRules = [
   // CENTRAL DETECTOR - ECAL (Pink/Violetish)
   // ============================================================
   {
-    name:"EcalBarrelSciFi*",
+    name:"EcalBarrelScFi*",
     rules: [
       {
-        color: GUNMETAL_BLUE,
+        color: PURPLE_50,
         merge: true,
         outline: true
       }
