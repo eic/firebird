@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import {wildCardCheck} from "../utils/wildcard";
-import {editThreeNodeContent, EditThreeNodeRule} from "../utils/three-geometry-editor";
+import {editThreeNodeContent, EditThreeNodeRule, clearGeometryEditingFlags} from "../utils/three-geometry-editor";
 import {Subdetector} from "../model/subdetector";
 
 /**
@@ -121,6 +121,10 @@ export class ThreeGeometryProcessor {
     for (let [detector, ruleSet] of detRulesMap) {
       // Some performance metrics
       const start = performance.now();
+
+      // Clear geometry editing flags before processing this detector's rules
+      // This ensures "the rest" rules work correctly within each detector's ruleset
+      clearGeometryEditingFlags(detector.geometry);
 
       // Actually apply rules
       for(let rule of ruleSet) {

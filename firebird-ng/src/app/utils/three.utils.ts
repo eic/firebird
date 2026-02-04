@@ -1,7 +1,6 @@
 import outmatch from 'outmatch';
 
 import * as THREE from "three";
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
 import { GeoNodeWalkCallback, walkGeoNodes } from "../../lib-root-geometry/root-geo-navigation";
 import { MergeResult } from "./three-geometry-merge";
 
@@ -218,6 +217,8 @@ export interface CreateOutlineOptions {
   color?: THREE.ColorRepresentation;
   material?: THREE.Material;
   thresholdAngle?: number;
+  /** If true, marks the created outline with geometryEditingSkipRules flag */
+  markAsProcessed?: boolean;
 }
 
 let globalOutlineCount = 0;
@@ -235,7 +236,7 @@ export function createOutline(mesh: any, options: CreateOutlineOptions = {}): vo
     throw new NoGeometryError(mesh);
   }
 
-  let { color = 0x555555, material, thresholdAngle = 40 } = options || {};
+  let { color = 0x555555, material, thresholdAngle = 40, markAsProcessed = false } = options || {};
 
   // Generate edges geometry based on the threshold angle
   let edges = new THREE.EdgesGeometry(mesh.geometry, thresholdAngle);
@@ -257,6 +258,11 @@ export function createOutline(mesh: any, options: CreateOutlineOptions = {}): vo
   const edgesLine = new THREE.LineSegments(edges, lineMaterial);
   edgesLine.name = (mesh.name ?? "") + "_outline";
   edgesLine.userData = {};
+
+  // Mark the outline as processed so subsequent rules skip it
+  if (markAsProcessed) {
+    edgesLine.userData['geometryEditingSkipRules'] = true;
+  }
 
   // Add the outline to the parent of the mesh
   mesh.updateMatrixWorld(true);

@@ -5,7 +5,6 @@ import datetime
 import os
 import logging
 import time
-from csv import excel
 from urllib.parse import unquote
 
 import werkzeug.exceptions
@@ -41,6 +40,7 @@ CFG_DOWNLOAD_IS_UNRESTRICTED = "PYROBIRD_DOWNLOAD_IS_UNRESTRICTED"
 CFG_DOWNLOAD_IS_DISABLED = "PYROBIRD_DOWNLOAD_IS_DISABLED"
 CFG_DOWNLOAD_PATH = "PYROBIRD_DOWNLOAD_PATH"
 CFG_CORS_IS_ALLOWED = "PYROBIRD_CORS_IS_ALLOWED"
+CFG_SHUTDOWN_IS_ALLOWED = "PYROBIRD_SHUTDOWN_IS_ALLOWED"
 CFG_API_BASE_URL = "PYROBIRD_API_BASE_URL"
 CFG_FIREBIRD_CONFIG_PATH = "PYROBIRD_FIREBIRD_CONFIG_PATH"
 
@@ -144,11 +144,8 @@ def download_file(filename=None):
 
     filename = unquote(filename)
 
-    # All checks and flags that user can download the file
-    if not _can_user_download_file(filename):
-        abort(404)
-
     # If it is relative, combine it with PYROBIRD_DOWNLOAD_PATH
+    # This MUST happen before the security check to ensure path traversal protection
     if not os.path.isabs(filename):
         download_path = flask.current_app.config.get(CFG_DOWNLOAD_PATH)
         if not download_path:
@@ -159,6 +156,11 @@ def download_file(filename=None):
 
         # combine the file path
         filename = os.path.join(download_path, filename)
+
+    # All checks and flags that user can download the file
+    # Security check uses realpath() to prevent path traversal attacks
+    if not _can_user_download_file(filename):
+        abort(403)  # Forbidden
 
     # Check if the file exists and is a file
     if os.path.exists(filename) and os.path.isfile(filename):
@@ -271,9 +273,9 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
         # Extract the event data
         event = edm4eic_to_dex_dict(tree, entries_index_list)
     except Exception as e:
-        err_msg = f"Error processing events {entries} from file {filename}: {e}"
-        logger.error(err_msg)
-        return {"error": err_msg}, 400
+        # Log detailed error server-side, return generic message to client
+        logger.error(f"Error processing events {entries} from file {filename}: {e}")
+        return {"error": "Error processing events from file."}, 400
 
     # This function conversion time to milliseconds
     elapsed_time_ms = (time.perf_counter() - start_time) * 1000
@@ -379,13 +381,24 @@ def static_file(path):
 
 @flask_app.route('/shutdown', methods=['GET', 'POST'])
 def shutdown():
-    """Shutdowns the server"""
+    """Shutdowns the server.
+
+    Controlled by PYROBIRD_SHUTDOWN_IS_ALLOWED config flag.
+    Default is True (allowed) for local user workflows like batch screenshots.
+    Set to False for production/shared server deployments.
+    """
+
+    # Check if shutdown is allowed (default: True for local user workflows)
+    shutdown_allowed = flask.current_app.config.get(CFG_SHUTDOWN_IS_ALLOWED, True)
+    if shutdown_allowed is False:
+        logger.warning("Shutdown request rejected. PYROBIRD_SHUTDOWN_IS_ALLOWED=False")
+        abort(403, description="Shutdown is disabled on this server.")
 
     func = request.environ.get('werkzeug.server.shutdown')
     if func is not None:
         func()
     else:
-        print("Werkzeug shutdown not available. Forcing exit.")
+        logger.info("Werkzeug shutdown not available. Forcing exit.")
         os._exit(0)
     return 'Server shutting down...'
 

@@ -96,7 +96,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   geometryUrl = new ConfigProperty('geometry.selectedGeometry', 'https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root');
   geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
-  geometryCutListName = new ConfigProperty('geometry.cutListName', "central");
+  geometryCutListName = new ConfigProperty('geometry.cutListName', "off");
   dexJsonEventSource = new ConfigProperty('events.dexEventsSource', '');
   rootEventSource = new ConfigProperty('events.rootEventSource', '');
   rootEventRange = new ConfigProperty('events.rootEventRange', '0-5');

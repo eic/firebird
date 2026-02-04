@@ -2,7 +2,7 @@
 
 import * as THREE from "three";
 import { EventDisplay, RendererManager } from "phoenix-event-display";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 /**
  * PhoenixThreeFacade serves as a facade to encapsulate and abstract

@@ -332,7 +332,11 @@ export class EventDisplayService {
       disposeHierarchy(sceneGeo, /* disposeSelf= */ false);
     }
 
-    this.geomService.postProcessing(threeGeometry, this.three.clipPlanes);
+    await this.geomService.postProcessing(threeGeometry, this.three.clipPlanes, {
+      renderer: this.three.renderer,
+      sceneGeometry: this.three.sceneGeometry,
+      scene: this.three.scene,
+    });
 
     sceneGeo.add(threeGeometry);
 
