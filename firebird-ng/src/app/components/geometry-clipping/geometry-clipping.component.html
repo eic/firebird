@@ -81,7 +81,7 @@
         type="number"
         [value]="openingAngle()"
         [disabled]="!clippingEnabled()"
-        (input)="openingAngle = $any($event.target).valueAsNumber"
+        (input)="changeOpeningClippingAngle($any($event.target).valueAsNumber)"
         (change)="changeOpeningClippingAngle(openingAngle())"
       />
     </button>
@@ -129,7 +129,7 @@
         type="number"
         [value]="startAngle()"
         [disabled]="!clippingEnabled()"
-        (input)="startAngle = $any($event.target).valueAsNumber"
+        (input)="changeStartClippingAngle($any($event.target).valueAsNumber)"
         (change)="changeStartClippingAngle(startAngle())"
       />
     </button>
