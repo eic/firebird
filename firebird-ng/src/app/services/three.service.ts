@@ -239,7 +239,7 @@ export class ThreeService implements OnDestroy {
     this.camera = this.perspectiveCamera;
 
     // Create renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true , logarithmicDepthBuffer: true, stencil:true});
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.localClippingEnabled = false;
     this.renderer.shadowMap.enabled = true;

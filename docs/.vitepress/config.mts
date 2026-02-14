@@ -22,12 +22,14 @@ export default defineConfig({
       { text: "Tutorials",
         items: [
           { text: "01 User Interface", link: "/tutorials/01_basic_ui" },
-          { text: "02 Run Locally", link: "/tutorials/02_run_local" }
+          { text: "02 Run Locally", link: "/tutorials/02_run_local" },
+          { text: "03 Saving Video", link: "/tutorials/03_saving_video" }
         ]
       },
       { text: "Development",
         items: [
           { text: "Data Format", link: "/dex"},
+          { text: "Geometry Rules", link: "/geometry-rules"},
           { text: "Roadmap", link: "/eic-requirements" }
         ]
       }

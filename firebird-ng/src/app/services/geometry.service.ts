@@ -8,12 +8,12 @@ import * as THREE from "three";
 import {getColorOrDefault} from "../utils/three.utils";
 
 import {cool2ColorRules} from "../theme/cool2-geometry-ruleset";
-import {cool3ColorRules} from "../theme/cool3-geometry-ruleset";
 import {cadColorRules} from "../theme/cad-geometry-ruleset";
 import {monoColorRules} from "../theme/mono-geometry-ruleset";
 import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
 
 import {ConfigProperty} from "../utils/config-property";
+import {prettify, PrettifyOptions} from "../utils/eic-geometry-prettifier";
 
 import type {
   WorkerRequest,
@@ -56,8 +56,8 @@ export type GeometryProgressCallback = (stage: string, progress: number) => void
 export class GeometryService {
 
   geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
-  geometryCutListName = new ConfigProperty('geometry.cutListName', "central");
-  geometryThemeName = new ConfigProperty('geometry.themeName', "cool3");
+  geometryCutListName = new ConfigProperty('geometry.cutListName', "off");
+  geometryThemeName = new ConfigProperty('geometry.themeName', "cool2");
   geometryRootFilterName = new ConfigProperty('geometry.rootFilterName', "default");
 
   /** Collection of subdetectors */
@@ -425,7 +425,7 @@ export class GeometryService {
     return {rootGeometry: null, threeGeometry: result.threeGeometry};
   }
 
-  public postProcessing(geometry: Object3D, clippingPlanes: Plane[]) {
+  public async postProcessing(geometry: Object3D, clippingPlanes: Plane[], prettifyOptions?: Omit<PrettifyOptions, 'clippingPlanes'>): Promise<void> {
     let threeGeometry = this.geometry();
     if (!threeGeometry) return;
 
@@ -477,14 +477,20 @@ export class GeometryService {
 
     if(geoTheme === "cool2") {
       this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
-    } else if(geoTheme === "cool3") {
-      this.threeGeometryProcessor.processRuleSets(cool3ColorRules, this.subdetectors);
     } else if(geoTheme === "cool2no") {
       this.threeGeometryProcessor.processRuleSets(cool2NoOutlineColorRules, this.subdetectors);
     } else if(geoTheme === "cad") {
       this.threeGeometryProcessor.processRuleSets(cadColorRules, this.subdetectors);
     } else if(geoTheme === "grey") {
       this.threeGeometryProcessor.processRuleSets(monoColorRules, this.subdetectors);
+    }
+
+    // Apply prettification (reflective materials, environment maps) if not in fast mode
+    if (!this.geometryFastAndUgly.value && prettifyOptions) {
+      await prettify(threeGeometry, {
+        ...prettifyOptions,
+        clippingPlanes: clippingPlanes,
+      });
     }
 
     threeGeometry.traverse((child: any) => {

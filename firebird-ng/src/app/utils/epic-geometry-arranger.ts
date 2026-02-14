@@ -1,5 +1,4 @@
 import {Object3D, Group} from "three";
-import {For} from "three/examples/jsm/transpiler/AST";
 
 // Main detector areas
 export const GROUP_FORWARD = "Forward";
