@@ -12,7 +12,7 @@ import {ThreeEventProcessor} from '../data-pipelines/three-event.processor';
 import {DataModelPainter, DisplayMode} from '../painters/data-model-painter';
 import {AnimationManager} from "../animation/animation-manager";
 import {initGroupFactories} from "../model/default-group-init";
-import {Mesh, MeshBasicMaterial, SphereGeometry} from "three";
+import {Mesh, MeshBasicMaterial, SphereGeometry, Vector3} from "three";
 import {arrangeEpicDetectors} from "../utils/epic-geometry-arranger";
 
 
@@ -192,6 +192,16 @@ export class EventDisplayService {
       .to({currentTime: targetTime}, duration)
       .onUpdate((obj) => {
         this.eventTime.set(obj.currentTime);
+        const dz = Math.max(obj.currentTime/10, 25);
+        if(obj.currentTime <50) {
+          const direction = new Vector3();
+          direction.subVectors(this.three.controls.target, this.three.camera.position).normalize();
+          const zoomAmount = -5;
+          this.three.camera.position.addScaledVector(direction, zoomAmount);  // positive = zoom in
+        }
+        this.three.camera.position.setZ(this.three.camera.position.z + dz);
+        this.three.controls.target.setZ(this.three.controls.target.z + dz);
+        this.three.camera.updateMatrix();
       }).onStop((time)=>{
         console.log(`[eventDisplay]: time animation stopped at: ${time}`);
       }).onComplete((time)=>{
@@ -244,6 +254,12 @@ export class EventDisplayService {
 
       const particleToOrigin = new Tween(particle.position, this.tweenGroup)
         .to({z: 0,}, tweenDuration,)
+        .onUpdate((time)=>{// Move camera closer to the target (what you're doing, but toward target)
+          const direction = new Vector3();
+          direction.subVectors(this.three.controls.target, this.three.camera.position).normalize();
+          const zoomAmount = 3;
+          this.three.camera.position.addScaledVector(direction, zoomAmount);  // positive = zoom in
+        })
         .start();
 
       particleTweens.push(particleToOrigin);
@@ -458,5 +474,154 @@ export class EventDisplayService {
     if (this.animateEventAfterLoad) {
       this.animateWithCollision();
     }
+  }
+
+  /**
+   * Offline frame-by-frame render. Steps the tween manually,
+   * captures each frame as PNG, returns array of blobs.
+   */
+  async captureFramesOffline(options: {
+    width: number;
+    height: number;
+    eventTimeStep: number;       // event-time units per frame, e.g. 0.1
+    includeCollision?: boolean;
+    onProgress?: (current: number, total: number) => void;
+    signal?: AbortSignal;
+  }): Promise<Blob[]> {
+    const { width, height, eventTimeStep, onProgress } = options;
+    const renderer = this.three.renderer;
+
+    // ── Save original state ──
+    const origWidth = renderer.domElement.width;
+    const origHeight = renderer.domElement.height;
+    const origPixelRatio = renderer.getPixelRatio();
+    const origCameraPos = this.three.camera.position.clone();
+    const origTarget = this.three.controls.target.clone();
+
+    // ── Force render resolution ──
+    renderer.setSize(width, height, false);
+    renderer.setPixelRatio(1);
+
+    const frames: Blob[] = [];
+
+    const captureFrame = (): Promise<Blob> => {
+      renderer.render(this.three.scene, this.three.camera);
+      return new Promise((resolve, reject) => {
+        renderer.domElement.toBlob(
+          blob => blob ? resolve(blob) : reject(new Error('toBlob failed')),
+          'image/png'
+        );
+      });
+    };
+
+    // ── Yield to browser so UI updates (progress bar etc.) ──
+    const yieldFrame = () => new Promise(resolve => setTimeout(resolve, 0));
+
+    try {
+      // ── Phase 1: Collision particles (optional) ──
+      if (options.includeCollision) {
+        const collisionDuration = 1000; // ms, matches animateParticlesCollide
+        const collisionFps = 60;
+        const collisionMsPerFrame = 1000 / collisionFps;
+        const collisionFrames = Math.ceil(collisionDuration / collisionMsPerFrame);
+
+        // Reset state
+        this.rewindTime();
+        this.three.camera.position.copy(origCameraPos);
+        this.three.controls.target.copy(origTarget);
+
+        // Build offline tween group for collision
+        const collGroup = new TweenGroup();
+
+        const particleSize = 30;
+        const dist = 5000;
+
+        const electronGeom = new SphereGeometry(particleSize, 32, 32);
+        const electronMat = new MeshBasicMaterial({ color: 0x0000FF, transparent: true, opacity: 0 });
+        const electron = new Mesh(electronGeom, electronMat);
+        electron.position.setZ(dist);
+
+        const ionGeom = new SphereGeometry(2 * particleSize, 32, 32);
+        const ionMat = new MeshBasicMaterial({ color: 0xFF0000, transparent: true, opacity: 0 });
+        const ion = new Mesh(ionGeom, ionMat);
+        ion.position.setZ(-dist);
+
+        this.three.sceneEvent.add(electron, ion);
+
+        // Opacity fade-in
+        new Tween(electronMat, collGroup).to({ opacity: 1 }, 300).start(0);
+        new Tween(ionMat, collGroup).to({ opacity: 1 }, 300).start(0);
+
+        // Move to origin
+        new Tween(electron.position, collGroup)
+          .to({ z: 0 }, collisionDuration)
+          .onUpdate(() => {
+            const dir = new Vector3().subVectors(this.three.controls.target, this.three.camera.position).normalize();
+            this.three.camera.position.addScaledVector(dir, 3);
+          })
+          .start(0);
+        new Tween(ion.position, collGroup).to({ z: 0 }, collisionDuration).start(0);
+
+        for (let i = 0; i <= collisionFrames; i++) {
+          if (options.signal?.aborted) break;
+          collGroup.update(i * collisionMsPerFrame);
+          frames.push(await captureFrame());
+          onProgress?.(frames.length, -1); // indeterminate total during collision
+          await yieldFrame();
+        }
+
+        this.three.sceneEvent.remove(electron, ion);
+        electronGeom.dispose(); electronMat.dispose();
+        ionGeom.dispose(); ionMat.dispose();
+      }
+
+      // ── Phase 2: Time animation ──
+      const totalEventTime = this.maxTime - this.minTime;
+      const totalFrames = Math.ceil(totalEventTime / eventTimeStep);
+
+      // Build offline tween group that replicates animateCurrentTime
+      const timeGroup = new TweenGroup();
+      const baseMsPerUnit = 200;
+      const speed = this.animationSpeed;
+      const duration = totalEventTime * (baseMsPerUnit / speed);
+      const msPerFrame = eventTimeStep * (baseMsPerUnit / speed);
+
+      const timeObj = { currentTime: this.minTime };
+
+      new Tween(timeObj, timeGroup)
+        .to({ currentTime: this.maxTime }, duration)
+        .onUpdate((obj) => {
+          this.eventTime.set(obj.currentTime);
+          const dz = Math.max(obj.currentTime / 10, 25);
+          if (obj.currentTime < 50) {
+            const direction = new Vector3()
+              .subVectors(this.three.controls.target, this.three.camera.position)
+              .normalize();
+            this.three.camera.position.addScaledVector(direction, -5);
+          }
+          this.three.camera.position.setZ(this.three.camera.position.z + dz);
+          this.three.controls.target.setZ(this.three.controls.target.z + dz);
+          this.three.camera.updateMatrix();
+        })
+        .start(0);
+
+      for (let i = 0; i <= totalFrames; i++) {
+        if (options.signal?.aborted) break;
+        timeGroup.update(i * msPerFrame);
+        frames.push(await captureFrame());
+        onProgress?.(frames.length, totalFrames);
+        await yieldFrame();
+      }
+
+    } finally {
+      // ── Restore everything ──
+      renderer.setSize(origWidth, origHeight, false);
+      renderer.setPixelRatio(origPixelRatio);
+      this.three.camera.position.copy(origCameraPos);
+      this.three.controls.target.copy(origTarget);
+      this.three.camera.updateMatrix();
+    }
+
+    return frames;
   }
 }

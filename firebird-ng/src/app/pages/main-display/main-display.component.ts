@@ -37,6 +37,9 @@ import {MatProgressSpinner} from "@angular/material/progress-spinner";
 import {SceneExportComponent} from "../../components/scene-export/scene-export";
 import GUI from 'lil-gui';
 import {ConfigProperty} from "../../utils/config-property";
+import JSZip from 'jszip';
+
+
 
 /**
  * This MainDisplayComponent:
@@ -121,6 +124,12 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   // lil GUI for right panel
   lilGui = new GUI();
   showGui = false;
+
+  // video recording
+  offlineRecording = signal(false);
+  offlineProgress = signal('');
+  private offlineAbort: AbortController | null = null;
+  capturedFrames: Blob[] = [];
 
   // Phoenix API
   private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
@@ -211,12 +220,25 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.lilGui.add(this.eventDisplay.three.controls.target, 'y').name("Pivot y[mm]").decimals(1).listen();
     this.lilGui.add(this.eventDisplay.three.controls.target, 'z').name("Pivot z[mm]").decimals(1).listen();
 
+    this.lilGui.add(this, 'testButton').name('Camera to center');
+
     this.lilGui.add(this.eventDisplay.three, "showBVHDebug");
 
     // GUI settings
     this.lilGui.domElement.style.top = '64px';
     this.lilGui.domElement.style.right = '120px';
     this.lilGui.domElement.style.display = 'none';
+
+    this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen, false);
+
+    this.lilGui.add(this, 'startRecording').name('Start recording');
+    this.lilGui.add(this, 'stopRecording').name('Stop recording');
+    this.lilGui.add(this, 'download').name('Download recording');
+    // Offline 4K capture controls
+    const captureFolder = this.lilGui.addFolder('4K Capture');
+    captureFolder.add(this, 'startOfflineRecording').name('▶ Start Capture');
+    captureFolder.add(this, 'stopOfflineRecording').name('⏹ Stop');
+    captureFolder.add(this, 'downloadFrames').name('💾 Download Frames');
 
   }
 
@@ -274,45 +296,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.cubeControl?.gizmo) {
       this.cubeControl.gizmo.update();
     }
-  }
-
-  // 8) GEOMETRY TOGGLING
-  // showAllGeometries() {
-  //   this.geometryGroupSwitchingIndex = ALL_GROUPS.length;
-  //   if (!this.geomService.subdetectors) return;
-  //   for (let detector of this.geomService.subdetectors) {
-  //     detector.geometry.visible = true;
-  //   }
-  // }
-  // showGeometryGroup(groupName: string) {
-  //   if (!this.geomService.subdetectors) return;
-  //   for (let detector of this.geomService.subdetectors) {
-  //     detector.geometry.visible = (detector.groupName === groupName);
-  //   }
-  // }
-  // cycleGeometry() {
-  //   this.geometryGroupSwitchingIndex++;
-  //   if (this.geometryGroupSwitchingIndex > ALL_GROUPS.length) {
-  //     this.geometryGroupSwitchingIndex = 0;
-  //   }
-  //   if (this.geometryGroupSwitchingIndex === ALL_GROUPS.length) {
-  //     this.showAllGeometries();
-  //     this.currentGeometry = 'All';
-  //   } else {
-  //     this.currentGeometry = ALL_GROUPS[this.geometryGroupSwitchingIndex];
-  //     this.showGeometryGroup(this.currentGeometry);
-  //   }
-  // }
-
-  public formatCurrentTime(value: number): string {
-    return value.toFixed(1);
-  }
-
-  changeCurrentTime(event: Event) {
-    if (!event) return;
-    const input = event.target as HTMLInputElement;
-    const value = parseFloat(input.value);
-    this.eventDisplay.updateEventTime(value);
   }
 
   // 10) SCENE TREE / UI
@@ -485,5 +468,171 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   animateWithCollision() {
     this.eventDisplay.animateWithCollision();
+  }
+
+  testButton() {
+    window.alert("hoho");
+  }
+
+  mediaSource = new MediaSource();
+
+  mediaRecorder?: MediaRecorder;
+  recordedBlobs = [];
+  sourceBuffer!:SourceBuffer;
+  originalSize?:{width:number, height:number}|null;
+
+
+  handleSourceOpen(event: any) {
+    console.log('MediaSource opened');
+    this.sourceBuffer = this.mediaSource.addSourceBuffer('video/webm; codecs="vp8"');
+    console.log('Source buffer: ', this.sourceBuffer);
+  }
+
+  handleDataAvailable(event:any) {
+    if (event.data && event.data.size > 0) {
+      // @ts-ignore
+      this.recordedBlobs.push(event.data);
+    }
+  }
+
+  handleStop(event: any) {
+    console.log('Recorder stopped: ', event);
+    const superBuffer = new Blob(this.recordedBlobs, {type: 'video/webm'});
+
+  }
+
+  startRecording() {
+    // Save current size so we can restore later
+
+    const stream = this.eventDisplay.three.renderer.domElement.captureStream(60);
+    this.recordedBlobs = [];
+
+    const optionsList = [
+      { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 200_000_000 },  // 200 Mbps for 4K
+      { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 200_000_000 },
+      { mimeType: 'video/webm', videoBitsPerSecond: 200_000_000 },
+    ];
+
+    let recorder: MediaRecorder | null = null;
+    for (const options of optionsList) {
+      if (MediaRecorder.isTypeSupported(options.mimeType)) {
+        try {
+          recorder = new MediaRecorder(stream, options);
+          console.log('Created MediaRecorder with', options);
+          break;
+        } catch (e) {
+          console.warn('Failed with options', options, e);
+        }
+      }
+    }
+
+    if (!recorder) {
+      alert('MediaRecorder is not supported by this browser.');
+      return;
+    }
+
+    this.mediaRecorder = recorder;
+    this.mediaRecorder.onstop = (event) => this.handleStop(event);
+    this.mediaRecorder.ondataavailable = (event) => this.handleDataAvailable(event);
+    this.mediaRecorder.start(100);
+  }
+
+  stopRecording() {
+    this.mediaRecorder?.stop();
+    console.log('Recorded Blobs: ', this.recordedBlobs);
+  }
+
+
+
+
+  download() {
+    const blob = new Blob(this.recordedBlobs, {type: 'video/webm'});
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = 'test.webm';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+  }
+
+  async startOfflineRecording() {
+    if (this.offlineRecording()) return;
+    this.offlineRecording.set(true);
+    this.offlineProgress.set('Preparing...');
+
+    this.offlineAbort = new AbortController();
+    let frames: Blob[] = [];
+
+    try {
+      frames = await this.eventDisplay.captureFramesOffline({
+        width: 3840,
+        height: 2160,
+        eventTimeStep: 0.1,
+        includeCollision: true,
+        signal: this.offlineAbort.signal,
+        onProgress: (current, total) => {
+          if (total > 0) {
+            this.offlineProgress.set(`Frame ${current} / ${total}`);
+          } else {
+            this.offlineProgress.set(`Frame ${current} (collision phase)`);
+          }
+        },
+      });
+
+      if (this.offlineAbort.signal.aborted) {
+        this.offlineProgress.set(`Stopped. Captured ${frames.length} frames.`);
+      }
+    } catch (err) {
+      console.error('Offline recording failed:', err);
+      this.showError(`Offline recording failed: ${err}`);
+      this.offlineRecording.set(false);
+      return;
+    }
+
+    // Store frames so we can download later even after stopping
+    this.capturedFrames = frames;
+    this.offlineRecording.set(false);
+
+    if (frames.length > 0) {
+      this.offlineProgress.set(`${frames.length} frames ready. Use "Download frames" button.`);
+    }
+  }
+
+  stopOfflineRecording() {
+    this.offlineAbort?.abort();
+  }
+
+  async downloadFrames() {
+    if (this.capturedFrames.length === 0) {
+      this.showError('No frames captured yet.');
+      return;
+    }
+
+    this.offlineProgress.set(`Packing ${this.capturedFrames.length} frames...`);
+
+    const zip = new JSZip();
+    const folder = zip.folder('frames')!;
+    for (let i = 0; i < this.capturedFrames.length; i++) {
+      folder.file(`frame_${String(i).padStart(6, '0')}.png`, this.capturedFrames[i]);
+    }
+
+    const blob = await zip.generateAsync(
+      { type: 'blob', compression: 'STORE' },
+      (meta) => this.offlineProgress.set(`Zipping: ${meta.percent.toFixed(0)}%`)
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'frames_4k.zip';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    this.offlineProgress.set(`Done! Downloaded ${this.capturedFrames.length} frames.`);
   }
 }
