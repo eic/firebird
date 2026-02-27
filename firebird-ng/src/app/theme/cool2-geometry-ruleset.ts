@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import {DepthModes} from "three";
 
 // ============================================================
 // COOL COLORS (Light/Pastel) - Sorted by saturation level, then name
@@ -237,7 +238,19 @@ export const cool2ColorRules = [
     names: ["SolenoidBarrel_assembly*", "SolenoidEndcapP*", "SolenoidEndcapN*"],
     rules: [
       {
-        color: CHROME,  // Neutral metal for main solenoid
+        //color: CHROME,  // Neutral metal for main solenoid
+        material: new THREE.MeshPhongMaterial({
+          color: CHROME,  // Metal support
+          specular: GRAY_50,
+          shininess: 100,
+          transparent: false,
+          opacity: 1,
+          side: THREE.DoubleSide,
+          clipShadows: true,
+          stencilWrite: true,
+          stencilFunc: THREE.AlwaysStencilFunc,
+          stencilRef: 1,
+        }),
         merge: true,
         outline: true
       }
@@ -298,8 +311,22 @@ export const cool2ColorRules = [
   {
     name: "EcalBarrelTrackerSubAssembly*",
     rules: [
+      // {
+      //   color: YELLOW_100,  // Very light yellow
+      //   merge: true,
+      //   outline: true
+      // }
       {
-        color: YELLOW_100,  // Very light yellow
+        material: new THREE.MeshLambertMaterial({
+          color: YELLOW_100,  // Metal support
+          transparent: false,
+          opacity: 1,
+          side: THREE.DoubleSide,
+          clipShadows: true,
+          stencilWrite: true,
+          stencilFunc: THREE.AlwaysStencilFunc,
+          stencilRef: 1,
+        }),
         merge: true,
         outline: true
       }
@@ -400,8 +427,22 @@ export const cool2ColorRules = [
   {
     name:"EcalBarrelScFi*",
     rules: [
+      // {
+      //   color: PURPLE_50,
+      //   merge: true,
+      //   outline: true
+      // }
       {
-        color: PURPLE_50,
+        material: new THREE.MeshLambertMaterial({
+          color: PURPLE_50,  // Metal support
+          transparent: false,
+          opacity: 1,
+          side: THREE.DoubleSide,
+          clipShadows: true,
+          stencilWrite: true,
+          stencilFunc: THREE.AlwaysStencilFunc,
+          stencilRef: 1,
+        }),
         merge: true,
         outline: true
       }
@@ -462,7 +503,19 @@ export const cool2ColorRules = [
     names: ["LFHCAL*", "HcalEndcapPInsert*", "HcalBarrel*", "HcalEndcapN*"],
     rules: [
       {
-        color: BLUE_200,  // Medium-light blue
+        // color: BLUE_200,  // Medium-light blue
+        material: new THREE.MeshPhongMaterial({
+          color: BLUE_200,  // Metal support
+          specular: 0x454545,
+          shininess: 62,
+          transparent: false,
+          opacity: 1,
+          side: THREE.DoubleSide,
+          clipShadows: true,
+          stencilWrite: true,
+          stencilFunc: THREE.AlwaysStencilFunc,
+          stencilRef: 1,
+        }),
         merge: true,
         outline: true
       }
@@ -476,7 +529,21 @@ export const cool2ColorRules = [
     names: ["FluxBarrel*", "FluxEndcapP*", "FluxEndcapN*"],
     rules: [
       {
-        color: BLUE_50,  // Light-medium gray
+        //color: BLUE_50,  // Light-medium gray
+        material: new THREE.MeshPhongMaterial({
+          color: BLUE_50,  // Metal support
+          specular: 0x454545,
+          shininess: 62,
+          transparent: false,
+          depthWrite: true,
+          depthTest: true,
+          opacity: 1,
+          side: THREE.DoubleSide,
+          clipShadows: true,
+          stencilWrite: true,
+          stencilFunc: THREE.AlwaysStencilFunc,
+          stencilRef: 1,
+        }),
         merge: true,
         outline: true
       }
@@ -616,7 +683,21 @@ export const cool2ColorRules = [
     ],
     rules: [
       {
-        color: BLUE_50,  // Light green (beamline magnets traditionally green)
+        //color: BLUE_50,
+        material: new THREE.MeshPhongMaterial({
+          color: BLUE_50,  // Metal support
+          specular: 0x454545,
+          shininess: 62,
+          transparent: false,
+          depthWrite: true,
+          depthTest: true,
+          opacity: 1,
+          side: THREE.DoubleSide,
+          clipShadows: true,
+          stencilWrite: true,
+          stencilFunc: THREE.AlwaysStencilFunc,
+          stencilRef: 1,
+        }),
         merge: true,
         outline: true
       }

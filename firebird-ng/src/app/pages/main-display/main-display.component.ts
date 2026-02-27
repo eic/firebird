@@ -130,6 +130,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   offlineProgress = signal('');
   private offlineAbort: AbortController | null = null;
   capturedFrames: Blob[] = [];
+  captureOverrideResolution = true;
+  captureWidth = 3840;
+  captureHeight = 2160;
 
   // Phoenix API
   private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
@@ -234,8 +237,11 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.lilGui.add(this, 'startRecording').name('Start recording');
     this.lilGui.add(this, 'stopRecording').name('Stop recording');
     this.lilGui.add(this, 'download').name('Download recording');
-    // Offline 4K capture controls
-    const captureFolder = this.lilGui.addFolder('4K Capture');
+    // Offline capture controls
+    const captureFolder = this.lilGui.addFolder('Offline Capture');
+    captureFolder.add(this, 'captureOverrideResolution').name('Override resolution');
+    captureFolder.add(this, 'captureWidth', 640, 7680, 1).name('Width');
+    captureFolder.add(this, 'captureHeight', 360, 4320, 1).name('Height');
     captureFolder.add(this, 'startOfflineRecording').name('▶ Start Capture');
     captureFolder.add(this, 'stopOfflineRecording').name('⏹ Stop');
     captureFolder.add(this, 'downloadFrames').name('💾 Download Frames');
@@ -471,7 +477,12 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   testButton() {
-    window.alert("hoho");
+    this.eventDisplay.three.camera.position.setX(-3600);
+    this.eventDisplay.three.camera.position.setY(2900);
+    this.eventDisplay.three.camera.position.setZ(-4700);
+    this.eventDisplay.three.controls.target.setX(0);
+    this.eventDisplay.three.controls.target.setY(0);
+    this.eventDisplay.three.controls.target.setZ(0);
   }
 
   mediaSource = new MediaSource();
@@ -562,6 +573,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async startOfflineRecording() {
     if (this.offlineRecording()) return;
+    this.snackBar.open('Capture may distort video in your browser. Resulting captures will be fine.', 'OK', { duration: 5000 });
     this.offlineRecording.set(true);
     this.offlineProgress.set('Preparing...');
 
@@ -570,8 +582,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
     try {
       frames = await this.eventDisplay.captureFramesOffline({
-        width: 3840,
-        height: 2160,
+        overrideResolution: this.captureOverrideResolution,
+        width: this.captureWidth,
+        height: this.captureHeight,
         eventTimeStep: 0.1,
         includeCollision: true,
         signal: this.offlineAbort.signal,
@@ -613,26 +626,99 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    this.offlineProgress.set(`Packing ${this.capturedFrames.length} frames...`);
+    const total = this.capturedFrames.length;
 
-    const zip = new JSZip();
-    const folder = zip.folder('frames')!;
-    for (let i = 0; i < this.capturedFrames.length; i++) {
-      folder.file(`frame_${String(i).padStart(6, '0')}.png`, this.capturedFrames[i]);
+    // Prefer File System Access API (Chromium) — writes each PNG directly,
+    // no memory spike at all. Falls back to chunked ZIPs for Firefox/Safari.
+    if ('showDirectoryPicker' in window) {
+      try {
+        await this.downloadFramesToDirectory(total);
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return; // user cancelled picker
+        console.warn('Directory picker failed, falling back to chunked ZIPs:', err);
+      }
     }
 
-    const blob = await zip.generateAsync(
-      { type: 'blob', compression: 'STORE' },
-      (meta) => this.offlineProgress.set(`Zipping: ${meta.percent.toFixed(0)}%`)
+    await this.downloadFramesAsChunkedZips(total);
+  }
+
+  /** Write each frame as an individual PNG into a user-chosen folder. */
+  private async downloadFramesToDirectory(total: number) {
+    this.offlineProgress.set('Choose a folder to save frames...');
+    const dirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+
+    const yieldToUI = () => new Promise(resolve => setTimeout(resolve, 0));
+    this.snackBar.open(`Saving ${total} frames to folder...`, undefined, { duration: 0 });
+
+    for (let i = 0; i < total; i++) {
+      const name = `frame_${String(i).padStart(6, '0')}.png`;
+      const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(this.capturedFrames[i]);
+      await writable.close();
+
+      if (i % 10 === 0) {
+        this.offlineProgress.set(`Saving frame ${i + 1} / ${total}...`);
+        await yieldToUI();
+      }
+    }
+
+    this.offlineProgress.set(`Done! Saved ${total} frames to folder.`);
+    this.snackBar.open(`Saved ${total} frames`, 'OK', { duration: 5000 });
+  }
+
+  /**
+   * Fallback: split frames into small ZIPs (~200 frames each) so no single
+   * ZIP blob exceeds browser ArrayBuffer limits.
+   */
+  private async downloadFramesAsChunkedZips(total: number) {
+    const CHUNK_SIZE = 200;
+    const numChunks = Math.ceil(total / CHUNK_SIZE);
+
+    this.snackBar.open(
+      `Saving ${total} frames in ${numChunks} ZIP file(s)...`, undefined, { duration: 0 }
     );
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'frames_4k.zip';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const yieldToUI = () => new Promise(resolve => setTimeout(resolve, 0));
 
-    this.offlineProgress.set(`Done! Downloaded ${this.capturedFrames.length} frames.`);
+    for (let chunk = 0; chunk < numChunks; chunk++) {
+      const start = chunk * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, total);
+
+      this.offlineProgress.set(
+        `ZIP ${chunk + 1}/${numChunks}: packing frames ${start}–${end - 1}...`
+      );
+      await yieldToUI();
+
+      const zip = new JSZip();
+      const folder = zip.folder('frames')!;
+      for (let i = start; i < end; i++) {
+        folder.file(`frame_${String(i).padStart(6, '0')}.png`, this.capturedFrames[i]);
+      }
+
+      const blob = await zip.generateAsync(
+        { type: 'blob', compression: 'STORE' },
+        (meta) => this.offlineProgress.set(
+          `ZIP ${chunk + 1}/${numChunks}: ${meta.percent.toFixed(0)}%`
+        )
+      );
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = numChunks === 1
+        ? 'frames_4k.zip'
+        : `frames_4k_part${String(chunk + 1).padStart(2, '0')}.zip`;
+      a.click();
+
+      // Give browser time to start the download before revoking
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      URL.revokeObjectURL(url);
+      await yieldToUI();
+    }
+
+    this.offlineProgress.set(`Done! Downloaded ${total} frames in ${numChunks} ZIP(s).`);
+    this.snackBar.open(`Downloaded ${total} frames`, 'OK', { duration: 5000 });
   }
 }

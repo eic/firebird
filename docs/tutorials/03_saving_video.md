@@ -57,12 +57,21 @@ You don't have to wait for the full capture to finish. If you have enough frames
 Once the capture finishes (or you stop it early):
 
 1. Click **"💾 Download Frames"**.
-2. The frames are packed into a ZIP archive (using `STORE` compression since PNGs are already compressed).
-3. Your browser will download `frames_4k.zip` containing a `frames/` folder with files named
-   `frame_000000.png`, `frame_000001.png`, etc.
+2. **On Chrome/Edge:** A folder picker dialog appears. Choose (or create) a folder and Firebird
+   writes each PNG directly into it — no zipping, no memory spike.
+3. **On Firefox/Safari:** Frames are automatically split into multiple smaller ZIP files
+   (~200 frames each) and downloaded sequentially. The files are named
+   `frames_4k_part01.zip`, `frames_4k_part02.zip`, etc. Each contains a `frames/` folder
+   with files like `frame_000000.png`, `frame_000001.png`, etc.
+
+Progress is shown in the debug panel and via a notification bar at the bottom of the screen.
 
 > **Tip:** The frames stay in memory until you start a new capture.
 > You can download them multiple times if needed.
+>
+> **Why not one big ZIP?** A 4K capture can easily exceed 2 GB, which is beyond the
+> browser's single-allocation limit. The folder picker avoids this entirely;
+> the chunked ZIP fallback keeps each file well under the limit.
 
 ## 4. Converting Frames to Video
 

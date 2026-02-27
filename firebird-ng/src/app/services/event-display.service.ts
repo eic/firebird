@@ -481,6 +481,7 @@ export class EventDisplayService {
    * captures each frame as PNG, returns array of blobs.
    */
   async captureFramesOffline(options: {
+    overrideResolution?: boolean;
     width: number;
     height: number;
     eventTimeStep: number;       // event-time units per frame, e.g. 0.1
@@ -497,10 +498,15 @@ export class EventDisplayService {
     const origPixelRatio = renderer.getPixelRatio();
     const origCameraPos = this.three.camera.position.clone();
     const origTarget = this.three.controls.target.clone();
+    const origAspect = this.three.perspectiveCamera.aspect;
 
-    // ── Force render resolution ──
-    renderer.setSize(width, height, false);
-    renderer.setPixelRatio(1);
+    // ── Force render resolution (opt-in) ──
+    if (options.overrideResolution) {
+      renderer.setSize(width, height, false);
+      renderer.setPixelRatio(1);
+      this.three.perspectiveCamera.aspect = width / height;
+      this.three.perspectiveCamera.updateProjectionMatrix();
+    }
 
     const frames: Blob[] = [];
 
@@ -576,38 +582,29 @@ export class EventDisplayService {
       }
 
       // ── Phase 2: Time animation ──
+      // Speed scales event-time per frame: speed=2 → 2x event-time per frame → half as many frames
       const totalEventTime = this.maxTime - this.minTime;
-      const totalFrames = Math.ceil(totalEventTime / eventTimeStep);
-
-      // Build offline tween group that replicates animateCurrentTime
-      const timeGroup = new TweenGroup();
-      const baseMsPerUnit = 200;
-      const speed = this.animationSpeed;
-      const duration = totalEventTime * (baseMsPerUnit / speed);
-      const msPerFrame = eventTimeStep * (baseMsPerUnit / speed);
-
-      const timeObj = { currentTime: this.minTime };
-
-      new Tween(timeObj, timeGroup)
-        .to({ currentTime: this.maxTime }, duration)
-        .onUpdate((obj) => {
-          this.eventTime.set(obj.currentTime);
-          const dz = Math.max(obj.currentTime / 10, 25);
-          if (obj.currentTime < 50) {
-            const direction = new Vector3()
-              .subVectors(this.three.controls.target, this.three.camera.position)
-              .normalize();
-            this.three.camera.position.addScaledVector(direction, -5);
-          }
-          this.three.camera.position.setZ(this.three.camera.position.z + dz);
-          this.three.controls.target.setZ(this.three.controls.target.z + dz);
-          this.three.camera.updateMatrix();
-        })
-        .start(0);
+      const effectiveStep = eventTimeStep * this.animationSpeed;
+      const totalFrames = Math.ceil(totalEventTime / effectiveStep);
 
       for (let i = 0; i <= totalFrames; i++) {
         if (options.signal?.aborted) break;
-        timeGroup.update(i * msPerFrame);
+
+        const currentTime = Math.min(this.minTime + i * effectiveStep, this.maxTime);
+        this.eventTime.set(currentTime);
+
+        // Camera movement (matches animateCurrentTime tween onUpdate)
+        const dz = Math.max(currentTime / 10, 25);
+        if (currentTime < 50) {
+          const direction = new Vector3()
+            .subVectors(this.three.controls.target, this.three.camera.position)
+            .normalize();
+          this.three.camera.position.addScaledVector(direction, -5);
+        }
+        this.three.camera.position.setZ(this.three.camera.position.z + dz);
+        this.three.controls.target.setZ(this.three.controls.target.z + dz);
+        this.three.camera.updateMatrix();
+
         frames.push(await captureFrame());
         onProgress?.(frames.length, totalFrames);
         await yieldFrame();
@@ -615,8 +612,12 @@ export class EventDisplayService {
 
     } finally {
       // ── Restore everything ──
-      renderer.setSize(origWidth, origHeight, false);
-      renderer.setPixelRatio(origPixelRatio);
+      if (options.overrideResolution) {
+        renderer.setSize(origWidth, origHeight, false);
+        renderer.setPixelRatio(origPixelRatio);
+        this.three.perspectiveCamera.aspect = origAspect;
+        this.three.perspectiveCamera.updateProjectionMatrix();
+      }
       this.three.camera.position.copy(origCameraPos);
       this.three.controls.target.copy(origTarget);
       this.three.camera.updateMatrix();
