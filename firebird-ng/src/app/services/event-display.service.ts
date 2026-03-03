@@ -34,6 +34,9 @@ export class EventDisplayService {
   // Animation cycling
   public animationIsCycling: WritableSignal<boolean> = signal(false);
 
+  // Whether camera moves (zoom/pan) during time animation
+  public animateCameraMovement: boolean = false;
+
 
   public maxTime = 200;
   public minTime = 0;
@@ -192,16 +195,18 @@ export class EventDisplayService {
       .to({currentTime: targetTime}, duration)
       .onUpdate((obj) => {
         this.eventTime.set(obj.currentTime);
-        const dz = Math.max(obj.currentTime/10, 25);
-        if(obj.currentTime <50) {
-          const direction = new Vector3();
-          direction.subVectors(this.three.controls.target, this.three.camera.position).normalize();
-          const zoomAmount = -5;
-          this.three.camera.position.addScaledVector(direction, zoomAmount);  // positive = zoom in
+        if (this.animateCameraMovement) {
+          const dz = Math.max(obj.currentTime/10, 25);
+          if(obj.currentTime <50) {
+            const direction = new Vector3();
+            direction.subVectors(this.three.controls.target, this.three.camera.position).normalize();
+            const zoomAmount = -5;
+            this.three.camera.position.addScaledVector(direction, zoomAmount);  // positive = zoom in
+          }
+          this.three.camera.position.setZ(this.three.camera.position.z + dz);
+          this.three.controls.target.setZ(this.three.controls.target.z + dz);
+          this.three.camera.updateMatrix();
         }
-        this.three.camera.position.setZ(this.three.camera.position.z + dz);
-        this.three.controls.target.setZ(this.three.controls.target.z + dz);
-        this.three.camera.updateMatrix();
       }).onStop((time)=>{
         console.log(`[eventDisplay]: time animation stopped at: ${time}`);
       }).onComplete((time)=>{
@@ -255,10 +260,12 @@ export class EventDisplayService {
       const particleToOrigin = new Tween(particle.position, this.tweenGroup)
         .to({z: 0,}, tweenDuration,)
         .onUpdate((time)=>{// Move camera closer to the target (what you're doing, but toward target)
-          const direction = new Vector3();
-          direction.subVectors(this.three.controls.target, this.three.camera.position).normalize();
-          const zoomAmount = 3;
-          this.three.camera.position.addScaledVector(direction, zoomAmount);  // positive = zoom in
+          if (this.animateCameraMovement) {
+            const direction = new Vector3();
+            direction.subVectors(this.three.controls.target, this.three.camera.position).normalize();
+            const zoomAmount = 3;
+            this.three.camera.position.addScaledVector(direction, zoomAmount);  // positive = zoom in
+          }
         })
         .start();
 
@@ -562,8 +569,10 @@ export class EventDisplayService {
         new Tween(electron.position, collGroup)
           .to({ z: 0 }, collisionDuration)
           .onUpdate(() => {
-            const dir = new Vector3().subVectors(this.three.controls.target, this.three.camera.position).normalize();
-            this.three.camera.position.addScaledVector(dir, 3);
+            if (this.animateCameraMovement) {
+              const dir = new Vector3().subVectors(this.three.controls.target, this.three.camera.position).normalize();
+              this.three.camera.position.addScaledVector(dir, 3);
+            }
           })
           .start(0);
         new Tween(ion.position, collGroup).to({ z: 0 }, collisionDuration).start(0);
@@ -594,16 +603,18 @@ export class EventDisplayService {
         this.eventTime.set(currentTime);
 
         // Camera movement (matches animateCurrentTime tween onUpdate)
-        const dz = Math.max(currentTime / 10, 25);
-        if (currentTime < 50) {
-          const direction = new Vector3()
-            .subVectors(this.three.controls.target, this.three.camera.position)
-            .normalize();
-          this.three.camera.position.addScaledVector(direction, -5);
+        if (this.animateCameraMovement) {
+          const dz = Math.max(currentTime / 10, 25);
+          if (currentTime < 50) {
+            const direction = new Vector3()
+              .subVectors(this.three.controls.target, this.three.camera.position)
+              .normalize();
+            this.three.camera.position.addScaledVector(direction, -5);
+          }
+          this.three.camera.position.setZ(this.three.camera.position.z + dz);
+          this.three.controls.target.setZ(this.three.controls.target.z + dz);
+          this.three.camera.updateMatrix();
         }
-        this.three.camera.position.setZ(this.three.camera.position.z + dz);
-        this.three.controls.target.setZ(this.three.controls.target.z + dz);
-        this.three.camera.updateMatrix();
 
         frames.push(await captureFrame());
         onProgress?.(frames.length, totalFrames);

@@ -35,6 +35,7 @@ import {TrackPainterConfig} from "../../services/track-painter-config";
 import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
 import {MatProgressSpinner} from "@angular/material/progress-spinner";
 import {SceneExportComponent} from "../../components/scene-export/scene-export";
+import {AnimationSettingsComponent} from "../../components/animation-settings/animation-settings.component";
 import GUI from 'lil-gui';
 import {ConfigProperty} from "../../utils/config-property";
 import JSZip from 'jszip';
@@ -72,6 +73,7 @@ import JSZip from 'jszip';
     ObjectRaycastComponent,
     MatProgressSpinner,
     SceneExportComponent,
+    AnimationSettingsComponent,
   ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
