@@ -58,13 +58,12 @@ event_action = DDG4.EventAction(kernel, 'FirebirdTrajectoryWriterEventAction/Tra
 event_action.ComponentName = "Geant4Trajectories"   # Tracks group name in firebird
 #event_action.RequireRichTrajectory = True  # Only use trajectories with time info
 #event_action.VerboseTimeExtraction = True  # Log details about time extraction
-# stepping = DDG4.SteppingAction(kernel, 'TextDumpingSteppingAction/MyStepper')
 event_action.OutputFile = outputFile
-# stepping.OnlyPrimary = False           # True = only keep tracks coming from generator/gun (e.g. parent=0)
-event_action.MomentumMin = 350               # Only leave tracks with
-# stepping.VertexCut = True              # Cut tracks which vertex is outside z_min-z_max range
-# stepping.VertexZMin = -5000            # [mm] Min Z for Vertex Cut. Will work only if VertexCut = True
-# stepping.VertexZMax = 5000             # [mm] Max Z for Vertex Cut. Will work only if VertexCut = True
+event_action.OnlyPrimary = True              # True = only keep tracks coming from generator/gun (e.g. parent=0)
+event_action.MomentumMin = 100           # Only leave tracks with
+# event_action.VertexCut = True              # Cut tracks which vertex is outside z_min-z_max range
+# event_action.VertexZMin = -5000            # [mm] Min Z for Vertex Cut. Will work only if VertexCut = True
+# event_action.VertexZMax = 5000             # [mm] Max Z for Vertex Cut. Will work only if VertexCut = True
 
 #kernel.steppingAction().add(stepping)
 kernel.eventAction().add(event_action)

@@ -37,11 +37,11 @@ kernel = DDG4.Kernel()
 # Instantiate the stepping action
 stepping = DDG4.SteppingAction(kernel, 'TextDumpingSteppingAction/MyStepper')
 stepping.OutputFile = outputFile
-stepping.OnlyPrimary = False
+stepping.OnlyPrimary = True
 stepping.MomentumMin = 150
-stepping.VertexCut = True              # Cut tracks which vertex is outside z_min-z_max range
-stepping.VertexZMin = -5000            # [mm] Min Z for Vertex Cut. Will work only if VertexCut = True
-stepping.VertexZMax = 5000             # [mm] Max Z for Vertex Cut. Will work only if VertexCut = True
+#stepping.VertexCut = False              # Cut tracks which vertex is outside z_min-z_max range
+#stepping.VertexZMin = -5000            # [mm] Min Z for Vertex Cut. Will work only if VertexCut = True
+#stepping.VertexZMax = 5000             # [mm] Max Z for Vertex Cut. Will work only if VertexCut = True
 
 kernel.steppingAction().add(stepping)
 

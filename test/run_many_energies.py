@@ -4,7 +4,7 @@
 # This will create prefix/lib folder after the install
 # cmake .. && make && make install
 # cd .. && ls prefix/lib  # <= Ensure libfirebird-dd4hep.so is there
-# export LD_LIBRARY_PATH="$(pwd)/prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+# export LD_LIBRARY_PATH="/mnt/dd4hep-plugin/prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 # mkdir -p tmp && cd tmp
 # source /opt/detector/epic-main/bin/thisepic.sh
 # python3 /mnt/test/run_many_energies.py
