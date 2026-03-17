@@ -11,7 +11,7 @@ dynamic = ["version"]
 description = "pyrobird is a python backend for Firebird HENP event display"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "GPL-3.0-or-later" }
+license = "GPL-3.0-or-later"
 keywords = []
 authors = [
   { name = "Dmitry Romanov", email = "romanovda@gmail.com" }
@@ -48,7 +48,24 @@ fbd = "pyrobird.cli:cli_app"
 pyrobird = "pyrobird.cli:cli_app"
 
 [tool.setuptools]
-packages = ["pyrobird"]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pyrobird*"]
+exclude = ["pyrobird.server.static*"]
+
+[tool.setuptools.package-data]
+pyrobird = [
+    "data/*.yaml",
+    "server/templates/**/*",
+    "server/static/**/*",
+]
+
+[tool.setuptools.exclude-package-data]
+pyrobird = [
+    "server/static/assets/data/*.firebird/**",
+]
 
 [tool.setuptools.dynamic]
 version = { attr = "pyrobird.__version__" }
