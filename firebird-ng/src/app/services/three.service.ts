@@ -56,6 +56,7 @@ export class ThreeService implements OnDestroy {
   /** Z-axis clipping plane (perpendicular to Z, clips z > zPosition). */
   public zClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
   private zClippingEnabled = false;
+  private angularClippingEnabled = false;
 
   /** Functions callbacks that help organize performance */
   public profileBeginFunc: (() => void) | null = null;
@@ -516,6 +517,7 @@ export class ThreeService implements OnDestroy {
    * @param enable Whether clipping should be enabled.
    */
   enableClipping(enable: boolean): void {
+    this.angularClippingEnabled = enable;
     // Keep localClippingEnabled on if Z clipping is active
     this.renderer.localClippingEnabled = enable || this.zClippingEnabled;
 
@@ -544,8 +546,8 @@ export class ThreeService implements OnDestroy {
     quatB.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle + openingAngle);
     planeB.normal.set(0, 1, 0).applyQuaternion(quatB);
 
-    // Enable clipping and update materials
-    this.renderer.localClippingEnabled = true;
+    // Update materials (localClippingEnabled managed by enableClipping/enableZClipping)
+    this.renderer.localClippingEnabled = this.angularClippingEnabled || this.zClippingEnabled;
     this.updateMaterialClipping();
   }
 
@@ -579,7 +581,7 @@ export class ThreeService implements OnDestroy {
         const materials = Array.isArray(object.material) ? object.material : [object.material];
 
         materials.forEach((material: THREE.Material) => {
-          if (this.renderer.localClippingEnabled) {
+          if (this.angularClippingEnabled) {
             material.clippingPlanes = this.clipPlanes;
             material.clipIntersection = this.clipIntersection;
           } else {
@@ -817,7 +819,7 @@ export class ThreeService implements OnDestroy {
     }
 
     // Check angular clipping planes
-    if (this.clipPlanes.length > 0) {
+    if (this.angularClippingEnabled && this.clipPlanes.length > 0) {
       for (const plane of this.clipPlanes) {
         const distance = plane.distanceToPoint(point);
         if (distance < 0) {
