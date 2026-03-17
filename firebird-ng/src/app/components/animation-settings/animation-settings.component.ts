@@ -31,12 +31,14 @@ export class AnimationSettingsComponent {
   dialogRef: MatDialogRef<any> | null = null;
 
   moveCameraDuringAnimation: boolean;
+  autoPlayAnimation: boolean;
 
   constructor(
     public eventDisplayService: EventDisplayService,
     private dialog: MatDialog
   ) {
     this.moveCameraDuringAnimation = this.eventDisplayService.animateCameraMovement;
+    this.autoPlayAnimation = this.eventDisplayService.animationIsCycling();
   }
 
   openDialog(): void {
@@ -47,6 +49,7 @@ export class AnimationSettingsComponent {
 
     // Sync local state from service when opening
     this.moveCameraDuringAnimation = this.eventDisplayService.animateCameraMovement;
+    this.autoPlayAnimation = this.eventDisplayService.animationIsCycling();
 
     const rect = this.openBtn.nativeElement.getBoundingClientRect();
     const dialogWidth = 320;
@@ -69,6 +72,11 @@ export class AnimationSettingsComponent {
 
   applySettings(): void {
     this.eventDisplayService.animateCameraMovement = this.moveCameraDuringAnimation;
+    if (this.autoPlayAnimation) {
+      this.eventDisplayService.startAnimationCycling();
+    } else {
+      this.eventDisplayService.stopAnimationCycling();
+    }
     this.dialogRef?.close();
   }
 }

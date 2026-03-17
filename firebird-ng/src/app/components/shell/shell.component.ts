@@ -19,6 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import {ThemeSwitcherComponent} from "../theme-switcher/theme-switcher.component";
 import {MatTooltip} from "@angular/material/tooltip";
+import packageJson from '../../../../package.json';
 
 interface NavItem {
   label: string;
@@ -85,6 +86,8 @@ export class ShellComponent implements OnInit, OnDestroy {
   private isResizingRight = false;
   leftPaneWidth = 250;
   rightPaneWidth = 250;
+
+  appVersion: string = packageJson.version;
 
   /** Top bar: whether the mobile nav menu is open */
   navOpen = false;

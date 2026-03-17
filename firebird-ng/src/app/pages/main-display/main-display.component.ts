@@ -315,7 +315,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  onDebugButton() {
+  toggleCameraControls() {
     this.showGui = !this.showGui;
 
     // Toggle GUI visibility
@@ -324,14 +324,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       guiElement.style.display = 'block';
     } else {
       guiElement.style.display = 'none';
-    }
-  }
-
-  toggleAnimationCycling() {
-    if (this.eventDisplay.animationIsCycling()) {
-      this.eventDisplay.stopAnimationCycling();
-    } else {
-      this.eventDisplay.startAnimationCycling();
     }
   }
 

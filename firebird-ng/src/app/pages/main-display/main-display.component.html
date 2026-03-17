@@ -5,21 +5,6 @@
       <mat-icon>{{ isLeftPaneOpen ? 'close' : 'account_tree' }}</mat-icon>
     </button>
 
-    <button mat-icon-button class="panel-button" (click)="onDebugButton()">
-      <mat-icon>bug_report</mat-icon>
-    </button>
-
-    <button mat-icon-button matTooltip="Animate with beam particles collision" class="panel-button" (click)="animateWithCollision()">
-        <mat-icon>close_fullscreen</mat-icon>
-    </button>
-
-    <button mat-icon-button
-            matTooltip="Auto play animation"
-            class="panel-button"
-            [class.active]="eventDisplay.animationIsCycling()"
-            (click)="toggleAnimationCycling()">
-      <mat-icon>loop</mat-icon>
-    </button>
 
     <!-- Event selector -->
     <app-custom-event-selector></app-custom-event-selector>
@@ -50,20 +35,6 @@
       Scene Tree
     </button>
 
-    <button mat-button (click)="onDebugButton()">
-      <mat-icon>bug_report</mat-icon>
-      Debug
-    </button>
-
-    <button mat-button (click)="animateWithCollision()">
-      <mat-icon>close_fullscreen</mat-icon>
-      Collision Anim
-    </button>
-
-    <button mat-button [class.active]="eventDisplay.animationIsCycling()" (click)="toggleAnimationCycling()">
-      <mat-icon>loop</mat-icon>
-      Auto Play
-    </button>
 
     <app-geometry-clipping></app-geometry-clipping>
     <app-scene-export></app-scene-export>
@@ -79,7 +50,7 @@
   <div centralPane>
     <!-- Central content area -->
     <div id="eventDisplay"></div>
-    <app-tool-panel ></app-tool-panel>
+    <app-tool-panel (cameraControlsToggle)="toggleCameraControls()"></app-tool-panel>
     <app-cube-viewport-control></app-cube-viewport-control>
   </div>
 
@@ -130,9 +101,9 @@
       <button mat-icon-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="eventDisplay.rewindTime()">
         <mat-icon>first_page</mat-icon>
       </button>
-<!--      <button mat-raised-button aria-label="Stop" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="eventDisplay.animateWithCollision()">-->
-<!--        <mat-icon>close_fullscreen</mat-icon>-->
-<!--      </button>-->
+      <button mat-icon-button aria-label="Collision" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="animateWithCollision()">
+        <mat-icon>close_fullscreen</mat-icon>
+      </button>
       <button mat-icon-button aria-label="Play" matTooltip="Play time forward" class="tcontrol" (click)="eventDisplay.animateTime()">
         <mat-icon>play_arrow</mat-icon>
       </button>

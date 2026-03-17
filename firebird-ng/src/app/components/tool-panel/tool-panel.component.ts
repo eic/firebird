@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, Output, EventEmitter } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { ViewOptionsComponent } from '../view-options/view-options.component';
@@ -22,6 +22,8 @@ import * as THREE from 'three';
     styleUrls: ['./tool-panel.component.scss']
 })
 export class ToolPanelComponent {
+  @Output() cameraControlsToggle = new EventEmitter<void>();
+
   isCollapsed = false;
 
   /** Factor to zoom by. */
@@ -108,5 +110,9 @@ export class ToolPanelComponent {
   switchMainView() {
     this.orthographicView = !this.orthographicView;
     this.threeService.toggleOrthographicView(this.orthographicView);
+  }
+
+  onCameraControlsToggle() {
+    this.cameraControlsToggle.emit();
   }
 }

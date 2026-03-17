@@ -13,6 +13,7 @@
           <span *ngIf="item.label">{{ item.label }}</span>
         </button>
       </ng-container>
+      <div mat-menu-item disabled class="version-item">v{{ appVersion }}</div>
     </mat-menu>
 
     <!-- Navigation hamburger (mobile only, left side) -->
@@ -80,6 +81,7 @@
       </button>
     </ng-container>
     <app-theme-switcher class="theme-toggle-mobile"></app-theme-switcher>
+    <div class="version-item">v{{ appVersion }}</div>
   </div>
 
   <!-- Tools menu overlay (mobile) -->
