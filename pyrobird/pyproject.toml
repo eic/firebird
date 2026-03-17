@@ -47,8 +47,10 @@ dev = ["build", "twine", "coverage", "pytest"]
 fbd = "pyrobird.cli:cli_app"
 pyrobird = "pyrobird.cli:cli_app"
 
-[tool.setuptools]
-packages = ["pyrobird"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pyrobird*"]
+exclude = ["pyrobird.server.static*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "pyrobird.__version__" }
