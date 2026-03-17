@@ -283,7 +283,7 @@ def process_trajectories(dex_data: Dict[str, Any]) -> None:
         total_trajectories += 1
         total_points += num_points
 
-        logger.info(
+        logger.verbose(
             f"Event '{event_id}', Group '{group_name}', "
             f"Trajectory {traj_idx}: {num_points} points"
         )
