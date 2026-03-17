@@ -217,6 +217,10 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Init gui
+    this.lilGui.add(this, 'cameraToCenter').name('Camera to center');
+    this.lilGui.add(this, 'cameraToFarForward').name('Camera to Far Forward');
+    this.lilGui.add(this, 'makeScreenshot').name('Make Screenshot');
+
     this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').name('Camera x[mm]').decimals(2).listen();
     this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'y').name('Camera y[mm]').decimals(2).listen();
     this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'z').name('Camera z[mm]').decimals(2).listen();
@@ -224,8 +228,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.lilGui.add(this.eventDisplay.three.controls.target, 'x').name("Pivot x[mm]").decimals(1).listen();
     this.lilGui.add(this.eventDisplay.three.controls.target, 'y').name("Pivot y[mm]").decimals(1).listen();
     this.lilGui.add(this.eventDisplay.three.controls.target, 'z').name("Pivot z[mm]").decimals(1).listen();
-
-    this.lilGui.add(this, 'testButton').name('Camera to center');
 
     this.lilGui.add(this.eventDisplay.three, "showBVHDebug");
 
@@ -236,11 +238,16 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen, false);
 
-    this.lilGui.add(this, 'startRecording').name('Start recording');
-    this.lilGui.add(this, 'stopRecording').name('Stop recording');
-    this.lilGui.add(this, 'download').name('Download recording');
-    // Offline capture controls
-    const captureFolder = this.lilGui.addFolder('Offline Capture');
+    // Video Capture controls
+    const videoFolder = this.lilGui.addFolder('Video Capture');
+    videoFolder.close();
+    videoFolder.add(this, 'startRecording').name('Start recording');
+    videoFolder.add(this, 'stopRecording').name('Stop recording');
+    videoFolder.add(this, 'download').name('Download recording');
+
+    // High Resolution Capture controls
+    const captureFolder = this.lilGui.addFolder('High Resolution Capture');
+    captureFolder.close();
     captureFolder.add(this, 'captureOverrideResolution').name('Override resolution');
     captureFolder.add(this, 'captureWidth', 640, 7680, 1).name('Width');
     captureFolder.add(this, 'captureHeight', 360, 4320, 1).name('Height');
@@ -470,13 +477,36 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.eventDisplay.animateWithCollision();
   }
 
-  testButton() {
+  cameraToCenter() {
     this.eventDisplay.three.camera.position.setX(-3600);
     this.eventDisplay.three.camera.position.setY(2900);
     this.eventDisplay.three.camera.position.setZ(-4700);
     this.eventDisplay.three.controls.target.setX(0);
     this.eventDisplay.three.controls.target.setY(0);
     this.eventDisplay.three.controls.target.setZ(0);
+  }
+
+  cameraToFarForward() {
+    this.eventDisplay.three.camera.position.setX(8000);
+    this.eventDisplay.three.camera.position.setY(7500);
+    this.eventDisplay.three.camera.position.setZ(40000);
+    this.eventDisplay.three.controls.target.setX(0);
+    this.eventDisplay.three.controls.target.setY(0);
+    this.eventDisplay.three.controls.target.setZ(30000);
+  }
+
+  makeScreenshot() {
+    const renderer = this.eventDisplay.three.renderer;
+    // Render one frame to ensure the canvas is up to date
+    renderer.render(this.eventDisplay.three.scene, this.eventDisplay.three.camera);
+    // Use toDataURL for broad browser compatibility (works in Firefox)
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `firebird-screenshot-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   mediaSource = new MediaSource();
