@@ -53,6 +53,7 @@ export class GeometryClippingComponent implements OnInit {
   openingAngle!: Signal<number>;
   zClippingEnabled!: Signal<boolean>;
   zClippingPosition!: Signal<number>;
+  zClippingForward!: Signal<boolean>;
 
   @ViewChild('openBtn', { read: ElementRef }) openBtn!: ElementRef;
   @ViewChild('dialogTemplate') dialogTemplate!: TemplateRef<any>;
@@ -72,12 +73,14 @@ export class GeometryClippingComponent implements OnInit {
     const configOpeningAngle = this.config.getConfigOrCreate<number>('clippingOpeningAngle', 180);
     const configZClippingEnabled = this.config.getConfigOrCreate<boolean>('zClippingEnabled', false);
     const configZClippingPosition = this.config.getConfigOrCreate<number>('zClippingPosition', 0);
+    const configZClippingForward = this.config.getConfigOrCreate<boolean>('zClippingForward', true);
 
     this.clippingEnabled = toSignal(configClippingEnabled.subject, { requireSync: true });
     this.startAngle = toSignal(configStartAngle.subject, { requireSync: true });
     this.openingAngle = toSignal(configOpeningAngle.subject, { requireSync: true });
     this.zClippingEnabled = toSignal(configZClippingEnabled.subject, { requireSync: true });
     this.zClippingPosition = toSignal(configZClippingPosition.subject, { requireSync: true });
+    this.zClippingForward = toSignal(configZClippingForward.subject, { requireSync: true });
 
     // Changes in enable/disable clipping
     effect(() => {
@@ -97,12 +100,18 @@ export class GeometryClippingComponent implements OnInit {
       this.threeService.enableZClipping(this.zClippingEnabled());
       if (this.zClippingEnabled()) {
         this.threeService.setZClippingPosition(this.zClippingPosition());
+        this.threeService.setZClippingDirection(this.zClippingForward());
       }
     });
 
     // Z clipping position changes
     effect(() => {
       this.threeService.setZClippingPosition(this.zClippingPosition());
+    });
+
+    // Z clipping direction changes
+    effect(() => {
+      this.threeService.setZClippingDirection(this.zClippingForward());
     });
 
   }
@@ -151,6 +160,13 @@ export class GeometryClippingComponent implements OnInit {
     if (!isNaN(z)) {
       this.config.getConfigOrThrow<number>('zClippingPosition').value = z;
     }
+  }
+
+  /**
+   * User toggles Z clipping direction.
+   */
+  toggleZClippingDirection(change: MatCheckboxChange): void {
+    this.config.getConfigOrThrow<boolean>('zClippingForward').value = change.checked;
   }
 
 

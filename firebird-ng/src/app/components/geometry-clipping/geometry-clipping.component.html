@@ -23,7 +23,7 @@
           (click)="$event.stopPropagation()"
           (change)="toggleClipping($event)"
         >
-          Clipping
+          Angular (Pie) Clipping
         </mat-checkbox>
 
       </button>
@@ -189,6 +189,25 @@
         (input)="changeZClippingPosition($any($event.target).valueAsNumber)"
         (change)="changeZClippingPosition(zClippingPosition())"
       />
+    </button>
+
+    <button
+      mat-menu-item
+      [disabled]="!zClippingEnabled()"
+      (click)="
+        $event.stopPropagation();
+        zDirectionCheckbox._inputElement.nativeElement.click()
+      "
+    >
+      <mat-checkbox
+        #zDirectionCheckbox
+        [checked]="zClippingForward()"
+        [disabled]="!zClippingEnabled()"
+        (click)="$event.stopPropagation()"
+        (change)="toggleZClippingDirection($event)"
+      >
+        Forward (z &ge; pos)
+      </mat-checkbox>
     </button>
 
     <div class="dialog-actions">

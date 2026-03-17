@@ -53,8 +53,8 @@ export class ThreeService implements OnDestroy {
     new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
   ];
 
-  /** Z-axis clipping plane (perpendicular to Z, clips z > zPosition). */
-  public zClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+  /** Z-axis clipping plane (perpendicular to Z). */
+  public zClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   private zClippingEnabled = false;
   private angularClippingEnabled = false;
 
@@ -566,10 +566,18 @@ export class ThreeService implements OnDestroy {
 
   /**
    * Sets the Z coordinate of the Z clipping plane.
-   * Geometry with z > zPosition is clipped (hidden).
    */
   setZClippingPosition(zPosition: number): void {
     this.zClipPlane.constant = zPosition;
+  }
+
+  /**
+   * Sets the Z clipping direction.
+   * @param forward If true, keeps z >= zPosition (clips z < zPosition).
+   *                If false, keeps z <= zPosition (clips z > zPosition).
+   */
+  setZClippingDirection(forward: boolean): void {
+    this.zClipPlane.normal.set(0, 0, forward ? 1 : -1);
   }
 
   /**
