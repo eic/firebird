@@ -157,6 +157,40 @@
         270°
       </button>
     </div>
+    <!-- Z Clipping -->
+    <button
+      mat-menu-item
+      (click)="
+        $event.stopPropagation();
+        zClippingCheckbox._inputElement.nativeElement.click()
+      "
+    >
+      <mat-checkbox
+        #zClippingCheckbox
+        [checked]="zClippingEnabled()"
+        (click)="$event.stopPropagation()"
+        (change)="toggleZClipping($event)"
+      >
+        Z Clipping
+      </mat-checkbox>
+    </button>
+
+    <button
+      class="slider-btn"
+      mat-menu-item
+      [disabled]="!zClippingEnabled()"
+    >
+      Z Position
+      <input
+        class="angle-value-input"
+        type="number"
+        [value]="zClippingPosition()"
+        [disabled]="!zClippingEnabled()"
+        (input)="changeZClippingPosition($any($event.target).valueAsNumber)"
+        (change)="changeZClippingPosition(zClippingPosition())"
+      />
+    </button>
+
     <div class="dialog-actions">
         <button mat-raised-button mat-dialog-close class="close-btn">Apply</button>
     </div>

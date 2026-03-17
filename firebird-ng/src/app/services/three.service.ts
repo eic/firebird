@@ -47,11 +47,15 @@ export class ThreeService implements OnDestroy {
   public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   public cameraMode$ = new BehaviorSubject<boolean>(true);
 
-  /** Optional clipping planes and logic. */
+  /** Optional clipping planes and logic (angular wedge clipping). */
   public clipPlanes = [
     new THREE.Plane(new THREE.Vector3(0, -1, 0), 0),
     new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
   ];
+
+  /** Z-axis clipping plane (perpendicular to Z, clips z > zPosition). */
+  public zClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+  private zClippingEnabled = false;
 
   /** Functions callbacks that help organize performance */
   public profileBeginFunc: (() => void) | null = null;
@@ -512,12 +516,11 @@ export class ThreeService implements OnDestroy {
    * @param enable Whether clipping should be enabled.
    */
   enableClipping(enable: boolean): void {
-    this.renderer.localClippingEnabled = enable;
+    // Keep localClippingEnabled on if Z clipping is active
+    this.renderer.localClippingEnabled = enable || this.zClippingEnabled;
 
     // Update all materials to use clipping planes when enabled
-    if (enable) {
-      this.updateMaterialClipping();
-    }
+    this.updateMaterialClipping();
   }
 
   /**
@@ -544,6 +547,27 @@ export class ThreeService implements OnDestroy {
     // Enable clipping and update materials
     this.renderer.localClippingEnabled = true;
     this.updateMaterialClipping();
+  }
+
+  /**
+   * Enables or disables Z-axis clipping.
+   * Uses renderer.clippingPlanes (global, always union mode) so Z clipping
+   * works independently of angular clipping's clipIntersection logic.
+   */
+  enableZClipping(enable: boolean): void {
+    this.zClippingEnabled = enable;
+    this.renderer.clippingPlanes = enable ? [this.zClipPlane] : [];
+    if (enable) {
+      this.renderer.localClippingEnabled = true;
+    }
+  }
+
+  /**
+   * Sets the Z coordinate of the Z clipping plane.
+   * Geometry with z > zPosition is clipped (hidden).
+   */
+  setZClippingPosition(zPosition: number): void {
+    this.zClipPlane.constant = zPosition;
   }
 
   /**
@@ -783,14 +807,22 @@ export class ThreeService implements OnDestroy {
    * Helper to check if a point is clipped by active clipping planes
    */
   private isPointClipped(point: THREE.Vector3): boolean {
-    if (!this.renderer.localClippingEnabled || this.clipPlanes.length === 0) {
+    if (!this.renderer.localClippingEnabled) {
       return false;
     }
 
-    for (const plane of this.clipPlanes) {
-      const distance = plane.distanceToPoint(point);
-      if (distance < 0) {
-        return true;
+    // Check Z clipping plane (global, always union mode)
+    if (this.zClippingEnabled && this.zClipPlane.distanceToPoint(point) < 0) {
+      return true;
+    }
+
+    // Check angular clipping planes
+    if (this.clipPlanes.length > 0) {
+      for (const plane of this.clipPlanes) {
+        const distance = plane.distanceToPoint(point);
+        if (distance < 0) {
+          return true;
+        }
       }
     }
     return false;
