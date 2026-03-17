@@ -48,7 +48,7 @@ fbd = "pyrobird.cli:cli_app"
 pyrobird = "pyrobird.cli:cli_app"
 
 [tool.setuptools]
-include-package-data = false
+packages = ["pyrobird"]
 
 [tool.setuptools.packages.find]
 where = ["."]
