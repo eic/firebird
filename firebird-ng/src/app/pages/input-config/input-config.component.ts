@@ -74,30 +74,30 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   firebirdConfig: ServerConfig = defaultFirebirdConfig;
 
   public geometryOptions: string[] = [
-    "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_full.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_bhcal.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_no_bhcal.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_calorimeters.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_dirc_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_drich_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_forward_detectors.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_forward_detectors_with_inserts.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_imaging_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_inner_detector.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_ip6.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_ip6_extended.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_lfhcal_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_lfhcal_with_insert.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_mrich_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_pfrich_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_pid_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_tof_endcap_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_tof_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_vertex_only.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_zdc_lyso_sipm.root",
-    "https://eic.github.io/epic/artifacts/tgeo/epic_zdc_sipm_on_tile_only.root"
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_inner_detector.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_calorimeters.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_pid_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_forward_detectors.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_ip6.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_ip6_extended.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake_no_bhcal.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_full.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_bhcal.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_dirc_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_drich_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_forward_detectors_with_inserts.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_imaging_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_lfhcal_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_lfhcal_with_insert.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_mrich_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_pfrich_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_tof_endcap_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_tof_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_vertex_only.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_zdc_lyso_sipm.root",
+    "https://seeeic.org/g/epic/artifacts/tgeo/epic_zdc_sipm_on_tile_only.root"
   ];
 
   public trajectoryOptions: string[] = [
@@ -122,22 +122,22 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
 
   quickLinks: { [title: string]: { geometry: string; dexjson: string; edm4eic: string; eventRange?: string } } = {
     'Full ePIC detector geometry (no events)': {
-      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root",
+      geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
       dexjson: "",
       edm4eic: ""
     },
     'DIS CC in ePIC Beam=5x41 minQ2=1': {
-      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root",
+      geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
       dexjson: "asset://data/py8_dis-cc_5x41_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
       edm4eic: ""
     },
     'DIS CC in ePIC Beam=10x100 minQ2=1': {
-      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root",
+      geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
       dexjson: "asset://data/py8_dis-cc_10x100_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
       edm4eic: ""
     },
     'DIS CC in ePIC Beam=18x275 minQ2=1': {
-      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root",
+      geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
       dexjson: "asset://data/py8_dis-cc_18x275_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
       edm4eic: ""
     },
