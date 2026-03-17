@@ -583,8 +583,9 @@ export class ThreeService implements OnDestroy {
    */
   private updateMaterialClipping(): void {
     const updateObjectClipping = (object: THREE.Object3D) => {
-      if (object instanceof THREE.Mesh && object.material) {
-        const materials = Array.isArray(object.material) ? object.material : [object.material];
+      const obj = object as any;
+      if (obj.material) {
+        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
 
         materials.forEach((material: THREE.Material) => {
           if (this.angularClippingEnabled) {
@@ -595,11 +596,12 @@ export class ThreeService implements OnDestroy {
             material.clipIntersection = false;
           }
 
-          // Prevent z-fighting
-          if (material instanceof THREE.MeshBasicMaterial ||
+          // Prevent z-fighting (only for mesh materials)
+          if (object instanceof THREE.Mesh && (
+            material instanceof THREE.MeshBasicMaterial ||
             material instanceof THREE.MeshLambertMaterial ||
             material instanceof THREE.MeshPhongMaterial ||
-            material instanceof THREE.MeshStandardMaterial) {
+            material instanceof THREE.MeshStandardMaterial)) {
             material.polygonOffset = true;
             material.polygonOffsetFactor = 1;
             material.polygonOffsetUnits = 1;
