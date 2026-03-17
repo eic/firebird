@@ -511,7 +511,15 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   handleStop(event: any) {
     console.log('Recorder stopped: ', event);
     const superBuffer = new Blob(this.recordedBlobs, {type: 'video/webm'});
-
+    const url = window.URL.createObjectURL(superBuffer);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = 'recording.webm';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   }
 
   startRecording() {
