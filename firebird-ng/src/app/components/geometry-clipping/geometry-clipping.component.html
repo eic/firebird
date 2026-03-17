@@ -194,20 +194,17 @@
     <button
       mat-menu-item
       [disabled]="!zClippingEnabled()"
-      (click)="
-        $event.stopPropagation();
-        zDirectionCheckbox._inputElement.nativeElement.click()
-      "
+      (click)="$event.stopPropagation()"
     >
-      <mat-checkbox
-        #zDirectionCheckbox
-        [checked]="zClippingForward()"
-        [disabled]="!zClippingEnabled()"
-        (click)="$event.stopPropagation()"
-        (change)="toggleZClippingDirection($event)"
-      >
-        Forward (z &ge; pos)
-      </mat-checkbox>
+      <span class="z-direction-row">
+        Backward
+        <mat-slide-toggle
+          [checked]="zClippingForward()"
+          [disabled]="!zClippingEnabled()"
+          (change)="toggleZClippingDirection($event)"
+        ></mat-slide-toggle>
+        Forward
+      </span>
     </button>
 
     <div class="dialog-actions">

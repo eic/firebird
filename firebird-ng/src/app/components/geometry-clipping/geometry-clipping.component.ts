@@ -11,6 +11,7 @@ import {
   Signal
 } from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
+import {MatSlideToggleChange} from '@angular/material/slide-toggle';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 import { ThreeService } from '../../services/three.service';
@@ -24,6 +25,7 @@ import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog"
 import {MatIcon} from "@angular/material/icon";
 import {MatTooltip} from "@angular/material/tooltip";
 import {FormsModule} from "@angular/forms";
+import {MatSlideToggle} from "@angular/material/slide-toggle";
 
 
 
@@ -42,7 +44,7 @@ import {FormsModule} from "@angular/forms";
     MatIconButton,
     MatTooltip,
     FormsModule,
-
+    MatSlideToggle,
   ]
 })
 export class GeometryClippingComponent implements OnInit {
@@ -95,23 +97,17 @@ export class GeometryClippingComponent implements OnInit {
       this.threeService.setClippingAngle(this.startAngle(), this.openingAngle());
     });
 
-    // Z clipping changes
+    // Z clipping enable/disable
     effect(() => {
       this.threeService.enableZClipping(this.zClippingEnabled());
       if (this.zClippingEnabled()) {
-        this.threeService.setZClippingPosition(this.zClippingPosition());
-        this.threeService.setZClippingDirection(this.zClippingForward());
+        this.threeService.updateZClipping(this.zClippingPosition(), this.zClippingForward());
       }
     });
 
-    // Z clipping position changes
+    // Z clipping position or direction changes
     effect(() => {
-      this.threeService.setZClippingPosition(this.zClippingPosition());
-    });
-
-    // Z clipping direction changes
-    effect(() => {
-      this.threeService.setZClippingDirection(this.zClippingForward());
+      this.threeService.updateZClipping(this.zClippingPosition(), this.zClippingForward());
     });
 
   }
@@ -165,7 +161,7 @@ export class GeometryClippingComponent implements OnInit {
   /**
    * User toggles Z clipping direction.
    */
-  toggleZClippingDirection(change: MatCheckboxChange): void {
+  toggleZClippingDirection(change: MatSlideToggleChange): void {
     this.config.getConfigOrThrow<boolean>('zClippingForward').value = change.checked;
   }
 

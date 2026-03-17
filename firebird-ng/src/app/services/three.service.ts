@@ -565,19 +565,17 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * Sets the Z coordinate of the Z clipping plane.
+   * Updates the Z clipping plane from an absolute Z coordinate and direction.
+   * @param zPosition The Z coordinate where the plane sits.
+   * @param forward   If true, keeps z >= zPosition. If false, keeps z <= zPosition.
+   *
+   * THREE.Plane visible side: normal · point + constant >= 0
+   *   Forward:  normal=(0,0,1),  constant=-pos  →  z - pos >= 0  →  z >= pos
+   *   Backward: normal=(0,0,-1), constant=+pos  → -z + pos >= 0  →  z <= pos
    */
-  setZClippingPosition(zPosition: number): void {
-    this.zClipPlane.constant = zPosition;
-  }
-
-  /**
-   * Sets the Z clipping direction.
-   * @param forward If true, keeps z >= zPosition (clips z < zPosition).
-   *                If false, keeps z <= zPosition (clips z > zPosition).
-   */
-  setZClippingDirection(forward: boolean): void {
+  updateZClipping(zPosition: number, forward: boolean): void {
     this.zClipPlane.normal.set(0, 0, forward ? 1 : -1);
+    this.zClipPlane.constant = forward ? -zPosition : zPosition;
   }
 
   /**
