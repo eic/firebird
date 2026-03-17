@@ -1,4 +1,5 @@
 import {
+  ChangeDetectorRef,
   Component,
   EventEmitter,
   OnInit,
@@ -75,6 +76,7 @@ export class SceneTreeComponent implements OnInit {
 
   constructor(
     private threeService: ThreeService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -99,13 +101,16 @@ export class SceneTreeComponent implements OnInit {
   /* ---------------- Tree population ---------------- */
 
   public refreshSceneTree(): void {
-    this.dataSource = [];
     const scene = this.threeService.scene;
     if (!scene) {
       console.warn('No scene present in ThreeService.');
       return;
     }
+    // Force tree to disconnect old data source, then reconnect with new data
+    this.dataSource = [];
+    this.cdr.detectChanges();
     this.dataSource = [...scene.children];
+    this.cdr.detectChanges();
   }
 
   /* ---------------- Visibility toggle ---------------- */
