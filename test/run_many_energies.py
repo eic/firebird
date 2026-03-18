@@ -8,6 +8,7 @@
 # mkdir -p tmp && cd tmp
 # source /opt/detector/epic-main/bin/thisepic.sh
 # python3 /mnt/test/run_many_energies.py
+
 import subprocess
 import os
 
@@ -60,7 +61,7 @@ def get_hepmc_path(beam, minq2):
     return f"root://dtn-eic.jlab.org//volatile/eic/EPIC/EVGEN/DIS/NC/{beam}/minQ2={minq2}/pythia8NCDIS_{beam}_minQ2={minq2}_beamEffects_xAngle=-0.025_hiDiv_1.hepmc3.tree.root"
 
 def get_base_name(beam, minq2, event_num):
-    return f"py8_dis-nc_{beam}_minq2-{minq2}_minp-150mev_vtxcut-5m_nevt-{event_num}"
+    return f"py8dis-nc_{beam}_minq2-{minq2}_minp-250mev_nevt-{event_num}"
 
 def run_simulation(beam, minq2, event_num, detector_path, steering_file):
     """
