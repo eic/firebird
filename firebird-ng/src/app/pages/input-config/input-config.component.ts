@@ -101,7 +101,14 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   ];
 
   public trajectoryOptions: string[] = [
-
+    "https://seeeic.org/d/py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5_s.firebird.zip",
+    "https://seeeic.org/d/py8dis-nc_10x100_minq2-1_minp-250mev_nevt-5_s.firebird.zip",
+    "https://seeeic.org/d/py8dis-nc_18x275_minq2-1_minp-250mev_nevt-5.firebird_s.zip",
+    "https://seeeic.org/d/py8dis-nc_18x275_minq2-1000_minp-250mev_nevt-5.firebird_s.zip",
+    "https://seeeic.org/d/py8dis-nc_5x41_minq2-100_minp-250mev_nevt-5.firebird_s.zip",
+    "https://seeeic.org/d/reco_py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.firebird.zip",
+    "https://seeeic.org/d/comb_py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.firebird.zip",
+    "https://seeeic.org/d/background_py6_10x100_egas_bgas_smooth.firebird.zip",
     "asset://data/dirc_optical.v0.4.firebird.zip",
     "asset://data/py8_dis-cc_5x41_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
     "asset://data/py8_dis-cc_5x41_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
@@ -126,31 +133,46 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
       dexjson: "",
       edm4eic: ""
     },
-    'DIS CC in ePIC Beam=5x41 minQ2=1': {
+    'DIS NC in ePIC Beam=10x100 minQ2=1 Trajectories': {
       geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
-      dexjson: "asset://data/py8_dis-cc_5x41_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
-      edm4eic: ""
-    },
-    'DIS CC in ePIC Beam=10x100 minQ2=1': {
-      geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
-      dexjson: "asset://data/py8_dis-cc_10x100_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
+      dexjson: "https://seeeic.org/d/py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5_s.firebird.zip",
       edm4eic: ""
     },
     'DIS CC in ePIC Beam=18x275 minQ2=1': {
       geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
-      dexjson: "asset://data/py8_dis-cc_18x275_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
+      dexjson: "https://seeeic.org/d/py8dis-nc_18x275_minq2-1_minp-250mev_nevt-5.firebird_s.zip",
       edm4eic: ""
     },
-    'Tracking reconstruction ePIC Beam=18x275': {
-      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
-      dexjson: "asset://data/rec_dis_18x275_fdex-v0.4.edm4eic.v0.4.firebird.zip",
+    'DIS CC in ePIC Beam=18x275 minQ2=1000': {
+      geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
+      dexjson: "https://seeeic.org/d/py8dis-nc_18x275_minq2-1000_minp-250mev_nevt-5.firebird_s.zip",
       edm4eic: ""
     },
-    'Simulation campaign EDM4EIC': {
-      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
-      dexjson: "",
-      edm4eic: "root://dtn-eic.jlab.org//volatile/eic/EPIC/RECO/25.04.1/epic_craterlake/DIS/NC/18x275/minQ2=10/pythia8NCDIS_18x275_minQ2=10_beamEffects_xAngle=-0.025_hiDiv_1.0000.eicrecon.edm4eic.root"
+    'DIS NC in ePIC Beam=5x41 minQ2=100 Trajectories': {
+      geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
+      dexjson: "https://seeeic.org/d/py8dis-nc_5x41_minq2-100_minp-250mev_nevt-5.firebird_s.zip",
+      edm4eic: ""
     },
+    'Tracking reconstruction ePIC Beam=10x100': {
+      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
+      dexjson: "https://seeeic.org/d/reco_py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.firebird.zip",
+      edm4eic: ""
+    },
+    'Tracking + Trajectories ePIC Beam=10x100': {
+      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
+      dexjson: "https://seeeic.org/d/comb_py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.firebird.zip",
+      edm4eic: ""
+    },
+    'Event + Background ePIC Beam=10x100 (Large file)': {
+      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
+      dexjson: "https://seeeic.org/d/background_py6_10x100_egas_bgas_smooth.firebird.zip",
+      edm4eic: ""
+    },
+    // 'Simulation campaign EDM4EIC': {
+    //   geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
+    //   dexjson: "",
+    //   edm4eic: "root://dtn-eic.jlab.org//volatile/eic/EPIC/RECO/25.04.1/epic_craterlake/DIS/NC/18x275/minQ2=10/pythia8NCDIS_18x275_minQ2=10_beamEffects_xAngle=-0.025_hiDiv_1.0000.eicrecon.edm4eic.root"
+    // },
     'DIRC optical photons': {
       geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_dirc_only.root",
       dexjson: "asset://data/dirc_optical.v0.4.firebird.zip",
