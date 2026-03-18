@@ -12,9 +12,8 @@ import { ThreeService } from './three.service';
  */
 @Injectable({ providedIn: 'root' })
 export class SceneHelpersService {
-  private axisHelper: THREE.AxesHelper | null = null;
   private cartesianGridGroup: THREE.Group | null = null;
-  private etaPhiGridGroup: THREE.Group | null = null;
+  private etaPhiGroup: THREE.Group | null = null;
   private labelsGroup: THREE.Group | null = null;
 
   // For "show distance" or "show 3D coords" logic:
@@ -24,21 +23,16 @@ export class SceneHelpersService {
   constructor(private threeService: ThreeService) {}
 
   /**
-   * Creates or toggles the axis lines. This uses a built-in AxesHelper or your custom approach.
+   * Toggles the existing axes helper created in ThreeService.
    */
   setShowAxis(show: boolean) {
-    // If we haven't created it yet, do so
-    if (!this.axisHelper) {
-      this.axisHelper = new THREE.AxesHelper(2000);
-      this.axisHelper.name = "Axis";
-      this.threeService.scene.add(this.axisHelper);
+    if (this.threeService.axesHelper) {
+      this.threeService.axesHelper.visible = show;
     }
-    this.axisHelper.visible = show;
   }
 
   /**
-   * Show/hide a cartesian grid. This can be a built-in GridHelper or a custom approach.
-   * `scale` can define size, or you can store a config in an object.
+   * Show/hide a cartesian grid on the XZ plane at Y = -4000.
    */
   setShowCartesianGrid(show: boolean, scale: number, config?: {
     showXY: boolean;
@@ -50,48 +44,139 @@ export class SceneHelpersService {
     sparsity: number;
   }) {
     if (!this.cartesianGridGroup) {
-      // Make a group with three GridHelpers, or do your custom geometry
       this.cartesianGridGroup = new THREE.Group();
-      this.cartesianGridGroup.name = 'CartesianGridGroup';
-      // For example, add a built-in GridHelper on XZ plane:
-      const grid = new THREE.GridHelper(scale, 20, 0xffffff, 0xffffff);
-      grid.rotation.x = Math.PI / 2; // to show XZ?
+      this.cartesianGridGroup.name = 'CartesianGrid';
+      // GridHelper creates a grid on the XZ plane by default
+      const grid = new THREE.GridHelper(scale, 20, 0xffffff, 0x888888);
+      grid.material = new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.4 });
       this.cartesianGridGroup.add(grid);
-      this.cartesianGridGroup.name = "CartesianGrid"
-      // add YZ plane, XY plane, etc., if needed...
-      this.threeService.scene.add(this.cartesianGridGroup);
+      // Position at Y = -4000
+      this.cartesianGridGroup.position.set(0, -4000, 0);
+      this.threeService.sceneHelpers.add(this.cartesianGridGroup);
     }
-    // If you want to store the config for each plane, do it here.
     this.cartesianGridGroup.visible = show;
   }
 
   /**
-   * Show/hide an “eta-phi” grid if you want that feature.
-   * You can create a custom geometry or skip it.
+   * Show/hide eta lines with labels for common HEP pseudorapidity values.
+   * Eta lines are drawn as cones emanating from the origin in the XZ plane (beam axis = Z).
    */
   setShowEtaPhiGrid(show: boolean) {
-    if (!this.etaPhiGridGroup) {
-      this.etaPhiGridGroup = new THREE.Group();
-      this.etaPhiGridGroup.name = 'EtaPhiGrid';
-      // Build your geometry or lines for an eta-phi representation
-      // e.g., custom circles or lines
-      this.threeService.scene.add(this.etaPhiGridGroup);
+    if (!this.etaPhiGroup) {
+      this.etaPhiGroup = new THREE.Group();
+      this.etaPhiGroup.name = 'EtaPhi';
+      this.buildEtaLines(this.etaPhiGroup);
+      this.threeService.sceneHelpers.add(this.etaPhiGroup);
     }
-    this.etaPhiGridGroup.visible = show;
+    this.etaPhiGroup.visible = show;
   }
 
   /**
-   * Show/hide labels. If you do 2D overlays, you might skip a 3D group for labels.
-   * Or you can do a sprite-based approach or text geometry approach.
+   * Build lines for common eta values.
+   * Pseudorapidity eta = -ln(tan(theta/2)), so theta = 2*atan(exp(-eta)).
+   * In HEP convention: beam axis = Z, so a particle at angle theta from Z
+   * travels in direction (sin(theta), 0, cos(theta)).
+   */
+  private buildEtaLines(group: THREE.Group) {
+    // Common eta values for HEP collider detectors
+    const etaValues = [-4, -3, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 3, 4];
+    const lineLength = 4000; // mm, extent of lines
+
+    const material = new THREE.LineBasicMaterial({
+      color: 0xffcc00,
+      transparent: true,
+      opacity: 0.6,
+    });
+
+    for (const eta of etaValues) {
+      const theta = 2 * Math.atan(Math.exp(-eta));
+      // Direction in (x, y, z) with beam along Z:
+      // x = sin(theta), y = 0, z = cos(theta)
+      const sinTheta = Math.sin(theta);
+      const cosTheta = Math.cos(theta);
+
+      const points = [
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(sinTheta * lineLength, 0, cosTheta * lineLength),
+      ];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geometry, material);
+      line.name = `eta_${eta}`;
+      group.add(line);
+
+      // Add label sprite at the end of the line
+      const label = this.createTextSprite(`η=${eta}`, 0xffcc00);
+      label.position.set(
+        sinTheta * (lineLength + 200),
+        0,
+        cosTheta * (lineLength + 200)
+      );
+      label.name = `eta_label_${eta}`;
+      group.add(label);
+    }
+  }
+
+  /**
+   * Show/hide X, Y, Z labels at the end of the axes helper.
    */
   showLabels(show: boolean) {
     if (!this.labelsGroup) {
       this.labelsGroup = new THREE.Group();
-      this.labelsGroup.name = 'Labels';
-      this.threeService.scene.add(this.labelsGroup);
-      // Add text mesh or sprites as needed.
+      this.labelsGroup.name = 'AxisLabels';
+
+      const axisLength = 1500; // matches AxesHelper size in three.service
+      const offset = 150; // offset past the axis end
+
+      const xLabel = this.createTextSprite('X', 0xff0000);
+      xLabel.position.set(axisLength + offset, 0, 0);
+      this.labelsGroup.add(xLabel);
+
+      const yLabel = this.createTextSprite('Y', 0x00ff00);
+      yLabel.position.set(0, axisLength + offset, 0);
+      this.labelsGroup.add(yLabel);
+
+      const zLabel = this.createTextSprite('Z', 0x0000ff);
+      zLabel.position.set(0, 0, axisLength + offset);
+      this.labelsGroup.add(zLabel);
+
+      this.threeService.sceneHelpers.add(this.labelsGroup);
     }
     this.labelsGroup.visible = show;
+  }
+
+  /**
+   * Creates a sprite with text rendered on a canvas texture.
+   */
+  private createTextSprite(text: string, color: number): THREE.Sprite {
+    const canvas = document.createElement('canvas');
+    const size = 256;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.clearRect(0, 0, size, size);
+
+    // Convert hex color to CSS string
+    const cssColor = `#${color.toString(16).padStart(6, '0')}`;
+
+    ctx.font = 'Bold 120px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = cssColor;
+    ctx.fillText(text, size / 2, size / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    const spriteMaterial = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+    });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(200, 200, 1);
+    sprite.name = `label_${text}`;
+    return sprite;
   }
 
   /**
@@ -99,11 +184,9 @@ export class SceneHelpersService {
    */
   show3DMousePoints(show: boolean) {
     if (show) {
-      // Attach event listeners
       this.onPointerClickFn = (evt) => this.handle3DPointClick(evt);
       window.addEventListener('click', this.onPointerClickFn);
     } else {
-      // Remove event listeners
       if (this.onPointerClickFn) {
         window.removeEventListener('click', this.onPointerClickFn);
         this.onPointerClickFn = undefined;
@@ -112,7 +195,6 @@ export class SceneHelpersService {
   }
 
   private handle3DPointClick(evt: MouseEvent) {
-    // example of raycasting
     const rect = this.threeService.renderer.domElement.getBoundingClientRect();
     const x = ((evt.clientX - rect.left) / rect.width) * 2 - 1;
     const y = -((evt.clientY - rect.top) / rect.height) * 2 + 1;
@@ -123,7 +205,6 @@ export class SceneHelpersService {
     if (intersects.length > 0) {
       const point = intersects[0].point;
       console.log('Clicked 3D coords:', point);
-      // You could show an overlay or a small 3D marker, etc.
     }
   }
 
@@ -131,15 +212,14 @@ export class SceneHelpersService {
    * Toggle "show 3D distance" by hooking pointer events for measuring two points, etc.
    */
   show3DDistance(show: boolean) {
-    // Similar approach: track the first click, second click, measure distance, show line, etc.
-    console.warn('show3DDistance not implemented yet. You can replicate your old logic here.');
+    console.warn('show3DDistance not implemented yet.');
   }
 
   /**
-   * SHIFT cartesian grid by pointer or by values. You can replicate the old logic.
+   * SHIFT cartesian grid by pointer or by values.
    */
   shiftCartesianGridByPointer() {
-    console.warn('shiftCartesianGridByPointer not implemented. You can replicate old logic here.');
+    console.warn('shiftCartesianGridByPointer not implemented.');
   }
 
   translateCartesianGrid(shift: THREE.Vector3) {
@@ -152,10 +232,7 @@ export class SceneHelpersService {
     // If you keep labels in a separate group or do 2D overlay, handle that here
   }
 
-  // ...
-  // Additional code for “preset camera views” if you want.
   setCameraView(targetPos: THREE.Vector3, cameraPos: THREE.Vector3) {
-    // e.g. tween the camera, or set it instantly
     this.threeService.camera.position.copy(cameraPos);
     this.threeService.controls.target.copy(targetPos);
     this.threeService.controls.update();

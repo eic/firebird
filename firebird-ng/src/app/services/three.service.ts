@@ -47,6 +47,9 @@ export class ThreeService implements OnDestroy {
   public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   public cameraMode$ = new BehaviorSubject<boolean>(true);
 
+  /** The default axes helper, controllable via scene-helpers */
+  public axesHelper!: THREE.AxesHelper;
+
   /** Optional clipping planes and logic (angular wedge clipping). */
   public clipPlanes = [
     new THREE.Plane(new THREE.Vector3(0, -1, 0), 0),
@@ -375,9 +378,9 @@ export class ThreeService implements OnDestroy {
     // gridHelper.name = "Grid";
     // this.sceneHelpers.add(gridHelper);
 
-    const axesHelper = new THREE.AxesHelper(1500);
-    axesHelper.name = "Axes";
-    this.sceneHelpers.add(axesHelper);
+    this.axesHelper = new THREE.AxesHelper(1500);
+    this.axesHelper.name = "Axes";
+    this.sceneHelpers.add(this.axesHelper);
 
     // const geometry = new THREE.BoxGeometry(100, 100, 100);
     // const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
