@@ -1,7 +1,5 @@
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
-import { MatDialog } from '@angular/material/dialog';
-import { CartesianGridConfigComponent } from './cartesian-grid-config/cartesian-grid-config.component';
 import { SceneHelpersService } from '../../services/scene-helpers.service';
 import {MatMenu, MatMenuItem, MatMenuTrigger} from '@angular/material/menu';
 import {MatIcon} from "@angular/material/icon";
@@ -27,10 +25,8 @@ export class ViewOptionsComponent implements OnInit, OnDestroy {
 
   showCartesianGrid = false;
   showAxisChecked = true;
-  scale = 3000;
 
   constructor(
-    private dialog: MatDialog,
     private sceneHelpers: SceneHelpersService
   ) {}
 
@@ -49,23 +45,10 @@ export class ViewOptionsComponent implements OnInit, OnDestroy {
 
   setCartesianGrid(change: MatCheckboxChange) {
     this.showCartesianGrid = change.checked;
-    this.sceneHelpers.setShowCartesianGrid(this.showCartesianGrid, this.scale);
+    this.sceneHelpers.setShowCartesianGrid(this.showCartesianGrid);
   }
 
   showLabels(change: MatCheckboxChange) {
     this.sceneHelpers.showLabels(change.checked);
-  }
-
-  openCartesianGridConfigDialog() {
-    this.dialog.open(CartesianGridConfigComponent, {
-      data: {
-        gridVisible: this.showCartesianGrid,
-        scale: this.scale,
-      },
-      position: {
-        bottom: '5rem',
-        left: '3rem',
-      },
-    });
   }
 }

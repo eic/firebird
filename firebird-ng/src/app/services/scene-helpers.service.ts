@@ -33,21 +33,16 @@ export class SceneHelpersService {
 
   /**
    * Show/hide a cartesian grid on the XZ plane at Y = -4000.
+   * Grid squares are 1 meter (1000 units) on a side.
    */
-  setShowCartesianGrid(show: boolean, scale: number, config?: {
-    showXY: boolean;
-    showYZ: boolean;
-    showZX: boolean;
-    xDistance: number;
-    yDistance: number;
-    zDistance: number;
-    sparsity: number;
-  }) {
+  setShowCartesianGrid(show: boolean) {
     if (!this.cartesianGridGroup) {
+      const gridSize = 10000; // total extent in units (10 m)
+      const divisions = gridSize / 1000; // 1 m per square
       this.cartesianGridGroup = new THREE.Group();
       this.cartesianGridGroup.name = 'CartesianGrid';
       // GridHelper creates a grid on the XZ plane by default
-      const grid = new THREE.GridHelper(scale, 20, 0xffffff, 0x888888);
+      const grid = new THREE.GridHelper(gridSize, divisions, 0xffffff, 0x888888);
       grid.material = new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.4 });
       this.cartesianGridGroup.add(grid);
       // Position at Y = -4000
