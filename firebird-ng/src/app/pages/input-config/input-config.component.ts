@@ -164,7 +164,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
       edm4eic: ""
     },
     'Event + Background ePIC Beam=10x100 (Large file)': {
-      geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_craterlake_tracking_only.root",
+      geometry: "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
       dexjson: "https://seeeic.org/d/background_py6_10x100_egas_bgas_smooth.firebird.zip",
       edm4eic: ""
     },
