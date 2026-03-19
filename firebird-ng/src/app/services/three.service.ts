@@ -283,6 +283,9 @@ export class ThreeService implements OnDestroy {
     // It is important not to set this flag at the function end as functions, such as setSize will check the flag
     this.initialized = true;
 
+    // Apply any clipping state that was set by Angular effects before init completed
+    this.updateClippingGroups();
+
     // ----------- POST INIT ------------------
 
     // Set initial size
