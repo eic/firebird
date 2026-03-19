@@ -310,9 +310,9 @@ export class TrajectoryPainter extends EventGroupPainter {
 
   private paintNoTime() {
     for (const track of this.trajectories) {
-      // Rebuild geometry with *all* points
+      // Show all points
       track.lineObj.visible = true;
-      track.lineObj.geometry.instanceCount = Infinity;
+      track.lineObj.geometry.instanceCount = track.points.length - 1;
     }
   }
 
@@ -338,7 +338,7 @@ export class TrajectoryPainter extends EventGroupPainter {
 
       // If track has already ended, show it completely
       if (track.endTime <= time) {
-        track.lineObj.geometry.instanceCount = Infinity;
+        track.lineObj.geometry.instanceCount = track.points.length - 1;
 
         // if next paint the time moves backward, and we start hiding track parts,
         // we want lastPaintIndex to correspond to fully rendered track

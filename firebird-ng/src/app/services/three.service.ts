@@ -579,6 +579,8 @@ export class ThreeService implements OnDestroy {
    * Update all materials to use current clipping planes
    */
   private updateMaterialClipping(): void {
+    if (!this.initialized) return;
+
     // Build the combined clipping planes list:
     // - Angular clipping planes (with their own clipIntersection logic)
     // - Z clipping plane (always additive/union)
