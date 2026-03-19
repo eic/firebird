@@ -24,4 +24,8 @@ export const routes: Routes = [
     path: 'split-window',
     loadComponent: () => import('./pages/split-window/split-window.component').then(m => m.SplitWindowComponent)
   },
+  {
+    path: 'palette',
+    loadComponent: () => import('./pages/palette/palette.component').then(m => m.PaletteComponent)
+  },
 ];

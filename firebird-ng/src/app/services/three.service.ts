@@ -47,11 +47,19 @@ export class ThreeService implements OnDestroy {
   public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   public cameraMode$ = new BehaviorSubject<boolean>(true);
 
-  /** Optional clipping planes and logic. */
+  /** The default axes helper, controllable via scene-helpers */
+  public axesHelper!: THREE.AxesHelper;
+
+  /** Optional clipping planes and logic (angular wedge clipping). */
   public clipPlanes = [
     new THREE.Plane(new THREE.Vector3(0, -1, 0), 0),
     new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
   ];
+
+  /** Z-axis clipping plane (perpendicular to Z). */
+  public zClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  private zClippingEnabled = false;
+  private angularClippingEnabled = false;
 
   /** Functions callbacks that help organize performance */
   public profileBeginFunc: (() => void) | null = null;
@@ -239,7 +247,7 @@ export class ThreeService implements OnDestroy {
     this.camera = this.perspectiveCamera;
 
     // Create renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true , logarithmicDepthBuffer: true, stencil:true});
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.localClippingEnabled = false;
     this.renderer.shadowMap.enabled = true;
@@ -370,9 +378,9 @@ export class ThreeService implements OnDestroy {
     // gridHelper.name = "Grid";
     // this.sceneHelpers.add(gridHelper);
 
-    const axesHelper = new THREE.AxesHelper(1500);
-    axesHelper.name = "Axes";
-    this.sceneHelpers.add(axesHelper);
+    this.axesHelper = new THREE.AxesHelper(1500);
+    this.axesHelper.name = "Axes";
+    this.sceneHelpers.add(this.axesHelper);
 
     // const geometry = new THREE.BoxGeometry(100, 100, 100);
     // const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
@@ -512,12 +520,12 @@ export class ThreeService implements OnDestroy {
    * @param enable Whether clipping should be enabled.
    */
   enableClipping(enable: boolean): void {
-    this.renderer.localClippingEnabled = enable;
+    this.angularClippingEnabled = enable;
+    // Keep localClippingEnabled on if Z clipping is active
+    this.renderer.localClippingEnabled = enable || this.zClippingEnabled;
 
     // Update all materials to use clipping planes when enabled
-    if (enable) {
-      this.updateMaterialClipping();
-    }
+    this.updateMaterialClipping();
   }
 
   /**
@@ -541,9 +549,36 @@ export class ThreeService implements OnDestroy {
     quatB.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle + openingAngle);
     planeB.normal.set(0, 1, 0).applyQuaternion(quatB);
 
-    // Enable clipping and update materials
-    this.renderer.localClippingEnabled = true;
+    // Update materials (localClippingEnabled managed by enableClipping/enableZClipping)
+    this.renderer.localClippingEnabled = this.angularClippingEnabled || this.zClippingEnabled;
     this.updateMaterialClipping();
+  }
+
+  /**
+   * Enables or disables Z-axis clipping.
+   * Uses renderer.clippingPlanes (global, always union mode) so Z clipping
+   * works independently of angular clipping's clipIntersection logic.
+   */
+  enableZClipping(enable: boolean): void {
+    this.zClippingEnabled = enable;
+    this.renderer.clippingPlanes = enable ? [this.zClipPlane] : [];
+    if (enable) {
+      this.renderer.localClippingEnabled = true;
+    }
+  }
+
+  /**
+   * Updates the Z clipping plane from an absolute Z coordinate and direction.
+   * @param zPosition The Z coordinate where the plane sits.
+   * @param forward   If true, keeps z >= zPosition. If false, keeps z <= zPosition.
+   *
+   * THREE.Plane visible side: normal · point + constant >= 0
+   *   Forward:  normal=(0,0,1),  constant=-pos  →  z - pos >= 0  →  z >= pos
+   *   Backward: normal=(0,0,-1), constant=+pos  → -z + pos >= 0  →  z <= pos
+   */
+  updateZClipping(zPosition: number, forward: boolean): void {
+    this.zClipPlane.normal.set(0, 0, forward ? 1 : -1);
+    this.zClipPlane.constant = forward ? -zPosition : zPosition;
   }
 
   /**
@@ -551,11 +586,12 @@ export class ThreeService implements OnDestroy {
    */
   private updateMaterialClipping(): void {
     const updateObjectClipping = (object: THREE.Object3D) => {
-      if (object instanceof THREE.Mesh && object.material) {
-        const materials = Array.isArray(object.material) ? object.material : [object.material];
+      const obj = object as any;
+      if (obj.material) {
+        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
 
         materials.forEach((material: THREE.Material) => {
-          if (this.renderer.localClippingEnabled) {
+          if (this.angularClippingEnabled) {
             material.clippingPlanes = this.clipPlanes;
             material.clipIntersection = this.clipIntersection;
           } else {
@@ -563,11 +599,12 @@ export class ThreeService implements OnDestroy {
             material.clipIntersection = false;
           }
 
-          // Prevent z-fighting
-          if (material instanceof THREE.MeshBasicMaterial ||
+          // Prevent z-fighting (only for mesh materials)
+          if (object instanceof THREE.Mesh && (
+            material instanceof THREE.MeshBasicMaterial ||
             material instanceof THREE.MeshLambertMaterial ||
             material instanceof THREE.MeshPhongMaterial ||
-            material instanceof THREE.MeshStandardMaterial) {
+            material instanceof THREE.MeshStandardMaterial)) {
             material.polygonOffset = true;
             material.polygonOffsetFactor = 1;
             material.polygonOffsetUnits = 1;
@@ -783,14 +820,22 @@ export class ThreeService implements OnDestroy {
    * Helper to check if a point is clipped by active clipping planes
    */
   private isPointClipped(point: THREE.Vector3): boolean {
-    if (!this.renderer.localClippingEnabled || this.clipPlanes.length === 0) {
+    if (!this.renderer.localClippingEnabled) {
       return false;
     }
 
-    for (const plane of this.clipPlanes) {
-      const distance = plane.distanceToPoint(point);
-      if (distance < 0) {
-        return true;
+    // Check Z clipping plane (global, always union mode)
+    if (this.zClippingEnabled && this.zClipPlane.distanceToPoint(point) < 0) {
+      return true;
+    }
+
+    // Check angular clipping planes
+    if (this.angularClippingEnabled && this.clipPlanes.length > 0) {
+      for (const plane of this.clipPlanes) {
+        const distance = plane.distanceToPoint(point);
+        if (distance < 0) {
+          return true;
+        }
       }
     }
     return false;

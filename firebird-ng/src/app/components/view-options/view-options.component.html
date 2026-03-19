@@ -1,30 +1,7 @@
 <mat-menu #viewOptions>
   <button mat-menu-item>
     <mat-checkbox
-      (click)="$event.stopPropagation()"
-      (change)="setCartesianGrid($event)"
-    >
-      Show Cartesian Grid
-    </mat-checkbox>
-    <button
-      class="icon-wrapper icon-button btn-blank item-settings"
-      (click)="openCartesianGridConfigDialog()"
-    >
-      <mat-icon>settings</mat-icon>
-    </button>
-  </button>
-
-  <button mat-menu-item>
-    <mat-checkbox
-      (click)="$event.stopPropagation()"
-      (change)="setEtaPhiGrid($event)"
-    >
-      Show Eta Phi Grid
-    </mat-checkbox>
-  </button>
-
-  <button mat-menu-item>
-    <mat-checkbox
+      [checked]="showAxisChecked"
       (click)="$event.stopPropagation()"
       (change)="setAxis($event)"
     >
@@ -41,32 +18,22 @@
     </mat-checkbox>
   </button>
 
-<!--  <button mat-menu-item>-->
-<!--    <mat-checkbox-->
-<!--      (click)="$event.stopPropagation()"-->
-<!--      (change)="show3DMousePoints($event)"-->
-<!--    >-->
-<!--      Show 3D Coordinates-->
-<!--    </mat-checkbox>-->
-<!--  </button>-->
+  <button mat-menu-item>
+    <mat-checkbox
+      (click)="$event.stopPropagation()"
+      (change)="setCartesianGrid($event)"
+    >
+      Show Cartesian Grid
+    </mat-checkbox>
+  </button>
 
-<!--  <button mat-menu-item>-->
-<!--    <mat-checkbox-->
-<!--      (click)="$event.stopPropagation()"-->
-<!--      (change)="toggleShowDistance($event)"-->
-<!--    >-->
-<!--      Show 3D Distance-->
-<!--    </mat-checkbox>-->
-<!--  </button>-->
-
-  <!-- For each "view" in your local array.  -->
-  <button
-    mat-menu-item
-    *ngFor="let view of views"
-    (click)="displayView($event, view)"
-  >
-    <mat-icon *ngIf="view.icon" class="view-icon">{{ view.icon }}</mat-icon>
-    {{ view.name }}
+  <button mat-menu-item>
+    <mat-checkbox
+      (click)="$event.stopPropagation()"
+      (change)="setEtaPhiGrid($event)"
+    >
+      Show Eta/Phi Lines
+    </mat-checkbox>
   </button>
 </mat-menu>
 

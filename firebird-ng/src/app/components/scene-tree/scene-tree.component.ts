@@ -1,15 +1,10 @@
 import {
+  ChangeDetectorRef,
   Component,
   EventEmitter,
   OnInit,
   Output,
 } from '@angular/core';
-
-import { FlatTreeControl } from '@angular/cdk/tree';
-import {
-  MatTreeFlatDataSource,
-  MatTreeFlattener,
-} from '@angular/material/tree';
 
 import {
   MatTree,
@@ -28,17 +23,6 @@ import { Mesh, Object3D} from 'three';
 import { Line, LineSegments } from 'three';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { ThreeService } from '../../services/three.service';
-
-
-
-interface TreeNodeFlat {
-  expandable: boolean;
-  name: string;
-  level: number;
-  type: string;
-  object3D: Object3D;
-  visible: boolean;
-}
 
 
 
@@ -78,36 +62,21 @@ export class SceneTreeComponent implements OnInit {
 
   /* ---------------- Tree helpers ---------------- */
 
-  public treeControl = new FlatTreeControl<TreeNodeFlat>(
-    node => node.level,
-    node => node.expandable,
-  );
+  public childrenAccessor = (node: Object3D): Object3D[] => node.children ?? [];
 
-  private treeFlattener = new MatTreeFlattener<Object3D, TreeNodeFlat>(
-    (node: Object3D, level: number): TreeNodeFlat => ({
-      expandable: !!node.children && node.children.length > 0,
-      name: node.name || '(untitled)',
-      level,
-      type: node.type,
-      object3D: node,
-      visible: node.visible,
-    }),
-    node => node.level,
-    node => node.expandable,
-    node => node.children,
-  );
+  public isExpandable = (node: Object3D): boolean =>
+    !!node.children && node.children.length > 0;
 
-  public dataSource = new MatTreeFlatDataSource(
-    this.treeControl,
-    this.treeFlattener,
-  );
+  public dataSource: Object3D[] = [];
 
-  public hasChild = (_: number, node: TreeNodeFlat) => node.expandable;
+  public hasChild = (_: number, node: Object3D) =>
+    !!node.children && node.children.length > 0;
 
   /* ---------------- Constructor / init ---------------- */
 
   constructor(
     private threeService: ThreeService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -132,14 +101,16 @@ export class SceneTreeComponent implements OnInit {
   /* ---------------- Tree population ---------------- */
 
   public refreshSceneTree(): void {
-    this.dataSource.data = [];
     const scene = this.threeService.scene;
     if (!scene) {
       console.warn('No scene present in ThreeService.');
       return;
     }
-    this.dataSource.data = scene.children;
-    this.treeControl.collapseAll();
+    // Force tree to disconnect old data source, then reconnect with new data
+    this.dataSource = [];
+    this.cdr.detectChanges();
+    this.dataSource = [...scene.children];
+    this.cdr.detectChanges();
   }
 
   /* ---------------- Visibility toggle ---------------- */
@@ -174,33 +145,29 @@ export class SceneTreeComponent implements OnInit {
   }
 
 
-  public toggleVisibility(node: TreeNodeFlat): void {
-    const obj = node.object3D;
-
-    if (obj.visible) {
-      obj.visible = false;
+  public toggleVisibility(node: Object3D): void {
+    if (node.visible) {
+      node.visible = false;
     } else {
       const hiddenAncestor = (() => {
-        for (let p = obj.parent; p; p = p.parent) if (!p.visible) return true;
+        for (let p = node.parent; p; p = p.parent) if (!p.visible) return true;
         return false;
       })();
 
       if (hiddenAncestor) {
-        this.revealPath(obj, /* full = */ false);
-        obj.visible = true;
+        this.revealPath(node, /* full = */ false);
+        node.visible = true;
       } else {
-        this.revealPath(obj, /* full = */ true);
-        obj.visible = true;
+        this.revealPath(node, /* full = */ true);
+        node.visible = true;
       }
     }
-
-    node.visible = this.isEffectivelyVisible(obj);
   }
 
 
   /* ---------------- Mouse-over handlers ---------------- */
 
-  public onMouseEnterNode(node: TreeNodeFlat): void {
+  public onMouseEnterNode(node: Object3D): void {
     if (this.isHighlightingEnabled && !this.isTrackNode(node)) {
       this.highlightNode(node);
     }
@@ -210,7 +177,7 @@ export class SceneTreeComponent implements OnInit {
     }
   }
 
-  public onMouseLeaveNode(node: TreeNodeFlat): void {
+  public onMouseLeaveNode(node: Object3D): void {
     if (this.isHighlightingEnabled && !this.isTrackNode(node)) {
       this.unhighlightNode(node);
     }
@@ -222,8 +189,8 @@ export class SceneTreeComponent implements OnInit {
 
   /* ---------------- Geometry highlight (meshes) ---------------- */
 
-  public highlightNode(node: TreeNodeFlat): void {
-    node.object3D.traverse(child => {
+  public highlightNode(node: Object3D): void {
+    node.traverse(child => {
       if (child instanceof Mesh) {
         if (!child.userData['origMaterial']) {
           child.userData['origMaterial'] = child.material;
@@ -233,8 +200,8 @@ export class SceneTreeComponent implements OnInit {
     });
   }
 
-  public unhighlightNode(node: TreeNodeFlat): void {
-    node.object3D.traverse(child => {
+  public unhighlightNode(node: Object3D): void {
+    node.traverse(child => {
       if (child instanceof Mesh && child.userData['origMaterial']) {
         child.material = child.userData['origMaterial'];
         delete child.userData['origMaterial'];
@@ -244,24 +211,24 @@ export class SceneTreeComponent implements OnInit {
 
 
   /** Returns true if node belongs to the "event track" hierarchy. */
-  public isTrackNode(node: TreeNodeFlat): boolean {
+  public isTrackNode(node: Object3D): boolean {
     return (
       this.isUnderEventParent(node) &&
       (node.name.toLowerCase().includes('track') ||
-        this.hasLineGeometry(node.object3D) ||
-        node.object3D.userData?.['isTrack'] === true)
+        this.hasLineGeometry(node) ||
+        node.userData?.['isTrack'] === true)
     );
   }
 
   /** Detect "Event" parent upwards in scene graph. */
-  private isUnderEventParent(node: TreeNodeFlat): boolean {
+  private isUnderEventParent(node: Object3D): boolean {
     if (
       node.name.toLowerCase() === 'event' ||
-      node.object3D.userData?.['isEvent'] === true
+      node.userData?.['isEvent'] === true
     ) {
       return true;
     }
-    let cur: Object3D | null = node.object3D;
+    let cur: Object3D | null = node;
     while (cur && cur.parent) {
       if (
         cur.parent.name.toLowerCase() === 'event' ||
@@ -293,18 +260,16 @@ export class SceneTreeComponent implements OnInit {
   }
 
 
-  public highlightTrack(node: TreeNodeFlat): void {
-    // Using the highlight function stored in userData
-    node.object3D.traverse(obj3d => {
+  public highlightTrack(node: Object3D): void {
+    node.traverse(obj3d => {
       if (obj3d.userData['highlightFunction']) {
         obj3d.userData['highlightFunction']();
       }
     });
   }
 
-  public unhighlightTrack(node: TreeNodeFlat): void {
-    // Using the unhighlight function stored in userData
-    node.object3D.traverse(obj3d => {
+  public unhighlightTrack(node: Object3D): void {
+    node.traverse(obj3d => {
       if (obj3d.userData['unhighlightFunction']) {
         obj3d.userData['unhighlightFunction']();
       }

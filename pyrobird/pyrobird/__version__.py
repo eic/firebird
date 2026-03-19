@@ -2,4 +2,4 @@
 # This file is part of Firebird Event Display and is licensed under the LGPLv3.
 # See the LICENSE file in the project root for full license information.
 
-__version__ = "2025.12rc1"
+__version__ = "2026.03rc1"

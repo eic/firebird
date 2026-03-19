@@ -1,3 +1,14 @@
+# docker run -it --rm -v/home/romanov/dev/firebird:/mnt eicweb/eic_xl:nightly
+# cd /mnt/dd4hep-plugin/
+# mkdir build && cd build
+# This will create prefix/lib folder after the install
+# cmake .. && make && make install
+# cd .. && ls prefix/lib  # <= Ensure libfirebird-dd4hep.so is there
+# export LD_LIBRARY_PATH="/mnt/dd4hep-plugin/prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+# mkdir -p tmp && cd tmp
+# source /opt/detector/epic-main/bin/thisepic.sh
+# python3 /mnt/test/run_many_energies.py
+
 import subprocess
 import os
 
@@ -5,7 +16,7 @@ def setup_environment():
     """
     Updates the LD_LIBRARY_PATH environment variable to include custom library paths.
     """
-    # Get the current LD_LIBRARY_PATH value from the environment
+
     current_ld_library_path = os.environ.get('LD_LIBRARY_PATH', '')
 
     # Define the prefix you want to add
@@ -50,7 +61,7 @@ def get_hepmc_path(beam, minq2):
     return f"root://dtn-eic.jlab.org//volatile/eic/EPIC/EVGEN/DIS/NC/{beam}/minQ2={minq2}/pythia8NCDIS_{beam}_minQ2={minq2}_beamEffects_xAngle=-0.025_hiDiv_1.hepmc3.tree.root"
 
 def get_base_name(beam, minq2, event_num):
-    return f"py8_dis-cc_{beam}_minq2-{minq2}_minp-150mev_vtxcut-5m_nevt-{event_num}"
+    return f"py8dis-nc_{beam}_minq2-{minq2}_minp-250mev_nevt-{event_num}"
 
 def run_simulation(beam, minq2, event_num, detector_path, steering_file):
     """
@@ -109,6 +120,8 @@ def run_simulation(beam, minq2, event_num, detector_path, steering_file):
     # Run the conversion
     run_command(reconstruction_command)
 
+
+
 setup_environment()
 
 # Set the detector path (assuming it's predefined as an environment variable or explicitly defined here)
@@ -122,5 +135,5 @@ minq2s = [1, 100, 1000]
 for beam in beams:
     for minq2 in minq2s:
         print("\n---------------------------------------------------------------------------------"*5)
-        run_simulation(beam, minq2, 5, f'{DETECTOR_PATH}/epic_full.xml', '/mnt/dd4hep-plugin/firebird_steering.py')
+        run_simulation(beam, minq2, 5, f'{DETECTOR_PATH}/epic_craterlake_{beam}.xml', '/mnt/dd4hep-plugin/firebird_steering.py')
         print("\n/////////////////////////////////////////////////////////////////////////////////"*5)

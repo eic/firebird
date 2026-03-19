@@ -11,6 +11,7 @@ import {
   Signal
 } from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
+import {MatSlideToggleChange} from '@angular/material/slide-toggle';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 import { ThreeService } from '../../services/three.service';
@@ -24,6 +25,7 @@ import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog"
 import {MatIcon} from "@angular/material/icon";
 import {MatTooltip} from "@angular/material/tooltip";
 import {FormsModule} from "@angular/forms";
+import {MatSlideToggle} from "@angular/material/slide-toggle";
 
 
 
@@ -42,7 +44,7 @@ import {FormsModule} from "@angular/forms";
     MatIconButton,
     MatTooltip,
     FormsModule,
-
+    MatSlideToggle,
   ]
 })
 export class GeometryClippingComponent implements OnInit {
@@ -51,6 +53,9 @@ export class GeometryClippingComponent implements OnInit {
   clippingEnabled!: Signal<boolean>;
   startAngle!: Signal<number>;
   openingAngle!: Signal<number>;
+  zClippingEnabled!: Signal<boolean>;
+  zClippingPosition!: Signal<number>;
+  zClippingForward!: Signal<boolean>;
 
   @ViewChild('openBtn', { read: ElementRef }) openBtn!: ElementRef;
   @ViewChild('dialogTemplate') dialogTemplate!: TemplateRef<any>;
@@ -68,10 +73,16 @@ export class GeometryClippingComponent implements OnInit {
     const configClippingEnabled = this.config.getConfigOrCreate<boolean>('clippingEnabled', true);
     const configStartAngle = this.config.getConfigOrCreate<number>('clippingStartAngle', 0);
     const configOpeningAngle = this.config.getConfigOrCreate<number>('clippingOpeningAngle', 180);
+    const configZClippingEnabled = this.config.getConfigOrCreate<boolean>('zClippingEnabled', false);
+    const configZClippingPosition = this.config.getConfigOrCreate<number>('zClippingPosition', 0);
+    const configZClippingForward = this.config.getConfigOrCreate<boolean>('zClippingForward', true);
 
     this.clippingEnabled = toSignal(configClippingEnabled.subject, { requireSync: true });
     this.startAngle = toSignal(configStartAngle.subject, { requireSync: true });
     this.openingAngle = toSignal(configOpeningAngle.subject, { requireSync: true });
+    this.zClippingEnabled = toSignal(configZClippingEnabled.subject, { requireSync: true });
+    this.zClippingPosition = toSignal(configZClippingPosition.subject, { requireSync: true });
+    this.zClippingForward = toSignal(configZClippingForward.subject, { requireSync: true });
 
     // Changes in enable/disable clipping
     effect(() => {
@@ -84,6 +95,19 @@ export class GeometryClippingComponent implements OnInit {
     // changes in start or opening angles
     effect(()=> {
       this.threeService.setClippingAngle(this.startAngle(), this.openingAngle());
+    });
+
+    // Z clipping enable/disable
+    effect(() => {
+      this.threeService.enableZClipping(this.zClippingEnabled());
+      if (this.zClippingEnabled()) {
+        this.threeService.updateZClipping(this.zClippingPosition(), this.zClippingForward());
+      }
+    });
+
+    // Z clipping position or direction changes
+    effect(() => {
+      this.threeService.updateZClipping(this.zClippingPosition(), this.zClippingForward());
     });
 
   }
@@ -116,6 +140,29 @@ export class GeometryClippingComponent implements OnInit {
    */
   changeOpeningClippingAngle(angle: number): void {
     this.config.getConfigOrThrow<number>('clippingOpeningAngle').value = angle;
+  }
+
+  /**
+   * User toggles Z clipping.
+   */
+  toggleZClipping(change: MatCheckboxChange): void {
+    this.config.getConfigOrThrow<boolean>('zClippingEnabled').value = change.checked;
+  }
+
+  /**
+   * User changes the Z clipping position.
+   */
+  changeZClippingPosition(z: number): void {
+    if (!isNaN(z)) {
+      this.config.getConfigOrThrow<number>('zClippingPosition').value = z;
+    }
+  }
+
+  /**
+   * User toggles Z clipping direction.
+   */
+  toggleZClippingDirection(change: MatSlideToggleChange): void {
+    this.config.getConfigOrThrow<boolean>('zClippingForward').value = change.checked;
   }
 
 

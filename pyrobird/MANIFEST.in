@@ -8,6 +8,6 @@ include pyrobird/data/*.yaml
 
 # Include all files in the static and templates directories
 recursive-include pyrobird/server/static *
-# exclude pyrobird/server/static/assets/data/*
-# exclude pyrobird/server/static/assets/test_data/*
+# Exclude unzipped .firebird data dirs (redundant with .zip versions; paths exceed Windows MAX_PATH)
+recursive-exclude pyrobird/server/static/assets/data *.firebird.json
 recursive-include pyrobird/server/templates *

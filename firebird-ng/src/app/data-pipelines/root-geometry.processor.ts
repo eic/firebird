@@ -151,6 +151,14 @@ export class RootGeometryProcessor {
         {pattern: "*/cooling*", action: EditActions.Remove},
       ]
     },
+    {
+      namePattern: "*/BeamPipe_assembly*",
+      editRules: [
+        //{pattern: "*/*vacuum*", action: EditActions.Remove},
+        {pattern: "*/*", action: EditActions.SetGeoBit, geoBit: GeoAttBits.kVisThis},
+
+      ]
+    },
 
     {
       namePattern: "*/LumiSpecCAL*",
