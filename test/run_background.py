@@ -9,6 +9,8 @@
 # source /opt/detector/epic-main/bin/thisepic.sh
 # pip install --upgrade pyrobird
 # python3 /mnt/test/run_background.py
+# Now we want to run smoothing on the resulting file
+# background_py6_10x100_egas_bgas
 
 
 import subprocess
@@ -18,7 +20,7 @@ INPUT_FILE="root://dtn-eic.jlab.org//volatile/eic/EPIC/EVGEN/BACKGROUNDS/MERGED/
 OUTPUT_BASE="background_py6_10x100_egas_bgas"
 DETECTOR_PATH = os.getenv('DETECTOR_PATH', '/opt/detector/epic-main/share/epic/')
 DETECTOR_FILE = f'{DETECTOR_PATH}/epic_craterlake_10x100.xml'
-STEERING_FILE = '/mnt/dd4hep-plugin/firebird_steering.py'
+STEERING_FILE = '/mnt/dd4hep-plugin/background_steering.py'
 EVENT_NUM = 10
 
 def run_command(command):
@@ -81,17 +83,17 @@ if __name__ == "__main__":
         f"-Ppodio:output_file={OUTPUT_BASE}.edm4eic.root",
         f"{OUTPUT_BASE}.edm4hep.root"
     ]
-    #run_command(reconstruction_command)
+    run_command(reconstruction_command)
 
-    # smooth trajectories
-    run_command(["pyrobird", "smooth",
-        f"{OUTPUT_BASE}.firebird.json",
-        "-o", f"{OUTPUT_BASE}_smth.v04.firebird.json"
-    ])
-
-    # zip files
-    run_command(["python3",
-                 "-m", "zipfile",
-                 "-c", f"{OUTPUT_BASE}_smth.v04.firebird.json.zip",
-                 f"{OUTPUT_BASE}_smth.v04.firebird.json"
-    ])
+    # # smooth trajectories
+    # run_command(["pyrobird", "smooth",
+    #     f"{OUTPUT_BASE}.firebird.json",
+    #     "-o", f"{OUTPUT_BASE}_smth.v04.firebird.json"
+    # ])
+    #
+    # # zip files
+    # run_command(["python3",
+    #              "-m", "zipfile",
+    #              "-c", f"{OUTPUT_BASE}_smth.v04.firebird.json.zip",
+    #              f"{OUTPUT_BASE}_smth.v04.firebird.json"
+    # ])
