@@ -6,8 +6,8 @@ import {
   OrthographicCamera,
   PerspectiveCamera,
   Scene,
-  WebGLRenderer
 } from 'three';
+import { WebGPURenderer } from 'three/webgpu';
 
 @Component({
   selector: 'app-cube-viewport-control',
@@ -18,7 +18,7 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
   // References to externally provided objects
   public camera!: PerspectiveCamera | OrthographicCamera;
   public scene!: Scene;
-  public renderer!: WebGLRenderer;
+  public renderer!: WebGPURenderer;
 
   // The ViewportGizmo instance
   public gizmo!: ViewportGizmo;
@@ -59,7 +59,7 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
   public initWithExternalScene(
     scene: Scene,
     camera: PerspectiveCamera | OrthographicCamera,
-    renderer: WebGLRenderer
+    renderer: WebGPURenderer
   ): void {
     this.scene = scene;
     this.camera = camera;

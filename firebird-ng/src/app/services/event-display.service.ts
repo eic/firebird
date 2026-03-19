@@ -119,8 +119,8 @@ export class EventDisplayService {
    * Initialize the default three.js scene
    * @param container
    */
-  initThree(container: string | HTMLElement) {
-    this.three.init(container);
+  async initThree(container: string | HTMLElement) {
+    await this.three.init(container);
     this.painter.setThreeSceneParent(this.three.sceneEvent);
     this.three.startRendering();
 

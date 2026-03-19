@@ -158,7 +158,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async ngOnInit() {
     // Initialize the ThreeService scene/camera/renderer/controls
-    this.eventDisplay.initThree('eventDisplay');
+    await this.eventDisplay.initThree('eventDisplay');
 
     // The facade will be initialized in three.service
     this.facade.initializeScene()

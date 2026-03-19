@@ -1,5 +1,6 @@
 import {AfterViewInit, Component, OnInit, ViewChild, ElementRef} from '@angular/core';
 import * as THREE from "three"
+import { WebGPURenderer } from "three/webgpu";
 import * as TWEEN from '@tweenjs/tween.js';
 
 @Component({
@@ -13,7 +14,7 @@ export class PlaygroundComponent implements OnInit, AfterViewInit {
 
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
-  private renderer!: THREE.WebGLRenderer;
+  private renderer!: WebGPURenderer;
   private particle1!: THREE.Mesh;
   private particle2!: THREE.Mesh;
   private lines: THREE.Line[] = [];
@@ -46,19 +47,20 @@ export class PlaygroundComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void { }
 
-  ngAfterViewInit(): void {
-    this.initThreeJS();
+  async ngAfterViewInit(): Promise<void> {
+    await this.initThreeJS();
     this.initCurvesAndLines();
     this.animate();
   }
 
-  initThreeJS(): void {
+  async initThreeJS(): Promise<void> {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     this.camera.position.z = 5;
 
-    this.renderer = new THREE.WebGLRenderer();
+    this.renderer = new WebGPURenderer();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    await this.renderer.init();
     this.rendererContainer.nativeElement.appendChild(this.renderer.domElement);
 
     const geometry = new THREE.SphereGeometry(0.1, 32, 32);

@@ -11,8 +11,8 @@ describe('ThreeService', () => {
         service = TestBed.inject(ThreeService);
     });
 
-    it('should throw error if container not found when using string id', () => {
-        // This test doesn't require WebGL - it fails before renderer creation
-        expect(() => service.init('nonexistent-id')).toThrowError(/Container element #nonexistent-id not found/);
+    it('should throw error if container not found when using string id', async () => {
+        // This test doesn't require WebGPU - it fails before renderer creation
+        await expect(service.init('nonexistent-id')).rejects.toThrow(/Container element #nonexistent-id not found/);
     });
 });
