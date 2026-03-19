@@ -281,7 +281,7 @@ Restrictive defaults prevent unauthorized file access:
 
 ### Backend Testing
 - **Framework:** pytest
-- **CI:** GitHub Actions (Python 3.8-3.12)
+- **CI:** GitHub Actions (Python 3.9-3.12)
 - Run tests: `pytest ./tests/unit_tests`
 - Debug: `pytest -x --pdb`
 
