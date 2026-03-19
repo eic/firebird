@@ -6,6 +6,7 @@ import {
   OrthographicCamera,
   PerspectiveCamera,
   Scene,
+  Vector4,
 } from 'three';
 import { WebGPURenderer } from 'three/webgpu';
 
@@ -87,6 +88,28 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
 
     // Create gizmo with custom config (autoPlace = false)
     this.gizmo = new ViewportGizmo(this.camera, this.renderer, gizmoConfig);
+
+    // Patch domUpdate for WebGPU: the library computes viewport Y using
+    // WebGL's bottom-left origin, but WebGPU uses top-left.
+    // See: https://github.com/nicivore/three-viewport-gizmo/issues/13
+    const gizmo = this.gizmo as any;
+    const _v4 = new Vector4();
+    gizmo.domUpdate = function () {
+      gizmo._domRect = gizmo._domElement.getBoundingClientRect();
+      const r = gizmo.renderer;
+      const n = gizmo._domRect;
+      const i = r.domElement.getBoundingClientRect();
+      const isWebGPU = !!(r && r.isWebGPURenderer);
+      const y = isWebGPU
+        ? (n.top - i.top)
+        : (r.domElement.clientHeight - (n.top - i.top + n.height));
+      gizmo._viewport.splice(0, 4, n.left - i.left, y, n.width, n.height);
+      r.getViewport(_v4).toArray(gizmo._originalViewport);
+      if (r.getScissorTest()) {
+        r.getScissor(_v4).toArray(gizmo._originalScissor);
+      }
+      return gizmo;
+    };
 
     // Bind the method to maintain 'this' context
     this.handleControlsChange = this.handleControlsChange.bind(this);
