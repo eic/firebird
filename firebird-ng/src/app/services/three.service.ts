@@ -33,6 +33,9 @@ export class ThreeService implements OnDestroy {
 
   /** Three.js core components */
   public scene!: THREE.Scene;
+  /** Z clipping wrapper — parent of sceneGeometry, never accessed externally */
+  private zClippingGroup!: ClippingGroup;
+  /** Angular (wedge) clipping — geometry is added here */
   public sceneGeometry!: ClippingGroup;
   public sceneEvent!: THREE.Group;
   public sceneHelpers!: THREE.Group;
@@ -215,11 +218,18 @@ export class ThreeService implements OnDestroy {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x3f3f3f); // Dark grey background
 
-    // Geometry scene tree (ClippingGroup for angular/z clipping support)
+    // Z clipping group (union mode) wraps the geometry group
+    this.zClippingGroup = new ClippingGroup();
+    this.zClippingGroup.name = 'ZClipping';
+    this.zClippingGroup.enabled = false;
+    this.zClippingGroup.clipIntersection = false; // union — always
+    this.scene.add(this.zClippingGroup);
+
+    // Angular (wedge) clipping group — geometry is added here
     this.sceneGeometry = new ClippingGroup();
     this.sceneGeometry.name = 'Geometry';
     this.sceneGeometry.enabled = false;
-    this.scene.add(this.sceneGeometry);
+    this.zClippingGroup.add(this.sceneGeometry);
 
     // Event scene tree (regular Group — clipping does NOT apply to event data)
     this.sceneEvent = new THREE.Group();
@@ -576,29 +586,25 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * Synchronise the ClippingGroup properties on sceneGeometry and sceneEvent
-   * with the current angular + Z clipping state.
+   * Synchronise the two nested ClippingGroups with the current clipping state.
    *
-   * ClippingGroup applies its clippingPlanes to all descendants automatically,
-   * so we no longer need to walk every material.
+   * Scene structure:
+   *   zClippingGroup (union mode, Z plane)
+   *     └── sceneGeometry (intersection/union, angular wedge planes)
+   *
+   * Separating them into two groups lets each have its own clipIntersection mode.
    */
   private updateClippingGroups(): void {
     if (!this.initialized) return;
 
-    const anyClipping = this.angularClippingEnabled || this.zClippingEnabled;
-    const planes: THREE.Plane[] = [];
-
-    if (this.angularClippingEnabled) {
-      planes.push(...this.clipPlanes);
-    }
-    if (this.zClippingEnabled) {
-      planes.push(this.zClipPlane);
-    }
-
-    // Only geometry is subject to clipping — event data is never clipped
-    this.sceneGeometry.clippingPlanes = planes;
-    this.sceneGeometry.enabled = anyClipping;
+    // Angular (wedge) clipping on sceneGeometry
+    this.sceneGeometry.clippingPlanes = this.angularClippingEnabled ? [...this.clipPlanes] : [];
+    this.sceneGeometry.enabled = this.angularClippingEnabled;
     this.sceneGeometry.clipIntersection = this.angularClippingEnabled ? this.clipIntersection : false;
+
+    // Z clipping on the parent wrapper
+    this.zClippingGroup.clippingPlanes = this.zClippingEnabled ? [this.zClipPlane] : [];
+    this.zClippingGroup.enabled = this.zClippingEnabled;
   }
 
   /**
