@@ -74,7 +74,7 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
       container: container,
       size: 90,
       type: 'cube',
-      offset: { top: 85 },
+      offset: { top: 115 },
       background: { color: 0x444444, hover: { color: 0x444444 } },
       corners: {
         color: 0x333333,
@@ -109,6 +109,40 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
         r.getScissor(_v4).toArray(gizmo._originalScissor);
       }
       return gizmo;
+    };
+
+    // Patch _setOrientation for collider coordinate convention:
+    // Beam axis = Z (left-right), Y = vertical. When clicking "Top" the
+    // camera looks down Y with Z as screen-right and X as screen-up.
+    // The library uses this.up (Y) for lookAt which is degenerate along Y.
+    // We use X-axis as up for top/bottom views so Z maps to screen-right.
+    const _tempPos = new Vector3();
+    const _tempMat = new Matrix4();
+    const _xAxis = new Vector3(1, 0, 0);  // up for top/bottom views
+    const _yAxis = new Vector3(0, 1, 0);  // up for side views
+
+    gizmo._setOrientation = function (position: Vector3) {
+      const cam = gizmo.camera;
+      const target = gizmo.target;
+
+      // When viewing along Y (top/bottom), use X as up so Z goes screen-right
+      const absY = Math.abs(position.y);
+      const upVec = absY > 0.9 ? _xAxis : _yAxis;
+
+      _tempPos.copy(position).multiplyScalar(gizmo._distance);
+      _tempMat.setPosition(_tempPos).lookAt(_tempPos, gizmo.position, upVec);
+      gizmo._targetQuaternion.setFromRotationMatrix(_tempMat);
+
+      _tempPos.add(target);
+      _tempMat.lookAt(_tempPos, target, upVec);
+      gizmo._quaternionEnd.setFromRotationMatrix(_tempMat);
+
+      _tempMat.setPosition(cam.position).lookAt(cam.position, target, upVec);
+      gizmo._quaternionStart.setFromRotationMatrix(_tempMat);
+
+      gizmo.animating = true;
+      gizmo._clock.start();
+      gizmo.dispatchEvent({ type: 'start' });
     };
 
     // Bind the method to maintain 'this' context
