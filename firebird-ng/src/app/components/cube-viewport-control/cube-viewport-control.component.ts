@@ -66,7 +66,9 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
     this.renderer = renderer;
     this.lastCamera = camera;
 
-    const container = this.elRef.nativeElement.querySelector('.three-container');
+    // Use the renderer's parent element as container so the gizmo overlay
+    // is positioned relative to the actual canvas, not an empty div.
+    const container = renderer.domElement.parentElement ?? this.elRef.nativeElement;
     const gizmoConfig: GizmoOptions = {
       container: container,
       size: 90,
