@@ -12,7 +12,7 @@ import {
   Camera,
   Scene, Mesh
 } from 'three';
-import { WebGPURenderer } from 'three/webgpu';
+import { WebGPURenderer, ClippingGroup } from 'three/webgpu';
 import {PerfService} from "./perf.service";
 import {BehaviorSubject, Subject} from "rxjs";
 
@@ -33,7 +33,7 @@ export class ThreeService implements OnDestroy {
 
   /** Three.js core components */
   public scene!: THREE.Scene;
-  public sceneGeometry!: THREE.Group;
+  public sceneGeometry!: ClippingGroup;
   public sceneEvent!: THREE.Group;
   public sceneHelpers!: THREE.Group;
   public renderer!: WebGPURenderer;
@@ -215,12 +215,13 @@ export class ThreeService implements OnDestroy {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x3f3f3f); // Dark grey background
 
-    // Geometry scene tree
-    this.sceneGeometry = new THREE.Group();
+    // Geometry scene tree (ClippingGroup for angular/z clipping support)
+    this.sceneGeometry = new ClippingGroup();
     this.sceneGeometry.name = 'Geometry';
+    this.sceneGeometry.enabled = false;
     this.scene.add(this.sceneGeometry);
 
-    // Event scene tree
+    // Event scene tree (regular Group — clipping does NOT apply to event data)
     this.sceneEvent = new THREE.Group();
     this.sceneEvent.name = 'Event';
     this.scene.add(this.sceneEvent);
@@ -522,9 +523,7 @@ export class ThreeService implements OnDestroy {
    */
   enableClipping(enable: boolean): void {
     this.angularClippingEnabled = enable;
-
-    // Update all materials to use clipping planes when enabled
-    this.updateMaterialClipping();
+    this.updateClippingGroups();
   }
 
   /**
@@ -548,17 +547,15 @@ export class ThreeService implements OnDestroy {
     quatB.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle + openingAngle);
     planeB.normal.set(0, 1, 0).applyQuaternion(quatB);
 
-    this.updateMaterialClipping();
+    this.updateClippingGroups();
   }
 
   /**
    * Enables or disables Z-axis clipping.
-   * Z clipping plane is applied via material clipping planes.
    */
   enableZClipping(enable: boolean): void {
     this.zClippingEnabled = enable;
-    // Z clipping is applied via material clipping planes in updateMaterialClipping
-    this.updateMaterialClipping();
+    this.updateClippingGroups();
   }
 
   /**
@@ -576,58 +573,29 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * Update all materials to use current clipping planes
+   * Synchronise the ClippingGroup properties on sceneGeometry and sceneEvent
+   * with the current angular + Z clipping state.
+   *
+   * ClippingGroup applies its clippingPlanes to all descendants automatically,
+   * so we no longer need to walk every material.
    */
-  private updateMaterialClipping(): void {
+  private updateClippingGroups(): void {
     if (!this.initialized) return;
 
-    // Build the combined clipping planes list:
-    // - Angular clipping planes (with their own clipIntersection logic)
-    // - Z clipping plane (always additive/union)
-    // When both are active, we combine them in one array.
-    // Z clipping uses union mode, angular may use intersection mode.
-    // Since material.clipIntersection applies to all planes, we handle
-    // the combination carefully: Z plane is added separately and the
-    // angular clipIntersection flag is preserved.
-    const updateObjectClipping = (object: THREE.Object3D) => {
-      const obj = object as any;
-      if (obj.material) {
-        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+    const anyClipping = this.angularClippingEnabled || this.zClippingEnabled;
+    const planes: THREE.Plane[] = [];
 
-        materials.forEach((material: THREE.Material) => {
-          const planes: THREE.Plane[] = [];
+    if (this.angularClippingEnabled) {
+      planes.push(...this.clipPlanes);
+    }
+    if (this.zClippingEnabled) {
+      planes.push(this.zClipPlane);
+    }
 
-          if (this.angularClippingEnabled) {
-            planes.push(...this.clipPlanes);
-            material.clipIntersection = this.clipIntersection;
-          } else {
-            material.clipIntersection = false;
-          }
-
-          if (this.zClippingEnabled) {
-            planes.push(this.zClipPlane);
-          }
-
-          material.clippingPlanes = planes.length > 0 ? planes : null;
-
-          // Prevent z-fighting (only for mesh materials)
-          if (object instanceof THREE.Mesh && (
-            material instanceof THREE.MeshBasicMaterial ||
-            material instanceof THREE.MeshLambertMaterial ||
-            material instanceof THREE.MeshPhongMaterial ||
-            material instanceof THREE.MeshStandardMaterial)) {
-            material.polygonOffset = true;
-            material.polygonOffsetFactor = 1;
-            material.polygonOffsetUnits = 1;
-          }
-
-          material.needsUpdate = true;
-        });
-      }
-    };
-
-    this.sceneGeometry.traverse(updateObjectClipping);
-    this.sceneEvent.traverse(updateObjectClipping);
+    // Only geometry is subject to clipping — event data is never clipped
+    this.sceneGeometry.clippingPlanes = planes;
+    this.sceneGeometry.enabled = anyClipping;
+    this.sceneGeometry.clipIntersection = this.angularClippingEnabled ? this.clipIntersection : false;
   }
 
   /**
