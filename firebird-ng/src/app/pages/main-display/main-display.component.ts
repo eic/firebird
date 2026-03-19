@@ -156,14 +156,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
 
-  async ngOnInit() {
-    // Initialize the ThreeService scene/camera/renderer/controls
-    await this.eventDisplay.initThree('eventDisplay');
-
-    // The facade will be initialized in three.service
-    this.facade.initializeScene()
-
-
+  ngOnInit() {
     this.controller.buttonY.onPress.subscribe((value) => {
       if (value) {
         // TODO this.cycleGeometry();
@@ -173,7 +166,14 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   // 2) AFTER VIEW INIT => handle resizing with DisplayShell or window
-  ngAfterViewInit(): void {
+  async ngAfterViewInit(): Promise<void> {
+
+    // Initialize the ThreeService scene/camera/renderer/controls
+    // Must happen in ngAfterViewInit so the DOM container #eventDisplay exists
+    await this.eventDisplay.initThree('eventDisplay');
+
+    // The facade will be initialized in three.service
+    this.facade.initializeScene()
 
     if (this.isAutoLoadOnInit) {
       // Load JSON based data files

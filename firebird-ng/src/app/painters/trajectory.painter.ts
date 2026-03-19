@@ -6,7 +6,7 @@ import {
 } from "../model/point-trajectory.group";
 
 import {Color, Object3D} from "three";
-import {LineMaterial} from "three/examples/jsm/lines/LineMaterial.js";
+import {Line2NodeMaterial} from "three/webgpu";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry.js";
 import {Line2} from "three/examples/jsm/lines/Line2.js";
 
@@ -32,7 +32,7 @@ interface TrajectoryRenderContext {
   collectionIndex: number;           // Index in the array
   lineObj: Line2;                    // the Line2 object in the scene
   points: number[][];                // the raw array of [x, y, z, t, dx, dy, dz, dt]
-  lineMaterial: LineMaterial;        // the material used
+  lineMaterial: Line2NodeMaterial;        // the material used
   startTime: number;                 // The time of the first point
   endTime: number;                   // The end of the last point
   params: Record<string, any>;       // Track parameters
@@ -49,8 +49,8 @@ export class TrajectoryPainter extends EventGroupPainter {
   private timeColumnIndex = 3;         // TODO check that line has time column
 
   /** Base materials that we clone for each line. */
-  private baseSolidMaterial: LineMaterial;
-  private baseDashedMaterial: LineMaterial;
+  private baseSolidMaterial: Line2NodeMaterial;
+  private baseDashedMaterial: Line2NodeMaterial;
 
   public readonly trackColorHighlight = 0xff4081; // vivid pink for highlight
   public readonly trackWidthFactor = 2;          // how many times thicker when highlighted
@@ -63,7 +63,7 @@ export class TrajectoryPainter extends EventGroupPainter {
     }
 
     // Create base materials
-    this.baseSolidMaterial = new LineMaterial({
+    this.baseSolidMaterial = new Line2NodeMaterial({
       color: 0xffffff,
       linewidth: 30,   // in world units
       worldUnits: true,
@@ -71,7 +71,7 @@ export class TrajectoryPainter extends EventGroupPainter {
       alphaToCoverage: true
     });
 
-    this.baseDashedMaterial = new LineMaterial({
+    this.baseDashedMaterial = new Line2NodeMaterial({
       color: 0xffffff,
       linewidth: 30,
       worldUnits: true,
@@ -132,7 +132,7 @@ export class TrajectoryPainter extends EventGroupPainter {
       }
 
       // Create proper material
-      const lineMaterial = this.createLineMaterial(trajectory, pdgIndex, chargeIndex);
+      const lineMaterial = this.createLine2NodeMaterial(trajectory, pdgIndex, chargeIndex);
 
       // We'll start by building a geometry with *all* points, and rely on paint() to do partial logic.
       // We'll store the full set of points in linesData, then paint() can rebuild partial geometry.
@@ -140,7 +140,7 @@ export class TrajectoryPainter extends EventGroupPainter {
       const fullPositions = this.generateFlatXYZ(trajectory.points);
       geometry.setPositions(fullPositions);
 
-      const line2 = new Line2(geometry, lineMaterial);
+      const line2 = new Line2(geometry, lineMaterial as any);
       line2.computeLineDistances();
 
       // Add to the scene
@@ -180,7 +180,7 @@ export class TrajectoryPainter extends EventGroupPainter {
         }
 
         // Apply highlight
-        const mat = trajData.lineObj.material as LineMaterial;
+        const mat = trajData.lineObj.material as unknown as Line2NodeMaterial;
         mat.color.setHex(this.trackColorHighlight);
         mat.linewidth = origWidth * this.trackWidthFactor;
         mat.needsUpdate = true;
@@ -189,7 +189,7 @@ export class TrajectoryPainter extends EventGroupPainter {
       trajData.lineObj.userData["unhighlightFunction"] = () => {
         // Restore original properties
         if (trajData.lineObj.userData["origColor"] !== undefined) {
-          const mat = trajData.lineObj.material as LineMaterial;
+          const mat = trajData.lineObj.material as unknown as Line2NodeMaterial;
           mat.color.setHex(trajData.lineObj.userData["origColor"]);
           mat.linewidth = trajData.lineObj.userData["origWidth"];
           mat.needsUpdate = true;
@@ -204,7 +204,7 @@ export class TrajectoryPainter extends EventGroupPainter {
   /**
    * Creates or picks a line material based on PDG or charge, etc.
    */
-  private createLineMaterial(line: PointTrajectory, pdgIndex: number, chargeIndex: number) {
+  private createLine2NodeMaterial(line: PointTrajectory, pdgIndex: number, chargeIndex: number) {
 
 
     // Try to read PDG and/or charge from line.params

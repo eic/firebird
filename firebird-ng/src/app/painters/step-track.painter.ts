@@ -1,5 +1,5 @@
 import {Color, Line, Object3D, Vector3} from "three";
-import {LineMaterial} from "three/examples/jsm/lines/LineMaterial.js";
+import {Line2NodeMaterial} from "three/webgpu";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry.js";
 import {Line2} from "three/examples/jsm/lines/Line2.js";
 
@@ -40,7 +40,7 @@ export enum NeonTrackColors {
 export class StepTrackComponentPainter {
 
   /** This is primer, all other DASHED line materials take this and clone and change color */
-  dashedLineMaterial = new LineMaterial( {
+  dashedLine2NodeMaterial = new Line2NodeMaterial( {
     color: 0xffff00,
     linewidth: 40, // in world units with size attenuation, pixels otherwise
     worldUnits: true,
@@ -52,7 +52,7 @@ export class StepTrackComponentPainter {
   } );
 
   /** This is primer, all other SOLID line materials take this and clone and change color */
-  solidLineMaterial = new LineMaterial( {
+  solidLine2NodeMaterial = new Line2NodeMaterial( {
     color: 0xffff00,
     linewidth: 40, // in world units with size attenuation, pixels otherwise
     worldUnits: true,
@@ -61,62 +61,62 @@ export class StepTrackComponentPainter {
     alphaToCoverage: true,
   } );
 
-  gammaMaterial: LineMaterial;
-  opticalMaterial: LineMaterial;
-  electronMaterial: LineMaterial;
-  piPlusMaterial: LineMaterial;
-  piMinusMaterial: LineMaterial;
-  piZeroMaterial: LineMaterial;
-  protonMaterial: LineMaterial;
-  neutronMaterial: LineMaterial;
-  posChargeMaterial: LineMaterial;
-  negChargeMaterial: LineMaterial;
-  zeroChargeMaterial: LineMaterial;
-  scatteredElectronMaterial: LineMaterial;
+  gammaMaterial: Line2NodeMaterial;
+  opticalMaterial: Line2NodeMaterial;
+  electronMaterial: Line2NodeMaterial;
+  piPlusMaterial: Line2NodeMaterial;
+  piMinusMaterial: Line2NodeMaterial;
+  piZeroMaterial: Line2NodeMaterial;
+  protonMaterial: Line2NodeMaterial;
+  neutronMaterial: Line2NodeMaterial;
+  posChargeMaterial: Line2NodeMaterial;
+  negChargeMaterial: Line2NodeMaterial;
+  zeroChargeMaterial: Line2NodeMaterial;
+  scatteredElectronMaterial: Line2NodeMaterial;
 
   constructor() {
-    this.gammaMaterial = this.dashedLineMaterial.clone();
+    this.gammaMaterial = this.dashedLine2NodeMaterial.clone();
     this.gammaMaterial.color = new Color(NeonTrackColors.Yellow);
     this.gammaMaterial.dashSize = 50;
     this.gammaMaterial.gapSize = 50;
 
-    this.opticalMaterial = this.dashedLineMaterial.clone();
+    this.opticalMaterial = this.dashedLine2NodeMaterial.clone();
     this.opticalMaterial.color = new Color(NeonTrackColors.Salad);
     this.opticalMaterial.linewidth = 10;
 
-    this.electronMaterial = this.solidLineMaterial.clone();
+    this.electronMaterial = this.solidLine2NodeMaterial.clone();
     this.electronMaterial.color = new Color(NeonTrackColors.Blue);
 
     this.scatteredElectronMaterial = this.electronMaterial.clone();
     this.scatteredElectronMaterial.linewidth = 30;
 
-    this.piPlusMaterial = this.solidLineMaterial.clone();
+    this.piPlusMaterial = this.solidLine2NodeMaterial.clone();
     this.piPlusMaterial.color = new Color(NeonTrackColors.Pink);
 
-    this.piMinusMaterial = this.solidLineMaterial.clone();
+    this.piMinusMaterial = this.solidLine2NodeMaterial.clone();
     this.piMinusMaterial.color = new Color(NeonTrackColors.Teal);
 
-    this.piZeroMaterial = this.dashedLineMaterial.clone();
+    this.piZeroMaterial = this.dashedLine2NodeMaterial.clone();
     this.piZeroMaterial.color = new Color(NeonTrackColors.Salad);
 
-    this.protonMaterial = this.solidLineMaterial.clone();
+    this.protonMaterial = this.solidLine2NodeMaterial.clone();
     this.protonMaterial.color = new Color(NeonTrackColors.Violet);
 
-    this.neutronMaterial = this.dashedLineMaterial.clone();
+    this.neutronMaterial = this.dashedLine2NodeMaterial.clone();
     this.neutronMaterial.color = new Color(NeonTrackColors.Green);
 
-    this.posChargeMaterial = this.solidLineMaterial.clone();
+    this.posChargeMaterial = this.solidLine2NodeMaterial.clone();
     this.posChargeMaterial.color = new Color(NeonTrackColors.Red);
 
-    this.negChargeMaterial = this.solidLineMaterial.clone();
+    this.negChargeMaterial = this.solidLine2NodeMaterial.clone();
     this.negChargeMaterial.color = new Color(NeonTrackColors.DeepBlue);
 
-    this.zeroChargeMaterial = this.dashedLineMaterial.clone();
+    this.zeroChargeMaterial = this.dashedLine2NodeMaterial.clone();
     this.zeroChargeMaterial.color = new Color(NeonTrackColors.Gray);
 
   }
 
-  getMaterial(pdgName: string, charge: number): LineMaterial {
+  getMaterial(pdgName: string, charge: number): Line2NodeMaterial {
     switch (pdgName) {
       case "gamma":
         return this.gammaMaterial;
@@ -196,7 +196,7 @@ export class StepTrackComponentPainter {
             material = this.scatteredElectronMaterial;
           }
 
-          let line = new Line2( geometry, material );
+          let line = new Line2( geometry, material as any );
 
           // line.scale.set( 1, 1, 1 );
           line.name = "TrackLine2";
