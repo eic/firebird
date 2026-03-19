@@ -3,9 +3,11 @@ import { Component, ElementRef, OnInit, OnDestroy, NgZone } from '@angular/core'
 import { GizmoOptions, ViewportGizmo } from 'three-viewport-gizmo';
 import { ThreeService } from '../../services/three.service';
 import {
+  Matrix4,
   OrthographicCamera,
   PerspectiveCamera,
   Scene,
+  Vector3,
   Vector4,
 } from 'three';
 import { WebGPURenderer } from 'three/webgpu';
@@ -112,22 +114,21 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
     };
 
     // Patch _setOrientation for collider coordinate convention:
-    // Beam axis = Z (left-right), Y = vertical. When clicking "Top" the
-    // camera looks down Y with Z as screen-right and X as screen-up.
-    // The library uses this.up (Y) for lookAt which is degenerate along Y.
-    // We use X-axis as up for top/bottom views so Z maps to screen-right.
+    // Beam axis = Z (horizontal), Y = up. When clicking "Top" the camera
+    // should look down Y with Z pointing right. The library's default uses
+    // this.up (Y-up) for lookAt which is degenerate when viewing along Y.
     const _tempPos = new Vector3();
     const _tempMat = new Matrix4();
-    const _xAxis = new Vector3(1, 0, 0);  // up for top/bottom views
-    const _yAxis = new Vector3(0, 1, 0);  // up for side views
+    const _zAxis = new Vector3(0, 0, 1);
+    const _yAxis = new Vector3(0, 1, 0);
 
     gizmo._setOrientation = function (position: Vector3) {
       const cam = gizmo.camera;
       const target = gizmo.target;
 
-      // When viewing along Y (top/bottom), use X as up so Z goes screen-right
+      // Choose an up vector that isn't parallel to the view direction
       const absY = Math.abs(position.y);
-      const upVec = absY > 0.9 ? _xAxis : _yAxis;
+      const upVec = absY > 0.9 ? _zAxis : _yAxis;
 
       _tempPos.copy(position).multiplyScalar(gizmo._distance);
       _tempMat.setPosition(_tempPos).lookAt(_tempPos, gizmo.position, upVec);
