@@ -8,7 +8,9 @@ import {
 import {Color, Object3D} from "three";
 import {Line2NodeMaterial} from "three/webgpu";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry.js";
-import {Line2} from "three/examples/jsm/lines/Line2.js";
+import {Line2} from "three/examples/jsm/lines/webgpu/Line2.js";
+
+
 
 /** Example color set. Feel free to refine or expand. */
 export enum NeonTrackColors {
@@ -65,15 +67,16 @@ export class TrajectoryPainter extends EventGroupPainter {
     // Create base materials
     this.baseSolidMaterial = new Line2NodeMaterial({
       color: 0xffffff,
-      linewidth: 30,   // in world units
+      linewidth: 300,   // in world units
       worldUnits: true,
       dashed: false,
-      alphaToCoverage: true
+      alphaToCoverage: true,
+
     });
 
     this.baseDashedMaterial = new Line2NodeMaterial({
       color: 0xffffff,
-      linewidth: 30,
+      linewidth: 300,
       worldUnits: true,
       dashed: true,
       dashSize: 100,
@@ -134,11 +137,13 @@ export class TrajectoryPainter extends EventGroupPainter {
       // Create proper material
       const lineMaterial = this.createLine2NodeMaterial(trajectory, pdgIndex, chargeIndex);
 
+
       // We'll start by building a geometry with *all* points, and rely on paint() to do partial logic.
       // We'll store the full set of points in linesData, then paint() can rebuild partial geometry.
       const geometry = new LineGeometry();
       const fullPositions = this.generateFlatXYZ(trajectory.points);
       geometry.setPositions(fullPositions);
+
 
       const line2 = new Line2(geometry, lineMaterial as any);
       line2.computeLineDistances();
@@ -166,6 +171,7 @@ export class TrajectoryPainter extends EventGroupPainter {
 
       trajData.lineObj.name = this.getNodeName(trajData, component.trajectories.length);
       trajData.lineObj.userData["track_params"] = trajData.params;
+
 
       // Store the original material properties for highlighting
       const origColor = lineMaterial.color.getHex();
@@ -206,7 +212,6 @@ export class TrajectoryPainter extends EventGroupPainter {
    */
   private createLine2NodeMaterial(line: PointTrajectory, pdgIndex: number, chargeIndex: number) {
 
-
     // Try to read PDG and/or charge from line.params
     // This assumes line.params matches paramColumns.
     let pdg = 0, charge = 0;
@@ -228,7 +233,7 @@ export class TrajectoryPainter extends EventGroupPainter {
       case -22: {                            // optical photon
         const mat = this.baseSolidMaterial.clone();
         mat.color = new Color(NeonTrackColors.Salad);
-        mat.linewidth = 2;
+        mat.linewidth = 3;
         return mat;
       }
       case  11: {                            // e⁻
