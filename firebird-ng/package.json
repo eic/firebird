@@ -38,7 +38,8 @@
     "three-stdlib": "^2.36.1",
     "three-viewport-gizmo": "^2.2.0",
     "tslib": "^2.8.1",
-    "zone.js": "~0.16.1"
+    "zone.js": "~0.16.1",
+    "@dexvis/root-geo-tree-editor": "^0.1.1"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "~21.2.2",
