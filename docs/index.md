@@ -10,7 +10,7 @@ This website now only provides documentation and tutorials for the event display
 
 # EIC Event Display
 
-<center><img src="./media/eic_dis_animation_v7.gif" alt="df" width="600"/></center>
+<div style="text-align: center;"><img src="./media/eic_dis_animation_v7.gif" alt="df" width="600"/></div>
 
 
 

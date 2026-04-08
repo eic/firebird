@@ -4,14 +4,15 @@
 
   "scripts": {
     "dev": "vitepress dev",
+    "serve": "vitepress dev",
     "build": "vitepress build",
     "preview": "vitepress preview"
   },
   "dependencies": {
-    "vue": "^3.5.30"
+    "vue": "^3.5.32"
   },
   "devDependencies": {
-    "vitepress": "^2.0.0-alpha.16",
-    "typescript": "^5.9.3"
+    "vitepress": "^2.0.0-alpha.17",
+    "typescript": "^6.0.2"
   }
 }

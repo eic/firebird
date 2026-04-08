@@ -24,18 +24,18 @@ We will go in details of how to control everything, for now press
 
 ## 2. Select geoemetry and data
 
+Firebird needs detector geometry and event data to be set (while it is still possible
+to show only one). 
 
-... navigate to Configure page, explain that for event display to work it needs geometry and events file.
-For this tutorial we will use ready presets in the upper most menu ... 
+<img src="./01_04_inputs.drawio.png" alt="Firebird inputs" title="Firebird geometry and event inputs"/>
 
 
+The easiest way to start is with a preset configurations:
 
-The easiest way to start is with a preset configuration:
-
-1. Look for the **"Select example configuration preset"** dropdown
+1. Look for the **"Examples: Select example configuration preset"** dropdown
 2. Choose one of the options like:
    - "Full ePIC detector geometry (no events)" - for exploring just the detector
-   - "DIS CC in ePIC" options - for viewing collision events
+   - "DIS NC in ePIC" options - for viewing collision events
    - "DIRC optical photons" - for specialized detector studies
 
 When you select a preset, it automatically fills in the geometry and event sources below.
@@ -44,15 +44,22 @@ When you select a preset, it automatically fills in the geometry and event sourc
 
 ... By this moment geometry should be loaded ...
 
-- A 3D view in the center showing the detector geometry
-- Control buttons in the header toolbar
-- Time controls at the bottom
-- A view tool panel on the right side
+<img src="./01_02_ui_labels.drawio.png" width="900" alt="Basic Firebird View" title="Firebird display window view"/>
 
 Try these basic interactions:
 - **🖱️ Left-click and drag** to rotate the view
 - **🖱️ Right-click and drag** to pan
 - **🖱️ Scroll** to zoom in and out
+
+The menus are 
+
+1. **Main menu**. Switch between the configs and the display
+2. **Controls**. Select event, set clipping, import/export
+3. **Scene tree**. Navigate geometry and event elements 
+4. **Camera and visuals**.  
+5. **Animation and time**. See how event evolve in time
+6. **Loading progress**. For geometry and event data 
+
 
 ### View Controls
 
@@ -61,12 +68,18 @@ The floating panel on the right provides quick access to view controls:
 - **View options** (eye icon) for grids and visual aids
 - **Camera mode** button to switch between perspective and orthographic views
 
-### Scene Organization
+## 4. Scene Organization
 
-Click the **tree icon** in the header to open the scene tree panel. This shows:
+<img src="./01_05_scene_tree.gif" alt="Scene tree" title="Scene tree view">
+
+Click the **tree icon** <img src="./material-icons_account_tree.svg" width="15" alt="tree_button" > 
+in the header to open the scene tree panel. This shows:
 - All loaded geometry components
 - Event data (tracks, hits, etc.)
 - Visual helpers
+
+> You may need to press **refresh** <img src="./material-icons_refresh.svg" style="float:left" width="15" alt="tree_button" > 
+> button on the tree panel if not all nodes are shown
 
 You can:
 - Click the eye icons to show/hide components
@@ -75,29 +88,29 @@ You can:
 
 ### Event Navigation
 
+<img src="./01_06_event_selection.png" width="400" alt="Event Selection" title="Event Selection"/>
+
 If you loaded multiple events:
 1. Use the **event selector dropdown** in the header to switch between events
 2. Each event is labeled with its ID for easy reference
 
-### Time-Based Animation
-
-The bottom toolbar controls time-based visualization:
-
-- **Time slider** - Drag to see particles at different times
-- **Play/Pause** - Animate particle trajectories
-- **Step buttons** - Move forward/backward one time step
-- **Rewind** - Return to the beginning
-- **Stop** - Show all particles at once
-
-Try playing an animation to see particles emerge from the collision point and travel through the detector!
 
 ### Geometry Clipping
+
+<img src="./01_07_clipping.gif" loading="lazy" alt="Firebird geometry clipping" title="Geometry Clipping">
 
 The **crop icon** in the header opens clipping controls:
 1. Enable clipping with the checkbox
 2. Use the preset buttons for common views (half, quarter cuts)
 3. Adjust angles manually with the sliders
 4. This helps see inside the detector layers
+
+Firebird clipping concepts:  
+
+- Clipping only works for Geometry. Event presentation is not affected. 
+- There are 2 separate modes "Angular Clipping" and "Z Clipping"
+- (!) There is a known limitation that "Z Clipping" hides event data 
+
 
 ### Measurement Tools
 
@@ -128,17 +141,22 @@ We may select
 
 For EDM4EIC files, you can specify which events to load using the range field (e.g., "0-5" for the first 6 events).
 
-... here we have changes from that ...
-
 Click the **DISPLAY** button to return to the main view with your selected data loaded.
 
+### Time-Based Animation
 
+The bottom toolbar controls time-based visualization:
 
+- **Time slider** - Drag to see particles at different times
+- **Play/Pause** - Animate particle trajectories
+- **Step buttons** - Move forward/backward one time step
+- **Rewind** - Return to the beginning
+- **Stop** - Show all particles at once
 
+Try playing an animation to see particles emerge from the collision point and travel through the detector!
+![FirebirdClipping.gif](../../../../Users/romanov/Desktop/FirebirdClipping.gif)
 
 ### Performance Considerations
-
-... here we have a lot of updates, check firebird-ng/src/app/pages/input-config for details ...
 
 In the bottom-left corner, you'll see performance statistics (FPS, triangles, etc.). If performance is slow:
 
@@ -152,5 +170,4 @@ In the bottom-left corner, you'll see performance statistics (FPS, triangles, et
 
 ## Next Steps
 
-... The next tutorial on how to install on local machine and use with your data via pyrobird.... 
 

@@ -162,3 +162,5 @@ docs/.vitepress/cache
 docs/tutorials/.$01_04_inputs.drawio.bkp
 
 .claude/
+
+*.bkp

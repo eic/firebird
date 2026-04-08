@@ -1,6 +1,6 @@
 # pyrobird
 
-[![PyPI - Version](https://img.shields.io/pypi/v/pyrobird.svg)](https://pypi.org/project/pyrobird)
+[![PyPI - Version][def]](https://pypi.org/project/pyrobird)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyrobird.svg)](https://pypi.org/project/pyrobird)
 
 -----
@@ -148,6 +148,7 @@ has access to files in your current directory or a directory provided via `--wor
    the file `/home/username/datafiles/filename.root` will be opened
 
 
+## Batch Screenshots
 ## API Documentation
 
 This is technical explanation of what is under the hood of the server part
@@ -283,3 +284,5 @@ python -m build && python -m twine upload dist/*
 
 # You will have to setup your pip authentication key
 ```
+
+[def]: https://img.shields.io/pypi/v/pyrobird.svg
