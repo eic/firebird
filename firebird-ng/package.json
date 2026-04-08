@@ -47,7 +47,7 @@
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@types/three": "^0.183.1",
-    "baseline-browser-mapping": "^2.10.8",
+    "baseline-browser-mapping": "^2.10.16",
     "cross-env": "^10.1.0",
     "typescript": "^5.8.3",
     "@vitest/coverage-v8": "^4.1.0",
