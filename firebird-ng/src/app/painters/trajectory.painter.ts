@@ -5,8 +5,9 @@ import {
   PointTrajectory
 } from "../model/point-trajectory.group";
 
-import {Color, Object3D} from "three";
-import {Line2NodeMaterial} from "three/webgpu";
+import {Object3D} from "three";
+import Line2NodeMaterial from "three/src/materials/nodes/Line2NodeMaterial.js"
+//import {Line2NodeMaterial} from "three/webgpu";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry.js";
 import {Line2} from "three/examples/jsm/lines/webgpu/Line2.js";
 
@@ -50,9 +51,8 @@ export class TrajectoryPainter extends EventGroupPainter {
   public trajectories: TrajectoryRenderContext[] = [];
   private timeColumnIndex = 3;         // TODO check that line has time column
 
-  /** Base materials that we clone for each line. */
-  private baseSolidMaterial: Line2NodeMaterial;
-  private baseDashedMaterial: Line2NodeMaterial;
+  /** Default line width in world units */
+  private readonly defaultLineWidth = 300;
 
   public readonly trackColorHighlight = 0xff4081; // vivid pink for highlight
   public readonly trackWidthFactor = 2;          // how many times thicker when highlighted
@@ -63,26 +63,6 @@ export class TrajectoryPainter extends EventGroupPainter {
     if (component.type !== PointTrajectoryGroup.type) {
       throw new Error("Wrong component type given to PointTrajectoryPainter.");
     }
-
-    // Create base materials
-    this.baseSolidMaterial = new Line2NodeMaterial({
-      color: 0xffffff,
-      linewidth: 300,   // in world units
-      worldUnits: true,
-      dashed: false,
-      alphaToCoverage: true,
-
-    });
-
-    this.baseDashedMaterial = new Line2NodeMaterial({
-      color: 0xffffff,
-      linewidth: 300,
-      worldUnits: true,
-      dashed: true,
-      dashSize: 100,
-      gapSize: 100,
-      alphaToCoverage: true
-    });
 
     // Build lines at construction
     this.initLines();
@@ -208,6 +188,34 @@ export class TrajectoryPainter extends EventGroupPainter {
   }
 
   /**
+   * Creates a new solid Line2NodeMaterial.
+   * NOTE: We must create fresh materials instead of using .clone() because
+   * Line2NodeMaterial.clone() in three.js v0.183 does NOT copy _useWorldUnits,
+   * _useDash, or linewidth, causing all cloned materials to have 1px lines.
+   */
+  private newSolidMaterial(color: NeonTrackColors, linewidth?: number): Line2NodeMaterial {
+    return new Line2NodeMaterial({
+      color: color,
+      linewidth: linewidth ?? this.defaultLineWidth,
+      worldUnits: true,
+      dashed: false,
+      alphaToCoverage: true,
+    });
+  }
+
+  private newDashedMaterial(color: NeonTrackColors): Line2NodeMaterial {
+    return new Line2NodeMaterial({
+      color: color,
+      linewidth: this.defaultLineWidth,
+      worldUnits: true,
+      dashed: true,
+      dashSize: 100,
+      gapSize: 100,
+      alphaToCoverage: true,
+    });
+  }
+
+  /**
    * Creates or picks a line material based on PDG or charge, etc.
    */
   private createLine2NodeMaterial(line: PointTrajectory, pdgIndex: number, chargeIndex: number) {
@@ -225,66 +233,22 @@ export class TrajectoryPainter extends EventGroupPainter {
     // Minimal PDG-based color logic
     // ---------- PDG‑specific cases ----------
     switch (pdg) {
-      case  22: {                             // γ
-        const mat = this.baseDashedMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Yellow);
-        return mat;
-      }
-      case -22: {                            // optical photon
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Salad);
-        mat.linewidth = 3;
-        return mat;
-      }
-      case  11: {                            // e⁻
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Blue);
-        return mat;
-      }
-      case -11: {                            // e⁺
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Orange);
-        return mat;
-      }
-      case  211: {                           // π⁺
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Pink);
-        return mat;
-      }
-      case -211: {                           // π⁻
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Teal);
-        return mat;
-      }
-      case  2212: {                          // proton
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Violet);
-        return mat;
-      }
-      case  2112: {                          // neutron
-        const mat = this.baseDashedMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Green);
-        return mat;
-      }
+      case  22:   return this.newDashedMaterial(NeonTrackColors.Yellow);    // γ
+      case -22:   return this.newSolidMaterial(NeonTrackColors.Salad, 3);  // optical photon
+      case  11:   return this.newSolidMaterial(NeonTrackColors.Blue);      // e⁻
+      case -11:   return this.newSolidMaterial(NeonTrackColors.Orange);    // e⁺
+      case  211:  return this.newSolidMaterial(NeonTrackColors.Pink);      // π⁺
+      case -211:  return this.newSolidMaterial(NeonTrackColors.Teal);      // π⁻
+      case  2212: return this.newSolidMaterial(NeonTrackColors.Violet);    // proton
+      case  2112: return this.newDashedMaterial(NeonTrackColors.Green);    // neutron
     }
 
     // ---------- Fallback by charge ----------
-    if (charge > 0) {
-      const mat = this.baseSolidMaterial.clone();
-      mat.color = new Color(NeonTrackColors.Red);
-      return mat;
-    }
-
-    if (charge < 0) {
-      const mat = this.baseSolidMaterial.clone();
-      mat.color = new Color(NeonTrackColors.DeepBlue);
-      return mat;
-    }
+    if (charge > 0) return this.newSolidMaterial(NeonTrackColors.Red);
+    if (charge < 0) return this.newSolidMaterial(NeonTrackColors.DeepBlue);
 
     // Neutral fallback
-    const mat = this.baseSolidMaterial.clone();
-    mat.color = new Color(NeonTrackColors.Gray);
-    return mat;
+    return this.newSolidMaterial(NeonTrackColors.Gray);
   }
 
   /**
