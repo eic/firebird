@@ -11,8 +11,9 @@ import {
   Sphere,
   SphereGeometry,
   TubeGeometry,
-  Vector3, WebGLRenderer
+  Vector3,
 } from "three";
+import { WebGPURenderer } from "three/webgpu";
 
 export class CameraMoveTask implements AnimationTask {
   name = 'CameraMove';
@@ -397,7 +398,7 @@ export class AnimateEventWithClippingTask implements AnimationTask {
 
   constructor(
     private scene: Scene,
-    private renderer: WebGLRenderer,
+    private renderer: WebGPURenderer,
     private EVENT_DATA_ID: string,
     tweenDuration: number,
     onEnd?: () => void,

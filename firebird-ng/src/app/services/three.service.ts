@@ -12,6 +12,7 @@ import {
   Camera,
   Scene, Mesh
 } from 'three';
+import { WebGPURenderer, ClippingGroup } from 'three/webgpu';
 import {PerfService} from "./perf.service";
 import {BehaviorSubject, Subject} from "rxjs";
 
@@ -32,10 +33,13 @@ export class ThreeService implements OnDestroy {
 
   /** Three.js core components */
   public scene!: THREE.Scene;
-  public sceneGeometry!: THREE.Group;
+  /** Z clipping wrapper — parent of sceneGeometry, never accessed externally */
+  private zClippingGroup!: ClippingGroup;
+  /** Angular (wedge) clipping — geometry is added here */
+  public sceneGeometry!: ClippingGroup;
   public sceneEvent!: THREE.Group;
   public sceneHelpers!: THREE.Group;
-  public renderer!: THREE.WebGLRenderer;
+  public renderer!: WebGPURenderer;
   public controls!: OrbitControls;
 
 
@@ -186,7 +190,7 @@ export class ThreeService implements OnDestroy {
    * @param container A string representing the ID of the HTML element,
    *                  or the actual HTMLElement where the renderer will attach.
    */
-  init(container: string | HTMLElement): void {
+  async init(container: string | HTMLElement): Promise<void> {
 
     let containerElement: HTMLElement;
 
@@ -214,12 +218,20 @@ export class ThreeService implements OnDestroy {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x3f3f3f); // Dark grey background
 
-    // Geometry scene tree
-    this.sceneGeometry = new THREE.Group();
-    this.sceneGeometry.name = 'Geometry';
-    this.scene.add(this.sceneGeometry);
+    // Z clipping group (union mode) wraps the geometry group
+    this.zClippingGroup = new ClippingGroup();
+    this.zClippingGroup.name = 'ZClipping';
+    this.zClippingGroup.enabled = false;
+    this.zClippingGroup.clipIntersection = false; // union — always
+    this.scene.add(this.zClippingGroup);
 
-    // Event scene tree
+    // Angular (wedge) clipping group — geometry is added here
+    this.sceneGeometry = new ClippingGroup();
+    this.sceneGeometry.name = 'Geometry';
+    this.sceneGeometry.enabled = false;
+    this.zClippingGroup.add(this.sceneGeometry);
+
+    // Event scene tree (regular Group — clipping does NOT apply to event data)
     this.sceneEvent = new THREE.Group();
     this.sceneEvent.name = 'Event';
     this.scene.add(this.sceneEvent);
@@ -246,12 +258,12 @@ export class ThreeService implements OnDestroy {
     // Default camera is perspective
     this.camera = this.perspectiveCamera;
 
-    // Create renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true , logarithmicDepthBuffer: true, stencil:true});
+    // Create renderer (WebGPU with automatic WebGL2 fallback)
+    this.renderer = new WebGPURenderer({ antialias: true , logarithmicDepthBuffer: true, stencil:true});
     this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.localClippingEnabled = false;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    await this.renderer.init();
 
     // Append renderer to the container
     this.containerElement.appendChild(this.renderer.domElement);
@@ -280,6 +292,9 @@ export class ThreeService implements OnDestroy {
     // (!) We set initialized here, as at this point all main objects are created and configured
     // It is important not to set this flag at the function end as functions, such as setSize will check the flag
     this.initialized = true;
+
+    // Apply any clipping state that was set by Angular effects before init completed
+    this.updateClippingGroups();
 
     // ----------- POST INIT ------------------
 
@@ -521,11 +536,7 @@ export class ThreeService implements OnDestroy {
    */
   enableClipping(enable: boolean): void {
     this.angularClippingEnabled = enable;
-    // Keep localClippingEnabled on if Z clipping is active
-    this.renderer.localClippingEnabled = enable || this.zClippingEnabled;
-
-    // Update all materials to use clipping planes when enabled
-    this.updateMaterialClipping();
+    this.updateClippingGroups();
   }
 
   /**
@@ -549,22 +560,15 @@ export class ThreeService implements OnDestroy {
     quatB.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle + openingAngle);
     planeB.normal.set(0, 1, 0).applyQuaternion(quatB);
 
-    // Update materials (localClippingEnabled managed by enableClipping/enableZClipping)
-    this.renderer.localClippingEnabled = this.angularClippingEnabled || this.zClippingEnabled;
-    this.updateMaterialClipping();
+    this.updateClippingGroups();
   }
 
   /**
    * Enables or disables Z-axis clipping.
-   * Uses renderer.clippingPlanes (global, always union mode) so Z clipping
-   * works independently of angular clipping's clipIntersection logic.
    */
   enableZClipping(enable: boolean): void {
     this.zClippingEnabled = enable;
-    this.renderer.clippingPlanes = enable ? [this.zClipPlane] : [];
-    if (enable) {
-      this.renderer.localClippingEnabled = true;
-    }
+    this.updateClippingGroups();
   }
 
   /**
@@ -582,41 +586,25 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * Update all materials to use current clipping planes
+   * Synchronise the two nested ClippingGroups with the current clipping state.
+   *
+   * Scene structure:
+   *   zClippingGroup (union mode, Z plane)
+   *     └── sceneGeometry (intersection/union, angular wedge planes)
+   *
+   * Separating them into two groups lets each have its own clipIntersection mode.
    */
-  private updateMaterialClipping(): void {
-    const updateObjectClipping = (object: THREE.Object3D) => {
-      const obj = object as any;
-      if (obj.material) {
-        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+  private updateClippingGroups(): void {
+    if (!this.initialized) return;
 
-        materials.forEach((material: THREE.Material) => {
-          if (this.angularClippingEnabled) {
-            material.clippingPlanes = this.clipPlanes;
-            material.clipIntersection = this.clipIntersection;
-          } else {
-            material.clippingPlanes = null;
-            material.clipIntersection = false;
-          }
+    // Angular (wedge) clipping on sceneGeometry
+    this.sceneGeometry.clippingPlanes = this.angularClippingEnabled ? [...this.clipPlanes] : [];
+    this.sceneGeometry.enabled = this.angularClippingEnabled;
+    this.sceneGeometry.clipIntersection = this.angularClippingEnabled ? this.clipIntersection : false;
 
-          // Prevent z-fighting (only for mesh materials)
-          if (object instanceof THREE.Mesh && (
-            material instanceof THREE.MeshBasicMaterial ||
-            material instanceof THREE.MeshLambertMaterial ||
-            material instanceof THREE.MeshPhongMaterial ||
-            material instanceof THREE.MeshStandardMaterial)) {
-            material.polygonOffset = true;
-            material.polygonOffsetFactor = 1;
-            material.polygonOffsetUnits = 1;
-          }
-
-          material.needsUpdate = true;
-        });
-      }
-    };
-
-    this.sceneGeometry.traverse(updateObjectClipping);
-    this.sceneEvent.traverse(updateObjectClipping);
+    // Z clipping on the parent wrapper
+    this.zClippingGroup.clippingPlanes = this.zClippingEnabled ? [this.zClipPlane] : [];
+    this.zClippingGroup.enabled = this.zClippingEnabled;
   }
 
   /**
@@ -732,7 +720,7 @@ export class ThreeService implements OnDestroy {
 
 
   logRendererInfo() {
-    // Access the THREE.WebGLRenderer from threeService
+    // Access the renderer from threeService
     const renderer = this.renderer;
     const info = renderer.info;
     console.log('Draw calls:', info.render.calls);
@@ -741,8 +729,7 @@ export class ThreeService implements OnDestroy {
     console.log('Lines:', info.render.lines);
     console.log('Geometries in memory:', info.memory.geometries);
     console.log('Textures in memory:', info.memory.textures);
-    console.log('Programs:', info.programs?.length);
-    console.log(info.programs);
+    console.log('Pipelines:', (info as any).pipelines?.length);
   }
   // /**
   //  * Initialize the hover point indicator
@@ -820,7 +807,7 @@ export class ThreeService implements OnDestroy {
    * Helper to check if a point is clipped by active clipping planes
    */
   private isPointClipped(point: THREE.Vector3): boolean {
-    if (!this.renderer.localClippingEnabled) {
+    if (!this.angularClippingEnabled && !this.zClippingEnabled) {
       return false;
     }
 
@@ -845,7 +832,7 @@ export class ThreeService implements OnDestroy {
    * Filter intersections based on clipping planes
    */
   private filterClippedIntersections(intersections: THREE.Intersection[]): THREE.Intersection[] {
-    if (!this.renderer.localClippingEnabled || this.clipPlanes.length === 0) {
+    if ((!this.angularClippingEnabled && !this.zClippingEnabled) || this.clipPlanes.length === 0) {
       return intersections;
     }
 

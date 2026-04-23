@@ -31,7 +31,6 @@ export class DataModelPainter {
     //this.registerPainter(BoxHitGroup.type, BoxHitPainter);
     this.registerPainter(BoxHitGroup.type, BoxHitSimplePainter);
     this.registerPainter(PointTrajectoryGroup.type, TrajectoryPainter);
-
   }
 
   public setThreeSceneParent(parentNode: Object3D) {

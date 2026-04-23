@@ -250,14 +250,20 @@ The painter system filters data by time range using Angular signals:
 - Components show/hide based on time range
 - Tween.js enables smooth animations
 
-### 3. BVH Acceleration
+### 3. Clipping (Angular Wedge / Z-axis)
+
+- **Only `sceneGeometry` is clipped** — event data (`sceneEvent`) must NEVER be clipped.
+- `sceneGeometry` is a `ClippingGroup` (WebGPU); clipping planes are set on the group, not on individual materials.
+- `sceneEvent` is a regular `THREE.Group` — do not convert it to `ClippingGroup`.
+
+### 4. BVH Acceleration
 
 `three-mesh-bvh` provides fast raycasting for object selection:
 - Lazy BVH computation on demand
 - Frustum culling for performance
 - Critical for large detector geometries
 
-### 4. Service Singletons
+### 5. Service Singletons
 
 Angular services are singletons managing global state:
 - Scene management (three.service)
@@ -265,7 +271,7 @@ Angular services are singletons managing global state:
 - Configuration (config.service)
 - URL parameters (url.service)
 
-### 5. Security by Configuration (pyrobird)
+### 6. Security by Configuration (pyrobird)
 
 Restrictive defaults prevent unauthorized file access:
 - Explicit opt-in for dangerous features

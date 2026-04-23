@@ -119,8 +119,8 @@ export class EventDisplayService {
    * Initialize the default three.js scene
    * @param container
    */
-  initThree(container: string | HTMLElement) {
-    this.three.init(container);
+  async initThree(container: string | HTMLElement) {
+    await this.three.init(container);
     this.painter.setThreeSceneParent(this.three.sceneEvent);
     this.three.startRendering();
 
@@ -313,7 +313,9 @@ export class EventDisplayService {
     if (this.trackInfos) {
       for (let trackInfo of this.trackInfos) {
         trackInfo.trackNode.visible = true;
-        trackInfo.newLine.geometry.instanceCount = Infinity;
+        // Show all line segments: instanceCount = number of segment instances
+        const startAttr = trackInfo.newLine.geometry.getAttribute('instanceStart');
+        trackInfo.newLine.geometry.instanceCount = startAttr ? startAttr.count : 0;
       }
     }
   }

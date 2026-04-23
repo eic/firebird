@@ -65,10 +65,10 @@ describe('TrajectoryPainter', () => {
             // Call paint with no time
             testPainter.paint(null);
 
-            // Verify all trajectories are visible with instanceCount = Infinity
+            // Verify all trajectories are visible with instanceCount = points.length - 1
             testPainter.trajectories.forEach(track => {
                 expect(track.lineObj.visible).toBe(true);
-                expect(track.lineObj.geometry.instanceCount).toBe(Infinity);
+                expect(track.lineObj.geometry.instanceCount).toBe(track.points.length - 1);
             });
         });
     });
@@ -98,7 +98,7 @@ describe('TrajectoryPainter', () => {
 
             // Track 1 should be fully visible
             expect(painter.trajectories[0].lineObj.visible).toBe(true);
-            expect(painter.trajectories[0].lineObj.geometry.instanceCount).toBe(Infinity);
+            expect(painter.trajectories[0].lineObj.geometry.instanceCount).toBe(painter.trajectories[0].points.length - 1);
 
             // Track 3 should be hidden (not yet started)
             expect(painter.trajectories[2].lineObj.visible).toBe(false);

@@ -5,10 +5,13 @@ import {
   PointTrajectory
 } from "../model/point-trajectory.group";
 
-import {Color, Object3D} from "three";
-import {LineMaterial} from "three/examples/jsm/lines/LineMaterial.js";
+import {Object3D} from "three";
+import Line2NodeMaterial from "three/src/materials/nodes/Line2NodeMaterial.js"
+//import {Line2NodeMaterial} from "three/webgpu";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry.js";
-import {Line2} from "three/examples/jsm/lines/Line2.js";
+import {Line2} from "three/examples/jsm/lines/webgpu/Line2.js";
+
+
 
 /** Example color set. Feel free to refine or expand. */
 export enum NeonTrackColors {
@@ -32,7 +35,7 @@ interface TrajectoryRenderContext {
   collectionIndex: number;           // Index in the array
   lineObj: Line2;                    // the Line2 object in the scene
   points: number[][];                // the raw array of [x, y, z, t, dx, dy, dz, dt]
-  lineMaterial: LineMaterial;        // the material used
+  lineMaterial: Line2NodeMaterial;        // the material used
   startTime: number;                 // The time of the first point
   endTime: number;                   // The end of the last point
   params: Record<string, any>;       // Track parameters
@@ -48,9 +51,8 @@ export class TrajectoryPainter extends EventGroupPainter {
   public trajectories: TrajectoryRenderContext[] = [];
   private timeColumnIndex = 3;         // TODO check that line has time column
 
-  /** Base materials that we clone for each line. */
-  private baseSolidMaterial: LineMaterial;
-  private baseDashedMaterial: LineMaterial;
+  /** Default line width in world units */
+  private readonly defaultLineWidth = 300;
 
   public readonly trackColorHighlight = 0xff4081; // vivid pink for highlight
   public readonly trackWidthFactor = 2;          // how many times thicker when highlighted
@@ -61,25 +63,6 @@ export class TrajectoryPainter extends EventGroupPainter {
     if (component.type !== PointTrajectoryGroup.type) {
       throw new Error("Wrong component type given to PointTrajectoryPainter.");
     }
-
-    // Create base materials
-    this.baseSolidMaterial = new LineMaterial({
-      color: 0xffffff,
-      linewidth: 30,   // in world units
-      worldUnits: true,
-      dashed: false,
-      alphaToCoverage: true
-    });
-
-    this.baseDashedMaterial = new LineMaterial({
-      color: 0xffffff,
-      linewidth: 30,
-      worldUnits: true,
-      dashed: true,
-      dashSize: 100,
-      gapSize: 100,
-      alphaToCoverage: true
-    });
 
     // Build lines at construction
     this.initLines();
@@ -132,7 +115,8 @@ export class TrajectoryPainter extends EventGroupPainter {
       }
 
       // Create proper material
-      const lineMaterial = this.createLineMaterial(trajectory, pdgIndex, chargeIndex);
+      const lineMaterial = this.createLine2NodeMaterial(trajectory, pdgIndex, chargeIndex);
+
 
       // We'll start by building a geometry with *all* points, and rely on paint() to do partial logic.
       // We'll store the full set of points in linesData, then paint() can rebuild partial geometry.
@@ -140,7 +124,8 @@ export class TrajectoryPainter extends EventGroupPainter {
       const fullPositions = this.generateFlatXYZ(trajectory.points);
       geometry.setPositions(fullPositions);
 
-      const line2 = new Line2(geometry, lineMaterial);
+
+      const line2 = new Line2(geometry, lineMaterial as any);
       line2.computeLineDistances();
 
       // Add to the scene
@@ -167,6 +152,7 @@ export class TrajectoryPainter extends EventGroupPainter {
       trajData.lineObj.name = this.getNodeName(trajData, component.trajectories.length);
       trajData.lineObj.userData["track_params"] = trajData.params;
 
+
       // Store the original material properties for highlighting
       const origColor = lineMaterial.color.getHex();
       const origWidth = lineMaterial.linewidth;
@@ -180,7 +166,7 @@ export class TrajectoryPainter extends EventGroupPainter {
         }
 
         // Apply highlight
-        const mat = trajData.lineObj.material as LineMaterial;
+        const mat = trajData.lineObj.material as unknown as Line2NodeMaterial;
         mat.color.setHex(this.trackColorHighlight);
         mat.linewidth = origWidth * this.trackWidthFactor;
         mat.needsUpdate = true;
@@ -189,7 +175,7 @@ export class TrajectoryPainter extends EventGroupPainter {
       trajData.lineObj.userData["unhighlightFunction"] = () => {
         // Restore original properties
         if (trajData.lineObj.userData["origColor"] !== undefined) {
-          const mat = trajData.lineObj.material as LineMaterial;
+          const mat = trajData.lineObj.material as unknown as Line2NodeMaterial;
           mat.color.setHex(trajData.lineObj.userData["origColor"]);
           mat.linewidth = trajData.lineObj.userData["origWidth"];
           mat.needsUpdate = true;
@@ -202,10 +188,37 @@ export class TrajectoryPainter extends EventGroupPainter {
   }
 
   /**
+   * Creates a new solid Line2NodeMaterial.
+   * NOTE: We must create fresh materials instead of using .clone() because
+   * Line2NodeMaterial.clone() in three.js v0.183 does NOT copy _useWorldUnits,
+   * _useDash, or linewidth, causing all cloned materials to have 1px lines.
+   */
+  private newSolidMaterial(color: NeonTrackColors, linewidth?: number): Line2NodeMaterial {
+    return new Line2NodeMaterial({
+      color: color,
+      linewidth: linewidth ?? this.defaultLineWidth,
+      worldUnits: true,
+      dashed: false,
+      alphaToCoverage: true,
+    });
+  }
+
+  private newDashedMaterial(color: NeonTrackColors): Line2NodeMaterial {
+    return new Line2NodeMaterial({
+      color: color,
+      linewidth: this.defaultLineWidth,
+      worldUnits: true,
+      dashed: true,
+      dashSize: 100,
+      gapSize: 100,
+      alphaToCoverage: true,
+    });
+  }
+
+  /**
    * Creates or picks a line material based on PDG or charge, etc.
    */
-  private createLineMaterial(line: PointTrajectory, pdgIndex: number, chargeIndex: number) {
-
+  private createLine2NodeMaterial(line: PointTrajectory, pdgIndex: number, chargeIndex: number) {
 
     // Try to read PDG and/or charge from line.params
     // This assumes line.params matches paramColumns.
@@ -220,66 +233,22 @@ export class TrajectoryPainter extends EventGroupPainter {
     // Minimal PDG-based color logic
     // ---------- PDG‑specific cases ----------
     switch (pdg) {
-      case  22: {                             // γ
-        const mat = this.baseDashedMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Yellow);
-        return mat;
-      }
-      case -22: {                            // optical photon
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Salad);
-        mat.linewidth = 2;
-        return mat;
-      }
-      case  11: {                            // e⁻
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Blue);
-        return mat;
-      }
-      case -11: {                            // e⁺
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Orange);
-        return mat;
-      }
-      case  211: {                           // π⁺
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Pink);
-        return mat;
-      }
-      case -211: {                           // π⁻
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Teal);
-        return mat;
-      }
-      case  2212: {                          // proton
-        const mat = this.baseSolidMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Violet);
-        return mat;
-      }
-      case  2112: {                          // neutron
-        const mat = this.baseDashedMaterial.clone();
-        mat.color = new Color(NeonTrackColors.Green);
-        return mat;
-      }
+      case  22:   return this.newDashedMaterial(NeonTrackColors.Yellow);    // γ
+      case -22:   return this.newSolidMaterial(NeonTrackColors.Salad, 3);  // optical photon
+      case  11:   return this.newSolidMaterial(NeonTrackColors.Blue);      // e⁻
+      case -11:   return this.newSolidMaterial(NeonTrackColors.Orange);    // e⁺
+      case  211:  return this.newSolidMaterial(NeonTrackColors.Pink);      // π⁺
+      case -211:  return this.newSolidMaterial(NeonTrackColors.Teal);      // π⁻
+      case  2212: return this.newSolidMaterial(NeonTrackColors.Violet);    // proton
+      case  2112: return this.newDashedMaterial(NeonTrackColors.Green);    // neutron
     }
 
     // ---------- Fallback by charge ----------
-    if (charge > 0) {
-      const mat = this.baseSolidMaterial.clone();
-      mat.color = new Color(NeonTrackColors.Red);
-      return mat;
-    }
-
-    if (charge < 0) {
-      const mat = this.baseSolidMaterial.clone();
-      mat.color = new Color(NeonTrackColors.DeepBlue);
-      return mat;
-    }
+    if (charge > 0) return this.newSolidMaterial(NeonTrackColors.Red);
+    if (charge < 0) return this.newSolidMaterial(NeonTrackColors.DeepBlue);
 
     // Neutral fallback
-    const mat = this.baseSolidMaterial.clone();
-    mat.color = new Color(NeonTrackColors.Gray);
-    return mat;
+    return this.newSolidMaterial(NeonTrackColors.Gray);
   }
 
   /**
@@ -310,9 +279,9 @@ export class TrajectoryPainter extends EventGroupPainter {
 
   private paintNoTime() {
     for (const track of this.trajectories) {
-      // Rebuild geometry with *all* points
+      // Show all points
       track.lineObj.visible = true;
-      track.lineObj.geometry.instanceCount = Infinity;
+      track.lineObj.geometry.instanceCount = track.points.length - 1;
     }
   }
 
@@ -338,7 +307,7 @@ export class TrajectoryPainter extends EventGroupPainter {
 
       // If track has already ended, show it completely
       if (track.endTime <= time) {
-        track.lineObj.geometry.instanceCount = Infinity;
+        track.lineObj.geometry.instanceCount = track.points.length - 1;
 
         // if next paint the time moves backward, and we start hiding track parts,
         // we want lastPaintIndex to correspond to fully rendered track
