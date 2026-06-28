@@ -51,7 +51,7 @@ jobs:
         run: npm run build
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firebird-ng-build
           path: ./firebird-ng/dist/
