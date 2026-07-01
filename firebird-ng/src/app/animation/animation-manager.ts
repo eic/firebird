@@ -6,8 +6,8 @@ import {
   Mesh,
   Scene,
   Camera,
-  WebGLRenderer,
 } from 'three';
+import { WebGPURenderer } from 'three/webgpu';
 
 // Animation Task Interface
 export interface AnimationTask {
@@ -133,7 +133,7 @@ export class AnimationManager {
   constructor(
     private scene: Scene,
     private activeCamera: Camera,
-    private renderer: WebGLRenderer
+    private renderer: WebGPURenderer
   ) {}
 
   registerSequence(sequence: AnimationSequence) {

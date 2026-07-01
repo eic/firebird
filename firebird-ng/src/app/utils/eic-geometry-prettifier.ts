@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { Object3D, Scene, Group, Mesh, MeshPhysicalMaterial, PMREMGenerator, WebGLRenderer } from "three";
+import { Object3D, Scene, Group, Mesh, MeshPhysicalMaterial } from "three";
+import { PMREMGenerator, WebGPURenderer } from "three/webgpu";
 
 /**
  * EIC Geometry Prettifier
@@ -14,7 +15,7 @@ let cachedEnvMap: THREE.Texture | null = null;
 /**
  * Creates a procedural environment map with gradient and bright light sources.
  */
-function createProceduralEnvironment(renderer: WebGLRenderer): THREE.Texture | null {
+function createProceduralEnvironment(renderer: WebGPURenderer): THREE.Texture | null {
   if (!renderer) {
     console.warn('[EicGeometryPrettifier]: No renderer provided');
     return null;
@@ -162,7 +163,7 @@ function applyMirrorMaterial(
 }
 
 export interface PrettifyOptions {
-  renderer: WebGLRenderer;
+  renderer: WebGPURenderer;
   sceneGeometry: Group;
   scene: Scene;
   clippingPlanes?: THREE.Plane[];

@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { ConfigService } from '../../services/config.service';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -13,7 +13,7 @@ import { ResourceSelectComponent } from '../../components/resource-select/resour
 import { defaultFirebirdConfig, ServerConfig, ServerConfigService } from '../../services/server-config.service';
 import { MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader } from '@angular/material/expansion';
 import {ShellComponent} from "../../components/shell/shell.component";
-import {MatButton} from "@angular/material/button";
+import {MatButton, MatIconButton} from "@angular/material/button";
 import {MatSelect} from "@angular/material/select";
 import {MatOption} from "@angular/material/autocomplete";
 
@@ -37,6 +37,7 @@ import {MatOption} from "@angular/material/autocomplete";
     MatExpansionPanelHeader,
     ShellComponent,
     MatButton,
+    MatIconButton,
     MatSelect,
     MatOption,
     NgIf,
@@ -56,6 +57,11 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   dexJsonSelect!: ResourceSelectComponent;
 
   @ViewChild('premadeGeometry') premadeGeometry!: ResourceSelectComponent;
+
+  @ViewChild('geometryFileInput') geometryFileInput!: ElementRef<HTMLInputElement>;
+
+  uploadedGeometryName: string | null = null;
+  private uploadedGeometryBlobUrl: string | null = null;
 
   selectedEventSource = new FormControl<string>('');
   onlyCentralDetector = new FormControl<boolean>(true);
@@ -291,5 +297,37 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     this.userConfigService.getConfig('geometry.themeName')?.setDefault();
     this.userConfigService.getConfig('geometry.cutListName')?.setDefault();
     this.userConfigService.getConfig('geometry.rootFilterName')?.setDefault();
+  }
+
+  triggerGeometryFilePicker() {
+    this.geometryFileInput?.nativeElement.click();
+  }
+
+  onGeometryFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (this.uploadedGeometryBlobUrl) {
+      URL.revokeObjectURL(this.uploadedGeometryBlobUrl);
+      this.uploadedGeometryBlobUrl = null;
+    }
+
+    const blobUrl = URL.createObjectURL(file);
+    this.uploadedGeometryBlobUrl = blobUrl;
+    this.uploadedGeometryName = file.name;
+
+    this.userConfigService.getConfig('geometry.selectedGeometry')!.value = blobUrl;
+    this.geometrySelect?.value.setValue(blobUrl);
+
+    input.value = '';
+  }
+
+  clearUploadedGeometry() {
+    if (this.uploadedGeometryBlobUrl) {
+      URL.revokeObjectURL(this.uploadedGeometryBlobUrl);
+      this.uploadedGeometryBlobUrl = null;
+    }
+    this.uploadedGeometryName = null;
   }
 }
