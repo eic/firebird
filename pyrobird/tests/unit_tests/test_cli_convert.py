@@ -9,6 +9,7 @@ from pyrobird.cli.convert import guess_output_name
 
 # Assuming the small ROOT file is named 'test_data.root' and is placed in the 'tests' directory
 TEST_ROOT_FILE = os.path.join(os.path.dirname(__file__), 'data', 'reco_2024-09_craterlake_2evt.edm4eic.root')
+TEST_EDM4HEP_FILE = os.path.join(os.path.dirname(__file__), 'data', 'k_lambda_10x100_2evt.edm4hep.root')
 
 
 @pytest.fixture
@@ -91,6 +92,26 @@ def test_convert_invalid_entry(runner):
         assert result.exit_code == 1, f"Command failed with exit code {result.exit_code}"
         # The output should be the JSON data
         assert isinstance(result.exception, ValueError)
+
+
+@pytest.mark.parametrize("type_args", [["-t", "edm4hep"], []])  # explicit type and auto-detection
+def test_convert_edm4hep(runner, type_args):
+    result = runner.invoke(convert, [TEST_EDM4HEP_FILE, '--output', '-'] + type_args)
+
+    assert result.exit_code == 0, f"Command failed with exit code {result.exit_code}"
+    data = json.loads(result.output)
+    assert data['origin']['file_type'] == 'edm4hep'
+    group_types = {group['type'] for group in data['events'][0]['groups']}
+    assert group_types == {'BoxHit', 'PointTrajectory'}
+
+
+def test_convert_edm4eic_auto_detected(runner):
+    # eicrecon/edm4eic files also contain sim hits; auto-detection must pick edm4eic
+    result = runner.invoke(convert, [TEST_ROOT_FILE, '--output', '-'])
+
+    assert result.exit_code == 0, f"Command failed with exit code {result.exit_code}"
+    data = json.loads(result.output)
+    assert data['origin']['file_type'] == 'edm4eic'
 
 
 def test_convert_missing_file(runner):

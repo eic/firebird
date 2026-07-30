@@ -42,6 +42,34 @@ def test_open_edm4eic_file_local_allowed(client):
     assert data['events'][0]["id"] == event_number
 
 
+def test_open_edm4hep_file(client):
+    # file_type=edm4hep must route to the edm4hep reader
+    filename = 'k_lambda_10x100_2evt.edm4hep.root'
+    response = client.get(f'/api/v1/convert/edm4hep/0?f={filename}')
+
+    assert response.status_code == 200
+    data = response.get_json()
+    group_types = {group['type'] for group in data['events'][0]['groups']}
+    assert group_types == {'BoxHit', 'PointTrajectory'}
+
+
+def test_open_file_auto_type(client):
+    # file_type=auto detects the model from branch types
+    filename = 'k_lambda_10x100_2evt.edm4hep.root'
+    response = client.get(f'/api/v1/convert/auto/0?f={filename}')
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert len(data['events'][0]['groups']) > 0
+
+
+def test_open_file_unsupported_type(client):
+    filename = 'k_lambda_10x100_2evt.edm4hep.root'
+    response = client.get(f'/api/v1/convert/wrongtype/0?f={filename}')
+
+    assert response.status_code == 400
+
+
 def test_open_edm4eic_file_local_not_allowed(client):
     from urllib.parse import quote
     # Test accessing a local file outside of PYROBIRD_DOWNLOAD_PATH

@@ -1,6 +1,7 @@
 import logging
 import click
 from pyrobird.edm4eic import edm4eic_to_dex_dict, parse_entry_numbers
+from pyrobird.edm4hep import edm4hep_to_dex_dict, detect_file_type, DEFAULT_HIT_BOX_SIZE
 import os
 import json
 
@@ -45,13 +46,31 @@ def guess_output_name(input_entry, output_extension='.firebird.json'):
 @click.option(
     "-c", "--collections", "collections_str", default="",
     help="Comma-separated list of collection types to convert. "
-         "For example: 'tracker_hits,tracks'."
+         "For example: 'tracker_hits,tracks' (edm4eic) or 'tracker_hits,mc_trajectories' (edm4hep)."
 )
-# TODO @click.option("-t", "--type", "input_type", default=None, help="Input file type. Currently only edm4eic supported")
+@click.option(
+    "-t", "--type", "input_type", type=click.Choice(["auto", "edm4eic", "edm4hep"]), default="auto",
+    help="Input file type. 'auto' (default) detects it from branch types; "
+         "eicrecon files carrying both models are detected as edm4eic."
+)
+@click.option(
+    "--hit-box-size", "hit_box_size", type=float, default=DEFAULT_HIT_BOX_SIZE,
+    help=f"[edm4hep] Box size in mm for sim hits, which carry no position error "
+         f"(default: {DEFAULT_HIT_BOX_SIZE})."
+)
+@click.option(
+    "--traj-vertex/--no-traj-vertex", "traj_vertex", default=True,
+    help="[edm4hep] Prepend the MCParticle vertex as the first trajectory point (default: on)."
+)
+@click.option(
+    "--traj-endpoint", "traj_endpoint", is_flag=True, default=False,
+    help="[edm4hep] Append the MCParticle endpoint as the last trajectory point (default: off)."
+)
 @click.argument("filename", required=True)
-def convert(filename, output_file, entries_str, collections_str):
+def convert(filename, output_file, entries_str, collections_str, input_type,
+            hit_box_size, traj_vertex, traj_endpoint):
     """
-    Converts an input EDM4eic ROOT file to a Firebird-compatible JSON file.
+    Converts an input EDM4eic or EDM4hep ROOT file to a Firebird-compatible JSON file.
 
     This command reads the specified input ROOT file, extracts the first event
     from the 'events' tree, and writes it to a JSON file that can be used with
@@ -64,12 +83,19 @@ def convert(filename, output_file, entries_str, collections_str):
     Use `-o -` or `--output -` to output the JSON data to stdout instead of a file.
     This allows the command to be used in pipelines.
 
-    Use `-c` or `--collections` to specify specific collections to convert:
-      - tracker_hits  - edm4eic::TrackerHitData
-      - tracks        - edm4eic::TrackSegmentData with associated tracks
+    Use `-t` or `--type` to select the input data model. The default 'auto' inspects
+    the tree: files with reconstructed edm4eic::TrackerHitData are treated as edm4eic,
+    files with only edm4hep::SimTrackerHitData (e.g. ddsim output) as edm4hep.
 
-    Currently, only EDM4eic format is supported.
+    Use `-c` or `--collections` to specify specific collections to convert.
 
+    For edm4eic:
+      - tracker_hits     - edm4eic::TrackerHitData
+      - tracks           - edm4eic::TrackSegmentData with associated tracks
+
+    For edm4hep:
+      - tracker_hits     - edm4hep::SimTrackerHitData
+      - mc_trajectories  - MC-truth trajectories connecting sim hits per MCParticle
 
     **Example usage:**
 
@@ -78,6 +104,8 @@ def convert(filename, output_file, entries_str, collections_str):
         convert mydata.root --output output.firebird.json
         convert mydata.root --output - | less
         convert mydata.root --collections=tracks
+        convert sim.edm4hep.root -t edm4hep
+        convert sim.edm4hep.root -t edm4hep --traj-endpoint --hit-box-size=5
     """
     import uproot
 
@@ -107,13 +135,25 @@ def convert(filename, output_file, entries_str, collections_str):
                        f"but entry index={entry_index} is outside of total num_entries={num_entries}"
             raise ValueError(err_msg)
 
+    # Detect the file type if not given explicitly
+    if input_type == "auto":
+        input_type = detect_file_type(tree)
+        logging.info(f"Detected file type: {input_type}")
+
     # Extract the first event from the tree
     origin_info = {
         "file": filename,
-        "entries_count": num_entries
+        "entries_count": num_entries,
+        "file_type": input_type
     }
 
-    fdex_dict = edm4eic_to_dex_dict(tree, entries, origin_info, collections=collections)
+    if input_type == "edm4hep":
+        fdex_dict = edm4hep_to_dex_dict(tree, entries, origin_info, collections=collections,
+                                        box_size=hit_box_size,
+                                        prepend_vertex=traj_vertex,
+                                        append_endpoint=traj_endpoint)
+    else:
+        fdex_dict = edm4eic_to_dex_dict(tree, entries, origin_info, collections=collections)
 
     # Convert the event data to JSON format
     json_data = json.dumps(fdex_dict)

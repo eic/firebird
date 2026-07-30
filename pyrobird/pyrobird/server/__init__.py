@@ -190,6 +190,12 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     start_time = time.perf_counter()
     import uproot
     from pyrobird.edm4eic import edm4eic_to_dex_dict
+    from pyrobird.edm4hep import edm4hep_to_dex_dict, detect_file_type
+
+    supported_file_types = ["auto", "edm4eic", "edm4hep"]
+    if file_type not in supported_file_types:
+        abort(400, description=f"Unsupported file type: '{file_type}'. "
+                               f"Supported types: {supported_file_types}")
 
     # Decode the filename
     # Retrieve the filename from query parameters
@@ -270,8 +276,16 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     entries_index_list = existing_index_list
 
     try:
+        # Detect the file type if not given explicitly
+        if file_type == "auto":
+            file_type = detect_file_type(tree)
+            logger.info(f"Detected file type: {file_type}")
+
         # Extract the event data
-        event = edm4eic_to_dex_dict(tree, entries_index_list)
+        if file_type == "edm4hep":
+            event = edm4hep_to_dex_dict(tree, entries_index_list)
+        else:
+            event = edm4eic_to_dex_dict(tree, entries_index_list)
     except Exception as e:
         # Log detailed error server-side, return generic message to client
         logger.error(f"Error processing events {entries} from file {filename}: {e}")

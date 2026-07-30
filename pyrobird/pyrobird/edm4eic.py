@@ -145,9 +145,13 @@ def tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None):
 
     hits = []
     for i in range(len(cell_id)):
+        # positionError.ii is a variance (sigma^2); box width is +- one sigma
+        dim_x = 2 * math.sqrt(err_x[i]) if err_x[i] > 0 else 0.0
+        dim_y = 2 * math.sqrt(err_y[i]) if err_y[i] > 0 else 0.0
+        dim_z = 2 * math.sqrt(err_z[i]) if err_z[i] > 0 else 0.0
         hit = {
             "pos": [pos_x[i], pos_y[i], pos_z[i]],
-            "dim": [2 * err_x[i], 2 * err_y[i], 2 * err_z[i]],
+            "dim": [dim_x, dim_y, dim_z],
             "t": [time[i], err_time[i]],
             "ed": [edep[i], err_edep[i]]
         }
