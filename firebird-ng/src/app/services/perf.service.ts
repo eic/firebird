@@ -1,7 +1,7 @@
 // perf.service.ts (optimized snippet)
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import {WebGLRenderer} from "three";
+import {WebGPURenderer} from "three/webgpu";
 export interface PerfLog {
   fps: number;
   frameTime: number;  // Changed from 'cpu' to 'frameTime'
@@ -26,7 +26,7 @@ export class PerfService {
   private frameTimes: number[] = [];
   private readonly updateInterval = 250; // milliseconds
 
-  public updateStats(renderer: WebGLRenderer, frameStartTime: number) {
+  public updateStats(renderer: WebGPURenderer, frameStartTime: number) {
     const now = performance.now();
     const thisFrameTime = now - frameStartTime;
 

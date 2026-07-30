@@ -48,6 +48,23 @@
 
 }
 
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.upload-filename {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--mat-sys-on-surface-variant, inherit);
+  word-break: break-all;
+}
+
 .details-accordion {
   margin-top: 24px;
 }

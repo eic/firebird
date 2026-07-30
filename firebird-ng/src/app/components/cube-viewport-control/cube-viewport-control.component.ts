@@ -3,11 +3,14 @@ import { Component, ElementRef, OnInit, OnDestroy, NgZone } from '@angular/core'
 import { GizmoOptions, ViewportGizmo } from 'three-viewport-gizmo';
 import { ThreeService } from '../../services/three.service';
 import {
+  Matrix4,
   OrthographicCamera,
   PerspectiveCamera,
   Scene,
-  WebGLRenderer
+  Vector3,
+  Vector4,
 } from 'three';
+import { WebGPURenderer } from 'three/webgpu';
 
 @Component({
   selector: 'app-cube-viewport-control',
@@ -18,7 +21,7 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
   // References to externally provided objects
   public camera!: PerspectiveCamera | OrthographicCamera;
   public scene!: Scene;
-  public renderer!: WebGLRenderer;
+  public renderer!: WebGPURenderer;
 
   // The ViewportGizmo instance
   public gizmo!: ViewportGizmo;
@@ -59,19 +62,21 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
   public initWithExternalScene(
     scene: Scene,
     camera: PerspectiveCamera | OrthographicCamera,
-    renderer: WebGLRenderer
+    renderer: WebGPURenderer
   ): void {
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
     this.lastCamera = camera;
 
-    const container = this.elRef.nativeElement.querySelector('.three-container');
+    // Use the renderer's parent element as container so the gizmo overlay
+    // is positioned relative to the actual canvas, not an empty div.
+    const container = renderer.domElement.parentElement ?? this.elRef.nativeElement;
     const gizmoConfig: GizmoOptions = {
       container: container,
       size: 90,
       type: 'cube',
-      offset: { top: 85 },
+      offset: { top: 115 },
       background: { color: 0x444444, hover: { color: 0x444444 } },
       corners: {
         color: 0x333333,
@@ -85,6 +90,61 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
 
     // Create gizmo with custom config (autoPlace = false)
     this.gizmo = new ViewportGizmo(this.camera, this.renderer, gizmoConfig);
+
+    // Patch domUpdate for WebGPU: the library computes viewport Y using
+    // WebGL's bottom-left origin, but WebGPU uses top-left.
+    // See: https://github.com/nicivore/three-viewport-gizmo/issues/13
+    const gizmo = this.gizmo as any;
+    const _v4 = new Vector4();
+    gizmo.domUpdate = function () {
+      gizmo._domRect = gizmo._domElement.getBoundingClientRect();
+      const r = gizmo.renderer;
+      const n = gizmo._domRect;
+      const i = r.domElement.getBoundingClientRect();
+      const isWebGPU = !!(r && r.isWebGPURenderer);
+      const y = isWebGPU
+        ? (n.top - i.top)
+        : (r.domElement.clientHeight - (n.top - i.top + n.height));
+      gizmo._viewport.splice(0, 4, n.left - i.left, y, n.width, n.height);
+      r.getViewport(_v4).toArray(gizmo._originalViewport);
+      if (r.getScissorTest()) {
+        r.getScissor(_v4).toArray(gizmo._originalScissor);
+      }
+      return gizmo;
+    };
+
+    // Patch _setOrientation for collider coordinate convention:
+    // Beam axis = Z (horizontal), Y = up. When clicking "Top" the camera
+    // should look down Y with Z pointing right. The library's default uses
+    // this.up (Y-up) for lookAt which is degenerate when viewing along Y.
+    const _tempPos = new Vector3();
+    const _tempMat = new Matrix4();
+    const _zAxis = new Vector3(0, 0, 1);
+    const _yAxis = new Vector3(0, 1, 0);
+
+    gizmo._setOrientation = function (position: Vector3) {
+      const cam = gizmo.camera;
+      const target = gizmo.target;
+
+      // Choose an up vector that isn't parallel to the view direction
+      const absY = Math.abs(position.y);
+      const upVec = absY > 0.9 ? _zAxis : _yAxis;
+
+      _tempPos.copy(position).multiplyScalar(gizmo._distance);
+      _tempMat.setPosition(_tempPos).lookAt(_tempPos, gizmo.position, upVec);
+      gizmo._targetQuaternion.setFromRotationMatrix(_tempMat);
+
+      _tempPos.add(target);
+      _tempMat.lookAt(_tempPos, target, upVec);
+      gizmo._quaternionEnd.setFromRotationMatrix(_tempMat);
+
+      _tempMat.setPosition(cam.position).lookAt(cam.position, target, upVec);
+      gizmo._quaternionStart.setFromRotationMatrix(_tempMat);
+
+      gizmo.animating = true;
+      gizmo._clock.start();
+      gizmo.dispatchEvent({ type: 'start' });
+    };
 
     // Bind the method to maintain 'this' context
     this.handleControlsChange = this.handleControlsChange.bind(this);

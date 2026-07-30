@@ -24,6 +24,26 @@
               [options]="geometryOptions"
               label="Geometry source">
             </firebird-resource-select>
+
+            <div class="upload-row">
+              <input
+                #geometryFileInput
+                type="file"
+                accept=".root"
+                hidden
+                (change)="onGeometryFileSelected($event)">
+              <button type="button" mat-stroked-button (click)="triggerGeometryFilePicker()">
+                Upload local .root file
+              </button>
+              <span *ngIf="uploadedGeometryName" class="upload-filename">
+                {{ uploadedGeometryName }}
+                <button type="button" mat-icon-button
+                        aria-label="Clear uploaded file"
+                        (click)="clearUploadedGeometry()">
+                  &times;
+                </button>
+              </span>
+            </div>
           </div>
 
           <div class="section">

@@ -43,7 +43,7 @@ export class PhoenixThreeFacade {
 
   /**
    * Retrieves the main Three.js Renderer.
-   * @returns The main THREE.WebGLRenderer instance.
+   * @returns The main renderer instance.
    */
   public getMainRenderer(): THREE.WebGLRenderer {
     return this.rendererManager.getMainRenderer();
