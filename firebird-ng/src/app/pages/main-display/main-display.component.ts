@@ -465,12 +465,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadingGeometry.set(true);
     this.eventDisplay.loadGeometry(url)
       .then((result) => {
-        // Only update UI if geometry was actually loaded (not cancelled)
-        if (result !== undefined) {
+        // loadGeometry always resolves an object; `cancelled` is set when another
+        // load superseded this one — nothing was added to the scene in that case.
+        if (result.cancelled) {
+          console.log("[main-display]: Geometry loading was cancelled");
+        } else {
           this.updateSceneTreeComponent();
           console.log("[main-display]: Geometry loaded");
-        } else {
-          console.log("[main-display]: Geometry loading was cancelled");
         }
       })
       .catch(error => {

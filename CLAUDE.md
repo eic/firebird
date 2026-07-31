@@ -248,8 +248,10 @@ captures reliable:
   Healthy initial total is ~430 kB.
 - **`localStorage is not defined` in specs**: the test jsdom lacks it; a
   polyfill lives in `firebird-ng/src/test-setup.ts` — do not remove it.
-- **Doubled console log lines and a spurious "Geometry loading was cancelled"
-  message on startup**: known cosmetic noise, not a failure signal.
+- **Every console line appears twice in captured logs**: artifact of CDP-based
+  console capture (browser-pane tools attach duplicate listeners) — the page
+  logs each line once. When exact counts matter, instrument in-page: patch
+  `console.*` in a Playwright init script and read the recorded array.
 - **Killing the dev server with `pkill -f`**: the pattern can match your own
   wrapper shell and kill it — use exact process names or the serve terminal.
 
