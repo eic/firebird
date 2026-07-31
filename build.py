@@ -92,14 +92,60 @@ def test_frontend(is_dry_run):
     print("Frontend tests passed!")
 
 
+def pyrobird_venv_python():
+    """Path to the interpreter of pyrobird/.venv, or None if that venv does not exist.
+
+    This is the environment `uv sync` creates inside pyrobird/.
+    """
+    bin_dir = "Scripts" if os.name == "nt" else "bin"
+    venv_python = os.path.join(pyrobird_path, ".venv", bin_dir, "python.exe" if os.name == "nt" else "python")
+    return venv_python if os.path.isfile(venv_python) else None
+
+
+def has_module(python, module):
+    """True if `module` can be imported by the given interpreter."""
+    return subprocess.call([python, "-c", f"import {module}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+
+
+def pytest_command():
+    """Command that runs pytest with pyrobird's dependencies, and a label for the log prefix.
+
+    The interpreter running build.py is a poor default: build.py is usually started with a
+    bare system python that has neither pytest nor flask, so the tests used to fail there.
+
+    An existing pyrobird/.venv is used as-is rather than through `uv run`, because `uv run`
+    syncs the environment exactly and would uninstall extras that are not part of the test
+    run - in particular playwright, which `pyrobird screenshot` needs.
+    """
+    venv_python = pyrobird_venv_python()
+    if venv_python and has_module(venv_python, "pytest"):
+        return [venv_python, "-m", "pytest"], venv_python
+
+    # No usable venv yet: let uv build one from pyrobird/uv.lock (pytest lives in the `dev` extra)
+    if shutil.which("uv"):
+        return ["uv", "run", "--extra", "dev", "python", "-m", "pytest"], "uv run --extra dev"
+
+    return [sys.executable, "-m", "pytest"], sys.executable
+
+
 def test_backend(is_dry_run):
     """Run pytest tests for pyrobird backend"""
     print("Running pytest tests for pyrobird")
     if is_dry_run:
         return
 
-    print(f"Using Python: {sys.executable}")
-    _run([sys.executable, "-m", "pytest", "./tests/unit_tests", "-v"], cwd=pyrobird_path, prefix="pytest")
+    command, python_label = pytest_command()
+    print(f"Using Python: {python_label}")
+
+    # Fail with an actionable message instead of a bare "No module named pytest"
+    if command[0] == sys.executable and not has_module(sys.executable, "pytest"):
+        print(f"ERROR: pytest is not installed for {sys.executable}, and uv was not found")
+        print("Install the test dependencies:")
+        print(f"  cd {pyrobird_path} && uv sync --extra=dev --dev")
+        print("Or skip the test step: build.py all --no-test")
+        sys.exit(1)
+
+    _run(command + ["./tests/unit_tests", "-v"], cwd=pyrobird_path, prefix="pytest")
     print("Backend tests passed!")
 
 
@@ -170,6 +216,7 @@ def main():
     parser.add_argument("mode", nargs="*", default="", help="all, py, test Or itemized: build_ng, cp_ng, test_frontend, test_backend, py_build, py_publish")
     parser.add_argument("-d","--dry-run", action="store_true", help="Don't do actual files operations")
     parser.add_argument("-v", "--version", help="Set version for both frontend and pyrobird packages")
+    parser.add_argument("--no-test", action="store_true", help="Skip the test steps of the composite modes 'all' and 'ng'")
     args = parser.parse_args()
 
     # Update versions first if specified
@@ -179,13 +226,21 @@ def main():
 
     # Next steps depend on mode
     mode = args.mode[0] if args.mode else ""
+
+    # --no-test only suppresses tests inside the composite modes. The itemized test_* modes
+    # below are an explicit request for tests, so they ignore the flag.
+    skip_tests = args.no_test and mode in ["all", "ng"]
+
     if mode in ["all", "ng", "build_ng", "build-ng"]:
         build_ng(is_dry_run=args.dry_run)
 
-    if mode in ["all", "test"]:
+    if skip_tests:
+        print("Skipping tests (--no-test)")
+
+    if mode in ["all", "test"] and not skip_tests:
         test_all(is_dry_run=args.dry_run)
 
-    if mode in ["test_frontend", "ng", "test-frontend"]:
+    if mode in ["test_frontend", "ng", "test-frontend"] and not skip_tests:
         test_frontend(is_dry_run=args.dry_run)
 
     if mode in ["test_backend", "test-backend"]:

@@ -119,9 +119,15 @@ python build.py --dry-run all    # Test build without changes
 python build.py all --version=v2025.12.1
 ```
 
-`build.py all` also runs pytest with the SYSTEM python and fails if pyrobird's
-dependencies are not installed there. To build and deploy the frontend into
-pyrobird without the test step, run the itemized commands:
+`build.py all` also runs the test suites. The backend tests use `pyrobird/.venv`
+when it exists, otherwise `uv run --extra dev`, so the interpreter that starts
+build.py does not need pyrobird's dependencies. To skip the test steps:
+
+```bash
+python build.py all --no-test
+```
+
+Itemized steps, to build and deploy the frontend into pyrobird only:
 
 ```bash
 python build.py build_ng         # ng production build
