@@ -96,6 +96,7 @@ has access to files in your current directory or a directory provided via `--wor
 | `--allow-cors`             |       | Flag    | `False` | Enable CORS for downloaded files. This option should be used if you need to support web applications from different domains accessing the files, such as serving your server from a central Firebird server.                                       |
 | `--disable-files`          |       | Flag    | `False` | Disable all file downloads from the server. This option will prevent any file from being downloaded, enhancing security by restricting file access.                                                                                              |
 | `--work-path TEXT`         |       | String  | `CWD`   | Set the base directory path for file downloads. Defaults to the current working directory. Use this option to specify where the server should look for files when handling download requests.                                                       |
+| `--startup-commands TEXT`  |       | String  | none    | Commands the frontend runs once the display is ready, `type:arg` items separated by `;`. Example: `open-dex:file.firebird.zip;show-event:2`. See the [Command Bus](/command-bus) page.                                                          |
 
 
 > `--allow-any-file` - allows unrestricted access to download files in a system.
@@ -160,7 +161,9 @@ pyrobird screenshot
 
 This command will:
 1. Start a local Firebird server on `http://localhost:5454`
-2. Wait for the page to load
+2. Wait until the display reports ready: geometry loaded, event data loaded,
+   startup commands executed (the frontend publishes this as
+   `window.firebird.ready` — see [Command Bus](/command-bus))
 3. Capture a full-page screenshot
 4. Save it to `screenshots/screenshot.png`
 5. Automatically shut down the server
@@ -173,7 +176,9 @@ The screenshot command accepts several options to customize its behavior:
 
 | Option                     | Type     | Default                 | Description                                                                                                   |
 |----------------------------|----------|-------------------------|---------------------------------------------------------------------------------------------------------------|
-| `--url TEXT`               | String   | `http://localhost:5454` | URL to take the screenshot of. Use this if you want to screenshot a specific page or event.                    |
+| `--url TEXT`               | String   | `http://localhost:5454` | URL to take the screenshot of. Deep links work here — see [Deep Links](/deep-links).                           |
+| `--commands TEXT`          | String   | none                    | Commands the display runs before the capture, `type:arg` items separated by `;`. Example: `open-dex:file.firebird.zip;show-event:2;camera-preset:farforward`. |
+| `--ready-timeout INT`      | Integer  | `120`                   | Seconds to wait for the display to report ready (geometry loaded, commands done). On timeout a warning is printed and the capture falls back to a short fixed wait. |
 | `--output-path TEXT`       | String   | `screenshot.png`        | Base filename for the screenshot. Will be saved in `screenshots/` directory with auto-numbering if file exists. |
 | `--work-path TEXT`         | String   | Current directory       | Set the base directory path for file downloads. Files in Firebird will be loaded relative to this path.        |
 | `--unsecure-files`         | Boolean  | `False`                 | Allow unrestricted file downloads. Use with caution - see security notes in the serve section.                 |
@@ -200,15 +205,28 @@ This allows Firebird to access files in `/path/to/data` when loading event data.
 
 #### 3. Screenshot a Specific Event
 
-First, ensure your data file is accessible, then use a URL that opens a specific event:
+Use a deep link (see [Deep Links](/deep-links)) that opens the data file and
+selects the event. Relative file paths resolve under `--work-path`:
 
 ```bash
 pyrobird screenshot --work-path=/path/to/data \
-                    --url "http://localhost:5454/#/event?file=local://mydata.root&event=5" \
+                    --url "http://localhost:5454/display?dex=mydata.firebird.zip&event=5" \
                     --output-path event_5.png
 ```
 
-#### 4. Batch Processing Multiple Events
+#### 4. Commands Instead of URLs
+
+The `--commands` option feeds the same actions through the server
+configuration, which keeps the URL clean and adds actions that have no URL
+shorthand, such as camera presets:
+
+```bash
+pyrobird screenshot --work-path=/path/to/data \
+                    --commands "open-dex:mydata.firebird.zip;show-event:5;camera-preset:farforward" \
+                    --output-path event_5_farforward.png
+```
+
+#### 5. Batch Processing Multiple Events
 
 You can create a simple shell script to process multiple events:
 
@@ -217,12 +235,12 @@ You can create a simple shell script to process multiple events:
 # batch_screenshots.sh
 
 DATA_PATH="/path/to/data"
-DATA_FILE="myevents.root"
+DATA_FILE="myevents.firebird.zip"
 
 for event in {0..9}; do
     pyrobird screenshot \
         --work-path="$DATA_PATH" \
-        --url "http://localhost:5454/#/event?file=local://$DATA_FILE&event=$event" \
+        --url "http://localhost:5454/display?dex=$DATA_FILE&event=$event" \
         --output-path "event_${event}.png"
 
     echo "Captured screenshot for event $event"
@@ -236,7 +254,7 @@ chmod +x batch_screenshots.sh
 ./batch_screenshots.sh
 ```
 
-#### 5. Screenshot with Different Server Configurations
+#### 6. Screenshot with Different Server Configurations
 
 If you need to allow access to files outside the working directory:
 
@@ -252,11 +270,14 @@ The screenshot functionality uses the following default settings:
 
 - **Viewport Size**: 1920x1080 pixels (Full HD)
 - **Page Mode**: Full page screenshot (captures entire scrollable content)
-- **Wait Strategy**: Waits for DOM content loaded (up to 10 seconds)
-- **Additional Wait**: 2 seconds after page load to ensure rendering completes (in normal cases). If both page load and selector detection fail, a fallback mechanism applies: the code waits for 3 seconds, then an additional 2 seconds, totaling up to 5 seconds before capturing the screenshot.
+- **Wait Strategy**: after the page loads, the capture waits until the display
+  reports `window.firebird.ready === true` — geometry loaded, event data
+  loaded, startup commands executed. Control the limit with `--ready-timeout`
+  (default 120 s). If the flag never appears (an old frontend build, or a URL
+  that is not the display page), a warning is printed and the capture falls
+  back to a short fixed wait — a capture after that warning may show a
+  partially loaded display.
 - **Browser**: Headless Chromium
-
-These settings are optimized for high-quality event display captures but are currently hardcoded in the implementation.
 
 ### Output Directory Structure
 
@@ -303,8 +324,12 @@ kill -9 <PID>
 
 If screenshots appear black or don't show the expected content:
 
-1. The page might need more time to render. The command waits 2 seconds after page load, but complex visualizations might need longer. If the page fails to load, the command waits an additional 3 seconds (totaling 5 seconds) before taking the screenshot.
-2. Try taking a screenshot manually first to verify the URL works correctly.
+1. Check the command output for the ready/warning line. "Display reported
+   ready" means geometry and events finished loading before the capture; a
+   timeout warning means the capture fell back to a fixed wait and the display
+   was probably still loading — raise `--ready-timeout`, or check why loading
+   never finishes.
+2. Try opening the same URL manually in a browser first to verify it works.
 3. Check that your data files are accessible from the `--work-path` directory.
 
 #### Permission Errors
@@ -326,7 +351,7 @@ from pyrobird.cli.screenshot import capture_screenshot, get_screenshot_path
 output_path = get_screenshot_path("my_event.png")
 
 # Capture screenshot (requires server to be running)
-capture_screenshot("http://localhost:5454/#/event?file=local://data.root&event=5", output_path)
+capture_screenshot("http://localhost:5454/display?dex=data.firebird.zip&event=5", output_path)
 
 print(f"Screenshot saved to {output_path}")
 ```

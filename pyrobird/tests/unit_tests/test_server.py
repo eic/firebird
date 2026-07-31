@@ -123,6 +123,28 @@ def test_open_edm4eic_file_PYROBIRD_DOWNLOAD_IS_DISABLEDd(client):
     flask_app.config['PYROBIRD_DOWNLOAD_IS_DISABLED'] = False
 
 
+def test_asset_config_startup_commands_passthrough(client):
+    """PYROBIRD_STARTUP_COMMANDS lands in config.jsonc as startupCommands (frontend command bus)."""
+    flask_app.config['PYROBIRD_STARTUP_COMMANDS'] = 'open-dex:file.firebird.zip;show-event:2'
+    try:
+        response = client.get('/assets/config.jsonc')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['startupCommands'] == ['open-dex:file.firebird.zip;show-event:2']
+        assert data['servedByPyrobird'] is True
+    finally:
+        flask_app.config['PYROBIRD_STARTUP_COMMANDS'] = None
+
+
+def test_asset_config_no_startup_commands(client):
+    """Without the setting, startupCommands is absent (or whatever the static file carries)."""
+    flask_app.config['PYROBIRD_STARTUP_COMMANDS'] = None
+    response = client.get('/assets/config.jsonc')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert 'startupCommands' not in data or isinstance(data['startupCommands'], list)
+
+
 def test_open_edm4eic_file_invalid_file(client):
     # Test accessing a file that is not a valid ROOT file
     # Create an invalid file in the data directory

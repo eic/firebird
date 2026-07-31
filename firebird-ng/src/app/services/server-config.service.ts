@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as jsoncParser from 'jsonc-parser';
 import {deepCopy} from "../utils/deep-copy";
@@ -11,7 +11,12 @@ export interface ServerConfig {
   apiAvailable: boolean;
   apiBaseUrl: string;
   logLevel: string;
+  /** Server-provided config values: [{key, value}] entries. */
   configs: any[];
+  /** Server-provided config values as a {key: value} map (pyrobird `userConfigs`). */
+  userConfigs?: Record<string, unknown>;
+  /** Commands to run once the display is ready: FbCommand objects or 'type:arg' strings. */
+  startupCommands?: Array<Record<string, unknown> | string>;
 }
 
 export const defaultFirebirdConfig: ServerConfig = {
@@ -28,8 +33,14 @@ export const defaultFirebirdConfig: ServerConfig = {
 })
 export class ServerConfigService {
   private configUrl = 'assets/config.jsonc'; // URL to the JSONC config file
-  private _config = deepCopy(defaultFirebirdConfig);
   private triedLoading = false;
+
+  /**
+   * The loaded server config as a signal. The object is REPLACED when the
+   * async load completes — bind through this signal, never snapshot
+   * `config` by reference at construction time.
+   */
+  public readonly configSignal = signal<ServerConfig>(deepCopy(defaultFirebirdConfig));
 
   constructor(
     private http: HttpClient,
@@ -41,7 +52,7 @@ export class ServerConfigService {
       this.triedLoading = true;
       console.error("[ServerConfigService] config() is called while config is not loaded")
     }
-    return this._config;
+    return this.configSignal();
   }
 
   async loadConfig(): Promise<void> {
@@ -53,12 +64,13 @@ export class ServerConfigService {
       const loadedConfig = this.parseConfig(jsoncData);
 
       // Merge loadedConfig over default config
-      this._config = { ...defaultFirebirdConfig, ...loadedConfig };
+      const config = { ...defaultFirebirdConfig, ...loadedConfig };
+      this.configSignal.set(config);
 
-      this.registerConfigs();
+      this.registerConfigs(config);
 
       console.log("[ServerConfigService] Server config loaded file");
-      console.log(`[ServerConfigService] Subsystems configs loaded: ${this._config?.configs?.length}`);
+      console.log(`[ServerConfigService] Subsystems configs loaded: ${config?.configs?.length}`);
     } catch (error) {
       console.error(`Failed to load config: ${error}`);
       console.log(`[ServerConfigService] Default config will be used`);
@@ -67,13 +79,23 @@ export class ServerConfigService {
     }
   }
 
-  private registerConfigs(): void {
-    if (this._config.configs && Array.isArray(this._config.configs)) {
-      this._config.configs.forEach(configItem => {
+  /**
+   * Feeds server-provided config values into the config registry's SERVER
+   * layer (overrides code defaults; yields to localStorage/URL/runtime).
+   * Accepts both shapes: `configs: [{key, value}]` and `userConfigs: {key: value}`.
+   */
+  private registerConfigs(config: ServerConfig): void {
+    if (config.configs && Array.isArray(config.configs)) {
+      config.configs.forEach(configItem => {
         if (configItem.key && configItem.hasOwnProperty('value')) {
-          this.configService.createConfig(configItem.key, configItem.value);
+          this.configService.applyServerValue(configItem.key, configItem.value);
         }
       });
+    }
+    if (config.userConfigs && typeof config.userConfigs === 'object') {
+      for (const [key, value] of Object.entries(config.userConfigs)) {
+        this.configService.applyServerValue(key, value);
+      }
     }
   }
 
@@ -92,6 +114,6 @@ export class ServerConfigService {
    */
   public setUnitTestConfig(value: Partial<ServerConfig>) {
     this.triedLoading = true;
-    this._config = {...defaultFirebirdConfig, ...value};
+    this.configSignal.set({...defaultFirebirdConfig, ...value});
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, NgZone, OnDestroy} from '@angular/core';
+import { Injectable, Injector, NgZone, OnDestroy, inject } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
@@ -22,6 +22,10 @@ import {
   computeBoundsTree,
   disposeBoundsTree, MeshBVH, MeshBVHHelper
 } from 'three-mesh-bvh';
+
+import {THREE_EXTENSIONS, LAZY_THREE_EXTENSIONS} from '../firebird/tokens';
+import type {ThreeExtension, SceneContext, FrameContext} from '../firebird/three-extension';
+import type {Event as FbEvent} from '@firebird/core';
 
 
 
@@ -80,6 +84,15 @@ export class ThreeService implements OnDestroy {
 
   /** Initialization flag */
   private initialized: boolean = false;
+
+  /** Extension system: contributions collected from DI.
+   * Eager extensions are DI-instantiated here; lazy ones join after init. */
+  private extensions: ThreeExtension[] = (inject(THREE_EXTENSIONS, {optional: true}) ?? []).slice();
+  private lazyExtensionLoaders = inject(LAZY_THREE_EXTENSIONS, {optional: true}) ?? [];
+  private injector = inject(Injector);
+  private sceneContext: SceneContext | null = null;
+  private frameContext: FrameContext | null = null;
+  private lastFrameStartTime = 0;
 
   /** Reference to the container element used for rendering */
   private containerElement!: HTMLElement;
@@ -315,6 +328,79 @@ export class ThreeService implements OnDestroy {
 
     // Start rendering
     this.startRendering();
+
+    // Extension lifecycle: onSceneInit fires strictly AFTER the async renderer
+    // init resolved — extensions never see a half-initialized scene. Lazy
+    // extensions load after that, off the critical path.
+    this.initExtensions();
+    void this.activateLazyExtensions();
+  }
+
+  /** Builds the extension contexts and runs onSceneInit for eager extensions. */
+  private initExtensions(): void {
+    // invalidate() is a documented no-op: the loop is continuous today; the
+    // contract exists so extensions keep working if it goes render-on-demand
+    // later.
+    const invalidate = () => {};
+    const service = this;
+    this.sceneContext = {
+      scene: this.scene,
+      sceneGeometry: this.sceneGeometry,
+      sceneEvent: this.sceneEvent,
+      sceneHelpers: this.sceneHelpers,
+      // Getter: tracks perspective/orthographic camera toggling
+      get camera() { return service.camera; },
+      renderer: this.renderer,
+      canvas: this.renderer.domElement,
+      invalidate,
+    };
+    this.frameContext = {
+      deltaTime: 0,
+      renderer: this.renderer,
+      get camera() { return service.camera; },
+      invalidate,
+    };
+    for (const extension of this.extensions) {
+      try {
+        extension.onSceneInit?.(this.sceneContext);
+      } catch (error) {
+        console.error('[ThreeService] Extension onSceneInit failed:', extension, error);
+      }
+    }
+  }
+
+  /**
+   * Resolves lazily-registered extensions (withLazyThreeExtension): loads the
+   * chunk, instantiates the class through a child injector so `inject()` works
+   * in its constructor, and gives late joiners the onSceneInit call they missed.
+   * (v22 `injectAsync` targets already-provided tokens; lazy extension classes
+   * arrive unprovided, hence the explicit child injector.)
+   */
+  private async activateLazyExtensions(): Promise<void> {
+    for (const load of this.lazyExtensionLoaders) {
+      try {
+        const extensionClass = await load();
+        const child = Injector.create({providers: [extensionClass], parent: this.injector});
+        const extension = child.get(extensionClass);
+        this.extensions.push(extension);
+        if (this.sceneContext) {
+          extension.onSceneInit?.(this.sceneContext);
+        }
+      } catch (error) {
+        console.error('[ThreeService] Lazy extension activation failed:', error);
+      }
+    }
+  }
+
+  /** Forwards a newly loaded event to extensions (called by EventDisplayService). */
+  notifyEventLoaded(event: FbEvent): void {
+    for (const extension of this.extensions) {
+      try {
+        extension.onEventLoaded?.(event);
+      } catch (error) {
+        console.error('[ThreeService] Extension onEventLoaded failed:', extension, error);
+      }
+    }
   }
 
   /**
@@ -452,6 +538,16 @@ export class ThreeService implements OnDestroy {
 
       // Add frustum culling before rendering
       // this.frustumCuller.cullMeshes(this.scene, this.camera);
+
+      // Extension onFrame hooks run before rendering. Keep them cheap:
+      // animation only, no state polling (state changes travel through signals).
+      if (this.frameContext && this.extensions.length > 0) {
+        this.frameContext.deltaTime = this.lastFrameStartTime ? frameStartTime - this.lastFrameStartTime : 0;
+        for (const extension of this.extensions) {
+          extension.onFrame?.(this.frameContext);
+        }
+      }
+      this.lastFrameStartTime = frameStartTime;
 
       // Update three components
       this.controls.update();
@@ -711,6 +807,13 @@ export class ThreeService implements OnDestroy {
    * Cleans up resources when the service is destroyed.
    */
   ngOnDestroy(): void {
+    for (const extension of this.extensions) {
+      try {
+        extension.onDispose?.();
+      } catch (error) {
+        console.error('[ThreeService] Extension onDispose failed:', extension, error);
+      }
+    }
     this.clearHighlight();
     this.stopRendering();
     this.cleanupEventListeners();

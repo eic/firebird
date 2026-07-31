@@ -43,6 +43,7 @@ CFG_CORS_IS_ALLOWED = "PYROBIRD_CORS_IS_ALLOWED"
 CFG_SHUTDOWN_IS_ALLOWED = "PYROBIRD_SHUTDOWN_IS_ALLOWED"
 CFG_API_BASE_URL = "PYROBIRD_API_BASE_URL"
 CFG_FIREBIRD_CONFIG_PATH = "PYROBIRD_FIREBIRD_CONFIG_PATH"
+CFG_STARTUP_COMMANDS = "PYROBIRD_STARTUP_COMMANDS"
 
 # Get
 flask_app.config[CFG_CORS_IS_ALLOWED] = str(os.environ.get(CFG_CORS_IS_ALLOWED, '')).lower() in ('1', 'true')
@@ -356,6 +357,17 @@ def asset_config():
     }
     config_api_url = flask_app.config.get(CFG_API_BASE_URL)
     config_dict['apiBaseUrl'] = config_api_url if config_api_url else f"{request.scheme}://{host}:{port}"
+
+    # Startup commands for the frontend command bus. The static config.jsonc may
+    # already carry a `startupCommands` list (passes through untouched above);
+    # a server-side setting (e.g. `pyrobird screenshot --commands ...`) appends
+    # to it. Entries are command objects or 'type:arg;type:arg' strings.
+    startup_commands = flask_app.config.get(CFG_STARTUP_COMMANDS)
+    if startup_commands:
+        existing = config_dict.get('startupCommands') or []
+        if isinstance(startup_commands, str):
+            startup_commands = [startup_commands]
+        config_dict['startupCommands'] = list(existing) + list(startup_commands)
 
     # Convert the updated dictionary to JSON
     return jsonify(config_dict)

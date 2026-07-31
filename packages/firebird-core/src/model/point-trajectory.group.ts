@@ -24,8 +24,7 @@
 
 import {
   EventGroup,
-  EventGroupFactory,
-  registerEventGroupFactory
+  EventGroupFactory
 } from "./event-group";
 
 /**
@@ -197,6 +196,3 @@ export class PointTrajectoryGroupFactory implements EventGroupFactory {
     return comp;
   }
 }
-
-/** Register the factory so it gets picked up by the Entry deserialization. */
-registerEventGroupFactory(new PointTrajectoryGroupFactory());

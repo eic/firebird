@@ -1,16 +1,13 @@
 /**
- * The PLAN §3 honesty test: firebird-core must work with no Angular injector
- * and no bootstrap - the event-loader and geometry-loader web workers run this
- * code, and workers have no DI. This spec is the enforced form of that
- * constraint: it parses a DEX file and paints it into a bare three.js Scene
- * using only core classes. If an @Injectable, token, or HttpClient sneaks into
- * core, this spec is where it breaks.
- *
- * (Naming note: the PLAN sketch uses `PainterRegistry`; until the Phase 2
- * extension system lands, `DataModelPainter` carries that role.)
+ * firebird-core must work with no Angular injector and no bootstrap - the
+ * event-loader and geometry-loader web workers run this code, and workers
+ * have no DI. This spec is the enforced form of that constraint: it parses
+ * a DEX file and paints it into a bare three.js Scene using only core
+ * classes. If an @Injectable, token, or HttpClient sneaks into core, this
+ * spec is where it breaks.
  */
 import { Scene } from 'three';
-import { DataExchange, DataModelPainter } from './index';
+import { DataExchange, DataModelPainter, initGroupFactories, registerDefaultPainters } from './index';
 
 const DEX_SAMPLE = {
   type: 'firebird-dex-json',
@@ -44,14 +41,19 @@ const DEX_SAMPLE = {
   ],
 };
 
-describe('firebird-core without an injector (PLAN §3)', () => {
+describe('firebird-core without an injector', () => {
   it('parses DEX and paints an event into a bare Scene', () => {
+    // Registration is explicit — no import side effects, no DI (this is how
+    // the workers wire core; the Angular app wires the same classes via tokens).
+    initGroupFactories();
+
     const dex = DataExchange.fromDexObj(DEX_SAMPLE);
     expect(dex.events.length).toBe(1);
     expect(dex.events[0].groups.length).toBe(2);
 
     const scene = new Scene();
     const painter = new DataModelPainter();
+    registerDefaultPainters(painter);
     painter.setThreeSceneParent(scene);
     painter.setEntry(dex.events[0]);
     painter.paint(null);

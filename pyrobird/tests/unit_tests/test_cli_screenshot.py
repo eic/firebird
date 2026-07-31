@@ -4,7 +4,7 @@ import pytest
 import os
 import sys
 from unittest.mock import patch, MagicMock
-from pyrobird.cli.screenshot import get_screenshot_path, capture_screenshot
+from pyrobird.cli.screenshot import get_screenshot_path, capture_screenshot, wait_display_ready, READY_JS_CONDITION
 
 # Check if playwright is available
 try:
@@ -112,31 +112,45 @@ def test_capture_screenshot_missing_playwright():
 
 @pytest.mark.skipif(not PLAYWRIGHT_AVAILABLE, reason="playwright not installed")
 @patch('playwright.sync_api.sync_playwright')
-def test_capture_screenshot_basic_workflow(mock_sync_playwright, tmp_path):
+@patch('pyrobird.cli.screenshot.time.sleep')
+def test_capture_screenshot_basic_workflow(mock_sleep, mock_sync_playwright, tmp_path):
     """Test the basic workflow of capture_screenshot."""
     # Setup mocks
     mock_playwright = MagicMock()
     mock_browser = MagicMock()
     mock_page = MagicMock()
-    
+
     mock_sync_playwright.return_value.__enter__.return_value = mock_playwright
     mock_playwright.chromium.launch.return_value = mock_browser
     mock_browser.new_page.return_value = mock_page
-    
+
     # Test URL and output path
     test_url = "http://localhost:5454"
     output_file = str(tmp_path / "test_screenshot.png")
-    
+
     # Call the function
     capture_screenshot(test_url, output_file)
-    
+
     # Verify the workflow
     mock_playwright.chromium.launch.assert_called_once_with(headless=True)
     mock_browser.new_page.assert_called_once()
     mock_page.set_viewport_size.assert_called_once_with({"width": 1920, "height": 1080})
     mock_page.goto.assert_called_once_with(test_url)
-    mock_page.screenshot.assert_called_once_with(path=output_file, full_page=True)
+    # Waits on the display readiness flags before the capture
+    mock_page.wait_for_function.assert_called_once_with(READY_JS_CONDITION, timeout=120 * 1000)
+    mock_page.screenshot.assert_called_once_with(path=output_file, full_page=True, timeout=90_000)
     mock_browser.close.assert_called_once()
+
+
+def test_wait_display_ready_true_and_false():
+    """wait_display_ready returns True when the flag appears, False on timeout."""
+    page = MagicMock()
+    assert wait_display_ready(page, 5) is True
+    page.wait_for_function.assert_called_once_with(READY_JS_CONDITION, timeout=5000)
+
+    page_timeout = MagicMock()
+    page_timeout.wait_for_function.side_effect = Exception("Timeout")
+    assert wait_display_ready(page_timeout, 5) is False
 
 
 @pytest.mark.skipif(not PLAYWRIGHT_AVAILABLE, reason="playwright not installed")

@@ -7,11 +7,6 @@
 import { Event } from "../model/event";
 import { Object3D, Group } from "three";
 import {EventGroupPainter, ComponentPainterConstructor} from "./event-group-painter";
-import {BoxHitGroup} from "../model/box-hit.group";
-import {BoxHitPainter} from "./box-hit.painter";
-import {BoxHitSimplePainter} from "./box-hit-simple.painter";
-import {PointTrajectoryGroup} from "../model/point-trajectory.group";
-import {TrajectoryPainter} from "./trajectory.painter";
 
 export enum DisplayMode
 {
@@ -19,19 +14,19 @@ export enum DisplayMode
   Timeless = "timeless"
 }
 
+/**
+ * The painter registry starts EMPTY. Register painters explicitly:
+ * - Workers/scripts (no DI): call `registerDefaultPainters(painter)` from
+ *   ./default-painters, then `registerPainter()` for custom types.
+ * - The Angular app contributes painters through the `PAINTERS` DI token
+ *   (see firebird-ng `provideFirebird()` / `withPainter()`).
+ */
 export class DataModelPainter {
   private threeParentNode: Object3D | null = null;
   private entry: Event | null = null;
   private painters: EventGroupPainter[] = [];
   // Create the registry
   componentPainterRegistry: { [type: string]: ComponentPainterConstructor } = {};
-
-  public constructor() {
-    // Register builtin painters
-    //this.registerPainter(BoxHitGroup.type, BoxHitPainter);
-    this.registerPainter(BoxHitGroup.type, BoxHitSimplePainter);
-    this.registerPainter(PointTrajectoryGroup.type, TrajectoryPainter);
-  }
 
   public setThreeSceneParent(parentNode: Object3D) {
     this.threeParentNode = parentNode;

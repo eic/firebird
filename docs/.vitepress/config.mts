@@ -17,6 +17,7 @@ export default defineConfig({
       { text: "Home", link: "/" },
       { text: "Pyrobird", link: "/pyrobird" },
       { text: "DD4Hep Plugin", link: "/dd4hep-plugin"},
+      { text: "Deep Links", link: "/deep-links"},
       { text: "Troubleshoot", link: "/troubleshoot"},
 
       { text: "Tutorials",
@@ -29,6 +30,8 @@ export default defineConfig({
       { text: "Development",
         items: [
           { text: "Data Format", link: "/dex"},
+          { text: "Extension System", link: "/extensions"},
+          { text: "Command Bus", link: "/command-bus"},
           { text: "Geometry Rules", link: "/geometry-rules"},
           { text: "Roadmap", link: "/eic-requirements" }
         ]

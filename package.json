@@ -1,0 +1,42 @@
+{
+  "name": "firebird-monorepo",
+  "version": "2026.03rc1",
+  "private": true,
+  "description": "Firebird event display monorepo: Angular frontend, dexvis packages, Python backend (pyrobird), DD4Hep plugin",
+  "workspaces": [
+    "firebird-ng",
+    "packages/firebird-core",
+    "packages/firebird-example-extension",
+    "dexvis/root-geo-tree-editor",
+    "dexvis/threejs-tree-editor",
+    "dexvis/app-shell-ng/projects/app-shell"
+  ],
+  "browser": {
+    "fs": false,
+    "os": false,
+    "path": false,
+    "vm": false,
+    "jsdom": false,
+    "agent-base": false,
+    "http-proxy-agent": false,
+    "https-proxy-agent": false,
+    "net": false,
+    "tls": false,
+    "http": false,
+    "https": false,
+    "stream": false,
+    "zlib": false,
+    "child_process": false,
+    "crypto": false,
+    "url": false,
+    "assert": false,
+    "util": false
+  },
+  "overrides": {
+    "glob": ">=13.0.0",
+    "jspdf": ">=3.0.2",
+    "node-forge": ">=1.3.2",
+    "jsdom": "~26.1.0",
+    "jsroot": "7.10.3"
+  }
+}

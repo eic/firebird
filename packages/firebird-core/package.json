@@ -4,6 +4,7 @@
   "description": "Worker-safe core of the Firebird event display: event model, DEX io, painters. Plain TypeScript - no Angular injector, no bootstrap; runs in web workers and node.",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

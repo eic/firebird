@@ -5,9 +5,10 @@
  *              protocol aliasing for custom URL schemes.
  */
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ConfigService } from "./config.service";
 import { ServerConfigService } from "./server-config.service";
+import { URL_ALIASES } from "../firebird/tokens";
 
 /**
  * @class UrlService
@@ -56,11 +57,10 @@ export class UrlService {
   private serverAddress: string = '';
   private isBackendAvailable: boolean = false;
 
-  // Protocol aliases mapping
-  private readonly protocolAliases: { [key: string]: string } = {
-    'epic://': 'https://eic.github.io/epic/artifacts/',
-    // Add other protocol aliases here if needed
-  };
+  // Protocol aliases come from DI (`withUrlAlias()` features). The built-in
+  // epic:// alias is registered in app.config the same way (first consumer).
+  private readonly protocolAliases: { [key: string]: string } =
+    Object.fromEntries((inject(URL_ALIASES, { optional: true }) ?? []).map(a => [a.prefix, a.base]));
 
   constructor(
     private userConfigService: ConfigService,

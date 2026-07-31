@@ -1,0 +1,17 @@
+{
+  "name": "@firebird/example-extension",
+  "version": "0.0.1",
+  "description": "Example Firebird extension package: a custom event group (Cherenkov rings), its painter, and a config - registered through the public provideFirebird() API. Template for experiment extensions.",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=22.0.0",
+    "three": ">=0.180.0"
+  }
+}

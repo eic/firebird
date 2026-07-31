@@ -39,6 +39,7 @@ import {SceneExportComponent} from "../../components/scene-export/scene-export";
 import {AnimationSettingsComponent} from "../../components/animation-settings/animation-settings.component";
 import GUI from 'lil-gui';
 import {ConfigProperty} from "../../utils/config-property";
+import {CommandBusService} from "../../firebird/command-bus.service";
 import JSZip from 'jszip';
 
 
@@ -157,13 +158,16 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     private config: ConfigService,
     private serverConfig: ServerConfigService,
     public  geomService: GeometryService,
+    private commandBus: CommandBusService,
   ) {
-    config.addConfig(this.geometryUrl);
-    config.addConfig(this.geometryFastAndUgly);
-    config.addConfig(this.geometryCutListName);
-    config.addConfig(this.dexJsonEventSource);
-    config.addConfig(this.rootEventSource);
-    config.addConfig(this.rootEventRange);
+    // addConfig returns the canonical instance for the key — keep the
+    // returned reference so all writers/readers share one property.
+    this.geometryUrl = config.addConfig(this.geometryUrl);
+    this.geometryFastAndUgly = config.addConfig(this.geometryFastAndUgly);
+    this.geometryCutListName = config.addConfig(this.geometryCutListName);
+    this.dexJsonEventSource = config.addConfig(this.dexJsonEventSource);
+    this.rootEventSource = config.addConfig(this.rootEventSource);
+    this.rootEventRange = config.addConfig(this.rootEventRange);
   }
 
 
@@ -186,7 +190,12 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     // The facade will be initialized in three.service
     this.facade.initializeScene()
 
-    if (this.isAutoLoadOnInit) {
+    // Startup commands (URL deep link ?dex=&event=N, server startupCommands,
+    // batch) replace the config-driven auto-load for the data they carry.
+    const startupCommands = this.commandBus.peekStartupCommands();
+    const startupHas = (type: string) => startupCommands.some(c => c.type === type);
+
+    if (this.isAutoLoadOnInit && !startupHas('open-dex')) {
       // Load JSON based data files
       this.initDexEventSource();
 
@@ -207,9 +216,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.onRendererElementResize();
 
     // Loads the geometry (do it last as it might be long)
-    if (this.isAutoLoadOnInit) {
+    if (this.isAutoLoadOnInit && !startupHas('open-geometry')) {
       this.initGeometry();
     }
+
+    // Scene is up — run the queued startup commands (sequential; a
+    // show-event command waits internally for its data to arrive).
+    void this.commandBus.runStartupCommands();
 
     // Init gui
     this.lilGui.add(this, 'cameraToCenter').name('Camera to center');

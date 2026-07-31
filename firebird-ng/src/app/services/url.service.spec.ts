@@ -6,6 +6,7 @@ import { ConfigService } from './config.service';
 import { ServerConfigService } from './server-config.service';
 import { BehaviorSubject } from 'rxjs';
 import { HttpClientModule } from "@angular/common/http";
+import { URL_ALIASES } from '../firebird/tokens';
 
 describe('UrlService', () => {
     let service: UrlService;
@@ -49,7 +50,9 @@ describe('UrlService', () => {
             providers: [
                 UrlService,
                 { provide: ConfigService, useValue: userConfigService },
-                { provide: ServerConfigService, useValue: serverConfigService }
+                { provide: ServerConfigService, useValue: serverConfigService },
+                // Aliases are DI-contributed now (withUrlAlias feature)
+                { provide: URL_ALIASES, useValue: { prefix: 'epic://', base: 'https://eic.github.io/epic/artifacts/' }, multi: true }
             ]
         });
 

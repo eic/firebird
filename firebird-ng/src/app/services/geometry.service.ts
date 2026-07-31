@@ -149,10 +149,12 @@ export class GeometryService {
       ["Magnets_Q3eR_assembly_59", GROUP_MAGNETS],
     ]);
 
-    this.config.addConfig(this.geometryFastAndUgly);
-    this.config.addConfig(this.geometryCutListName);
-    this.config.addConfig(this.geometryThemeName);
-    this.config.addConfig(this.geometryRootFilterName);
+    // addConfig returns the canonical instance for the key (another service
+    // may have registered it first) — always keep the returned reference.
+    this.geometryFastAndUgly = this.config.addConfig(this.geometryFastAndUgly);
+    this.geometryCutListName = this.config.addConfig(this.geometryCutListName);
+    this.geometryThemeName = this.config.addConfig(this.geometryThemeName);
+    this.geometryRootFilterName = this.config.addConfig(this.geometryRootFilterName);
 
     this.initWorker();
   }

@@ -23,3 +23,18 @@ if (typeof ResizeObserver === 'undefined') {
     disconnect() {}
   };
 }
+
+// The test jsdom does not wire localStorage; ConfigProperty persists through it.
+if (typeof (globalThis as any).localStorage === 'undefined') {
+  const store = new Map<string, string>();
+  const localStoragePolyfill = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => { store.set(key, String(value)); },
+    removeItem: (key: string) => { store.delete(key); },
+    clear: () => store.clear(),
+    key: (index: number) => [...store.keys()][index] ?? null,
+    get length() { return store.size; },
+  };
+  Object.defineProperty(globalThis, 'localStorage', { value: localStoragePolyfill, writable: true });
+  Object.defineProperty(window, 'localStorage', { value: localStoragePolyfill, writable: true });
+}

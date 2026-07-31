@@ -10,7 +10,7 @@ import { MatFormField } from '@angular/material/form-field';
 import { NgIf } from '@angular/common';
 import { MatInput, MatLabel } from '@angular/material/input';
 import { ResourceSelectComponent } from '../../components/resource-select/resource-select.component';
-import { defaultFirebirdConfig, ServerConfig, ServerConfigService } from '../../services/server-config.service';
+import { ServerConfig, ServerConfigService } from '../../services/server-config.service';
 import { MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader } from '@angular/material/expansion';
 import {FirebirdShellComponent} from "../../components/firebird-shell/firebird-shell.component";
 import {MatButton, MatIconButton} from "@angular/material/button";
@@ -78,7 +78,14 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   useController = new FormControl<boolean>(false);
 
 
-  firebirdConfig: ServerConfig = defaultFirebirdConfig;
+  /**
+   * Server config for the template, bound through the service SIGNAL:
+   * ServerConfigService replaces its config object when the async load
+   * completes, so a by-reference snapshot taken in ngOnInit goes stale.
+   */
+  get firebirdConfig(): ServerConfig {
+    return this.firebirdConfigService.configSignal();
+  }
 
   public geometryOptions: string[] = [
     "https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root",
@@ -260,8 +267,6 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     this.bindConfigToControl(this.geometryRootFilterName, 'geometry.rootFilterName', 'default');
     this.bindConfigToControl(this.geometryFastAndUgly, 'geometry.FastDefaultMaterial', false);
     this.bindConfigToControl(this.useController, 'controls.useController', false);
-
-    this.firebirdConfig = this.firebirdConfigService.config;
 
     setTimeout(() => {
       this.geometrySelect?.value.setValue(this.userConfigService.getConfig('geometry.selectedGeometry')?.value);

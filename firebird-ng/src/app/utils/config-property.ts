@@ -1,5 +1,5 @@
 import {BehaviorSubject, Observable} from 'rxjs';
-
+import {Signal, signal} from '@angular/core';
 
 /**
  * Storage general interface for storing ConfigProperty-ies.
@@ -31,33 +31,83 @@ class PersistentPropertyLocalStorage implements PersistentPropertyStorage {
 }
 
 /**
- * Manages an individual configuration property. Provides reactive updates to subscribers,
- * persistence to localStorage, and optional value validation.
+ * Declarative metadata for a config entry. Drives auto-rendered UI panels
+ * (labels, option lists, numeric ranges) — the same schema shape is used by
+ * painters, loaders and extensions.
+ */
+export interface ConfigPropertyMeta {
+  label?: string;
+  group?: string;
+  options?: readonly unknown[];
+  min?: number;
+  max?: number;
+  description?: string;
+}
+
+/** Coerces a string (URL/CLI source) to the type of `sample`. Non-strings pass through. */
+export function coerceConfigValue(value: unknown, sample: unknown): unknown {
+  if (typeof value !== 'string' || typeof sample === 'string') {
+    return value;
+  }
+  if (typeof sample === 'number') {
+    const num = Number(value);
+    return isNaN(num) ? value : num;
+  }
+  if (typeof sample === 'boolean') {
+    return value === 'true' || value === '1';
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Manages an individual configuration property with LAYERED sources.
+ * Precedence, low to high:
  *
- * Includes time-based update logic to handle concurrent modifications:
- * - Each value is stored with a timestamp
- * - Updates can specify a timestamp to enable conflict resolution
- * - Only updates with newer timestamps will overwrite existing values
+ *   code default  <  server value  <  localStorage  <  URL session value
+ *
+ * plus runtime writes (`setValue` / `.value =`), which persist to localStorage
+ * AND clear the session layer — so a user action during a URL-parameterized
+ * session takes effect immediately, while URL values never poison the saved
+ * user preferences (they live only for the session).
+ *
+ * Reactivity: `changes$` (RxJS) and `valueSignal` (Angular signal) both emit
+ * the effective value. Timestamp-based conflict resolution applies to the
+ * localStorage layer only.
  *
  * @template T The type of the configuration value.
  */
 export class ConfigProperty<T> {
-
-  private valueType: string;
 
   public subject: BehaviorSubject<T>;
 
   /** Observable for subscribers to react to changes in the property value. */
   public changes$: Observable<T>;
 
+  /** Signal view of the effective value. Prefer this in templates/effects. */
+  public readonly valueSignal: Signal<T>;
+  private writableSignal;
+
+  /** Declarative metadata (labels, options, ranges) for auto-rendered UI. */
+  public meta?: ConfigPropertyMeta;
+
+  /** Server-provided value (config.jsonc / pyrobird). Overrides the default only. */
+  private serverValue: T | undefined = undefined;
+
+  /** Session-scoped override (URL `?config.key=` source). Never persisted. */
+  private sessionValue: T | undefined = undefined;
+
   /**
    * Creates an instance of ConfigProperty.
    *
    * @param {string} _key The localStorage key under which the property value is stored.
    * @param {T} defaultValue The default value of the property if not previously stored.
-   * @param storage
    * @param {() => void} saveCallback The callback to execute after setting a new value.
    * @param {(value: T) => boolean} [validator] Optional validator function to validate the property value.
+   * @param storage
    */
   constructor(
       private _key: string,
@@ -66,38 +116,64 @@ export class ConfigProperty<T> {
       private validator?: (value: T) => boolean,
       private storage: PersistentPropertyStorage = new PersistentPropertyLocalStorage(),
     ) {
-    const value = this.loadValue();
+    const value = this.effectiveValue();
     this.subject = new BehaviorSubject<T>(value);
     this.changes$ = this.subject.asObservable();
-    this.valueType = typeof value;
+    this.writableSignal = signal<T>(value);
+    this.valueSignal = this.writableSignal.asReadonly();
   }
 
-
   /**
-   * Loads the property value from localStorage or returns the default value if not found or invalid.
-   *
-   * @returns {T} The loaded or default value of the property.
+   * Reads the localStorage layer.
+   * @returns The parsed stored value, or `undefined` when absent or invalid.
    */
-  private loadValue(): T {
+  private loadStoredValue(): T | undefined {
     let storedValue: string|null = null;
     let parsedValue: any = undefined;
     try {
       storedValue = this.storage.getItem(this._key);
-
-      if (storedValue !== null) {
-        parsedValue = (typeof this.defaultValue) !== 'string' ? JSON.parse(storedValue) : storedValue;
-      } else {
-        parsedValue = this.defaultValue;
+      if (storedValue === null) {
+        return undefined;
       }
-      return this.validator && !this.validator(parsedValue) ? this.defaultValue : parsedValue;
+      parsedValue = (typeof this.defaultValue) !== 'string' ? JSON.parse(storedValue) : storedValue;
+      return this.validator && !this.validator(parsedValue) ? undefined : parsedValue;
     } catch (error) {
-      console.error(`Error at ConfigProperty.loadValue, key='${this._key}'`);
+      console.error(`Error at ConfigProperty.loadStoredValue, key='${this._key}'`);
       console.log('   storedValue', storedValue);
       console.log('   parsedValue', parsedValue);
-      console.log('   Default value will be used: ', this.defaultValue);
       console.log(error);
+      return undefined;
+    }
+  }
 
-      return this.defaultValue;
+  /** True if localStorage holds a (valid) value for this key. */
+  public hasStoredValue(): boolean {
+    return this.loadStoredValue() !== undefined;
+  }
+
+  /** True while a session (URL) override is active. */
+  public get hasSessionOverride(): boolean {
+    return this.sessionValue !== undefined;
+  }
+
+  /** Resolves the layered value: session > stored > server > default. */
+  private effectiveValue(): T {
+    if (this.sessionValue !== undefined) return this.sessionValue;
+    const stored = this.loadStoredValue();
+    if (stored !== undefined) return stored;
+    if (this.serverValue !== undefined) return this.serverValue;
+    return this.defaultValue;
+  }
+
+  /** Re-resolves layers and emits when the effective value changed. */
+  private recompute(): void {
+    const value = this.effectiveValue();
+    if (value !== this.subject.value) {
+      this.subject.next(value);
+      this.writableSignal.set(value);
+    } else {
+      // Signals may lag the subject after construction; keep them converged.
+      this.writableSignal.set(value);
     }
   }
 
@@ -133,7 +209,8 @@ export class ConfigProperty<T> {
   }
 
   /**
-   * Sets the property value with optional timestamp-based conflict resolution.
+   * Sets the property value with optional timestamp-based conflict resolution
+   * (the RUNTIME layer: persists to localStorage and clears any session override).
    * If a timestamp is provided, the value is only updated if the stored timestamp is older.
    * If no timestamp is provided, the current time is used.
    *
@@ -165,14 +242,56 @@ export class ConfigProperty<T> {
       this.storage.setItem(this._key, typeof value !== 'string' ? JSON.stringify(value) : value);
       this.saveTime(updateTime);
 
+      // Runtime beats URL: a user/runtime write ends the session override.
+      this.sessionValue = undefined;
+
       if(this.saveCallback) {
         this.saveCallback();
       }
 
-      this.subject.next(value);
+      this.recompute();
     } else {
       console.log(`Skipping update for key='${this._key}': stored time (${storedTime}) is newer than update time (${updateTime})`);
     }
+  }
+
+  /**
+   * Sets the SESSION layer (URL `?config.key=` source). Wins over every other
+   * source for this browser session, but is never written to localStorage —
+   * a shared link cannot poison the user's saved preferences.
+   * String values are coerced to the property's type.
+   */
+  setSessionValue(value: unknown): void {
+    const coerced = coerceConfigValue(value, this.defaultValue) as T;
+    if (this.validator && !this.validator(coerced)) {
+      console.error(`Session value validation failed for key='${this._key}':`, value);
+      return;
+    }
+    this.sessionValue = coerced;
+    this.recompute();
+  }
+
+  /**
+   * Sets the SERVER layer (config.jsonc / pyrobird). Overrides the code
+   * default but yields to localStorage, URL and runtime writes.
+   */
+  setServerValue(value: unknown): void {
+    const coerced = coerceConfigValue(value, this.defaultValue) as T;
+    if (this.validator && !this.validator(coerced)) {
+      console.error(`Server value validation failed for key='${this._key}':`, value);
+      return;
+    }
+    this.serverValue = coerced;
+    this.recompute();
+  }
+
+  /**
+   * Replaces the code default (used by `withConfigDefaults` feature packs —
+   * still the lowest tier; every other source overrides it).
+   */
+  overrideDefault(value: unknown): void {
+    this.defaultValue = coerceConfigValue(value, this.defaultValue) as T;
+    this.recompute();
   }
 
   /**
@@ -186,7 +305,7 @@ export class ConfigProperty<T> {
   }
 
   /**
-   * Gets the current value of the property.
+   * Gets the current effective value of the property.
    *
    * @returns {T} The current value of the property.
    */

@@ -1,6 +1,6 @@
 // box-hit.group.ts
 
-import { EventGroup, EventGroupFactory, registerEventGroupFactory } from './event-group';
+import { EventGroup, EventGroupFactory } from './event-group';
 
 /**
  * Represents an individual tracker hit with position, dimensions, time, and energy deposit.
@@ -162,6 +162,3 @@ export class BoxHitGroupFactory implements EventGroupFactory {
     return result;
   }
 }
-
-// Register the component factory
-registerEventGroupFactory(new BoxHitGroupFactory());

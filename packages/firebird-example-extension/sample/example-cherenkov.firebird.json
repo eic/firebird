@@ -1,0 +1,83 @@
+{
+  "type": "firebird-dex-json",
+  "version": "0.04",
+  "origin": {
+    "source": "hand-written sample",
+    "by": "@firebird/example-extension"
+  },
+  "events": [
+    {
+      "id": "event_0",
+      "groups": [
+        {
+          "name": "ExampleRings",
+          "type": "example.CherenkovRing",
+          "origin": "example",
+          "rings": [
+            { "center": [0, 0, 1200], "radius": 600, "nPhotons": 14, "time": 5 }
+          ]
+        },
+        {
+          "name": "ExampleTracks",
+          "type": "PointTrajectory",
+          "origin": "example",
+          "paramColumns": ["theta"],
+          "pointColumns": ["x", "y", "z", "t"],
+          "trajectories": [
+            { "points": [[0, 0, 0, 0], [200, 100, 600, 4], [400, 180, 1200, 8]], "params": [0.35] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "event_1",
+      "groups": [
+        {
+          "name": "ExampleRings",
+          "type": "example.CherenkovRing",
+          "origin": "example",
+          "rings": [
+            { "center": [0, 0, 1200], "radius": 450, "nPhotons": 9, "time": 4 },
+            { "center": [0, 0, -1400], "radius": 800, "nPhotons": 21, "time": 7 }
+          ]
+        },
+        {
+          "name": "ExampleHits",
+          "type": "BoxHit",
+          "origin": "example",
+          "hits": [
+            { "pos": [300, 150, 900], "dim": [40, 40, 40], "t": [3, 0], "ed": [0.002, 0] },
+            { "pos": [-250, 220, -800], "dim": [40, 40, 40], "t": [6, 0], "ed": [0.001, 0] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "event_2",
+      "groups": [
+        {
+          "name": "ExampleRings",
+          "type": "example.CherenkovRing",
+          "origin": "example",
+          "rings": [
+            { "center": [0, 0, 800], "radius": 300, "nPhotons": 6, "time": 2 },
+            { "center": [0, 0, 1600], "radius": 700, "nPhotons": 17, "time": 5 },
+            { "center": [0, 0, -900], "radius": 500, "nPhotons": 11, "time": 8 },
+            { "center": [0, 0, -1800], "radius": 1100, "nPhotons": 28, "time": 11 }
+          ]
+        },
+        {
+          "name": "ExampleTracks",
+          "type": "PointTrajectory",
+          "origin": "example",
+          "paramColumns": ["theta"],
+          "pointColumns": ["x", "y", "z", "t"],
+          "trajectories": [
+            { "points": [[0, 0, 0, 0], [150, -120, 800, 3], [280, -260, 1600, 6]], "params": [0.42] },
+            { "points": [[0, 0, 0, 0], [-180, 90, -900, 4], [-360, 200, -1800, 9]], "params": [2.7] }
+          ]
+        }
+      ]
+    }
+  ]
+}

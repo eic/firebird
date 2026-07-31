@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import {ConfigProperty} from '../utils/config-property';
+import {ConfigProperty, ConfigPropertyMeta} from '../utils/config-property';
 
 export interface ConfigSnapshot {
   configs: {
@@ -12,12 +12,33 @@ export interface ConfigSnapshot {
   exportedAt?: string;
 }
 
+/** Declarative config entry schema — usable by core, painters, and extensions alike. */
+export interface ConfigSchema<T> extends ConfigPropertyMeta {
+  key: string;
+  default: T;
+  validator?: (value: T) => boolean;
+}
+
+/**
+ * The config registry. One canonical ConfigProperty per key, with layered
+ * source precedence: defaults < server < localStorage < URL < runtime.
+ *
+ * Sources may arrive before the code that declares a key runs (server config
+ * loads at app init; components declare their configs in constructors), so
+ * server/URL/feature-default values for not-yet-declared keys are kept pending
+ * and applied at declaration time.
+ */
 @Injectable({
   providedIn: 'root',
 })
 export class ConfigService {
 
   public configsByName: Map<string, ConfigProperty<any>> = new Map();
+
+  /** Values that arrived before their key was declared, per layer. */
+  private pendingServerValues = new Map<string, unknown>();
+  private pendingSessionValues = new Map<string, unknown>();
+  private pendingFeatureDefaults = new Map<string, unknown>();
 
   // Generic getter with type safety
 
@@ -42,17 +63,90 @@ export class ConfigService {
     return property as ConfigProperty<T>;
   }
 
-  // Register a property
+  /**
+   * Registers a property, or returns the EXISTING one when the key is already
+   * registered. There is exactly one canonical instance per key — callers must
+   * use the returned instance, not the one they constructed:
+   * `this.myConfig = configService.addConfig(new ConfigProperty(...))`.
+   */
   public addConfig<T>(property: ConfigProperty<T>): ConfigProperty<T> {
+    const existing = this.configsByName.get(property.key);
+    if (existing) {
+      return existing as ConfigProperty<T>;
+    }
     this.configsByName.set(property.key, property);
+    this.applyPendingLayers(property);
     return property;
   }
 
     // Register a property
   public createConfig<T>(key: string, value: T): ConfigProperty<T> {
     const config = new ConfigProperty(key, value);
-    this.addConfig(config);
-    return config;
+    return this.addConfig(config);
+  }
+
+  /**
+   * Declares a config entry with schema metadata (label, options, ranges…).
+   * Creates the property or attaches metadata to the existing one.
+   * This is the entry point extensions use for their own configs.
+   */
+  public declare<T>(schema: ConfigSchema<T>): ConfigProperty<T> {
+    let property = this.getConfig<T>(schema.key);
+    if (!property) {
+      property = this.addConfig(new ConfigProperty<T>(schema.key, schema.default, undefined, schema.validator));
+    }
+    const { key, default: _default, validator, ...meta } = schema;
+    property.meta = { ...property.meta, ...meta };
+    return property;
+  }
+
+  /** Applies layered values that arrived before this key was declared. */
+  private applyPendingLayers(property: ConfigProperty<any>): void {
+    const key = property.key;
+    if (this.pendingFeatureDefaults.has(key)) {
+      property.overrideDefault(this.pendingFeatureDefaults.get(key));
+      this.pendingFeatureDefaults.delete(key);
+    }
+    if (this.pendingServerValues.has(key)) {
+      property.setServerValue(this.pendingServerValues.get(key));
+      this.pendingServerValues.delete(key);
+    }
+    if (this.pendingSessionValues.has(key)) {
+      property.setSessionValue(this.pendingSessionValues.get(key));
+      this.pendingSessionValues.delete(key);
+    }
+  }
+
+  /** SERVER layer entry point (config.jsonc / pyrobird values). */
+  public applyServerValue(key: string, value: unknown): void {
+    const property = this.configsByName.get(key);
+    if (property) {
+      property.setServerValue(value);
+    } else {
+      this.pendingServerValues.set(key, value);
+    }
+  }
+
+  /** URL/session layer entry point (`?config.key=value`). Never persisted. */
+  public applySessionValue(key: string, value: unknown): void {
+    const property = this.configsByName.get(key);
+    if (property) {
+      property.setSessionValue(value);
+    } else {
+      this.pendingSessionValues.set(key, value);
+    }
+  }
+
+  /** Feature-pack defaults (`withConfigDefaults`) — the lowest precedence tier. */
+  public applyFeatureDefaults(defaults: Record<string, unknown>): void {
+    for (const [key, value] of Object.entries(defaults)) {
+      const property = this.configsByName.get(key);
+      if (property) {
+        property.overrideDefault(value);
+      } else {
+        this.pendingFeatureDefaults.set(key, value);
+      }
+    }
   }
 
   /**
@@ -86,8 +180,6 @@ export class ConfigService {
     this.configsByName.forEach((config, key) => {
       configs[key] = {
         value: config.value,
-        // We need to access the timestamp through reflection since it's private
-        // In a real implementation, you might want to add a public getter for this
         timestamp: this.getConfigTimestamp(config)
       };
     });

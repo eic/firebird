@@ -1,4 +1,4 @@
-import {computed, effect, Injectable, linkedSignal, Signal, signal, WritableSignal} from '@angular/core';
+import {computed, effect, inject, Injectable, linkedSignal, Signal, signal, WritableSignal} from '@angular/core';
 import {Group as TweenGroup, Tween} from '@tweenjs/tween.js';
 import {ThreeService} from './three.service';
 import {GeometryService} from './geometry.service';
@@ -9,10 +9,12 @@ import {UrlService} from './url.service';
 
 import {disposeHierarchy} from '@dexvis/threejs-tree-editor';
 import {ThreeEventProcessor} from '../data-pipelines/three-event.processor';
-import {DataModelPainter, DisplayMode, initGroupFactories} from '@firebird/core';
+import {DataExchange, DataModelPainter, DisplayMode, LoadedGeometry} from '@firebird/core';
 import {AnimationManager} from "../animation/animation-manager";
 import {Mesh, MeshBasicMaterial, SphereGeometry, Vector3} from "three";
 import {arrangeEpicDetectors} from "../utils/epic-geometry-arranger";
+import {PAINTERS} from "../firebird/tokens";
+import {BatchStatusService} from "../firebird/batch-status.service";
 
 
 @Injectable({
@@ -66,6 +68,12 @@ export class EventDisplayService {
   public lastLoadedRootUrl: string | null = "";
   public lastLoadedRootEventRange: string | null = "";
 
+  /** Batch/headless readiness flags (window.firebird) — loads report through it. */
+  private batchStatus = inject(BatchStatusService);
+
+  /** Resolves when all lazily-registered painters (withLazyPainter) are in. */
+  private paintersReady: Promise<void>;
+
   constructor(
     public three: ThreeService,
     private geomService: GeometryService,
@@ -74,8 +82,19 @@ export class EventDisplayService {
     private urlService: UrlService
   ) {
 
-    // Add event model factories (things that decode json to objects)
-    initGroupFactories();
+    // Painters come from DI (PAINTERS token, `withPainter()` features).
+    // Group factories are registered by the provideFirebird app initializer.
+    const lazyPainterLoads: Promise<void>[] = [];
+    for (const registration of inject(PAINTERS, {optional: true}) ?? []) {
+      if (registration.painterClass) {
+        this.painter.registerPainter(registration.forGroupType, registration.painterClass);
+      } else if (registration.load) {
+        lazyPainterLoads.push(registration.load().then(painterClass => {
+          this.painter.registerPainter(registration.forGroupType, painterClass);
+        }));
+      }
+    }
+    this.paintersReady = Promise.all(lazyPainterLoads).then(() => {});
 
     // Connect painter to its scene place
     this.painter.setThreeSceneParent(this.three.sceneEvent);
@@ -105,6 +124,9 @@ export class EventDisplayService {
       if (event === null || this.painter.getEntry() == event) return;
       this.painter.setEntry(event);
       this.painter.paint(null);
+
+      // Let ThreeExtensions react to the freshly painted event
+      this.three.notifyEventLoaded(event);
 
       console.log("[eventDisplay] Entry change effect end")
     }, {debugName: "EventDisplayService.OnEventChange"});
@@ -342,85 +364,106 @@ export class EventDisplayService {
   /**
    * Load geometry
    */
-  async loadGeometry(url: string, scale = 10, clearGeometry = true) {
+  async loadGeometry(url: string, scale = 10, clearGeometry = true): Promise<LoadedGeometry> {
     this.lastLoadedGeometryUrl = null;
-    let {rootGeometry, threeGeometry} = await this.geomService.loadGeometry(url);
-    if (!threeGeometry) return;
+    this.batchStatus.beginGeometryLoad();
+    try {
+      let {rootGeometry, threeGeometry} = await this.geomService.loadGeometry(url);
+      if (!threeGeometry) return {root: null, cancelled: true};
 
+      const sceneGeo = this.three.sceneGeometry;
 
+      // There should be only one geometry if clearGeometry=true
+      if (clearGeometry && sceneGeo.children.length > 0) {
+        disposeHierarchy(sceneGeo, /* disposeSelf= */ false);
+      }
 
-    const sceneGeo = this.three.sceneGeometry;
+      await this.geomService.postProcessing(threeGeometry, this.three.clipPlanes, {
+        renderer: this.three.renderer,
+        sceneGeometry: this.three.sceneGeometry,
+        scene: this.three.scene,
+      });
 
-    // There should be only one geometry if clearGeometry=true
-    if (clearGeometry && sceneGeo.children.length > 0) {
-      disposeHierarchy(sceneGeo, /* disposeSelf= */ false);
+      sceneGeo.add(threeGeometry);
+
+      // Set geometry scale (ROOT uses cm, we want mm, so scale by 10)
+      if (scale) {
+        sceneGeo.scale.setScalar(scale);
+        // Since matrixAutoUpdate is false on worker-loaded geometry,
+        // we must manually update the matrix after changing scale
+        sceneGeo.updateMatrix();
+        sceneGeo.updateMatrixWorld(true);
+      }
+
+      // Arrange by category
+      arrangeEpicDetectors(sceneGeo);
+
+      this.lastLoadedGeometryUrl = url;
+      this.batchStatus.endGeometryLoad(true);
+      return {root: threeGeometry};
+    } catch (error) {
+      this.batchStatus.endGeometryLoad(false);
+      throw error;
     }
-
-    await this.geomService.postProcessing(threeGeometry, this.three.clipPlanes, {
-      renderer: this.three.renderer,
-      sceneGeometry: this.three.sceneGeometry,
-      scene: this.three.scene,
-    });
-
-    sceneGeo.add(threeGeometry);
-
-    // Set geometry scale (ROOT uses cm, we want mm, so scale by 10)
-    if (scale) {
-      sceneGeo.scale.setScalar(scale);
-      // Since matrixAutoUpdate is false on worker-loaded geometry,
-      // we must manually update the matrix after changing scale
-      sceneGeo.updateMatrix();
-      sceneGeo.updateMatrixWorld(true);
-    }
-
-    // Arrange by category
-    arrangeEpicDetectors(sceneGeo);
-
-    this.lastLoadedGeometryUrl = url;
   }
 
-  async loadDexData(url: string) {
+  async loadDexData(url: string): Promise<DataExchange | null> {
     this.lastLoadedDexUrl = null;
-    const data = await this.dataService.loadDexData(url);
-    if (data == null) {
-      console.warn(
-        'DataService.loadDexData() Received data is null or undefined'
-      );
-      return;
-    }
+    this.batchStatus.beginEventLoad();
+    await this.paintersReady;
+    try {
+      const data = await this.dataService.loadDexData(url);
+      if (data == null) {
+        console.warn(
+          'DataService.loadDexData() Received data is null or undefined'
+        );
+        return null;
+      }
 
-    if (data.events?.length ?? 0 > 0) {
-      this.painter.setEntry(data.events[0]);
-      this.eventTime.set(null);
-      this.painter.paint(this.eventTime());
-      this.lastLoadedDexUrl = url;
-
-    } else {
-      console.warn('DataService.loadDexData() Received data had no entries');
-      console.log(data);
+      if (data.events?.length ?? 0 > 0) {
+        this.painter.setEntry(data.events[0]);
+        this.eventTime.set(null);
+        this.painter.paint(this.eventTime());
+        this.lastLoadedDexUrl = url;
+        return data;
+      } else {
+        console.warn('DataService.loadDexData() Received data had no entries');
+        console.log(data);
+        return null;
+      }
+    } finally {
+      this.batchStatus.endEventLoad();
     }
   }
 
-  async loadRootData(url: string, eventRange: string = "0") {
+  async loadRootData(url: string, eventRange: string = "0"): Promise<DataExchange | null> {
     this.lastLoadedRootUrl = null;
     this.lastLoadedRootEventRange = null;
-    const data = await this.dataService.loadRootData(url, eventRange);
-    if (data == null) {
-      console.warn(
-        'DataService.loadRootData() Received data is null or undefined'
-      );
-      return;
-    }
+    this.batchStatus.beginEventLoad();
+    await this.paintersReady;
+    try {
+      const data = await this.dataService.loadRootData(url, eventRange);
+      if (data == null) {
+        console.warn(
+          'DataService.loadRootData() Received data is null or undefined'
+        );
+        return null;
+      }
 
-    if (data.events?.length ?? 0 > 0) {
-      this.painter.setEntry(data.events[0]);
-      this.eventTime.set(null);
-      this.painter.paint(this.eventTime());
-      this.lastLoadedRootUrl = url;
-      this.lastLoadedRootEventRange = eventRange;
-    } else {
-      console.warn('DataService.loadRootData() Received data had no entries');
-      console.log(data);
+      if (data.events?.length ?? 0 > 0) {
+        this.painter.setEntry(data.events[0]);
+        this.eventTime.set(null);
+        this.painter.paint(this.eventTime());
+        this.lastLoadedRootUrl = url;
+        this.lastLoadedRootEventRange = eventRange;
+        return data;
+      } else {
+        console.warn('DataService.loadRootData() Received data had no entries');
+        console.log(data);
+        return null;
+      }
+    } finally {
+      this.batchStatus.endEventLoad();
     }
   }
 

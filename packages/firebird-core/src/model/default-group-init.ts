@@ -1,20 +1,21 @@
 import {registerEventGroupFactory} from "./event-group";
+import {BoxHitGroupFactory} from "./box-hit.group";
 import {PointTrajectoryGroupFactory} from "./point-trajectory.group";
 
 /**
- * Initializes and registers the default event blocks-groups.
+ * Registers the built-in event group factories (the decoders that turn DEX JSON
+ * into typed EventGroup objects).
  *
- * In Angular, files that contain only side-effectful calls like
- * `registerComponentFactory(...)` can be tree-shaken out if they are never imported directly.
- * By putting the registration inside this function, and explicitly calling it
- * in a known place (e.g., `app.module.ts` or another main entry point), we ensure
- * that the factory is actually registered at runtime.
+ * Core has no dependency injection, so registration is an explicit call:
+ * - Web workers and node scripts call this function directly.
+ * - The Angular application registers factories through the `EVENT_GROUP_FACTORIES`
+ *   DI token instead (see firebird-ng `provideFirebird()`); the built-in factories
+ *   are contributed there the same way an extension contributes its own.
  *
- * This approach lets us control when the registration happens, rather than
- * relying on top-level imports that might be removed by the bundler
- * if not referenced elsewhere. Any other factories that need to be registered
- * can be placed in here or in a similar init function.
+ * There are intentionally no import side effects: a module that registers itself
+ * at import time fights tree-shaking and hides the wiring.
  */
 export function initGroupFactories() {
+  registerEventGroupFactory(new BoxHitGroupFactory());
   registerEventGroupFactory(new PointTrajectoryGroupFactory());
 }

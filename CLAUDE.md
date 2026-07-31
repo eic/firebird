@@ -29,7 +29,6 @@ Commits inside `dexvis/*` submodules and npm publishes of those packages are sep
 
 The documentation source lives in:
 - **docs/** - VitePress documentation site (deployed to GitHub Pages)
-- **firebird-ng/src/assets/doc** - Documentation embedded in the Angular application
 
 ## Common Development Commands
 
@@ -120,6 +119,134 @@ python build.py --dry-run all    # Test build without changes
 python build.py all --version=v2025.12.1
 ```
 
+`build.py all` also runs pytest with the SYSTEM python and fails if pyrobird's
+dependencies are not installed there. To build and deploy the frontend into
+pyrobird without the test step, run the itemized commands:
+
+```bash
+python build.py build_ng         # ng production build
+python build.py cp_ng            # copy dist into pyrobird/pyrobird/server/static
+```
+
+## Running and Verifying Changes
+
+How to check that Firebird actually works after a change — from fastest to most
+thorough. An agent with no other context should be able to follow this section
+alone.
+
+### Level 1: test suites (no browser)
+
+```bash
+npm run test:headless --workspace=firebird-ng   # Angular app (vitest)
+npm test -w @firebird/core                      # core package
+npm test -w @dexvis/threejs-tree-editor
+npm test -w @dexvis/root-geo-tree-editor
+cd pyrobird && .venv/bin/python -m pytest ./tests/unit_tests -q
+```
+
+Tests do NOT catch zoneless UI freezes (a plain field mutated from RxJS/rAF
+callbacks compiles fine but never updates the template) or WebGPU rendering
+gaps — those need a live or headless browser check.
+
+### Level 2: headless screenshot (production build via pyrobird)
+
+```bash
+python build.py build_ng && python build.py cp_ng    # deploy frontend into pyrobird
+cd /tmp   # screenshots land in ./screenshots/ with auto-numbering
+/path/to/repo/pyrobird/.venv/bin/pyrobird screenshot \
+  --url "http://localhost:5454/display?dex=asset://data/example-cherenkov.firebird.json&event=2" \
+  --commands "camera-preset:farforward" \
+  --output-path check.png
+```
+
+The command starts the server, waits for `window.firebird.ready === true`
+(geometry loaded, events loaded, startup commands executed — set by the app's
+BatchStatusService), captures, and shuts the server down. `--ready-timeout N`
+(default 120 s) controls the wait; on timeout it falls back to a fixed sleep
+and still captures (look for the WARNING in stdout — a capture after that
+warning may show a half-loaded display). Requires Playwright + Chromium in the
+venv (`pip install pyrobird[batch]`, `playwright install chromium`).
+
+The bundled sample `asset://data/example-cherenkov.firebird.json` has 3 events
+(event_2 has 4 rings + 2 tracks) and needs no network access beyond the
+geometry URL from config.
+
+### Level 3: dev server + scripted browser (for pixel-level checks)
+
+```bash
+cd firebird-ng && npm run serve      # http://localhost:4200, wait for compile
+```
+
+Drive it with Playwright (python: `pyrobird/.venv` has it). Rules that make
+captures reliable:
+
+- Launch Chromium with `--disable-background-timer-throttling
+  --disable-renderer-backgrounding --disable-backgrounding-occluded-windows`.
+  Background/headless tabs throttle requestAnimationFrame to ~1 fps, which
+  freezes the app's render loop — screenshots show stale frames.
+- Even with the flags, force frames explicitly before every capture instead of
+  trusting the loop. Dev mode exposes Angular's debug API on the page:
+
+  ```js
+  const c = ng.getComponent(document.querySelector('app-main-display'));
+  const three = c.eventDisplay.three;
+  three.controls.update();
+  three.renderer.render(three.scene, three.camera);   // repeat 2-3x
+  ```
+
+- Wait on `window.firebird.ready === true` (only exists on /display), not on
+  fixed sleeps. Give `page.screenshot(timeout=90_000)` a long timeout — the
+  first screenshot after heavy geometry can take tens of seconds.
+- Camera/clipping are scriptable through the same debug handle:
+  `three.camera.position.set(...)`, `three.controls.target.set(...)`,
+  `three.enableClipping(true)`, `three.setClippingAngle(start, opening)`.
+
+### Deep-link cheat sheet (works in browser and headless)
+
+```
+/display?dex=<url>                      load event data (DEX json/zip, or .root via server conversion)
+        &geometry=<url>                 load detector geometry
+        &event=N                        select event index after load
+        &config.<key>=<value>           session-scoped config override (not persisted)
+        &cmd=type:arg;type:arg          generic command list, e.g. cmd=camera-preset:farforward
+```
+
+`pyrobird screenshot --commands "..."` and `pyrobird serve --startup-commands
+"..."` feed the same command grammar through the server config.
+
+### What goes wrong (symptoms → causes)
+
+- **Blank/stale canvas in captures**: rAF throttling (see Level 3) — force
+  renders explicitly; check the FPS box shows ~1.
+- **Object exists in scene, visible=true, but never draws**: WebGPURenderer
+  silently skips `LineLoop` objects (no warning). Use closed `Line` strips.
+  `Line`, `LineSegments`, `Line2`, meshes are fine.
+- **UI value frozen while console shows updates**: zoneless change detection —
+  the template reads a plain field mutated outside Angular (RxJS subscribe,
+  rAF, native listener). Convert the state to a signal.
+- **`NG0203` at startup**: `inject()` called after an `await` in an async
+  initializer/factory — the injection context does not survive async
+  boundaries. Collect all `inject()` results before the first `await`.
+- **`Cannot find package '@angular/...'` after installs**: a nested
+  package-lock.json reappeared. Only the ROOT lockfile may exist; delete
+  nested locks + node_modules and `npm install` at the repo root.
+- **Build errors mentioning `.node` files or `node:` requires**: lockfile
+  drift upgraded pinned deps (jsroot must stay 7.10.3, jsdom ~26 — pinned via
+  root package.json `overrides`; changing overrides needs a full lockfile
+  regen: `rm package-lock.json node_modules -rf && npm install`).
+- **Dev server serves stale code after tsconfig/node_modules changes**:
+  restart it (vite cache).
+- **Initial bundle jumps by hundreds of kB**: something referenced from
+  `app.config.ts` statically imports the display stack (three.js). Use
+  `withLazyPainter` / dynamic imports; check with `ng build --stats-json`.
+  Healthy initial total is ~430 kB.
+- **`localStorage is not defined` in specs**: the test jsdom lacks it; a
+  polyfill lives in `firebird-ng/src/test-setup.ts` — do not remove it.
+- **Doubled console log lines and a spurious "Geometry loading was cancelled"
+  message on startup**: known cosmetic noise, not a failure signal.
+- **Killing the dev server with `pkill -f`**: the pattern can match your own
+  wrapper shell and kill it — use exact process names or the serve terminal.
+
 ## High-Level Architecture
 
 Firebird is made so that running frontend alone is sufficient for most use cases.
@@ -173,12 +300,48 @@ The **event group factory pattern** enables extensibility:
 - `EventGroup` - Abstract base class for all event components
 - `BoxHitGroup` - Tracker hits (3D boxes with energy/time)
 - `PointTrajectoryGroup` - Particle trajectories (polylines)
-- Component registry with `registerComponentFactory()` for custom types
+- Core has NO import side effects: workers/scripts call `initGroupFactories()`
+  and `registerDefaultPainters(painter)` explicitly; the Angular app registers
+  the same classes through DI (see the extension system below).
 
-To add a new component type:
-1. Extend `EventGroup` and implement `toDexObject()`
-2. Create a factory implementing `EventGroupFactory`
-3. Register the factory at initialization
+#### Extension system (`@firebird/ng` = `firebird-ng/src/app/firebird/`)
+
+The app is assembled with `provideFirebird(...features)` in `app.config.ts` —
+the same composition API an external experiment uses. One contribution per
+`with*()` call; packs compose with `firebirdFeatures()`:
+
+```ts
+provideFirebird(
+  withFirebirdBuiltins(),                       // Firebird's own factories/painters/loaders/commands
+  withUrlAlias('epic://', 'https://eic.github.io/epic/artifacts/'),
+  withExampleCherenkov(),                       // an out-of-tree pack (packages/firebird-example-extension)
+)
+```
+
+Registration surfaces: `withEventGroup` (DEX decoders), `withPainter` /
+`withLazyPainter` (data → visuals), `withThreeExtension` /
+`withLazyThreeExtension` (machinery hooks: onSceneInit after async init,
+onFrame, onEventLoaded, onDispose), `withGeometryLoader` / `withEventLoader`
+(file formats, registry-selected by `canLoad()`), `withCommandHandler`
+(command bus), `withConfigDefaults`. Author guide with the rendering and
+bundle rules: `firebird-ng/src/app/firebird/README.md`. Template package:
+`packages/firebird-example-extension/`.
+
+**Bundle rule:** anything referenced from `app.config.ts` lands in the initial
+bundle — heavy classes (painters, display services) must be reached via
+`withLazyPainter` / dynamic imports. Eager wiring of the display stack doubles
+the initial bundle; see `firebird-ng/src/app/firebird/builtin-loaders.ts` for
+the pattern.
+
+**Config precedence:** `defaults < server config.jsonc < localStorage <
+URL ?config.key=value < runtime`; URL values are session-scoped, never
+persisted. One canonical `ConfigProperty` per key — always keep the reference
+returned by `ConfigService.addConfig()/declare()`.
+
+**Commands:** serializable commands drive the display from URL deep links
+(`?dex=<url>&event=N`, `?cmd=type:arg;...`), server config `startupCommands`,
+and batch (`pyrobird screenshot --commands "..."`). Batch tools await
+`window.firebird.ready` (geometry loaded + startup commands done).
 
 #### Painter System
 
@@ -265,7 +428,7 @@ Standardized JSON format for event data interoperability:
 
 ### 1. Factory Pattern for Event Components
 
-Component factories enable DEX deserialization without modifying core code. Register new types with `registerComponentFactory()` in appropriate initialization code (typically in the component's own file or a central registry).
+Component factories enable DEX deserialization without modifying core code. In the Angular app, register new types with `withEventGroup(MyFactory)` inside `provideFirebird(...)`; in workers/scripts (no DI), call `registerEventGroupFactory()` explicitly. There are no import-side-effect registrations.
 
 ### 2. Time-Aware Rendering
 
@@ -400,12 +563,16 @@ pyrobird convert simulation.edm4hep.root output.json
 
 ### Adding a New Event Component Type
 
-1. Create class extending `EventGroup` in `firebird-ng/src/app/model/`
-2. Implement `toDexObject()` for serialization
-3. Create factory class implementing `EventGroupFactory`
-4. Register factory in appropriate initialization code
-5. Create painter in `firebird-ng/src/app/painters/` to render component
-6. Update pyrobird conversion if needed
+Follow `packages/firebird-example-extension/` (the working template):
+
+1. Create a class extending `EventGroup` with `toDexObject()` and a factory
+   implementing `EventGroupFactory` (plain TS, worker-safe)
+2. Create a painter extending `EventGroupPainter` (avoid `LineLoop` —
+   WebGPURenderer silently skips it; use closed `Line` strips)
+3. Export a feature: `withMyType() = firebirdFeatures(withEventGroup(MyFactory),
+   withLazyPainter(MyGroup.type, () => import('./my.painter').then(m => m.MyPainter)))`
+4. Add the feature to `provideFirebird(...)` in `app.config.ts`
+5. Update pyrobird conversion if needed
 
 ### Modifying DD4Hep Trajectory Filtering
 
@@ -437,4 +604,4 @@ pyrobird convert simulation.edm4hep.root output.json
 - **XRootD support:** Install with `pip install pyrobird[xrootd]` for remote file access.
 - **Docker for DD4Hep:** EIC provides `eicweb/eic_xl:nightly` with full HENP stack.
 - **Git LFS:** This repository may use Git LFS for large binary files.
-- **Documentation:** User-facing documentation is in `docs/` (VitePress site) and also in `firebird-ng/src/assets/doc/` (embedded in app), including tutorials.
+- **Documentation:** User-facing documentation is in `docs/` (VitePress site, deployed to https://eic.github.io/firebird/). Key developer pages: `docs/extensions.md`, `docs/command-bus.md`; user pages: `docs/deep-links.md`, tutorials.
