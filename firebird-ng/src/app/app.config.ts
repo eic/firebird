@@ -5,7 +5,7 @@ import {
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { provideHttpClient, withFetch } from '@angular/common/http';
-import { provideFirebird, withUrlAlias } from './firebird';
+import { provideFirebird, withUrlAlias, withDefaultGeometry } from './firebird';
 import { withFirebirdBuiltins } from './firebird/with-firebird-builtins';
 import { withExampleCherenkov } from '@firebird/example-extension';
 
@@ -21,6 +21,7 @@ export const appConfig: ApplicationConfig = {
     provideFirebird(
       withFirebirdBuiltins(),
       withUrlAlias('epic://', 'https://eic.github.io/epic/artifacts/'),
+      withDefaultGeometry('https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root'),
       withExampleCherenkov(),
     ),
   ],

@@ -10,6 +10,9 @@ import { ConfigService } from "./config.service";
 import { ServerConfigService } from "./server-config.service";
 import { URL_ALIASES } from "../firebird/tokens";
 
+/** Marks a path as relative to the backend's working directory. */
+const LOCAL_PREFIX = 'local://';
+
 /**
  * @class UrlService
  * @description This service resolves URLs for downloading and converting files. It handles different scenarios based
@@ -24,7 +27,7 @@ import { URL_ALIASES } from "../firebird/tokens";
  * - The service needs to resolve URLs for files that may:
  *   - Be accessible over HTTP/HTTPS.
  *   - Be local files requiring backend API to serve them.
- *   - Use custom protocols (e.g., `asset://`, `epic://`).
+ *   - Use custom protocols (e.g., `asset://`, `local://`, `epic://`).
  *
  * ### Use Cases:
  * - **Case 1: Downloading Files**
@@ -35,7 +38,11 @@ import { URL_ALIASES } from "../firebird/tokens";
  *
  * ### Protocol Aliases:
  * - `asset://`: Points to assets served from the frontend server.
- * - `epic://`: Custom protocol replaced with a specific base URL.
+ * - `local://`: A path relative to the backend's working directory
+ *   (`pyrobird serve --work-path`). Resolves to a relative path, which the
+ *   download/convert endpoints below turn into a backend request. Needs a
+ *   backend — on a static deployment there is nothing to serve the file.
+ * - `epic://` and other DI-contributed aliases: prefix replaced with a base URL.
  *
  * ### Examples:
  * - Download URL:
@@ -44,6 +51,9 @@ import { URL_ALIASES } from "../firebird/tokens";
  * - Download URL:
  *   - Input: `/path/to/file.root`
  *   - Output: `<serverAddress>/api/v1/download?f=%2Fpath%2Fto%2Ffile.root` (if backend is available) (Case 1.2)
+ * - Download URL:
+ *   - Input: `local://file.root`
+ *   - Output: `<serverAddress>/api/v1/download?f=file.root` (if backend is available) (Case 1.2)
  * - Convert URL:
  *   - Input: `https://example.com/file.root`, `fileType`, `entries`
  *   - Output: `<serverAddress>/api/v1/convert/fileType/entries?f=https%3A%2F%2Fexample.com%2Ffile.root`
@@ -121,6 +131,14 @@ export class UrlService {
       return `${baseUri}assets/${assetPath}`;
     }
 
+    if (url.startsWith(LOCAL_PREFIX)) {
+      // Files under the backend's work path are not web-served, so the only
+      // way to reach them is the download/convert endpoints. Stripping the
+      // prefix leaves a path with no protocol, which is exactly the input
+      // those endpoints take (Case 1.2 below).
+      return url.substring(LOCAL_PREFIX.length);
+    }
+
     for (const alias in this.protocolAliases) {
       if (url.startsWith(alias)) {
         return url.replace(alias, this.protocolAliases[alias]);
@@ -161,7 +179,10 @@ export class UrlService {
       if (this.isBackendAvailable && this.serverAddress) {
         return `${this.serverAddress}/api/v1/download?f=${encodeURIComponent(inputUrl)}`;
       } else {
-        console.warn("Backend is not available to fetch the file");
+        console.warn(
+          `Backend is not available to fetch '${inputUrl}'. Server-side files ` +
+          `(local:// or a plain path) need 'pyrobird serve' or a configured API server.`
+        );
         return inputUrl;
       }
     }

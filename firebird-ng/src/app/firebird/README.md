@@ -16,7 +16,7 @@ provideFirebird(
   withThreeExtension(HoverInfoExtension),                   // machinery hook (scene/frame/input)
   withGeometryLoader(IgesGeometryLoader),                   // teach Firebird a file format
   withCommandHandler(MyCommandHandler),                     // extend the command vocabulary
-  withConfigDefaults({ 'geometry.selectedGeometry': 'epic://epic_full.root' }),
+  withDefaultGeometry('epic://epic_full.root'),                  // sugar for withConfigDefaults({'geometry.selectedGeometry': ...})
 )
 ```
 

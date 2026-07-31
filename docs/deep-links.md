@@ -27,7 +27,8 @@ Notes:
 - File URLs can be absolute (`https://...`, `epic://...`) or relative. Relative
   paths resolve through the pyrobird server's download endpoint, so
   `dex=subdir/events.firebird.zip` opens a file under the server's
-  `--work-path`.
+  `--work-path`. `local://subdir/events.firebird.zip` is the same thing
+  spelled explicitly.
 - Encode special characters in values: `#` in a color becomes `%23`, so
   `config.examples.cherenkov.ringColor=%23ff4d00`.
 

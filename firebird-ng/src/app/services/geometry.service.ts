@@ -36,9 +36,6 @@ export const ALL_GROUPS = [
 
 
 
-// constants.ts
-export const DEFAULT_GEOMETRY = 'builtin://epic-central-optimized';
-
 /** Result returned by loadGeometry */
 export interface GeometryLoadResult {
   threeGeometry: Object3D | null;
@@ -365,11 +362,6 @@ export class GeometryService {
 
     this.subdetectors = [];
     this.rootGeometry = null;
-
-    // Handle the default geometry alias
-    if (url === DEFAULT_GEOMETRY) {
-      url = 'https://eic.github.io/epic/artifacts/tgeo/epic_full.root';
-    }
 
     const finalUrl = this.urlService.resolveDownloadUrl(url);
 

@@ -39,7 +39,7 @@ export function withMyExperiment(): FirebirdFeature {
   return firebirdFeatures(
     withEventGroup(MyDataFactory),
     withLazyPainter('my.DataType', () => import('./my.painter').then(m => m.MyPainter)),
-    withConfigDefaults({ 'geometry.selectedGeometry': 'https://my.host/detector.root' }),
+    withDefaultGeometry('https://my.host/detector.root'),
   );
 }
 ```
@@ -58,6 +58,7 @@ export function withMyExperiment(): FirebirdFeature {
 | `withCommandHandler(HandlerClass)` | A command type on the [command bus](/command-bus) | Works from URL, server, and batch immediately |
 | `withUrlAlias(prefix, base)` | A URL scheme alias, e.g. `epic://` | |
 | `withConfigDefaults({key: value})` | Setting defaults (lowest priority tier) | A pack configures, never locks — every other source overrides |
+| `withDefaultGeometry(url)` | The detector geometry loaded when nothing else selects one | Sugar for `withConfigDefaults({'geometry.selectedGeometry': url})` |
 
 ## Painter or ThreeExtension?
 

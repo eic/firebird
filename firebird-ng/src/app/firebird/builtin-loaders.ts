@@ -83,7 +83,7 @@ export class RootGeometryLoader implements GeometryDataLoader {
     id: 'root-geometry',
     label: 'ROOT TGeo geometry',
     fileExtensions: ['.root'],
-    urlSchemes: ['epic://', 'builtin://'],
+    urlSchemes: ['epic://'],
   };
 
   private injector = inject(Injector);

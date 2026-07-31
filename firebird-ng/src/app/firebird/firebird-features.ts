@@ -154,6 +154,16 @@ export function withConfigDefaults(defaults: Record<string, unknown>): FirebirdF
 }
 
 /**
+ * Sets the detector geometry the display loads when nothing else selects one.
+ * Sugar for `withConfigDefaults({'geometry.selectedGeometry': url})` — the
+ * same precedence applies, so server config, a saved user choice, and
+ * `?geometry=` deep links all override it.
+ */
+export function withDefaultGeometry(url: string): FirebirdFeature {
+  return withConfigDefaults({ 'geometry.selectedGeometry': url });
+}
+
+/**
  * Assembles the Firebird event display from features.
  *
  * ```ts

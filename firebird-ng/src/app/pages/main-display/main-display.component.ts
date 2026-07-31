@@ -107,7 +107,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(CubeViewportControlComponent)
   private cubeControl!: CubeViewportControlComponent;
 
-  geometryUrl = new ConfigProperty('geometry.selectedGeometry', 'https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root');
+  // Empty default on purpose: the app-level default arrives through
+  // withDefaultGeometry() in app.config (feature-defaults tier).
+  geometryUrl = new ConfigProperty('geometry.selectedGeometry', '');
   geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
   geometryCutListName = new ConfigProperty('geometry.cutListName', "off");
   dexJsonEventSource = new ConfigProperty('events.dexEventsSource', '');

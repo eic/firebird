@@ -73,6 +73,25 @@ describe('UrlService', () => {
             expect(resolvedUrl).toBe(expectedUrl);
         });
 
+        it('should resolve local:// through the download endpoint (Case 1.2)', async () => {
+            userConfigService.localServerUseApi.subject.next(true);
+            await Promise.resolve();
+
+            const inputUrl = 'local://subdir/file.root';
+            const expectedUrl = 'http://localhost:5454/api/v1/download?f=subdir%2Ffile.root';
+
+            const resolvedUrl = service.resolveDownloadUrl(inputUrl);
+            expect(resolvedUrl).toBe(expectedUrl);
+        });
+
+        it('should pass local:// path through unresolved when no backend is available', async () => {
+            userConfigService.localServerUseApi.subject.next(false);
+            await Promise.resolve();
+
+            const resolvedUrl = service.resolveDownloadUrl('local://file.root');
+            expect(resolvedUrl).toBe('file.root');
+        });
+
         it('should encode the input URL correctly in download endpoint', async () => {
             userConfigService.localServerUseApi.subject.next(true);
             await Promise.resolve();
@@ -113,6 +132,14 @@ describe('UrlService', () => {
 
             const resolvedUrl = service.resolveConvertUrl(inputUrl, fileType, entries);
             expect(resolvedUrl).toBe(expectedUrl);
+        });
+
+        it('should handle local:// in convert URL', async () => {
+            userConfigService.localServerUseApi.subject.next(true);
+            await Promise.resolve();
+
+            const resolvedUrl = service.resolveConvertUrl('local://sim.edm4eic.root', 'edm4eic', '0');
+            expect(resolvedUrl).toBe('http://localhost:5454/api/v1/convert/edm4eic/0?f=sim.edm4eic.root');
         });
 
         it('should handle URLs with custom protocol alias epic:// in convert URL', async () => {
