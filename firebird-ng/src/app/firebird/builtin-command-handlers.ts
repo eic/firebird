@@ -130,16 +130,34 @@ export class SetConfigCommandHandler implements CommandHandler {
   }
 }
 
-/** `camera-preset` — move the camera to a named preset: `?cmd=camera-preset:farforward`. */
+type Vec3Tuple = [number, number, number];
+
+/** A camera preset: either an absolute pose, or a view direction that keeps the current target and distance. */
+type CameraPreset =
+  | { position: Vec3Tuple; target: Vec3Tuple; up?: Vec3Tuple }
+  | { direction: Vec3Tuple; up: Vec3Tuple };
+
+/** `camera-preset` — move the camera to a named preset: `?cmd=camera-preset:top`. */
 @Injectable()
 export class CameraPresetCommandHandler implements CommandHandler {
   readonly type = 'camera-preset';
   private injector = inject(Injector);
 
-  // Position/target pairs match the main-display lil-gui presets.
-  private presets: Record<string, { position: [number, number, number]; target: [number, number, number] }> = {
-    'center': { position: [-3600, 2900, -4700], target: [0, 0, 0] },
-    'farforward': { position: [8000, 7500, 40000], target: [0, 0, 30000] },
+  // HENP axis convention: beam along Z (screen-right in the front view), Y up,
+  // X toward the accelerator center (into the screen in the front view).
+  // Face presets keep the current orbit target and distance; `up` defines the
+  // screen roll — the top/bottom views keep Z pointing right on screen.
+  // Position/target presets match the main-display lil-gui presets.
+  private presets: Record<string, CameraPreset> = {
+    'front':  { direction: [-1, 0, 0], up: [0, 1, 0] },
+    'back':   { direction: [1, 0, 0],  up: [0, 1, 0] },
+    'right':  { direction: [0, 0, 1],  up: [0, 1, 0] },
+    'left':   { direction: [0, 0, -1], up: [0, 1, 0] },
+    'top':    { direction: [0, 1, 0],  up: [1, 0, 0] },
+    'bottom': { direction: [0, -1, 0], up: [-1, 0, 0] },
+    'home':   { position: [0, 7000, 0], target: [0, 0, 0], up: [1, 0, 0] },
+    'center': { position: [-3600, 2900, -4700], target: [0, 0, 0], up: [0, 1, 0] },
+    'farforward': { position: [8000, 7500, 40000], target: [0, 0, 30000], up: [0, 1, 0] },
   };
 
   fromUrlArg(arg: string): FbCommand {
@@ -153,9 +171,22 @@ export class CameraPresetCommandHandler implements CommandHandler {
       throw new Error(`camera-preset: unknown preset '${name}'. Known: ${Object.keys(this.presets).join(', ')}`);
     }
     const { ThreeService } = await import('../services/three.service');
+    const { Vector3 } = await import('three');
     const three = this.injector.get(ThreeService);
-    three.camera.position.set(...preset.position);
-    three.controls.target.set(...preset.target);
+
+    if ('direction' in preset) {
+      const target = three.controls.target;
+      const distance = three.camera.position.distanceTo(target) || 7000;
+      three.camera.position
+        .copy(target)
+        .addScaledVector(new Vector3(...preset.direction), distance);
+    } else {
+      three.camera.position.set(...preset.position);
+      three.controls.target.set(...preset.target);
+    }
+
+    if (preset.up) three.setCameraUp(new Vector3(...preset.up));
+
     three.controls.update();
   }
 }

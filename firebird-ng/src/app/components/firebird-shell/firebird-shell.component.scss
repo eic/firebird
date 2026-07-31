@@ -1,5 +1,13 @@
-/* Slot wrappers must be layout-neutral: the shell's own flex rules apply to
-   the projected children as if they were direct toolbar/pane content. */
+/* Slot wrappers must be layout-neutral: the shell's own rules apply to the
+   projected children as if they were direct toolbar/pane content.
+
+   This matters most for the panes. The shell's pane bodies already provide a
+   definite height and own the scrolling (`overflow: auto`), and pages need
+   opposite things from that box: the display canvas sizes itself with
+   `height: 100%`, while form pages flow taller than the pane and must scroll.
+   A wrapper box can satisfy only one of them — sized to the pane it clips the
+   forms, sized to content it collapses the canvas (percentage heights need a
+   definite-height parent). Generating no box at all satisfies both. */
 .fb-slot {
   display: contents;
 }
@@ -8,14 +16,6 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-}
-
-/* Pane and central content fills the pane body provided by the shell. */
-.fb-fill {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
 }
 
 .logo-button img {

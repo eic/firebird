@@ -27,6 +27,7 @@
       "@firebird/example-extension": ["../packages/firebird-example-extension/src/index.ts"],
       "@dexvis/root-geo-tree-editor": ["../dexvis/root-geo-tree-editor/src/index.ts"],
       "@dexvis/threejs-tree-editor": ["../dexvis/threejs-tree-editor/src/index.ts"],
+      "@dexvis/viewport-gizmo": ["../dexvis/viewport-gizmo/src/index.ts"],
       "@dexvis/shell": ["../dexvis/app-shell-ng/projects/app-shell/src/public-api.ts"]
     },
     "lib": [

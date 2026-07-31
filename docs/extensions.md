@@ -68,6 +68,12 @@ If it hooks the **machinery** — scene lifecycle, frame loop, input, UI — it 
 a **ThreeExtension**. Magnetic field lines that visualize a field map are a
 painter; a hover-probe that raycasts under the mouse is an extension.
 
+A built-in example to read: the camera navigation cube
+(`firebird-ng/src/app/firebird/viewport-gizmo.extension.ts`) binds the
+`@dexvis/viewport-gizmo` package to the scene, controls, frame loop and
+command bus, and is registered with `withLazyThreeExtension` inside
+`withFirebirdBuiltins()`.
+
 ## ThreeExtension lifecycle
 
 ```ts

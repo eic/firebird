@@ -12,9 +12,44 @@ import {
   Camera,
   Scene, Mesh
 } from 'three';
-import { WebGPURenderer, ClippingGroup } from 'three/webgpu';
+import { WebGPURenderer, ClippingGroup, NodeMaterial } from 'three/webgpu';
 import {PerfService} from "./perf.service";
 import {BehaviorSubject, Subject} from "rxjs";
+
+/**
+ * Workaround for a three.js (r183) clipping bug with classic materials.
+ *
+ * For non-node materials (MeshLambertMaterial etc.) the renderer builds a
+ * TEMPORARY NodeMaterial for every shader build (NodeLibrary.fromMaterial) and
+ * NodeMaterial.setupHardwareClipping stores its `hardwareClipping = true`
+ * decision on that temporary. At draw time RenderObject.hardwareClippingPlanes
+ * reads the flag from the ORIGINAL material, finds it unset, and never enables
+ * the GPU clip distances — so union-mode clipping planes
+ * (ClippingGroup.clipIntersection = false: the wedge >= 180 deg and the Z
+ * plane) silently do not clip, while intersection-mode planes (fragment-shader
+ * path, the pie wedge < 180 deg) work.
+ *
+ * Worse, ClippingNode reads `builder.material.hardwareClipping` — the CLASSIC
+ * material again — where the flag is `undefined`; its fragment-shader
+ * union-plane loop is guarded by `hardwareClipping === false`, so with
+ * `undefined` the loop is skipped too and union planes are dropped from both
+ * paths. (The intersection-plane loop has no such guard, which is why wedge
+ * clipping below 180 degrees worked all along.)
+ *
+ * The patch (a) disables the hardware-clipping shortcut, forcing union planes
+ * through the same fragment-shader path on WebGPU and the WebGL2 fallback,
+ * and (b) defaults `hardwareClipping` to `false` on every classic material so
+ * the guard sees a real boolean. Remove when three resolves node materials
+ * consistently for classic materials.
+ */
+let hardwareClippingPatched = false;
+function patchThreeHardwareClippingBug(): void {
+  if (hardwareClippingPatched) return;
+  hardwareClippingPatched = true;
+  (NodeMaterial.prototype as unknown as { setupHardwareClipping: (builder: unknown) => void }).setupHardwareClipping =
+    function (this: { hardwareClipping: boolean }) { this.hardwareClipping = false; };
+  (THREE.Material.prototype as unknown as { hardwareClipping: boolean }).hardwareClipping = false;
+}
 
 
 import {
@@ -68,6 +103,8 @@ export class ThreeService implements OnDestroy {
   public zClipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   private zClippingEnabled = false;
   private angularClippingEnabled = false;
+  /** Last clipping structure applied to the renderer; see updateClippingGroups. */
+  private lastClippingStructure = '';
 
   /** Functions callbacks that help organize performance */
   public profileBeginFunc: (() => void) | null = null;
@@ -254,9 +291,15 @@ export class ThreeService implements OnDestroy {
     this.sceneHelpers.name = 'Helpers';
     this.scene.add(this.sceneHelpers);
 
-    // Create cameras
+    // Create cameras. The startup view is the HENP top view: camera above the
+    // detector looking down, beam (Z) pointing right on screen, X toward the
+    // top of the screen — hence up = +X while looking along -Y. The up vector
+    // must be set BEFORE OrbitControls is constructed: the controls capture
+    // the up axis once, in their constructor. A startup command
+    // (?cmd=camera-preset:...) overrides this default after init.
     this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 10, 40000);
-    this.perspectiveCamera.position.set(-7000, 0 , 0);
+    this.perspectiveCamera.position.set(0, 7000, 0);
+    this.perspectiveCamera.up.set(1, 0, 0);
 
     // Better orthographic camera initialization
     const orthoSize = 1000; // Start with a large enough size to see the detector
@@ -266,12 +309,14 @@ export class ThreeService implements OnDestroy {
       -10000, 40000 // Critical change: Allow negative near plane to see objects behind camera position
     );
     this.orthographicCamera.position.copy(this.perspectiveCamera.position);
+    this.orthographicCamera.up.copy(this.perspectiveCamera.up);
     this.orthographicCamera.lookAt(this.scene.position);
 
     // Default camera is perspective
     this.camera = this.perspectiveCamera;
 
     // Create renderer (WebGPU with automatic WebGL2 fallback)
+    patchThreeHardwareClippingBug();
     this.renderer = new WebGPURenderer({ antialias: true , logarithmicDepthBuffer: true, stencil:true});
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.shadowMap.enabled = true;
@@ -286,6 +331,17 @@ export class ThreeService implements OnDestroy {
     this.controls.target.set(0, 0, 0);
     this.controls.enableDamping = false;
     this.controls.dampingFactor = 0.05;
+
+    // OrbitControls cannot rotate across the poles of its up axis (the polar
+    // angle is hard-clamped). With the top view as the primary orientation
+    // that clamp is a wall in the middle of normal navigation, so instead of
+    // living with it the orbit frame is re-anchored whenever the camera gets
+    // near a pole: the up axis is replaced by the current screen-up, which
+    // keeps the visible roll identical while moving the poles 90 degrees
+    // away. Rotation then continues over the top; the world may end up rolled
+    // after long free tumbles — the navigation cube and view presets restore
+    // canonical orientations.
+    this.controls.addEventListener('change', () => this.keepOrbitAwayFromPoles());
 
     // Perspective camera distance limits
     const sceneRadius = 15000;
@@ -701,6 +757,22 @@ export class ThreeService implements OnDestroy {
     // Z clipping on the parent wrapper
     this.zClippingGroup.clippingPlanes = this.zClippingEnabled ? [this.zClipPlane] : [];
     this.zClippingGroup.enabled = this.zClippingEnabled;
+
+    // three.js (r183) does not reliably rebuild shaders when the SET of
+    // clipping planes changes (plane positions are fine — they are uniforms):
+    // RenderObjects.get short-circuits on material.version before consuming
+    // the one-shot clippingNeedsUpdate getter, so a pipeline compiled without
+    // planes keeps rendering unclipped after planes appear (and vice versa).
+    // Dropping the cached render objects forces a rebuild against the current
+    // clipping structure; built shader states stay cached by key, so toggling
+    // back and forth does not recompile. Only runs when the structure —
+    // enabled flags, plane count, intersection mode — changes, never while a
+    // slider drags plane positions around.
+    const structure = `${this.sceneGeometry.enabled}:${this.sceneGeometry.clipIntersection}:${this.sceneGeometry.clippingPlanes.length}:${this.zClippingEnabled}`;
+    if (structure !== this.lastClippingStructure) {
+      this.lastClippingStructure = structure;
+      (this.renderer as unknown as { _objects?: { dispose(): void } })._objects?.dispose();
+    }
   }
 
   /**
@@ -757,6 +829,7 @@ export class ThreeService implements OnDestroy {
       this.orthographicCamera.far  =  clipSpan;
 
       this.orthographicCamera.updateProjectionMatrix();
+      this.orthographicCamera.up.copy(this.camera.up);
       this.camera = this.orthographicCamera;
 
     } else {
@@ -787,6 +860,54 @@ export class ThreeService implements OnDestroy {
     this.controls.update();
 
     this.cameraMode$.next(!useOrtho);
+  }
+
+  /**
+   * Re-anchors the orbit frame when the camera direction closes in on the
+   * up-axis poles (see the controls 'change' listener in init). The new up is
+   * the exact current screen-up, so nothing visibly changes at the moment of
+   * the switch.
+   */
+  private static readonly POLE_LIMIT = Math.cos(15 * Math.PI / 180);
+  private readonly poleOffset = new THREE.Vector3();
+  private readonly poleScreenUp = new THREE.Vector3();
+
+  private keepOrbitAwayFromPoles(): void {
+    const camera = this.camera;
+    const offset = this.poleOffset.subVectors(camera.position, this.controls.target);
+    const distance = offset.length();
+    if (!distance) return;
+
+    offset.divideScalar(distance);
+    // cos of the angle between the view direction and the up axis;
+    // |cos| > cos(15°) means the camera is within 15° of a pole.
+    if (Math.abs(offset.dot(camera.up)) < ThreeService.POLE_LIMIT) return;
+
+    const screenUp = this.poleScreenUp
+      .copy(camera.up)
+      .addScaledVector(offset, -offset.dot(camera.up));
+    if (screenUp.lengthSq() < 1e-12) return;
+
+    this.setCameraUp(screenUp.normalize());
+  }
+
+  /**
+   * Sets the camera up vector (kept in sync on both cameras) and refreshes
+   * the up axis OrbitControls captured in its constructor — without the
+   * refresh, orbiting keeps rotating around the old up. Used by camera view
+   * presets and the viewport gizmo for top/bottom views and rolls.
+   */
+  setCameraUp(up: THREE.Vector3): void {
+    this.perspectiveCamera.up.copy(up);
+    this.orthographicCamera.up.copy(up);
+    const controls = this.controls as unknown as {
+      _quat?: THREE.Quaternion;
+      _quatInverse?: THREE.Quaternion;
+    };
+    if (controls._quat) {
+      controls._quat.setFromUnitVectors(up, new THREE.Vector3(0, 1, 0));
+      controls._quatInverse?.copy(controls._quat).invert();
+    }
   }
 
 

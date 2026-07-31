@@ -7,3 +7,6 @@
 [submodule "dexvis/app-shell-ng"]
 	path = dexvis/app-shell-ng
 	url = https://github.com/dexvis/app-shell-ng.git
+[submodule "dexvis/viewport-gizmo"]
+	path = dexvis/viewport-gizmo
+	url = https://github.com/dexvis/viewport-gizmo.git

@@ -31,10 +31,16 @@ colon, so URLs with colons survive: `open-dex:https://host/file.zip`.
 | `open-dex`      | `url`                | `open-dex:<url>`               | Load event data. DEX json/zip and `.root` (server conversion) are chosen the same registry-driven way. |
 | `show-event`    | `index` (number)     | `show-event:2`                 | Select event by index. Waits up to 30 s for events to finish loading first. |
 | `set-config`    | `key`, `value`       | `set-config:key=value`         | Set a configuration value. From `url`/`server`/`batch` sources the value is session-scoped (not persisted); from `ui`/`code` it is saved normally. |
-| `camera-preset` | `name`               | `camera-preset:farforward`     | Move the camera to a named preset: `center`, `farforward`. |
+| `camera-preset` | `name`               | `camera-preset:top`            | Move the camera to a named preset. Face views `front`, `back`, `left`, `right`, `top`, `bottom` keep the current orbit target and distance; `home` resets to the default top view; `center` and `farforward` are fixed poses. |
 
 The URL shorthands `?dex=`, `?geometry=`, `?event=` expand to `open-dex`,
 `open-geometry`, `show-event`.
+
+Face presets follow the accelerator (HENP) axis convention: the beam runs
+along Z (pointing right on screen in the front view), Y is up, and X points
+toward the accelerator center. The top and bottom views keep Z horizontal on
+screen. The same views are reachable interactively through the navigation
+cube in the display's top-right corner.
 
 ## Where commands come from
 
