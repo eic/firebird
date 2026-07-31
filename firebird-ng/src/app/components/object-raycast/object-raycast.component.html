@@ -41,6 +41,6 @@
 </ng-template>
 
 <div class="raycast-overlay" *ngIf="coordsEnabled || distanceEnabled">
-  <div *ngIf="coordsEnabled">{{ coordsText }}</div>
-  <div *ngIf="distanceEnabled">{{ distanceText }}</div>
+  <div *ngIf="coordsEnabled">{{ coordsText() }}</div>
+  <div *ngIf="distanceEnabled">{{ distanceText() }}</div>
 </div>

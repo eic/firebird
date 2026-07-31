@@ -1,4 +1,4 @@
-import {Component, OnInit, OnDestroy, ViewChild, TemplateRef, ViewContainerRef} from '@angular/core';
+import {Component, OnInit, OnDestroy, ViewChild, TemplateRef, ViewContainerRef, ChangeDetectionStrategy} from '@angular/core';
 
 
 import { ThreeService } from '../../services/three.service';
@@ -15,6 +15,7 @@ import {MatTooltip} from "@angular/material/tooltip";
   selector: 'app-legend-window',
   templateUrl: './legend-window.component.html',
   styleUrls: ['./legend-window.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatIcon,
     MatDialogClose,

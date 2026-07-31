@@ -1,5 +1,5 @@
 // cube-viewport-control.component.ts
-import { Component, ElementRef, OnInit, OnDestroy, NgZone } from '@angular/core';
+import { Component, ElementRef, OnInit, OnDestroy, NgZone, ChangeDetectionStrategy } from '@angular/core';
 import { GizmoOptions, ViewportGizmo } from 'three-viewport-gizmo';
 import { ThreeService } from '../../services/three.service';
 import {
@@ -15,6 +15,7 @@ import { WebGPURenderer } from 'three/webgpu';
 @Component({
   selector: 'app-cube-viewport-control',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './cube-viewport-control.component.html',
 })
 export class CubeViewportControlComponent implements OnInit, OnDestroy {
@@ -76,7 +77,9 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
       container: container,
       size: 90,
       type: 'cube',
-      offset: { top: 115 },
+      // Offset from the top of the canvas container (#eventDisplay starts right
+      // below the toolbar since the shell-layout swap).
+      offset: { top: 10, right: 20 },
       background: { color: 0x444444, hover: { color: 0x444444 } },
       corners: {
         color: 0x333333,
@@ -110,6 +113,33 @@ export class CubeViewportControlComponent implements OnInit, OnDestroy {
       if (r.getScissorTest()) {
         r.getScissor(_v4).toArray(gizmo._originalScissor);
       }
+      return gizmo;
+    };
+
+    // Patch render for WebGPU: the library calls renderer.clear() between
+    // setViewport and render; under WebGPURenderer that clear runs as its own
+    // render pass and desyncs viewport state, so part of the gizmo draws
+    // displaced (visible as a "doubled" cube). Clear depth in-pass via the
+    // autoClear flags instead. Same approach as three-viewport-gizmo PR #54;
+    // drop both patches when a release with that fix ships.
+    gizmo.render = function () {
+      if (gizmo.animating) gizmo._animate();
+      const r = gizmo.renderer;
+      const scissor = r.getScissorTest();
+      const saved = { autoClear: r.autoClear, color: r.autoClearColor, depth: r.autoClearDepth, stencil: r.autoClearStencil };
+      r.autoClear = true;
+      r.autoClearColor = false;
+      r.autoClearDepth = true;
+      r.autoClearStencil = false;
+      r.setViewport(...gizmo._viewport);
+      if (scissor) r.setScissor(...gizmo._viewport);
+      r.render(gizmo._scene, gizmo._camera);
+      r.setViewport(...gizmo._originalViewport);
+      if (scissor) r.setScissor(...gizmo._originalScissor);
+      r.autoClear = saved.autoClear;
+      r.autoClearColor = saved.color;
+      r.autoClearDepth = saved.depth;
+      r.autoClearStencil = saved.stencil;
       return gizmo;
     };
 

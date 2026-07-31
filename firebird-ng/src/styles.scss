@@ -58,3 +58,12 @@ body {
   background-color: var(--mat-sys-surface-container-low)!important;
   box-shadow: var(--mat-sys-level2)!important;
 }
+
+/* @dexvis/shell buttons use Material Symbols glyph names (left_panel_open etc.)
+   that do not exist in the classic Material Icons font. Scope the Symbols font
+   to the shell's own controls so the rest of the app keeps classic icons. */
+.pane-toggle-btn mat-icon,
+.pane-close-btn mat-icon,
+.mobile-tools-trigger mat-icon {
+  font-family: 'Material Symbols Outlined', 'Material Icons', serif;
+}

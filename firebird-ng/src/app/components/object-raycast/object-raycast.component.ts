@@ -1,4 +1,4 @@
-import {Component, ElementRef, OnDestroy, TemplateRef, ViewChild, ViewContainerRef} from '@angular/core';
+import {Component, ElementRef, OnDestroy, TemplateRef, ViewChild, ViewContainerRef, ChangeDetectionStrategy, signal} from '@angular/core';
 import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog";
 import {MatMenuItem} from "@angular/material/menu";
 import {MatCheckbox, MatCheckboxChange} from "@angular/material/checkbox";
@@ -22,6 +22,7 @@ import {NgIf} from "@angular/common";
     NgIf
   ],
   templateUrl: './object-raycast.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './object-raycast.component.scss'
 })
 export class ObjectRaycastComponent implements OnDestroy {
@@ -35,8 +36,10 @@ export class ObjectRaycastComponent implements OnDestroy {
   coordsEnabled    = false;
   distanceEnabled  = false;
 
-  coordsText   = '';
-  distanceText = '';
+  // signals: updates arrive from native canvas listeners via ThreeService,
+  // which schedule no change detection under zoneless
+  coordsText   = signal('');
+  distanceText = signal('');
 
   private coordsSub?: Subscription;
   private distSub?: Subscription;
@@ -115,18 +118,18 @@ export class ObjectRaycastComponent implements OnDestroy {
     /* XYZ overlay */
     if (this.coordsEnabled && !this.coordsSub) {
       this.coordsSub = this.three.pointHovered.subscribe(pt => {
-        this.coordsText = `X:${pt.x.toFixed(2)}  Y:${pt.y.toFixed(2)}  Z:${pt.z.toFixed(2)}`;
+        this.coordsText.set(`X:${pt.x.toFixed(2)}  Y:${pt.y.toFixed(2)}  Z:${pt.z.toFixed(2)}`);
       });
     } else if (!this.coordsEnabled && this.coordsSub) {
       this.coordsSub.unsubscribe();
       this.coordsSub = undefined;
-      this.coordsText = '';
+      this.coordsText.set('');
     }
 
     /* distance overlay */
     if (this.distanceEnabled && !this.distSub) {
       this.distSub = this.three.distanceReady.subscribe(({ p1, p2, dist }) => {
-        this.distanceText = `${dist.toFixed(2)} units`;
+        this.distanceText.set(`${dist.toFixed(2)} units`);
 
         // draw / update line helper
         if (!this.distLine) {
@@ -141,7 +144,7 @@ export class ObjectRaycastComponent implements OnDestroy {
     } else if (!this.distanceEnabled && this.distSub) {
       this.distSub.unsubscribe();
       this.distSub = undefined;
-      this.distanceText = '';
+      this.distanceText.set('');
 
       // remove helper line
       if (this.distLine) {

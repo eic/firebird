@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { TrackPainterConfig } from '../track-painter-config';
 import { ConfiguratorComponent } from './configurator.component';
 import { NgIf } from '@angular/common';
@@ -19,6 +19,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
     MatInputModule,
     MatCheckboxModule
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-form-field>
       <mat-label>Coloring</mat-label>

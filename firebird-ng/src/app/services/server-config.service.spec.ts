@@ -1,7 +1,7 @@
 import { TestBed, waitForAsync } from '@angular/core/testing';
 import {HttpClientTestingModule, HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
 import { ServerConfigService } from './server-config.service';
-import {provideHttpClient, withInterceptorsFromDi} from "@angular/common/http";
+import {provideHttpClient, withInterceptorsFromDi, withXhr} from "@angular/common/http";
 
 describe('ServerConfigService', () => {
   let service: ServerConfigService;
@@ -11,7 +11,7 @@ describe('ServerConfigService', () => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [ServerConfigService,
-        provideHttpClient(withInterceptorsFromDi()),
+        provideHttpClient(withXhr(), withInterceptorsFromDi()),
         provideHttpClientTesting(),]
     });
     service = TestBed.inject(ServerConfigService);

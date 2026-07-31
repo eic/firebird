@@ -3,16 +3,14 @@ import {openFile} from 'jsroot';
 import {
   analyzeGeoNodes,
   findGeoManager, getGeoNodesByLevel
-} from '../../lib-root-geometry/root-geo-navigation';
+} from '@dexvis/root-geo-tree-editor';
 import {build} from 'jsroot/geom';
 import {RootGeometryProcessor} from "../data-pipelines/root-geometry.processor";
 
-import {Subdetector} from "../model/subdetector";
+import {Subdetector, DetectorThreeRuleSet, ThreeGeometryProcessor, disposeHierarchy, getColorOrDefault} from '@dexvis/threejs-tree-editor';
 import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, Plane} from "three";
 
-import {DetectorThreeRuleSet, ThreeGeometryProcessor} from "../data-pipelines/three-geometry.processor";
 import * as THREE from "three";
-import {disposeHierarchy, getColorOrDefault} from "../utils/three.utils";
 
 export const coolColorRules = [
   // Solenoid components - Very light blue-gray

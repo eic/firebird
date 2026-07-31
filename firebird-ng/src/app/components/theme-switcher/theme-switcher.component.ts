@@ -1,4 +1,4 @@
-import {Component, computed, OnInit} from '@angular/core';
+import {Component, computed, OnInit, ChangeDetectionStrategy} from '@angular/core';
 import { ThemeService, Theme } from '../../services/theme.service';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
   templateUrl: './theme-switcher.component.html',
   styleUrls: ['./theme-switcher.component.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatMenuModule, MatIconModule, MatButtonModule]
 })
 export class ThemeSwitcherComponent implements OnInit {

@@ -1,11 +1,6 @@
-<app-shell>
+<app-firebird-shell [(leftPaneVisible)]="leftPaneOpen" [(rightPaneVisible)]="rightPaneOpen">
   <!-- Desktop header (all toolbar buttons) -->
   <ng-container header>
-    <button mat-icon-button matTooltip="Toggle scene tree pane" (click)="toggleLeftPane()" class="panel-button">
-      <mat-icon>{{ isLeftPaneOpen ? 'close' : 'account_tree' }}</mat-icon>
-    </button>
-
-
     <!-- Event selector -->
     <app-custom-event-selector></app-custom-event-selector>
 
@@ -24,18 +19,12 @@
   </ng-container>
 
   <!-- Mobile header (only event selector visible in toolbar) -->
-  <ng-container mobileHeader>
+  <ng-container mobile-header>
     <app-custom-event-selector></app-custom-event-selector>
   </ng-container>
 
   <!-- Mobile tools menu (toolbar buttons in dropdown) -->
-  <ng-container mobileTools>
-    <button mat-button (click)="toggleLeftPane()">
-      <mat-icon>{{ isLeftPaneOpen ? 'close' : 'account_tree' }}</mat-icon>
-      Scene Tree
-    </button>
-
-
+  <ng-container mobile-tools>
     <app-geometry-clipping></app-geometry-clipping>
     <app-scene-export></app-scene-export>
     <app-object-raycast></app-object-raycast>
@@ -43,11 +32,11 @@
   </ng-container>
 
 
-  <div leftPane>
+  <div left-pane>
     <app-scene-tree (configureItem)="onConfigureItemClicked($event)"></app-scene-tree>
   </div>
 
-  <div centralPane>
+  <div central-pane #centralContainer class="central-fill">
     <!-- Central content area -->
     <div id="eventDisplay"></div>
     <app-tool-panel (cameraControlsToggle)="toggleCameraControls()"></app-tool-panel>
@@ -56,8 +45,8 @@
 
   <div id="lilgui"></div>
 
-  <div rightPane>
-    <app-painter-config-page *ngIf="isRightPaneOpen"></app-painter-config-page>
+  <div right-pane>
+    <app-painter-config-page *ngIf="rightPaneOpen()"></app-painter-config-page>
   </div>
 
   <div footer-left class="hide-on-mobile">
@@ -93,7 +82,7 @@
   <div class="theme-text">{{message}}</div>
 </div>
 
-  <div footer>
+  <div footer-center>
     <div class="time-controls" id="bottom-controls">
       <app-animation-settings></app-animation-settings>
       <app-event-time-control></app-event-time-control>
@@ -130,4 +119,4 @@
       <div class="theme-text">{{currentGeometry}}</div>
     </div>
   </div>
-</app-shell>
+</app-firebird-shell>

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
 import {FormControl, ReactiveFormsModule} from '@angular/forms';
 import { Observable } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
@@ -23,6 +23,7 @@ import {MatInput, MatLabel} from "@angular/material/input";
         ReactiveFormsModule
     ],
     templateUrl: './resource-select.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     styleUrl: './resource-select.component.scss'
 })
 export class ResourceSelectComponent implements OnInit {

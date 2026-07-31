@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { ConfigService } from '../../services/config.service';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -12,7 +12,7 @@ import { MatInput, MatLabel } from '@angular/material/input';
 import { ResourceSelectComponent } from '../../components/resource-select/resource-select.component';
 import { defaultFirebirdConfig, ServerConfig, ServerConfigService } from '../../services/server-config.service';
 import { MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader } from '@angular/material/expansion';
-import {ShellComponent} from "../../components/shell/shell.component";
+import {FirebirdShellComponent} from "../../components/firebird-shell/firebird-shell.component";
 import {MatButton, MatIconButton} from "@angular/material/button";
 import {MatSelect} from "@angular/material/select";
 import {MatOption} from "@angular/material/autocomplete";
@@ -35,7 +35,7 @@ import {MatOption} from "@angular/material/autocomplete";
     MatExpansionPanel,
     MatExpansionPanelTitle,
     MatExpansionPanelHeader,
-    ShellComponent,
+    FirebirdShellComponent,
     MatButton,
     MatIconButton,
     MatSelect,
@@ -43,6 +43,7 @@ import {MatOption} from "@angular/material/autocomplete";
     NgIf,
   ],
   templateUrl: './input-config.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./input-config.component.scss']
 })
 export class InputConfigComponent implements OnInit, AfterViewInit {

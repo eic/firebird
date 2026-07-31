@@ -50,6 +50,7 @@ import {Component, OnInit, ChangeDetectionStrategy, AfterViewInit, ElementRef, R
     selector: 'app-split-window',
     imports: [],
     templateUrl: './split-window.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     styleUrl: './split-window.component.scss'
 })
 export class SplitWindowComponent implements AfterViewInit {

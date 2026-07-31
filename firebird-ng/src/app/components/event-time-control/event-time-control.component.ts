@@ -4,7 +4,8 @@ import {
   Signal,
   ViewChild,
   TemplateRef,
-  ElementRef
+  ElementRef,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { MatSliderModule } from '@angular/material/slider';
 import {DecimalPipe} from '@angular/common';
@@ -21,6 +22,7 @@ import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog"
   standalone: true,
   imports: [MatSliderModule, MatInputModule, DecimalPipe, MatButton, FormsModule, MatIcon, MatIconButton, MatTooltip, MatDialogClose],
   templateUrl: './event-time-control.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./event-time-control.component.scss']
 })
 export class EventTimeControlComponent {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
 import { SceneHelpersService } from '../../services/scene-helpers.service';
 import {MatMenu, MatMenuItem, MatMenuTrigger} from '@angular/material/menu';
@@ -10,6 +10,7 @@ import {MatIconButton} from "@angular/material/button";
     selector: 'app-custom-view-options',
     templateUrl: './view-options.component.html',
     styleUrls: ['./view-options.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatMenu,
     MatCheckbox,

@@ -8,7 +8,8 @@ import {
   ViewContainerRef,
   ChangeDetectorRef,
   effect,
-  Signal
+  Signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
 import {MatSlideToggleChange} from '@angular/material/slide-toggle';
@@ -33,6 +34,7 @@ import {MatSlideToggle} from "@angular/material/slide-toggle";
   selector: 'app-geometry-clipping',
   templateUrl: './geometry-clipping.component.html',
   styleUrls: ['./geometry-clipping.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatSlider,
     MatMenuItem,

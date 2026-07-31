@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { MessageService, Message } from '../../services/message.service';
 import {CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport} from '@angular/cdk/scrolling';
 import {AsyncPipe, DatePipe, UpperCasePipe} from "@angular/common";
@@ -8,6 +8,7 @@ import {AsyncPipe, DatePipe, UpperCasePipe} from "@angular/common";
   templateUrl: './message-log.component.html',
   styleUrls: ['./message-log.component.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf, AsyncPipe, UpperCasePipe, DatePipe]
 })
 export class MessageLogComponent {

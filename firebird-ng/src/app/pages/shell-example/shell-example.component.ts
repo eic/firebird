@@ -1,6 +1,6 @@
 // shell-example.component.ts
 import {ChangeDetectionStrategy, Component, input, ViewChild} from '@angular/core';
-import { ShellComponent } from '../../components/shell/shell.component';
+import { FirebirdShellComponent } from '../../components/firebird-shell/firebird-shell.component';
 import {MatButton} from "@angular/material/button";
 import {MatFormField, MatLabel} from "@angular/material/form-field";
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -50,7 +50,7 @@ export class ThemeDemoColors {
 @Component({
   selector: 'app-shell-example',
   imports: [
-    ShellComponent,
+    FirebirdShellComponent,
     MatLabel,
     MatButton,
     MatFormField,
@@ -66,12 +66,13 @@ export class ThemeDemoColors {
     ThemeDemoColors
   ],
   templateUrl: './shell-example.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./shell-example.component.scss']
 })
 export class ShellExampleComponent {
 
-  @ViewChild(ShellComponent)
-  displayShellComponent!: ShellComponent;
+  @ViewChild(FirebirdShellComponent)
+  displayShellComponent!: FirebirdShellComponent;
 
   alternativeThemeColors: Color[] = [
     {

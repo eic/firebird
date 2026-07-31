@@ -18,12 +18,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: false
+          submodules: recursive
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
       - name: Install Dependencies
+        # npm workspaces: single lockfile at the repo root
+        working-directory: .
         run: npm install
 
       - name: Run Tests
@@ -39,12 +42,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: false
+          submodules: recursive
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
       - name: Install Dependencies
+        # npm workspaces: single lockfile at the repo root
+        working-directory: .
         run: npm install
 
       - name: Build

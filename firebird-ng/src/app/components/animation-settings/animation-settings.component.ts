@@ -2,7 +2,8 @@ import {
   Component,
   ViewChild,
   TemplateRef,
-  ElementRef
+  ElementRef,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {MatInputModule} from '@angular/material/input';
 import {EventDisplayService} from '../../services/event-display.service';
@@ -18,6 +19,7 @@ import {MatSlideToggle} from '@angular/material/slide-toggle';
   standalone: true,
   imports: [MatInputModule, FormsModule, MatIcon, MatIconButton, MatTooltip, MatDialogClose, MatSlideToggle],
   templateUrl: './animation-settings.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./animation-settings.component.scss']
 })
 export class AnimationSettingsComponent {

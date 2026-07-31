@@ -20,6 +20,12 @@
     "useDefineForClassFields": false,
     "resolveJsonModule": true,
     "emitDecoratorMetadata": true,
+    "paths": {
+      "@firebird/core": ["../packages/firebird-core/src/index.ts"],
+      "@dexvis/root-geo-tree-editor": ["../dexvis/root-geo-tree-editor/src/index.ts"],
+      "@dexvis/threejs-tree-editor": ["../dexvis/threejs-tree-editor/src/index.ts"],
+      "@dexvis/shell": ["../dexvis/app-shell-ng/projects/app-shell/src/public-api.ts"]
+    },
     "lib": [
       "ES2022",
       "dom"

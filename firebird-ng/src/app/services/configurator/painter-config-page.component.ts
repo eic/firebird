@@ -1,5 +1,6 @@
 import {
-  AfterViewInit, Component, Inject, OnInit, ViewChild, ViewContainerRef
+  AfterViewInit, Component, Inject, OnInit, ViewChild, ViewContainerRef,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {DOCUMENT, NgForOf} from '@angular/common';
 import { TrackPainterConfig } from '../track-painter-config';
@@ -27,6 +28,7 @@ import {MatList, MatListItem} from "@angular/material/list";
     </div>
   `,
   styles: [`.layout { display: flex; } .left { width: 200px; } .right { flex: 1; padding: 1rem; }`],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatList,
     MatListItem,

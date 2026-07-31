@@ -19,7 +19,7 @@ import {
   analyzeGeoNodes,
   findGeoManager,
   getGeoNodesByLevel
-} from '../../lib-root-geometry/root-geo-navigation';
+} from '@dexvis/root-geo-tree-editor';
 import {pruneTopLevelDetectors, RootGeometryProcessor} from '../data-pipelines/root-geometry.processor';
 
 // Message types for communication with main thread

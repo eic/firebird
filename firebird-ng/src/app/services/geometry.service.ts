@@ -1,11 +1,9 @@
 import {Injectable, signal, WritableSignal} from '@angular/core';
 import {ConfigService} from "./config.service";
-import {Subdetector} from "../model/subdetector";
+import {Subdetector, DetectorThreeRuleSet, ThreeGeometryProcessor, getColorOrDefault} from '@dexvis/threejs-tree-editor';
 import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, ObjectLoader, Plane} from "three";
 import {UrlService} from "./url.service";
-import {DetectorThreeRuleSet, ThreeGeometryProcessor} from "../data-pipelines/three-geometry.processor";
 import * as THREE from "three";
-import {getColorOrDefault} from "../utils/three.utils";
 
 import {cool2ColorRules} from "../theme/cool2-geometry-ruleset";
 import {cadColorRules} from "../theme/cad-geometry-ruleset";

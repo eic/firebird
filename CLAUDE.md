@@ -14,11 +14,18 @@ Firebird serves research, debugging/QC, and educational purposes.
 
 ## Repository Structure
 
-This is a **monorepo** containing three interdependent components:
+This is a **monorepo** with **npm workspaces** (root `package.json` lists the members; run `npm install` at the repo root, not inside a member):
 
-- **firebird-ng/** - Angular 20 frontend (TypeScript, Three.js, RxJS)
+- **firebird-ng/** - Angular 22 frontend (TypeScript, Three.js WebGPU, signals, zoneless)
+- **packages/firebird-core/** - `@firebird/core`: worker-safe plain TS (event model, DEX io, painters). No Angular injector, no bootstrap; the web workers run this code. Enforced by `packages/firebird-core/src/no-injector.spec.ts`.
+- **dexvis/** - git submodules of the generic [github.com/dexvis](https://github.com/dexvis) packages, wired into the workspaces so `@dexvis/*` imports resolve to the submodule sources (tsconfig `paths`):
+  - `root-geo-tree-editor` -> `@dexvis/root-geo-tree-editor` (TGeo walk/find/edit)
+  - `threejs-tree-editor` -> `@dexvis/threejs-tree-editor` (three tree edit/merge/outline, geometry processor)
+  - `app-shell-ng` -> `@dexvis/shell` (app chrome: shell layout + theming); Firebird wraps it in `components/firebird-shell/`
 - **pyrobird/** - Python Flask backend (file server, ROOT conversion)
 - **dd4hep-plugin/** - C++ Geant4/DD4Hep plugin (trajectory extraction during simulation)
+
+Commits inside `dexvis/*` submodules and npm publishes of those packages are separate, deliberate actions - edits land in the submodule working tree first.
 
 The documentation source lives in:
 - **docs/** - VitePress documentation site (deployed to GitHub Pages)
@@ -29,15 +36,18 @@ The documentation source lives in:
 ### Frontend (firebird-ng)
 
 ```bash
+npm install                    # At the REPO ROOT (npm workspaces; single lockfile)
+
 cd firebird-ng
 
 # Development server with hot reload
-ng serve                       # http://localhost:4200
+npm run serve                  # http://localhost:4200
 
-# Testing
-npm test                       # Interactive tests (Karma)
-npm run test:headless          # CI mode (headless Chrome)
-ng test --include='**/my-component.spec.ts'  # Run single test file
+# Testing (Vitest via the Angular unit-test builder)
+npm test                       # Interactive tests
+npm run test:headless          # CI mode
+npm test -w @firebird/core     # Core package tests (from repo root)
+npm test -w @dexvis/threejs-tree-editor   # Dexvis submodule tests (from repo root)
 
 # Building
 npm run build                 # Production build
@@ -48,6 +58,10 @@ npm run build:watch           # Watch mode for development
 ng generate component component-name
 ng generate service service-name
 ```
+
+Version pins to know about (root `package.json` `overrides`): `jsroot` is pinned to 7.10.3
+(7.11 pulls native `@resvg` bindings that break browser bundling) and `jsdom` to ~26
+(29 uses `node:`-prefixed requires that defeat the browser-field stubs).
 
 ### Backend (pyrobird)
 
@@ -117,15 +131,21 @@ Backend serves for:
 
 ### Frontend Architecture (firebird-ng)
 
-The Angular application uses a **service-oriented architecture** with clear separation of concerns:
+The Angular application is **zoneless** (no zone.js; `provideZonelessChangeDetection()`)
+with **OnPush on every component**. State that a template reads must be a signal
+(or arrive via async pipe / event handler) - a plain field mutated from an RxJS
+subscription, rAF callback, or native listener will NOT update the UI.
+
+It uses a **service-oriented architecture** with clear separation of concerns:
 
 #### Core Services Layer
 
-- **three.service.ts** (3700+ lines) - Central Three.js orchestration
+- **three.service.ts** (~1200 lines) - Central Three.js orchestration
+  - `WebGPURenderer` (from `three/webgpu`) with automatic WebGL2 fallback; `init()` is **async**
   - Scene setup (cameras, lights, rendering loop)
   - Raycasting for object selection
   - BVH (Bounding Volume Hierarchy) acceleration for performance
-  - Clipping planes and measurement tools
+  - Clipping via nested `ClippingGroup`s and measurement tools
   - Frame callbacks for animations
 
 - **event-display.service.ts** - High-level event visualization
@@ -143,7 +163,10 @@ The Angular application uses a **service-oriented architecture** with clear sepa
   - Load EDM4eic ROOT files
   - Event registry and navigation
 
-#### Data Model Layer
+#### Data Model Layer (`@firebird/core`)
+
+The event model, DEX io, and painters live in **`packages/firebird-core`** (plain
+worker-safe TS, imported as `@firebird/core`), not in the Angular app.
 
 The **event group factory pattern** enables extensibility:
 
@@ -159,7 +182,8 @@ To add a new component type:
 
 #### Painter System
 
-Painters render event data to Three.js objects using **time-aware rendering**:
+Painters render event data to Three.js objects using **time-aware rendering**
+(all in `packages/firebird-core/src/painters/`):
 
 - `data-model-painter.ts` - Main orchestrator (filters by time range)
 - `trajectory.painter.ts` - Particle tracks with smooth splines
@@ -281,9 +305,9 @@ Restrictive defaults prevent unauthorized file access:
 ## Testing Infrastructure
 
 ### Frontend Testing
-- **Framework:** Karma + Jasmine
-- **CI:** GitHub Actions on every push/PR (Node.js 22, headless Chrome)
-- Run tests: `npm test` or `npm run test:headless`
+- **Framework:** Vitest (Angular `unit-test` builder); `@firebird/core` and the dexvis packages run plain Vitest
+- **CI:** GitHub Actions on every push/PR
+- Run tests: `npm test` or `npm run test:headless` (app); `npm test -w @firebird/core` (core)
 
 ### Backend Testing
 - **Framework:** pytest
@@ -302,8 +326,9 @@ Restrictive defaults prevent unauthorized file access:
 
 ### TypeScript (firebird-ng)
 - **Type safety:** Strict TypeScript compilation
-- **Components:** Standalone Angular components (Angular 20)
-- **Reactive programming:** RxJS and Angular signals
+- **Components:** Standalone Angular components (Angular 22), `ChangeDetectionStrategy.OnPush`
+- **Reactive programming:** Angular signals first (zoneless); RxJS where streams fit better
+- **Worker-safe core:** code in `packages/firebird-core` must never use `@Injectable`, tokens, `HttpClient`, or components
 - **Bundle size:** 2MB warning, 5MB error limits
 
 ## CI/CD and Deployment

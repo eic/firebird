@@ -3,7 +3,8 @@ import {
   OnInit,
   AfterViewInit,
   Input,
-  ViewChild, OnDestroy, TemplateRef, ElementRef, signal
+  ViewChild, OnDestroy, TemplateRef, ElementRef, signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
 import {ALL_GROUPS, GeometryService} from '../../services/geometry.service';
@@ -11,7 +12,7 @@ import {GameControllerService} from '../../services/game-controller.service';
 import {ConfigService} from '../../services/config.service';
 
 import {SceneTreeComponent} from '../../components/scene-tree/scene-tree.component';
-import {ShellComponent} from '../../components/shell/shell.component';
+import {FirebirdShellComponent} from '../../components/firebird-shell/firebird-shell.component';
 import {ToolPanelComponent} from '../../components/tool-panel/tool-panel.component';
 import {EventSelectorComponent} from '../../components/event-selector/event-selector.component';
 import {GeometryClippingComponent} from '../../components/geometry-clipping/geometry-clipping.component';
@@ -55,12 +56,13 @@ import JSZip from 'jszip';
   selector: 'app-main-display',
   templateUrl: './main-display.component.html',
   styleUrls: ['./main-display.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatIcon,
     MatTooltip,
     MatIconButton,
     SceneTreeComponent,
-    ShellComponent,
+    FirebirdShellComponent,
     ToolPanelComponent,
     EventSelectorComponent,
     GeometryClippingComponent,
@@ -90,8 +92,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   eventDisplayDiv!: ElementRef;
 
   // For referencing child components
-  @ViewChild(ShellComponent)
-  displayShellComponent!: ShellComponent;
+  @ViewChild(FirebirdShellComponent)
+  displayShellComponent!: FirebirdShellComponent;
+
+  /** Central pane container: its size is layout-driven (panes, window), so the
+   * ResizeObserver on it never feeds back from the canvas size. */
+  @ViewChild('centralContainer')
+  centralContainer!: ElementRef<HTMLElement>;
 
   @ViewChild(SceneTreeComponent)
   geometryTreeComponent: SceneTreeComponent | null | undefined;
@@ -114,9 +121,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   private geometryGroupSwitchingIndex = ALL_GROUPS.length;
   currentGeometry: string = 'All';
 
-  // UI toggles
-  isLeftPaneOpen: boolean = false;
-  isRightPaneOpen: boolean = false;
+  // UI toggles: two-way bound to the shell layout panes; the shell's own
+  // toolbar toggle buttons update these too.
+  leftPaneOpen = signal(false);
+  rightPaneOpen = signal(false);
+
+  private resizeObserver?: ResizeObserver;
+  private resizeDebounce?: ReturnType<typeof setTimeout>;
 
   // Loading indicators
   loadingDex     = signal(false);
@@ -183,33 +194,17 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       this.initRootData();
     }
 
-    if (this.displayShellComponent) {
-      const resizeInvoker = () => {
-        setTimeout(() => {
-          this.onRendererElementResize();
-        }, 100);
-      };
-      this.displayShellComponent.onVisibilityChangeLeft.subscribe(resizeInvoker);
-      this.displayShellComponent.onVisibilityChangeRight.subscribe(resizeInvoker);
-      this.displayShellComponent.onEndResizeLeft.subscribe(() => this.onRendererElementResize());
-      this.displayShellComponent.onEndResizeRight.subscribe(() => this.onRendererElementResize());
-    }
-
     this.initCubeViewportControl();
 
-    window.addEventListener('resize', () => {
-      this.onRendererElementResize();
+    // One mechanism for every resize source (pane toggle, pane drag, window):
+    // observe the central pane container. Debounced because pane dragging
+    // fires per animation frame.
+    this.resizeObserver = new ResizeObserver(() => {
+      clearTimeout(this.resizeDebounce);
+      this.resizeDebounce = setTimeout(() => this.onRendererElementResize(), 50);
     });
-
-    // When sidebar is collapsed/opened, the main container, i.e. #eventDisplay offsetWidth is not yet updated.
-    // This leads to a not proper resize  processing. We add 100ms delay before calling a function
-    const this_obj = this;
-    const resizeInvoker = function () {
-      setTimeout(() => {
-        this_obj.onRendererElementResize();
-      }, 100);  // 100 milliseconds = 0.1 seconds
-    };
-    resizeInvoker();
+    this.resizeObserver.observe(this.centralContainer.nativeElement);
+    this.onRendererElementResize();
 
     // Loads the geometry (do it last as it might be long)
     if (this.isAutoLoadOnInit) {
@@ -259,13 +254,11 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 3) UI - Toggling panes
   toggleLeftPane() {
-    this.displayShellComponent?.toggleLeftPane();
-    this.isLeftPaneOpen = !this.isLeftPaneOpen;
+    this.leftPaneOpen.update(v => !v);
   }
 
   toggleRightPane() {
-    this.displayShellComponent?.toggleRightPane();
-    this.isRightPaneOpen = !this.isRightPaneOpen;
+    this.rightPaneOpen.update(v => !v);
   }
 
   // 4) Method to initialize CubeViewportControl with the existing Three.js objects
@@ -297,13 +290,16 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   ngOnDestroy(): void {
-    // Clear the custom controls when leaving the page
+    this.resizeObserver?.disconnect();
+    clearTimeout(this.resizeDebounce);
   }
 
 
   // Called when we want to recalculate the size of the canvas
   private onRendererElementResize() {
-    let {width, height} = this.displayShellComponent.getMainAreaVisibleDimensions();
+    const el = this.centralContainer.nativeElement;
+    const width = el.clientWidth;
+    const height = el.clientHeight;
     console.log(`[RendererResize] New size: ${width}x${height} px`);
 
     // Delegate resizing to ThreeService

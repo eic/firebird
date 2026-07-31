@@ -42,13 +42,17 @@ export class PerfService {
       const avgFrameTime = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
 
       // Read renderer info only once
-      const info = renderer.info.render;
+      const info = renderer.info.render as { calls: number; triangles: number; drawCalls?: number };
+
+      // WebGPURenderer semantics differ from WebGLRenderer: info.render.calls is a
+      // cumulative total that never resets, while drawCalls holds the per-frame count.
+      const callsPerFrame = info.drawCalls !== undefined ? info.drawCalls : info.calls;
 
       // Update the metrics object
       const log: PerfLog = {
         fps: fps,
         frameTime: avgFrameTime,  // Now shows actual frame render time in ms
-        calls: info.calls,
+        calls: callsPerFrame,
         triangles: info.triangles,
       };
 

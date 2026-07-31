@@ -23,7 +23,7 @@
       <button
         mat-menu-item
         (click)="exportFullScene()"
-        [disabled]="isExporting"
+        [disabled]="isExporting()"
       >
         <mat-icon>public</mat-icon>
         Export Full Scene
@@ -32,14 +32,14 @@
       <button
         mat-menu-item
         (click)="exportGeometryOnly()"
-        [disabled]="isExporting"
+        [disabled]="isExporting()"
       >
         <mat-icon>view_in_ar</mat-icon>
         Export Geometry Only
       </button>
     </div>
 
-    @if (isExporting) {
+    @if (isExporting()) {
       <div class="exporting-indicator">
         Exporting...
       </div>

@@ -3,10 +3,12 @@
 import {
   analyzeGeoNodes,
   findSingleGeoNode,
-} from '../../lib-root-geometry/root-geo-navigation';
-import {EditActions, GeoNodeEditRule, removeGeoNode} from "../../lib-root-geometry/root-geo-edit";
-import {GeoAttBits} from "../../lib-root-geometry/root-geo-attribute-bits";
-import {editGeoNodes} from "../../lib-root-geometry/root-geo-edit";
+  EditActions,
+  GeoNodeEditRule,
+  removeGeoNode,
+  GeoAttBits,
+  editGeoNodes,
+} from '@dexvis/root-geo-tree-editor';
 
 
 export class DetectorGeometryFineTuning {

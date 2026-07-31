@@ -1,12 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { AppComponent } from './app.component';
 import {provideRouter} from '@angular/router';
-import {Component, NO_ERRORS_SCHEMA} from "@angular/core";
+import {Component, NO_ERRORS_SCHEMA, ChangeDetectionStrategy} from "@angular/core";
 
 // Mock the external component
 @Component({
     selector: 'lib-view-options', // Replace with the actual selector
     template: '',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     standalone: false
 })
 class MockViewOptionsComponent {}

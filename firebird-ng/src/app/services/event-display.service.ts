@@ -7,11 +7,10 @@ import {ConfigService} from './config.service';
 import {UrlService} from './url.service';
 
 
-import {disposeHierarchy} from '../utils/three.utils';
+import {disposeHierarchy} from '@dexvis/threejs-tree-editor';
 import {ThreeEventProcessor} from '../data-pipelines/three-event.processor';
-import {DataModelPainter, DisplayMode} from '../painters/data-model-painter';
+import {DataModelPainter, DisplayMode, initGroupFactories} from '@firebird/core';
 import {AnimationManager} from "../animation/animation-manager";
-import {initGroupFactories} from "../model/default-group-init";
 import {Mesh, MeshBasicMaterial, SphereGeometry, Vector3} from "three";
 import {arrangeEpicDetectors} from "../utils/epic-geometry-arranger";
 

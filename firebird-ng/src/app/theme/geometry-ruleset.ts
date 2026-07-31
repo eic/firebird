@@ -1,6 +1,6 @@
 
 import * as THREE from "three";
-import {disposeHierarchy, getColorOrDefault} from "../utils/three.utils";
+import {disposeHierarchy, getColorOrDefault} from '@dexvis/threejs-tree-editor';
 
 export const modernRules = [
   // Solenoid components - Light blue-gray with a touch more color

@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -35,14 +37,12 @@ jobs:
 
       - name: Debug info before build
         run: |
-          cd firebird-ng
-          ls -l
-          cat package.json
           npm --version
           node --version
+          # npm workspaces: install once at the repo root
           npm install
-          npm install -g @angular/cli
-          ng build
+          cd firebird-ng
+          npm run build
 
       - name: Install the project
         run: |

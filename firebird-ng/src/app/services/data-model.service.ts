@@ -1,8 +1,7 @@
 import {Injectable, linkedSignal, signal} from "@angular/core";
-import { Event } from "../model/event";
+import { Event, DataExchange } from "@firebird/core";
 import { HttpClient } from "@angular/common/http";
 import { UrlService } from "./url.service";
-import { DataExchange } from "../model/data-exchange";
 import { fetchTextFile, loadJSONFileEvents, loadZipFileEvents } from "../utils/data-fetching.utils";
 
 /**

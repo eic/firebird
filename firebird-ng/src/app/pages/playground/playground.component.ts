@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, OnInit, ViewChild, ElementRef} from '@angular/core';
+import {AfterViewInit, Component, OnInit, ViewChild, ElementRef, ChangeDetectionStrategy} from '@angular/core';
 import * as THREE from "three"
 import { WebGPURenderer } from "three/webgpu";
 import * as TWEEN from '@tweenjs/tween.js';
@@ -7,6 +7,7 @@ import * as TWEEN from '@tweenjs/tween.js';
     selector: 'app-playground',
     imports: [],
     templateUrl: './playground.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     styleUrl: './playground.component.scss'
 })
 export class PlaygroundComponent implements OnInit, AfterViewInit {

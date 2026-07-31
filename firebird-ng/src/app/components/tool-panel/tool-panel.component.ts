@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { MatIcon } from '@angular/material/icon';
 import { ViewOptionsComponent } from '../view-options/view-options.component';
@@ -19,6 +19,7 @@ import * as THREE from 'three';
 
   ],
     templateUrl: './tool-panel.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     styleUrls: ['./tool-panel.component.scss']
 })
 export class ToolPanelComponent {

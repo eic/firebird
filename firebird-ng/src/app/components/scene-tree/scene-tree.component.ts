@@ -4,6 +4,7 @@ import {
   EventEmitter,
   OnInit,
   Output,
+  ChangeDetectionStrategy
 } from '@angular/core';
 
 import {
@@ -40,6 +41,7 @@ import { ThreeService } from '../../services/three.service';
     MatIconButton,
   ],
   templateUrl: './scene-tree.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./scene-tree.component.scss'],
 })
 export class SceneTreeComponent implements OnInit {

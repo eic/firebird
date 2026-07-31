@@ -1,0 +1,74 @@
+<app-shell-layout [(leftPaneVisible)]="leftPaneVisible" [(rightPaneVisible)]="rightPaneVisible">
+
+  <!-- Logo button opens the overflow navigation menu -->
+  <div logo class="fb-slot">
+    <button mat-icon-button [matMenuTriggerFor]="logoMenu" class="logo-button" matTooltip="Firebird">
+      <img src="assets/firebird/firebird-simplified-circle.png" alt="Firebird logo" />
+    </button>
+    <mat-menu #logoMenu="matMenu">
+      @for (item of overflowNavItems; track item.label) {
+        <button mat-menu-item (click)="onNavItemClick(item)">
+          @if (item.icon) { <mat-icon>{{ item.icon }}</mat-icon> }
+          <span>{{ item.label }}</span>
+        </button>
+      }
+      <div mat-menu-item disabled class="version-item">v{{ appVersion }}</div>
+    </mat-menu>
+  </div>
+
+  <!-- Primary navigation, then whatever the page contributes to the header -->
+  <div header class="fb-slot">
+    @for (item of primaryNavItems; track item.label) {
+      <button mat-button (click)="onNavItemClick(item)" [attr.aria-label]="item.label" class="fb-nav-btn">
+        @if (item.icon) { <mat-icon>{{ item.icon }}</mat-icon> }
+        {{ item.label }}
+      </button>
+    }
+    <ng-content select="[header]"></ng-content>
+  </div>
+
+  <div mobile-header class="fb-slot">
+    <ng-content select="[mobile-header]"></ng-content>
+  </div>
+
+  <div header-right class="fb-slot">
+    <ng-content select="[header-right]"></ng-content>
+    <app-theme-switcher></app-theme-switcher>
+  </div>
+
+  <!-- Mobile tools menu: navigation first, then page tools -->
+  <div mobile-tools class="fb-col">
+    @for (item of navItems; track item.label) {
+      <button mat-button (click)="onNavItemClick(item)">
+        @if (item.icon) { <mat-icon>{{ item.icon }}</mat-icon> }
+        {{ item.label }}
+      </button>
+    }
+    <ng-content select="[mobile-tools]"></ng-content>
+  </div>
+
+  <div left-pane class="fb-fill">
+    <ng-content select="[left-pane]"></ng-content>
+  </div>
+
+  <div central-pane class="fb-fill">
+    <ng-content select="[central-pane]"></ng-content>
+  </div>
+
+  <div right-pane class="fb-fill">
+    <ng-content select="[right-pane]"></ng-content>
+  </div>
+
+  <div footer-left class="fb-slot">
+    <ng-content select="[footer-left]"></ng-content>
+  </div>
+
+  <div footer-center class="fb-slot">
+    <ng-content select="[footer-center]"></ng-content>
+  </div>
+
+  <div footer-right class="fb-slot">
+    <ng-content select="[footer-right]"></ng-content>
+  </div>
+
+</app-shell-layout>

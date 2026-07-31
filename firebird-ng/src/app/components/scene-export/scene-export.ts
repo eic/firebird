@@ -4,6 +4,8 @@ import {
   TemplateRef,
   ElementRef,
   ViewContainerRef,
+  ChangeDetectionStrategy,
+  signal
 } from '@angular/core';
 import * as THREE from 'three';
 
@@ -22,6 +24,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
   selector: 'app-scene-export',
   templateUrl: './scene-export.html',
   styleUrls: ['./scene-export.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatIconButton,
     MatIcon,
@@ -37,7 +40,9 @@ export class SceneExportComponent {
   @ViewChild('dialogTemplate') dialogTemplate!: TemplateRef<any>;
   dialogRef: MatDialogRef<any> | null = null;
 
-  isExporting = false;
+  // signal: cleared inside GLTFExporter's async callback, which schedules
+  // no change detection under zoneless
+  isExporting = signal(false);
   useBinaryFormat = true; // GLB by default
 
   constructor(
@@ -85,23 +90,23 @@ export class SceneExportComponent {
   }
 
   private exportToGLTF(object: THREE.Object3D, filename: string): void {
-    if (this.isExporting) return;
+    if (this.isExporting()) return;
 
-    this.isExporting = true;
+    this.isExporting.set(true);
     const exporter = new GLTFExporter();
 
     exporter.parse(
       object,
       (result) => {
         this.downloadFile(result, filename);
-        this.isExporting = false;
+        this.isExporting.set(false);
         if (this.dialogRef) {
           this.dialogRef.close();
         }
       },
       (error) => {
         console.error('Error exporting scene:', error);
-        this.isExporting = false;
+        this.isExporting.set(false);
       },
       { binary: this.useBinaryFormat }
     );

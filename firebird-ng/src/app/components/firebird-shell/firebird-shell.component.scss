@@ -1,0 +1,34 @@
+/* Slot wrappers must be layout-neutral: the shell's own flex rules apply to
+   the projected children as if they were direct toolbar/pane content. */
+.fb-slot {
+  display: contents;
+}
+
+.fb-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Pane and central content fills the pane body provided by the shell. */
+.fb-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.logo-button img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.version-item {
+  opacity: 0.6;
+  font-size: 0.85em;
+}
+
+.fb-nav-btn mat-icon {
+  margin-right: 4px;
+}

@@ -1,6 +1,6 @@
 import { Object3D } from "three";
 import { EventGroup } from "../model/event-group";
-import {disposeNode} from "../utils/three.utils";
+import {disposeNode} from '@dexvis/threejs-tree-editor';
 
 
 /** Define the type for the constructor of EventGroupPainter subclasses */
