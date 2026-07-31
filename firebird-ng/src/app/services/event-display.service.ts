@@ -420,7 +420,7 @@ export class EventDisplayService {
         return null;
       }
 
-      if (data.events?.length ?? 0 > 0) {
+      if ((data.events?.length ?? 0) > 0) {
         this.painter.setEntry(data.events[0]);
         this.eventTime.set(null);
         this.painter.paint(this.eventTime());
@@ -450,7 +450,7 @@ export class EventDisplayService {
         return null;
       }
 
-      if (data.events?.length ?? 0 > 0) {
+      if ((data.events?.length ?? 0) > 0) {
         this.painter.setEntry(data.events[0]);
         this.eventTime.set(null);
         this.painter.paint(this.eventTime());

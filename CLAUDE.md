@@ -565,7 +565,8 @@ pyrobird convert simulation.edm4hep.root output.json
 3. **Lazy loading** - Use Angular route-based code splitting
 4. **Geometry merging** - Merge similar geometry for reduced draw calls
 5. **Time-based filtering** - Painters only render objects in current time range
-6. **Web Workers** - Event loading happens in worker thread (event-loader.worker.ts)
+6. **Web Workers** - Geometry loading happens in a worker thread
+   (geometry-loader.worker.ts). DEX event parsing runs on the main thread.
 
 ## Common Development Scenarios
 

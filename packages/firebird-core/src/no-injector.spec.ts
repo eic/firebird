@@ -1,7 +1,8 @@
 /**
  * firebird-core must work with no Angular injector and no bootstrap - the
- * event-loader and geometry-loader web workers run this code, and workers
- * have no DI. This spec is the enforced form of that constraint: it parses
+ * geometry-loader web worker runs this code, and workers have no DI (event
+ * parsing is expected to move off the main thread the same way). This spec
+ * is the enforced form of that constraint: it parses
  * a DEX file and paints it into a bare three.js Scene using only core
  * classes. If an @Injectable, token, or HttpClient sneaks into core, this
  * spec is where it breaks.
