@@ -18,6 +18,7 @@ import {
   withEventLoader,
   withGeometryLoader,
   withLazyPainter,
+  withLazyThreeExtension,
 } from './firebird-features';
 import { DexEventLoader, Edm4eicEventLoader, RootGeometryLoader } from './builtin-loaders';
 import {
@@ -51,5 +52,11 @@ export function withFirebirdBuiltins(): FirebirdFeature {
     withCommandHandler(ShowEventCommandHandler),
     withCommandHandler(SetConfigCommandHandler),
     withCommandHandler(CameraPresetCommandHandler),
+
+    // Camera navigation cube. Lazy: it pulls three.js code through
+    // @dexvis/viewport-gizmo, which must stay out of the initial bundle.
+    withLazyThreeExtension(() =>
+      import('./viewport-gizmo.extension').then(m => m.ViewportGizmoExtension)
+    ),
   );
 }

@@ -254,9 +254,15 @@ export class ThreeService implements OnDestroy {
     this.sceneHelpers.name = 'Helpers';
     this.scene.add(this.sceneHelpers);
 
-    // Create cameras
+    // Create cameras. The startup view is the HENP top view: camera above the
+    // detector looking down, beam (Z) pointing right on screen, X toward the
+    // top of the screen — hence up = +X while looking along -Y. The up vector
+    // must be set BEFORE OrbitControls is constructed: the controls capture
+    // the up axis once, in their constructor. A startup command
+    // (?cmd=camera-preset:...) overrides this default after init.
     this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 10, 40000);
-    this.perspectiveCamera.position.set(-7000, 0 , 0);
+    this.perspectiveCamera.position.set(0, 7000, 0);
+    this.perspectiveCamera.up.set(1, 0, 0);
 
     // Better orthographic camera initialization
     const orthoSize = 1000; // Start with a large enough size to see the detector
@@ -266,6 +272,7 @@ export class ThreeService implements OnDestroy {
       -10000, 40000 // Critical change: Allow negative near plane to see objects behind camera position
     );
     this.orthographicCamera.position.copy(this.perspectiveCamera.position);
+    this.orthographicCamera.up.copy(this.perspectiveCamera.up);
     this.orthographicCamera.lookAt(this.scene.position);
 
     // Default camera is perspective
@@ -757,6 +764,7 @@ export class ThreeService implements OnDestroy {
       this.orthographicCamera.far  =  clipSpan;
 
       this.orthographicCamera.updateProjectionMatrix();
+      this.orthographicCamera.up.copy(this.camera.up);
       this.camera = this.orthographicCamera;
 
     } else {
@@ -787,6 +795,25 @@ export class ThreeService implements OnDestroy {
     this.controls.update();
 
     this.cameraMode$.next(!useOrtho);
+  }
+
+  /**
+   * Sets the camera up vector (kept in sync on both cameras) and refreshes
+   * the up axis OrbitControls captured in its constructor — without the
+   * refresh, orbiting keeps rotating around the old up. Used by camera view
+   * presets and the viewport gizmo for top/bottom views and rolls.
+   */
+  setCameraUp(up: THREE.Vector3): void {
+    this.perspectiveCamera.up.copy(up);
+    this.orthographicCamera.up.copy(up);
+    const controls = this.controls as unknown as {
+      _quat?: THREE.Quaternion;
+      _quatInverse?: THREE.Quaternion;
+    };
+    if (controls._quat) {
+      controls._quat.setFromUnitVectors(up, new THREE.Vector3(0, 1, 0));
+      controls._quatInverse?.copy(controls._quat).invert();
+    }
   }
 
 

@@ -28,7 +28,6 @@ import {PerfStatsComponent} from "../../components/perf-stats/perf-stats.compone
 import {EventDisplayService} from "../../services/event-display.service";
 import {EventTimeControlComponent} from "../../components/event-time-control/event-time-control.component";
 import {ServerConfigService} from "../../services/server-config.service";
-import {CubeViewportControlComponent} from "../../components/cube-viewport-control/cube-viewport-control.component";
 import {LegendWindowComponent} from "../../components/legend-window/legend-window.component";
 import {PainterConfigPageComponent} from "../../services/configurator/painter-config-page.component";
 import {NgIf} from "@angular/common";
@@ -69,7 +68,6 @@ import JSZip from 'jszip';
     GeometryClippingComponent,
     PerfStatsComponent,
     EventTimeControlComponent,
-    CubeViewportControlComponent,
     LegendWindowComponent,
     PainterConfigPageComponent,
     NgIf,
@@ -103,9 +101,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild(SceneTreeComponent)
   geometryTreeComponent: SceneTreeComponent | null | undefined;
-
-  @ViewChild(CubeViewportControlComponent)
-  private cubeControl!: CubeViewportControlComponent;
 
   // Empty default on purpose: the app-level default arrives through
   // withDefaultGeometry() in app.config (feature-defaults tier).
@@ -205,8 +200,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
       this.initRootData();
     }
 
-    this.initCubeViewportControl();
-
     // One mechanism for every resize source (pane toggle, pane drag, window):
     // observe the central pane container. Debounced because pane dragging
     // fires per animation frame.
@@ -276,25 +269,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.rightPaneOpen.update(v => !v);
   }
 
-  // 4) Method to initialize CubeViewportControl with the existing Three.js objects
-  private initCubeViewportControl(): void {
-    const {scene, camera, renderer} = this.eventDisplay.three;
-    if (this.cubeControl && scene && camera && renderer) {
-      // Pass the external scene, camera, and renderer to the cube control
-      this.cubeControl.initWithExternalScene(scene, camera, renderer);
-      this.cubeControl.gizmo.attachControls(this.eventDisplay.three.controls);
-      this.cubeControl.gizmo.camera
-    }
-
-    const thisPointer = this;
-    this.eventDisplay.three.addFrameCallback(() => {
-      if (thisPointer.cubeControl?.gizmo) {
-        thisPointer.cubeControl.gizmo.render();
-      }
-    });
-  }
-
-
   showError(message: string) {
     this.snackBar.open(message, 'Dismiss', {
       duration: 7000, // Auto-dismiss after X ms
@@ -319,9 +293,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Delegate resizing to ThreeService
     this.eventDisplay.three.setSize(width, height);
-    if (this.cubeControl?.gizmo) {
-      this.cubeControl.gizmo.update();
-    }
   }
 
   // 10) SCENE TREE / UI

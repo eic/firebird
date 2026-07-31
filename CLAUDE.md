@@ -22,6 +22,7 @@ This is a **monorepo** with **npm workspaces** (root `package.json` lists the me
   - `root-geo-tree-editor` -> `@dexvis/root-geo-tree-editor` (TGeo walk/find/edit)
   - `threejs-tree-editor` -> `@dexvis/threejs-tree-editor` (three tree edit/merge/outline, geometry processor)
   - `app-shell-ng` -> `@dexvis/shell` (app chrome: shell layout + theming); Firebird wraps it in `components/firebird-shell/`
+  - `viewport-gizmo` -> `@dexvis/viewport-gizmo` (camera navigation cube; fork of three-viewport-gizmo — cube-only, WebGPU fixes, configurable HENP view orientations, roll/home buttons); Firebird binds it in `firebird/viewport-gizmo.extension.ts`
 - **pyrobird/** - Python Flask backend (file server, ROOT conversion)
 - **dd4hep-plugin/** - C++ Geant4/DD4Hep plugin (trajectory extraction during simulation)
 

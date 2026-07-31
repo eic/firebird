@@ -9,6 +9,7 @@
     "packages/firebird-example-extension",
     "dexvis/root-geo-tree-editor",
     "dexvis/threejs-tree-editor",
+    "dexvis/viewport-gizmo",
     "dexvis/app-shell-ng/projects/app-shell"
   ],
   "browser": {
