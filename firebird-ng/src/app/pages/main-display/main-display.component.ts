@@ -16,13 +16,11 @@ import {FirebirdShellComponent} from '../../components/firebird-shell/firebird-s
 import {ToolPanelComponent} from '../../components/tool-panel/tool-panel.component';
 import {EventSelectorComponent} from '../../components/event-selector/event-selector.component';
 import {GeometryClippingComponent} from '../../components/geometry-clipping/geometry-clipping.component';
-import {PhoenixThreeFacade} from "../../utils/phoenix-three-facade";
 
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {MatIcon} from '@angular/material/icon';
 import { MatIconButton} from '@angular/material/button';
 import {MatTooltip} from '@angular/material/tooltip';
-import {EventDisplay} from "phoenix-event-display";
 
 import {PerfStatsComponent} from "../../components/perf-stats/perf-stats.component";
 import {EventDisplayService} from "../../services/event-display.service";
@@ -50,7 +48,6 @@ import JSZip from 'jszip';
  *  - Loads event data (Dex or custom) via DataModelService, builds objects in "EventData" group.
  *  - Uses EicAnimationsManager for collisions/expansions.
  *  - Has leftover UI logic for sliders, time stepping, left/right pane toggling, etc.
- *  - Has *no* references to phoenix-event-display or eventDisplay.
  */
 @Component({
   selector: 'app-main-display',
@@ -145,8 +142,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   captureWidth = 3840;
   captureHeight = 2160;
 
-  // Phoenix API
-  private facade: PhoenixThreeFacade = new PhoenixThreeFacade(new EventDisplay());
 
   constructor(
     private controller: GameControllerService,
@@ -183,9 +178,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     // Initialize the ThreeService scene/camera/renderer/controls
     // Must happen in ngAfterViewInit so the DOM container #eventDisplay exists
     await this.eventDisplay.initThree('eventDisplay');
-
-    // The facade will be initialized in three.service
-    this.facade.initializeScene()
 
     // Startup commands (URL deep link ?dex=&event=N, server startupCommands,
     // batch) replace the config-driven auto-load for the data they carry.

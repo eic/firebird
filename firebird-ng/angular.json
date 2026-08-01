@@ -21,6 +21,10 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "externalDependencies": [
+              "@resvg/resvg-js",
+              "canvas"
+            ],
             "assets": [
               {
                 "glob": "favicon.ico",

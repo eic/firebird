@@ -6,8 +6,12 @@ import {
 } from "../model/point-trajectory.group";
 
 import {Object3D} from "three";
-import Line2NodeMaterial from "three/src/materials/nodes/Line2NodeMaterial.js"
-//import {Line2NodeMaterial} from "three/webgpu";
+// Import from three/webgpu, NEVER from three/src/... : a deep src import can
+// be served as a second copy of the whole three node system (seen with the
+// vite dep optimizer), whose module-level TSL stack state is separate from
+// the renderer's — the material build then throws "No stack defined for
+// assign operation" and tracks render as bare hairlines.
+import {Line2NodeMaterial} from "three/webgpu";
 import {LineGeometry} from "three/examples/jsm/lines/LineGeometry.js";
 import {Line2} from "three/examples/jsm/lines/webgpu/Line2.js";
 

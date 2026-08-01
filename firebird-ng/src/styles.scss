@@ -33,6 +33,7 @@ body {
 
 /* For pages content which has to stay fixed width, like config */
 .fixed-width-page-content {
+  box-sizing: border-box; // Padding must fit inside the 100% width, or the page overflows sideways
   margin: 0 auto;       // Centers the container horizontally
   padding: 16px;        // Some padding for smaller screens
   width: 100%;          // Full width by default

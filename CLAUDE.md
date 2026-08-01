@@ -59,9 +59,13 @@ ng generate component component-name
 ng generate service service-name
 ```
 
-Version pins to know about (root `package.json` `overrides`): `jsroot` is pinned to 7.10.3
-(7.11 pulls native `@resvg` bindings that break browser bundling) and `jsdom` to ~26
-(29 uses `node:`-prefixed requires that defeat the browser-field stubs).
+Version notes: `jsroot` and `jsdom` track latest via root `package.json`
+`overrides`. jsroot's node-only native imports (`@resvg/resvg-js`, `canvas`)
+are excluded from the browser bundle through `externalDependencies` in
+`firebird-ng/angular.json` — the root `browser`-field stub map does not catch
+scoped packages imported from another package's context. Change overrides
+deliberately with a full lockfile regen (`rm package-lock.json node_modules
+-rf && npm install`), never via drift.
 
 ### Backend (pyrobird)
 
@@ -237,10 +241,17 @@ captures reliable:
 - **`Cannot find package '@angular/...'` after installs**: a nested
   package-lock.json reappeared. Only the ROOT lockfile may exist; delete
   nested locks + node_modules and `npm install` at the repo root.
-- **Build errors mentioning `.node` files or `node:` requires**: lockfile
-  drift upgraded pinned deps (jsroot must stay 7.10.3, jsdom ~26 — pinned via
-  root package.json `overrides`; changing overrides needs a full lockfile
-  regen: `rm package-lock.json node_modules -rf && npm install`).
+- **Build errors mentioning `.node` files or `node:` requires**: a dependency
+  gained a node-only import the browser bundle can't process. Exclude the
+  offending package via `externalDependencies` in `firebird-ng/angular.json`
+  (how jsroot's `@resvg/resvg-js` and `canvas` are handled); the root
+  package.json `browser` stub map works only for unscoped modules. Override
+  changes need a full lockfile regen: `rm package-lock.json node_modules -rf
+  && npm install`.
+- **Tracks render as thin hairlines + console `THREE.TSL:` errors naming a
+  `three_src_*` chunk**: something imports from `three/src/...`, which loads
+  a second copy of three's node system with separate TSL state. Import from
+  `three`, `three/webgpu`, `three/tsl`, or `three/examples/...` only.
 - **Dev server serves stale code after tsconfig/node_modules changes**:
   restart it (vite cache).
 - **Initial bundle jumps by hundreds of kB**: something referenced from
