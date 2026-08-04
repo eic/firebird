@@ -73,16 +73,16 @@ def is_valid_dex_file(data: Dict[str, Any]) -> bool:
 
     # Check each event
     for event in data["events"]:
-        if "id" not in event or "groups" not in event:
+        if "id" not in event or "pieces" not in event:
             return False
 
-        # Check if groups is a list
-        if not isinstance(event["groups"], list):
+        # Check if pieces is a list
+        if not isinstance(event["pieces"], list):
             return False
 
-        # Check each group
-        for group in event["groups"]:
-            if "name" not in group or "type" not in group:
+        # Check each piece
+        for piece in event["pieces"]:
+            if "name" not in piece or "type" not in piece:
                 return False
 
     return True

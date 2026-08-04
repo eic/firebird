@@ -61,6 +61,7 @@ import {
 import {THREE_EXTENSIONS, LAZY_THREE_EXTENSIONS} from '../firebird/tokens';
 import type {ThreeExtension, SceneContext, FrameContext} from '../firebird/three-extension';
 import type {Event as FbEvent} from '@firebird/core';
+import {RenderView, RenderViewOptions} from './render-view';
 
 
 
@@ -79,16 +80,42 @@ export class ThreeService implements OnDestroy {
   public sceneEvent!: THREE.Group;
   public sceneHelpers!: THREE.Group;
   public renderer!: WebGPURenderer;
-  public controls!: OrbitControls;
 
+  /**
+   * Views of the scene. views[0] is the MAIN view — the one the app-level
+   * camera API below delegates to. Additional views (projection panels of the
+   * quad view, extension-added views) share the one scene and render loop.
+   */
+  public views: RenderView[] = [];
 
-  /** Cameras */
-  public perspectiveCamera!: THREE.PerspectiveCamera;
-  public orthographicCamera!: THREE.OrthographicCamera;
+  /** The primary view: the display page's camera and controls live here. */
+  public get mainView(): RenderView {
+    return this.views[0];
+  }
 
-  /** Camera that is actually used */
-  public camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
-  public cameraMode$ = new BehaviorSubject<boolean>(true);
+  // Camera/controls delegation to the main view. Most of the app works with
+  // "the" camera; multi-view pages address other views through `views`.
+  public get controls(): OrbitControls {
+    return this.mainView?.controls as OrbitControls;
+  }
+
+  public get perspectiveCamera(): THREE.PerspectiveCamera {
+    return this.mainView?.perspectiveCamera as THREE.PerspectiveCamera;
+  }
+
+  public get orthographicCamera(): THREE.OrthographicCamera {
+    return this.mainView?.orthographicCamera as THREE.OrthographicCamera;
+  }
+
+  /** The main view's active camera (perspective or orthographic). */
+  public get camera(): THREE.PerspectiveCamera | THREE.OrthographicCamera {
+    return this.mainView?.camera as THREE.PerspectiveCamera;
+  }
+
+  /** Emits true when the main view uses the perspective camera. */
+  public get cameraMode$(): BehaviorSubject<boolean> {
+    return this.mainView?.cameraMode$ as BehaviorSubject<boolean>;
+  }
 
   /** The default axes helper, controllable via scene-helpers */
   public axesHelper!: THREE.AxesHelper;
@@ -145,9 +172,14 @@ export class ThreeService implements OnDestroy {
   public showBVHDebug: boolean = false;
 
    // Raycasting properties
-  private raycaster = new THREE.Raycaster();
-  private pointer = new THREE.Vector2();
   private isRaycastEnabled = false;
+
+  /** Pointer handlers installed per view, kept so views can be removed cleanly. */
+  private viewPointerHandlers = new Map<RenderView, {
+    move: (event: PointerEvent) => void;
+    down: (event: PointerEvent) => void;
+    dblclick: (event: MouseEvent) => void;
+  }>();
 
 
   // Track hover indicator
@@ -173,10 +205,7 @@ export class ThreeService implements OnDestroy {
   // temp storage for first measure point
   private firstMeasurePoint: THREE.Vector3 | null = null;
 
-  //  Add properties for event handlers and measurement state
-  private pointerMoveHandler?: (event: PointerEvent) => void;
-  private pointerDownHandler?: (event: PointerEvent) => void;
-  private doubleClickHandler?: (event: MouseEvent) => void;
+  //  Measurement / hover state
   private hoverTimeout: number | null = null;
   private measurementPoints: THREE.Mesh[] = [];
 
@@ -291,30 +320,6 @@ export class ThreeService implements OnDestroy {
     this.sceneHelpers.name = 'Helpers';
     this.scene.add(this.sceneHelpers);
 
-    // Create cameras. The startup view is the HENP top view: camera above the
-    // detector looking down, beam (Z) pointing right on screen, X toward the
-    // top of the screen — hence up = +X while looking along -Y. The up vector
-    // must be set BEFORE OrbitControls is constructed: the controls capture
-    // the up axis once, in their constructor. A startup command
-    // (?cmd=camera-preset:...) overrides this default after init.
-    this.perspectiveCamera = new THREE.PerspectiveCamera(60, 1, 10, 40000);
-    this.perspectiveCamera.position.set(0, 7000, 0);
-    this.perspectiveCamera.up.set(1, 0, 0);
-
-    // Better orthographic camera initialization
-    const orthoSize = 1000; // Start with a large enough size to see the detector
-    this.orthographicCamera = new THREE.OrthographicCamera(
-      -orthoSize, orthoSize,
-      orthoSize, -orthoSize,
-      -10000, 40000 // Critical change: Allow negative near plane to see objects behind camera position
-    );
-    this.orthographicCamera.position.copy(this.perspectiveCamera.position);
-    this.orthographicCamera.up.copy(this.perspectiveCamera.up);
-    this.orthographicCamera.lookAt(this.scene.position);
-
-    // Default camera is perspective
-    this.camera = this.perspectiveCamera;
-
     // Create renderer (WebGPU with automatic WebGL2 fallback)
     patchThreeHardwareClippingBug();
     this.renderer = new WebGPURenderer({ antialias: true , logarithmicDepthBuffer: true, stencil:true});
@@ -326,31 +331,14 @@ export class ThreeService implements OnDestroy {
     // Append renderer to the container
     this.containerElement.appendChild(this.renderer.domElement);
 
-    // Create OrbitControls
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.set(0, 0, 0);
-    this.controls.enableDamping = false;
-    this.controls.dampingFactor = 0.05;
-
-    // OrbitControls cannot rotate across the poles of its up axis (the polar
-    // angle is hard-clamped). With the top view as the primary orientation
-    // that clamp is a wall in the middle of normal navigation, so instead of
-    // living with it the orbit frame is re-anchored whenever the camera gets
-    // near a pole: the up axis is replaced by the current screen-up, which
-    // keeps the visible roll identical while moving the poles 90 degrees
-    // away. Rotation then continues over the top; the world may end up rolled
-    // after long free tumbles — the navigation cube and view presets restore
-    // canonical orientations.
-    this.controls.addEventListener('change', () => this.keepOrbitAwayFromPoles());
-
-    // Perspective camera distance limits
-    const sceneRadius = 15000;
-    this.controls.minDistance = sceneRadius * 0.05;
-    this.controls.maxDistance = sceneRadius * 5;
-    this.camera.far = this.controls.maxDistance * 1.1;
-    this.camera.updateProjectionMatrix();
-
-    this.controls.update();
+    // The main view owns the cameras, OrbitControls, and viewport handling.
+    // Its startup state is the HENP top view (see RenderView's constructor);
+    // a startup command (?cmd=camera-preset:...) overrides it after init.
+    const mainView = new RenderView(this.renderer, {
+      name: 'main',
+      container: this.containerElement,
+    });
+    this.views = [mainView];
 
     // Setup lights
     this.setupLights();
@@ -408,6 +396,12 @@ export class ThreeService implements OnDestroy {
       get camera() { return service.camera; },
       renderer: this.renderer,
       canvas: this.renderer.domElement,
+      // Views: the list is live (multi-view pages add/remove views);
+      // mainView is where per-view overlays like the navigation cube attach.
+      get views() { return service.views as readonly RenderView[]; },
+      get mainView() { return service.mainView; },
+      addView: (options: RenderViewOptions) => this.addView(options),
+      removeView: (view: RenderView) => this.removeView(view),
       invalidate,
     };
     this.frameContext = {
@@ -462,6 +456,7 @@ export class ThreeService implements OnDestroy {
   /**
    * If the service is already initialized (scene, camera, renderer exist),
    * you can re-attach the <canvas> to a container if it was removed or changed.
+   * The main view follows the canvas host; camera state is preserved.
    */
   private attachRenderer(elem: HTMLElement): void {
     this.containerElement = elem;
@@ -470,6 +465,66 @@ export class ThreeService implements OnDestroy {
     if (this.renderer?.domElement) {
       this.containerElement.appendChild(this.renderer.domElement);
     }
+    if (this.mainView) {
+      this.setMainViewContainer(elem);
+    }
+  }
+
+  /**
+   * Moves the main view (camera, controls, picking, overlays like the
+   * navigation cube) to another DOM element. Multi-view pages call this to
+   * place the main view into their layout cell; the display page's container
+   * is restored through the normal init/re-attach path.
+   */
+  setMainViewContainer(container: HTMLElement): void {
+    const view = this.mainView;
+    if (!view) return;
+    // Pointer handlers follow the container (remove BEFORE the switch —
+    // removal targets the old element).
+    this.removeRaycastHandlers(view);
+    view.setContainer(container);
+    this.installRaycastHandlers(view);
+    view.updateViewport();
+  }
+
+  /**
+   * Re-parents the shared canvas into `host` without touching the main view's
+   * container. Multi-view pages call this with a wrapper element that the
+   * canvas fills, then place view containers (CSS grid cells) above it and
+   * point views at them via `addView` / `mainView.setContainer`.
+   */
+  attachCanvasHost(host: HTMLElement): void {
+    this.ensureInitialized('attachCanvasHost');
+    this.containerElement = host;
+    host.appendChild(this.renderer.domElement);
+  }
+
+  /**
+   * Adds a view of the shared scene. The view renders inside `options.container`,
+   * which must be positioned above the shared canvas (see attachCanvasHost).
+   * Views share the scene and the one render loop; cameras, controls, picking
+   * and overlays are per-view.
+   */
+  addView(options: RenderViewOptions): RenderView {
+    this.ensureInitialized('addView');
+    const view = new RenderView(this.renderer, options);
+    this.views.push(view);
+    this.installRaycastHandlers(view);
+    view.updateViewport();
+    return view;
+  }
+
+  /** Removes and disposes a view added with addView. The main view stays. */
+  removeView(view: RenderView): void {
+    if (view === this.mainView) {
+      console.error('[ThreeService] The main view cannot be removed.');
+      return;
+    }
+    const index = this.views.indexOf(view);
+    if (index === -1) return;
+    this.views.splice(index, 1);
+    this.removeRaycastHandlers(view);
+    view.dispose();
   }
 
   /**
@@ -605,9 +660,28 @@ export class ThreeService implements OnDestroy {
       }
       this.lastFrameStartTime = frameStartTime;
 
-      // Update three components
-      this.controls.update();
-      this.renderer.render(this.scene, this.camera);
+      if (this.views.length === 1) {
+        // Single view: plain full-canvas render, no viewport/scissor state.
+        const view = this.mainView;
+        view.controls.update();
+        this.renderer.render(this.scene, view.camera);
+        view.renderOverlays();
+      } else {
+        // Multiple views: each renders its own scissored rectangle of the
+        // shared canvas. autoClear stays on — with the scissor test enabled
+        // the clear applies per-rectangle, so views do not erase each other.
+        for (const view of this.views) {
+          view.controls.update();
+        }
+        this.renderer.setScissorTest(true);
+        for (const view of this.views) {
+          view.renderTo(this.renderer, this.scene);
+        }
+        this.renderer.setScissorTest(false);
+        const canvas = this.renderer.domElement;
+        this.renderer.setViewport(0, 0, canvas.clientWidth, canvas.clientHeight);
+      }
+
       // Profiling end
       this.perfService.updateStats(this.renderer, frameStartTime);
 
@@ -663,23 +737,11 @@ export class ThreeService implements OnDestroy {
 
     this.renderer.setSize(width, height);
 
-    this.perspectiveCamera.aspect = width / Math.max(1, height);
-    this.perspectiveCamera.updateProjectionMatrix();
-
-    if (this.camera === this.orthographicCamera) {
-      const ortho = this.orthographicCamera;
-      const effectiveWorldScreenHeight = (ortho.top - ortho.bottom) / Math.max(1e-9, ortho.zoom); // <<< ключ
-      const upp = effectiveWorldScreenHeight / Math.max(1, height);
-
-      const halfW = (width  * upp) / 2;
-      const halfH = (height * upp) / 2;
-
-      ortho.left = -halfW; ortho.right = halfW;
-      ortho.top  =  halfH; ortho.bottom = -halfH;
-      ortho.updateProjectionMatrix();
+    // Views recompute their viewport rectangles and camera aspects from
+    // their containers (for the single main view: the whole canvas).
+    for (const view of this.views) {
+      view.updateViewport();
     }
-
-    this.controls.update();
   }
 
   /**
@@ -776,138 +838,19 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * Toggles between perspective and orthographic cameras.
+   * Toggles the MAIN view between perspective and orthographic cameras.
    * @param useOrtho Whether to use the orthographic camera.
    */
   toggleOrthographicView(useOrtho: boolean): void {
-    const target = this.controls.target.clone();
-
-    // Get viewport size in CSS pixels (not render buffer size)
-    const el = this.renderer.domElement;
-    const vw = el.clientWidth  || 1;
-    const vh = el.clientHeight || 1;
-
-    // Calculate the current visible world height depending on the active camera
-    let worldScreenHeight: number;
-    if ((this.camera as any).isPerspectiveCamera) {
-      // Perspective: calculate visible height at the target distance from FOV
-      const persp = this.camera as THREE.PerspectiveCamera;
-      const dist   = persp.position.distanceTo(target);
-      const fovRad = THREE.MathUtils.degToRad(persp.fov);
-      worldScreenHeight = 2 * dist * Math.tan(fovRad / 2);
-    } else {
-      // Orthographic: calculate effective height considering zoom
-      const ortho = this.camera as THREE.OrthographicCamera;
-      worldScreenHeight = (ortho.top - ortho.bottom) / Math.max(1e-9, ortho.zoom);
-    }
-
-    if (useOrtho) {
-      // When switching to orthographic, sync position and target from the current perspective
-      const persp = this.perspectiveCamera;
-
-      // Update orthographic camera to look in the same direction
-      this.orthographicCamera.position.copy(persp.position);
-      this.orthographicCamera.up.copy(persp.up);
-      this.orthographicCamera.lookAt(target);
-
-      // Calculate suitable frustum size based on distance to target and viewport size
-      const upp = worldScreenHeight / vh; // world units per pixel
-      const halfW = (vw * upp) / 2;
-      const halfH = (vh * upp) / 2;
-
-      // Update orthographic frustum based on aspect ratio and UPP
-      this.orthographicCamera.left = -halfW;
-      this.orthographicCamera.right = halfW;
-      this.orthographicCamera.top = halfH;
-      this.orthographicCamera.bottom = -halfH;
-      this.orthographicCamera.zoom = 1; // keep zoom at 1, scale is encoded in frustum
-
-      // Set a generous near/far plane range to ensure all geometry is visible
-      const dist = persp.position.distanceTo(target);
-      const clipSpan = Math.max(1e6, dist * 10);
-      this.orthographicCamera.near = -clipSpan;
-      this.orthographicCamera.far  =  clipSpan;
-
-      this.orthographicCamera.updateProjectionMatrix();
-      this.orthographicCamera.up.copy(this.camera.up);
-      this.camera = this.orthographicCamera;
-
-    } else {
-      // When switching back to perspective, compute distance so the visible world height matches ortho
-      const persp = this.perspectiveCamera;
-      const fovRad = THREE.MathUtils.degToRad(persp.fov);
-      const dist = (worldScreenHeight / 2) / Math.tan(fovRad / 2);
-
-      // Keep the same viewing direction as ortho
-      const dir = new THREE.Vector3().subVectors(this.camera.position, target).normalize();
-      const newPos = new THREE.Vector3().copy(target).addScaledVector(dir, dist);
-
-      persp.position.copy(newPos);
-      persp.up.copy(this.camera.up);
-      persp.lookAt(target);
-
-      // Set near/far planes relative to distance for good depth precision
-      persp.near = Math.max(0.1, dist * 0.001);
-      persp.far  = Math.max(1000, dist * 1000);
-
-      persp.updateProjectionMatrix();
-      this.camera = persp;
-    }
-
-    // Update the controls to use the current camera
-    // @ts-ignore
-    this.controls.object = this.camera;
-    this.controls.update();
-
-    this.cameraMode$.next(!useOrtho);
+    this.mainView.toggleOrthographicView(useOrtho);
   }
 
   /**
-   * Re-anchors the orbit frame when the camera direction closes in on the
-   * up-axis poles (see the controls 'change' listener in init). The new up is
-   * the exact current screen-up, so nothing visibly changes at the moment of
-   * the switch.
-   */
-  private static readonly POLE_LIMIT = Math.cos(15 * Math.PI / 180);
-  private readonly poleOffset = new THREE.Vector3();
-  private readonly poleScreenUp = new THREE.Vector3();
-
-  private keepOrbitAwayFromPoles(): void {
-    const camera = this.camera;
-    const offset = this.poleOffset.subVectors(camera.position, this.controls.target);
-    const distance = offset.length();
-    if (!distance) return;
-
-    offset.divideScalar(distance);
-    // cos of the angle between the view direction and the up axis;
-    // |cos| > cos(15°) means the camera is within 15° of a pole.
-    if (Math.abs(offset.dot(camera.up)) < ThreeService.POLE_LIMIT) return;
-
-    const screenUp = this.poleScreenUp
-      .copy(camera.up)
-      .addScaledVector(offset, -offset.dot(camera.up));
-    if (screenUp.lengthSq() < 1e-12) return;
-
-    this.setCameraUp(screenUp.normalize());
-  }
-
-  /**
-   * Sets the camera up vector (kept in sync on both cameras) and refreshes
-   * the up axis OrbitControls captured in its constructor — without the
-   * refresh, orbiting keeps rotating around the old up. Used by camera view
-   * presets and the viewport gizmo for top/bottom views and rolls.
+   * Sets the main view's camera up vector, keeping its OrbitControls frame in
+   * sync. Used by camera view presets and the viewport gizmo.
    */
   setCameraUp(up: THREE.Vector3): void {
-    this.perspectiveCamera.up.copy(up);
-    this.orthographicCamera.up.copy(up);
-    const controls = this.controls as unknown as {
-      _quat?: THREE.Quaternion;
-      _quatInverse?: THREE.Quaternion;
-    };
-    if (controls._quat) {
-      controls._quat.setFromUnitVectors(up, new THREE.Vector3(0, 1, 0));
-      controls._quatInverse?.copy(controls._quat).invert();
-    }
+    this.mainView.setCameraUp(up);
   }
 
 
@@ -938,6 +881,10 @@ export class ThreeService implements OnDestroy {
     this.clearHighlight();
     this.stopRendering();
     this.cleanupEventListeners();
+    for (const view of this.views) {
+      view.dispose();
+    }
+    this.views = [];
     if(this.sceneGeometry) this.cleanupBVH(this.sceneGeometry);
     if(this.sceneEvent) this.cleanupBVH(this.sceneEvent);
   }
@@ -1065,9 +1012,19 @@ export class ThreeService implements OnDestroy {
 
 
   /**
-   * Sets up the raycasting functionality with proper clipping support
+   * Sets up the raycasting functionality with proper clipping support.
+   * Handlers are installed per view: each view raycasts with its own camera
+   * from pointer positions inside its own container.
    */
   private setupRaycasting(): void {
+    for (const view of this.views) {
+      this.installRaycastHandlers(view);
+    }
+  }
+
+  private installRaycastHandlers(view: RenderView): void {
+    if (this.viewPointerHandlers.has(view)) return;
+
     const buildBVHIfNeeded = (obj: any) => {
       // Ensure normals and bounding boxes are accurate for small details
 
@@ -1099,6 +1056,23 @@ export class ThreeService implements OnDestroy {
       }
     };
 
+    // Casts from the view camera through the pointer: event data first, then
+    // geometry. The clipping filter applies to GEOMETRY hits only — event
+    // data is never clipped visually (sceneEvent sits outside the clipping
+    // groups), so it must stay pickable everywhere it is drawn.
+    const pick = (event: { clientX: number; clientY: number }): THREE.Intersection | null => {
+      const raycaster = view.raycasterFromEvent(event);
+      if (!raycaster) return null;
+      raycaster.firstHitOnly = false;
+
+      const hitsEvt = raycaster.intersectObjects(this.sceneEvent.children, true);
+      if (hitsEvt.length > 0) return hitsEvt[0];
+
+      const hitsGeo = raycaster.intersectObjects(this.sceneGeometry.children, true);
+      const filteredGeoHits = this.filterClippedIntersections(hitsGeo);
+      return filteredGeoHits.length > 0 ? filteredGeoHits[0] : null;
+    };
+
     //  Throttled hover handling to improve performance
     const onPointerMove = (event: PointerEvent) => {
       if (!this.isRaycastEnabled || this.measureMode) {
@@ -1112,38 +1086,10 @@ export class ThreeService implements OnDestroy {
       this.hoverTimeout = window.setTimeout(() => {
         this.hoverTimeout = null;
 
-        // Use proper canvas dimensions for coordinate calculation
-        const canvas = this.renderer.domElement;
-        const rect = canvas.getBoundingClientRect();
-
-        this.pointer.x = ((event.clientX - rect.left) / canvas.clientWidth) * 2 - 1;
-        this.pointer.y = -((event.clientY - rect.top) / canvas.clientHeight) * 2 + 1;
-
-        this.raycaster.setFromCamera(this.pointer, this.camera);
-        this.raycaster.firstHitOnly = false;
-        this.raycaster.near = this.camera.near;
-        this.raycaster.far = this.camera.far;
-
         this.sceneEvent.traverse(buildBVHIfNeeded);
         this.sceneGeometry.traverse(buildBVHIfNeeded);
 
-        let intersection: THREE.Intersection | null = null;
-
-        // Try sceneEvent first
-        const hitsEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true);
-        const filteredEvtHits = this.filterClippedIntersections(hitsEvt);
-
-        if (filteredEvtHits.length > 0) {
-          intersection = filteredEvtHits[0];
-        } else {
-          // Fall back to geometry
-          const hitsGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
-          const filteredGeoHits = this.filterClippedIntersections(hitsGeo);
-
-          if (filteredGeoHits.length > 0) {
-            intersection = filteredGeoHits[0];
-          }
-        }
+        const intersection = pick(event);
 
         if (intersection && intersection.object.name &&
           !intersection.object.name.includes('Helper') &&
@@ -1163,33 +1109,17 @@ export class ThreeService implements OnDestroy {
       }, 16); // ~60fps throttling
     };
 
-    //  Single click for selection only (no measurement, no preventDefault in selection mode)
+    //  Single click for selection only (no measurement, no preventDefault so
+    //  OrbitControls keep working). Selection picking is always on — one
+    //  raycast per click; only hover tracking is gated behind the raycast
+    //  toggle (it costs a throttled raycast per pointer move).
     const onPointerDown = (event: PointerEvent) => {
-      if (!this.isRaycastEnabled || this.measureMode) return;
+      if (this.measureMode) return;
 
       // Only handle left mouse button
       if (event.button !== 0) return;
 
-      //  Don't prevent default for selection to allow OrbitControls
-      // event.preventDefault(); // REMOVED
-
-      const canvas = this.renderer.domElement;
-      const rect = canvas.getBoundingClientRect();
-
-      this.pointer.x = ((event.clientX - rect.left) / canvas.clientWidth) * 2 - 1;
-      this.pointer.y = -((event.clientY - rect.top) / canvas.clientHeight) * 2 + 1;
-
-      this.raycaster.setFromCamera(this.pointer, this.camera);
-      this.raycaster.firstHitOnly = false;
-
-      // Selection mode
-      const hitsEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true);
-      const hitsGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
-
-      const filteredEvtHits = this.filterClippedIntersections(hitsEvt);
-      const filteredGeoHits = this.filterClippedIntersections(hitsGeo);
-
-      const selected = filteredEvtHits[0] ?? filteredGeoHits[0];
+      const selected = pick(event);
 
       if (selected && selected.object.visible && selected.object.name &&
         selected.object.name !== 'HoverPoint' &&
@@ -1206,23 +1136,7 @@ export class ThreeService implements OnDestroy {
       event.preventDefault();
       event.stopPropagation();
 
-      const canvas = this.renderer.domElement;
-      const rect = canvas.getBoundingClientRect();
-
-      this.pointer.x = ((event.clientX - rect.left) / canvas.clientWidth) * 2 - 1;
-      this.pointer.y = -((event.clientY - rect.top) / canvas.clientHeight) * 2 + 1;
-
-      this.raycaster.setFromCamera(this.pointer, this.camera);
-      this.raycaster.firstHitOnly = false;
-
-      // Measure mode - double click
-      const hitsEvt = this.raycaster.intersectObjects(this.sceneEvent.children, true);
-      const hitsGeo = this.raycaster.intersectObjects(this.sceneGeometry.children, true);
-
-      const filteredEvtHits = this.filterClippedIntersections(hitsEvt);
-      const filteredGeoHits = this.filterClippedIntersections(hitsGeo);
-
-      const picked = filteredEvtHits[0] ?? filteredGeoHits[0];
+      const picked = pick(event);
 
       if (picked && picked.object.visible &&
         picked.object.name !== 'HoverPoint' &&
@@ -1252,18 +1166,24 @@ export class ThreeService implements OnDestroy {
       }
     };
 
-    //  Clean up existing listeners before adding new ones
-    this.cleanupEventListeners();
+    // Listeners live on the view container: canvas events bubble to it in the
+    // single-view page, and in multi-view pages the containers sit above the
+    // canvas and receive the events directly.
+    const handlers = { move: onPointerMove, down: onPointerDown, dblclick: onDoubleClick };
+    this.viewPointerHandlers.set(view, handlers);
+    view.container.addEventListener('pointermove', handlers.move, false);
+    view.container.addEventListener('pointerdown', handlers.down, false);
+    view.container.addEventListener('dblclick', handlers.dblclick, false);
+  }
 
-    // Store references and attach listeners
-    this.pointerMoveHandler = onPointerMove;
-    this.pointerDownHandler = onPointerDown;
-    this.doubleClickHandler = onDoubleClick;
-
-    const canvas = this.renderer.domElement;
-    canvas.addEventListener('pointermove', this.pointerMoveHandler, false);
-    canvas.addEventListener('pointerdown', this.pointerDownHandler, false);
-    canvas.addEventListener('dblclick', this.doubleClickHandler, false);
+  /** Detaches the pointer handlers installed for a view. */
+  private removeRaycastHandlers(view: RenderView): void {
+    const handlers = this.viewPointerHandlers.get(view);
+    if (!handlers) return;
+    this.viewPointerHandlers.delete(view);
+    view.container.removeEventListener('pointermove', handlers.move, false);
+    view.container.removeEventListener('pointerdown', handlers.down, false);
+    view.container.removeEventListener('dblclick', handlers.dblclick, false);
   }
 
 //  Visual feedback for measurement points
@@ -1308,23 +1228,8 @@ export class ThreeService implements OnDestroy {
    * Clean up event listeners
    */
   private cleanupEventListeners(): void {
-
-    if(!this.renderer?.domElement) {
-      return;
-    }
-    const canvas = this.renderer.domElement;
-
-    if (this.pointerMoveHandler) {
-      canvas.removeEventListener('pointermove', this.pointerMoveHandler);
-      this.pointerMoveHandler = undefined;
-    }
-    if (this.pointerDownHandler) {
-      canvas.removeEventListener('pointerdown', this.pointerDownHandler);
-      this.pointerDownHandler = undefined;
-    }
-    if (this.doubleClickHandler) {
-      canvas.removeEventListener('dblclick', this.doubleClickHandler);
-      this.doubleClickHandler = undefined;
+    for (const view of [...this.viewPointerHandlers.keys()]) {
+      this.removeRaycastHandlers(view);
     }
 
     //  Clear timeout if active

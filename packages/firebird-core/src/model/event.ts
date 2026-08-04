@@ -1,80 +1,80 @@
-import {EventGroup, EventGroupFactory, getEventGroupFactory} from "./event-group";
+import {EventPiece, getEventPieceFactory} from "./event-piece";
 
 export class Event
 {
   id: string = "";
-  groups: EventGroup[] = [];
+  pieces: EventPiece[] = [];
 
   toDexObject(): any {
-    const objGroups: any[] = [];
-    for (const component of this.groups) {
-      objGroups.push(component.toDexObject());
+    const objPieces: any[] = [];
+    for (const piece of this.pieces) {
+      objPieces.push(piece.toDexObject());
     }
     return {
       id: this.id,
-      groups: objGroups,
+      pieces: objPieces,
     };
   }
 
   static fromDexObject(obj: any): Event {
     let result = new Event();
     result.id = obj["id"];
-    for(const objComponent of obj["groups"]) {
-      const compType = objComponent["type"];
+    for(const objPiece of obj["pieces"]) {
+      const pieceType = objPiece["type"];
 
-      if(!compType) {
-        console.warn(`A problem with entry component type (a required field). It is: '${compType}'`);
+      if(!pieceType) {
+        console.warn(`A problem with event piece type (a required field). It is: '${pieceType}'`);
         continue;
       }
 
-      const factory = getEventGroupFactory(compType);
+      const factory = getEventPieceFactory(pieceType);
       if(factory === null || factory === undefined ) {
-        console.warn(`Can't find EventGroup factory for type name: '${compType}'`)
+        console.warn(`Can't find EventPiece factory for type name: '${pieceType}'`)
       }
       else {
-        result.groups.push(factory.fromDexObject(objComponent));
+        result.pieces.push(factory.fromDexObject(objPiece));
       }
     }
     return result;
   }
 
   /**
-   * Calculates the global time range across all components with valid time ranges.
-   * @returns A tuple [minTime, maxTime] or null if no component has a valid time range.
+   * Calculates the global time range across all pieces with valid time ranges.
+   * @returns A tuple [minTime, maxTime] or null if no piece has a valid time range.
    */
   get timeRange(): [number, number] | null {
     let minTime: number | null = null;
     let maxTime: number | null = null;
     let hasValidTimeRange = false;
 
-    // Iterate through all components
-    for (const component of this.groups) {
-      const componentTimeRange = component.timeRange;
+    // Iterate through all pieces
+    for (const piece of this.pieces) {
+      const pieceTimeRange = piece.timeRange;
 
-      // Skip components with null time range
-      if (componentTimeRange === null) continue;
+      // Skip pieces with null time range
+      if (pieceTimeRange === null) continue;
 
-      const [componentMinTime, componentMaxTime] = componentTimeRange;
+      const [pieceMinTime, pieceMaxTime] = pieceTimeRange;
 
-      // Initialize min/max times if this is the first valid component
+      // Initialize min/max times if this is the first valid piece
       if (!hasValidTimeRange) {
-        minTime = componentMinTime;
-        maxTime = componentMaxTime;
+        minTime = pieceMinTime;
+        maxTime = pieceMaxTime;
         hasValidTimeRange = true;
         continue;
       }
 
       // Update min/max values
-      if (componentMinTime < minTime!) {
-        minTime = componentMinTime;
+      if (pieceMinTime < minTime!) {
+        minTime = pieceMinTime;
       }
 
-      if (componentMaxTime > maxTime!) {
-        maxTime = componentMaxTime;
+      if (pieceMaxTime > maxTime!) {
+        maxTime = pieceMaxTime;
       }
     }
 
-    // Return the range if at least one component had a valid time range
+    // Return the range if at least one piece had a valid time range
     if (hasValidTimeRange && minTime !== null && maxTime !== null) {
       return [minTime, maxTime];
     }

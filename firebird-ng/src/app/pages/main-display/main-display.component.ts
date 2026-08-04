@@ -12,6 +12,7 @@ import {GameControllerService} from '../../services/game-controller.service';
 import {ConfigService} from '../../services/config.service';
 
 import {SceneTreeComponent} from '../../components/scene-tree/scene-tree.component';
+import {ModelTreeComponent} from '../../components/model-tree/model-tree.component';
 import {FirebirdShellComponent} from '../../components/firebird-shell/firebird-shell.component';
 import {ToolPanelComponent} from '../../components/tool-panel/tool-panel.component';
 import {EventSelectorComponent} from '../../components/event-selector/event-selector.component';
@@ -27,9 +28,7 @@ import {EventDisplayService} from "../../services/event-display.service";
 import {EventTimeControlComponent} from "../../components/event-time-control/event-time-control.component";
 import {ServerConfigService} from "../../services/server-config.service";
 import {LegendWindowComponent} from "../../components/legend-window/legend-window.component";
-import {PainterConfigPageComponent} from "../../services/configurator/painter-config-page.component";
-import {NgIf} from "@angular/common";
-import {TrackPainterConfig} from "../../services/track-painter-config";
+import {PainterConfigPanelComponent} from "../../components/painter-config-panel/painter-config-panel.component";
 import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
 import {MatProgressSpinner} from "@angular/material/progress-spinner";
 import {SceneExportComponent} from "../../components/scene-export/scene-export";
@@ -59,6 +58,7 @@ import JSZip from 'jszip';
     MatTooltip,
     MatIconButton,
     SceneTreeComponent,
+    ModelTreeComponent,
     FirebirdShellComponent,
     ToolPanelComponent,
     EventSelectorComponent,
@@ -66,8 +66,7 @@ import JSZip from 'jszip';
     PerfStatsComponent,
     EventTimeControlComponent,
     LegendWindowComponent,
-    PainterConfigPageComponent,
-    NgIf,
+    PainterConfigPanelComponent,
     ObjectRaycastComponent,
     MatProgressSpinner,
     SceneExportComponent,
@@ -120,6 +119,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   // toolbar toggle buttons update these too.
   leftPaneOpen = signal(false);
   rightPaneOpen = signal(false);
+
+  /** Left pane content: physics model tree, or the raw scene tree (debug). */
+  leftTreeMode = signal<'model' | 'scene'>('model');
 
   private resizeObserver?: ResizeObserver;
   private resizeDebounce?: ReturnType<typeof setTimeout>;
@@ -309,18 +311,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
 
-  selectedConfigItem: any = null;
-
   onConfigureItemClicked(type: string) {
-    if (type === 'track') {
-      this.selectedConfigItem = {
-        name: 'Track A',
-        type: 'track',
-        config: new TrackPainterConfig()
-      };
-    }
-
-    this.toggleRightPane();
+    // The right pane hosts the painter panel, driven by the shared selection.
+    this.rightPaneOpen.set(true);
   }
 
   private initDexEventSource() {
@@ -492,11 +485,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   originalSize?:{width:number, height:number}|null;
 
 
-  handleSourceOpen(event: any) {
+  // Arrow property: registered as a listener directly, so a method would run
+  // with the event target as `this` and assign sourceBuffer to the wrong object.
+  handleSourceOpen = (event: any) => {
     console.log('MediaSource opened');
     this.sourceBuffer = this.mediaSource.addSourceBuffer('video/webm; codecs="vp8"');
     console.log('Source buffer: ', this.sourceBuffer);
-  }
+  };
 
   handleDataAvailable(event:any) {
     if (event.data && event.data.size > 0) {

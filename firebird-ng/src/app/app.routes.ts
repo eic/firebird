@@ -1,9 +1,11 @@
 import { Routes } from '@angular/router';
-import {InputConfigComponent} from "./pages/input-config/input-config.component";
 
 export const routes: Routes = [
   { path: '', redirectTo: '/display', pathMatch: 'full' },
-  { path: 'config', component: InputConfigComponent },
+  {
+    path: 'config',
+    loadComponent: () => import('./pages/input-config/input-config.component').then(m => m.InputConfigComponent)
+  },
   {
     path: 'display',
     loadComponent: () => import('./pages/main-display/main-display.component').then(m => m.MainDisplayComponent)

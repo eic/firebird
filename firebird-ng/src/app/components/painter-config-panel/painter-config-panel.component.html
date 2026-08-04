@@ -1,0 +1,69 @@
+@if (!piece()) {
+  <div class="panel-hint">
+    Select a piece in the model tree (left pane) or click an object in 3D to
+    configure how it is painted.
+  </div>
+} @else {
+  <div class="panel">
+    <div class="piece-header">
+      <div class="piece-name">{{ piece()!.name }}</div>
+      <div class="piece-type">{{ piece()!.type }}</div>
+    </div>
+
+    @if (painterOptions().length > 0) {
+      <div class="section-label">Painter</div>
+      <ul ngListbox class="option-listbox"
+          [value]="painterListboxValue()"
+          (valueChange)="onPainterPicked($event)">
+        @for (option of painterOptions(); track option.id) {
+          <li ngOption [value]="option.id" [label]="option.label">{{ option.label }}</li>
+        }
+      </ul>
+    } @else {
+      <div class="panel-hint">No painter is registered for this piece type.</div>
+    }
+
+    @if (descriptors().length > 0) {
+      <div class="section-label">Settings</div>
+      @for (descriptor of descriptors(); track descriptor.key) {
+        <div class="knob">
+          <label class="knob-label">{{ descriptor.label ?? descriptor.key }}</label>
+          @switch (controlKind(descriptor)) {
+            @case ('options') {
+              <ul ngListbox class="option-listbox"
+                  [value]="knobListboxValue(descriptor.key)"
+                  (valueChange)="onKnobOptionPicked(descriptor.key, $event)">
+                @for (option of descriptor.options; track option) {
+                  <li ngOption [value]="option" [label]="optionLabel(option)">{{ optionLabel(option) }}</li>
+                }
+              </ul>
+            }
+            @case ('range') {
+              <!-- Manual binding: [formField] rejects min/max bindings on the
+                   same input (Signal Forms derives them from schema validators,
+                   but these are UI hints, not validation rules). -->
+              <div class="range-row">
+                <input type="range"
+                       [min]="descriptor.min ?? 0"
+                       [max]="descriptor.max ?? 100"
+                       [step]="descriptor.step ?? 1"
+                       [value]="knobValue(descriptor.key)"
+                       (input)="onRangeInput(descriptor.key, $event)" />
+                <span class="range-value">{{ knobValue(descriptor.key) }}</span>
+              </div>
+            }
+            @case ('color') {
+              <input type="color" [formField]="field(descriptor.key)" />
+            }
+            @case ('checkbox') {
+              <input type="checkbox" [formField]="field(descriptor.key)" />
+            }
+            @default {
+              <input type="text" [formField]="field(descriptor.key)" />
+            }
+          }
+        </div>
+      }
+    }
+  </div>
+}

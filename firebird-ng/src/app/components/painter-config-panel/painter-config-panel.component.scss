@@ -1,0 +1,81 @@
+.panel {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.panel-hint {
+  padding: 14px 12px;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+.piece-header {
+  margin-bottom: 8px;
+
+  .piece-name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .piece-type {
+    opacity: 0.6;
+    font-size: 11px;
+  }
+}
+
+.section-label {
+  margin: 12px 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+}
+
+.option-listbox {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  overflow: hidden;
+
+  [ngOption] {
+    padding: 5px 10px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(128, 128, 128, 0.15);
+    }
+
+    // Aria stamps aria-selected; style the active choice from it
+    &[aria-selected='true'] {
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+    }
+  }
+}
+
+.knob {
+  margin: 8px 0;
+
+  .knob-label {
+    display: block;
+    margin-bottom: 3px;
+  }
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  input[type='range'] {
+    flex: 1;
+  }
+
+  .range-value {
+    min-width: 34px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -101,8 +101,8 @@ def test_convert_edm4hep(runner, type_args):
     assert result.exit_code == 0, f"Command failed with exit code {result.exit_code}"
     data = json.loads(result.output)
     assert data['origin']['file_type'] == 'edm4hep'
-    group_types = {group['type'] for group in data['events'][0]['groups']}
-    assert group_types == {'BoxHit', 'PointTrajectory'}
+    piece_types = {piece['type'] for piece in data['events'][0]['pieces']}
+    assert piece_types == {'BoxHit', 'PointTrajectory'}
 
 
 def test_convert_edm4eic_auto_detected(runner):

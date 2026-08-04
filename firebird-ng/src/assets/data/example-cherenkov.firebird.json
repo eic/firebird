@@ -1,6 +1,6 @@
 {
   "type": "firebird-dex-json",
-  "version": "0.04",
+  "version": "1.0",
   "origin": {
     "source": "hand-written sample",
     "by": "@firebird/example-extension"
@@ -8,73 +8,98 @@
   "events": [
     {
       "id": "event_0",
-      "groups": [
+      "pieces": [
         {
           "name": "ExampleRings",
           "type": "example.CherenkovRing",
+          "version": "1.0",
           "origin": "example",
-          "rings": [
-            { "center": [0, 0, 1200], "radius": 600, "nPhotons": 14, "time": 5 }
-          ]
+          "count": 1,
+          "columns": {
+            "center": [0, 0, 1200],
+            "radius": [600],
+            "nPhotons": [14],
+            "time": [5],
+            "track": [0]
+          },
+          "refs": { "track": "ExampleTracks" }
         },
         {
           "name": "ExampleTracks",
           "type": "PointTrajectory",
+          "version": "1.0",
           "origin": "example",
-          "paramColumns": ["theta"],
+          "count": 1,
+          "columns": { "theta": [0.35] },
           "pointColumns": ["x", "y", "z", "t"],
-          "trajectories": [
-            { "points": [[0, 0, 0, 0], [200, 100, 600, 4], [400, 180, 1200, 8]], "params": [0.35] }
+          "points": [
+            [[0, 0, 0, 0], [200, 100, 600, 4], [400, 180, 1200, 8]]
           ]
         }
       ]
     },
     {
       "id": "event_1",
-      "groups": [
+      "pieces": [
         {
           "name": "ExampleRings",
           "type": "example.CherenkovRing",
+          "version": "1.0",
           "origin": "example",
-          "rings": [
-            { "center": [0, 0, 1200], "radius": 450, "nPhotons": 9, "time": 4 },
-            { "center": [0, 0, -1400], "radius": 800, "nPhotons": 21, "time": 7 }
-          ]
+          "count": 2,
+          "columns": {
+            "center": [0, 0, 1200, 0, 0, -1400],
+            "radius": [450, 800],
+            "nPhotons": [9, 21],
+            "time": [4, 7]
+          }
         },
         {
           "name": "ExampleHits",
           "type": "BoxHit",
+          "version": "1.0",
           "origin": "example",
-          "hits": [
-            { "pos": [300, 150, 900], "dim": [40, 40, 40], "t": [3, 0], "ed": [0.002, 0] },
-            { "pos": [-250, 220, -800], "dim": [40, 40, 40], "t": [6, 0], "ed": [0.001, 0] }
-          ]
+          "count": 2,
+          "columns": {
+            "pos": [300, 150, 900, -250, 220, -800],
+            "dim": [40, 40, 40, 40, 40, 40],
+            "time": [3, 6],
+            "timeError": [0, 0],
+            "edep": [0.002, 0.001],
+            "edepError": [0, 0]
+          }
         }
       ]
     },
     {
       "id": "event_2",
-      "groups": [
+      "pieces": [
         {
           "name": "ExampleRings",
           "type": "example.CherenkovRing",
+          "version": "1.0",
           "origin": "example",
-          "rings": [
-            { "center": [0, 0, 800], "radius": 300, "nPhotons": 6, "time": 2 },
-            { "center": [0, 0, 1600], "radius": 700, "nPhotons": 17, "time": 5 },
-            { "center": [0, 0, -900], "radius": 500, "nPhotons": 11, "time": 8 },
-            { "center": [0, 0, -1800], "radius": 1100, "nPhotons": 28, "time": 11 }
-          ]
+          "count": 4,
+          "columns": {
+            "center": [0, 0, 800, 0, 0, 1600, 0, 0, -900, 0, 0, -1800],
+            "radius": [300, 700, 500, 1100],
+            "nPhotons": [6, 17, 11, 28],
+            "time": [2, 5, 8, 11],
+            "track": [0, 0, 1, -1]
+          },
+          "refs": { "track": "ExampleTracks" }
         },
         {
           "name": "ExampleTracks",
           "type": "PointTrajectory",
+          "version": "1.0",
           "origin": "example",
-          "paramColumns": ["theta"],
+          "count": 2,
+          "columns": { "theta": [0.42, 2.7] },
           "pointColumns": ["x", "y", "z", "t"],
-          "trajectories": [
-            { "points": [[0, 0, 0, 0], [150, -120, 800, 3], [280, -260, 1600, 6]], "params": [0.42] },
-            { "points": [[0, 0, 0, 0], [-180, 90, -900, 4], [-360, 200, -1800, 9]], "params": [2.7] }
+          "points": [
+            [[0, 0, 0, 0], [150, -120, 800, 3], [280, -260, 1600, 6]],
+            [[0, 0, 0, 0], [-180, 90, -900, 4], [-360, 200, -1800, 9]]
           ]
         }
       ]

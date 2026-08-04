@@ -109,9 +109,31 @@ namespace dd4hep {
       std::vector<std::string> m_eventEntries;
       std::vector<std::string> m_pointEntries;
 
-      // Current event data
-      std::string m_currentEventEntry;
-      bool m_firstTrackInEvent {true};
+      // Current event data. DEX v1 stores track parameters as parallel column
+      // arrays (trajectory id == array index) and the ragged point lists
+      // nested under "points" — so the writer collects per-column vectors and
+      // one points-JSON string per track, then assembles the piece when the
+      // event ends.
+      int m_currentEventNumber {0};
+      std::vector<std::string> m_trackPointsJson;
+      std::vector<int>         m_colPdg;
+      std::vector<std::string> m_colType;
+      std::vector<double>      m_colCharge, m_colPx, m_colPy, m_colPz,
+                               m_colVx, m_colVy, m_colVz,
+                               m_colTheta, m_colPhi, m_colQOverP, m_colTime;
+
+      // Parameters of the track being collected, captured when it starts
+      // (the track object is gone by the time the next track begins).
+      int m_pendingPdg {0};
+      std::string m_pendingType;
+      double m_pendingCharge {0}, m_pendingPx {0}, m_pendingPy {0}, m_pendingPz {0},
+             m_pendingVx {0}, m_pendingVy {0}, m_pendingVz {0},
+             m_pendingTheta {0}, m_pendingPhi {0}, m_pendingQOverP {0}, m_pendingTime {0};
+
+      // Path length [mm] of the track being collected (for TrackLengthMin)
+      double m_currentTrackLength {0};
+      G4ThreeVector m_lastPointPosition;
+      bool m_hasLastPoint {false};
 
       /// Helper method to check if file is open and writable
       void ensureOutputWritable() {
@@ -167,7 +189,7 @@ namespace dd4hep {
         ensureOutputWritable();
 
         // Write the header of the JSON file
-        m_output << fmt::format(R"({{"type":"firebird-dex-json","version":"0.04","origin":{{"file":"{}","entries_count":{}}},)",
+        m_output << fmt::format(R"({{"type":"firebird-dex-json","version":"1.0","origin":{{"file":"{}","entries_count":{}}},)",
                              m_outputFile, m_eventEntries.size());
 
         // Write the entries array
@@ -185,69 +207,41 @@ namespace dd4hep {
         m_output << "]}";
       }
 
-      /// Generate track parameters from G4Track
-      std::string generateTrackParams(const G4Track* track) {
-        // Extract momentum components
+      /// Replace non-finite values (invalid in JSON) with zero
+      static double sanitise(double v) {
+        return (std::isinf(v) || std::isnan(v)) ? 0.0 : v;
+      }
+
+      /// Capture the parameters of a starting track; committed to the columns
+      /// when the track ends (the G4Track is gone by then).
+      void captureTrackParams(const G4Track* track) {
         G4ThreeVector momentum = track->GetMomentum();
-        G4double p = momentum.mag();
-
-        // Ensure momentum is not zero to avoid division by zero
-        if (p < 1e-10) {
-          p = 1e-10;
-        }
-
-        // Get particle information
-        int pdgCode = track->GetParticleDefinition()->GetPDGEncoding();
-        std::string particleName = track->GetParticleDefinition()->GetParticleName();
+        G4double p = std::max(momentum.mag(), 1e-10);
+        G4ThreeVector vertex = track->GetVertexPosition();
         G4double charge = track->GetParticleDefinition()->GetPDGCharge();
 
-        // Calculate angular parameters
-        G4double theta = momentum.theta();
-        G4double phi = momentum.phi();
+        m_pendingPdg = track->GetParticleDefinition()->GetPDGEncoding();
+        m_pendingType = track->GetParticleDefinition()->GetParticleName();
+        m_pendingCharge = sanitise(charge);
+        m_pendingPx = sanitise(momentum.x() / CLHEP::MeV);
+        m_pendingPy = sanitise(momentum.y() / CLHEP::MeV);
+        m_pendingPz = sanitise(momentum.z() / CLHEP::MeV);
+        m_pendingVx = sanitise(vertex.x() / CLHEP::mm);
+        m_pendingVy = sanitise(vertex.y() / CLHEP::mm);
+        m_pendingVz = sanitise(vertex.z() / CLHEP::mm);
+        m_pendingTheta = sanitise(momentum.theta());
+        m_pendingPhi = sanitise(momentum.phi());
+        m_pendingQOverP = sanitise(charge / (p / CLHEP::GeV));
+        m_pendingTime = sanitise(track->GetGlobalTime() / CLHEP::ns);
+      }
 
-        // Calculate q/p - charge over momentum (in GeV/c)
-        G4double qOverP = charge / (p / CLHEP::GeV);
-
-        // Convert momentum to MeV/c
-        G4double px = momentum.x() / CLHEP::MeV;
-        G4double py = momentum.y() / CLHEP::MeV;
-        G4double pz = momentum.z() / CLHEP::MeV;
-
-        // Get the vertex position
-        G4ThreeVector vertex = track->GetVertexPosition();
-
-        // Convert vertex position to mm
-        G4double vx = vertex.x() / CLHEP::mm;
-        G4double vy = vertex.y() / CLHEP::mm;
-        G4double vz = vertex.z() / CLHEP::mm;
-
-        // Get initial time
-        G4double time = track->GetGlobalTime() / CLHEP::ns;
-
-        // Placeholder values for local parameters (loc_a, loc_b)
-        G4double locA = 0.0;
-        G4double locB = 0.0;
-
-        // Handle potential infinities or NaNs which are invalid in JSON
-        if (std::isinf(px) || std::isnan(px)) px = 0.0;
-        if (std::isinf(py) || std::isnan(py)) py = 0.0;
-        if (std::isinf(pz) || std::isnan(pz)) pz = 0.0;
-        if (std::isinf(vx) || std::isnan(vx)) vx = 0.0;
-        if (std::isinf(vy) || std::isnan(vy)) vy = 0.0;
-        if (std::isinf(vz) || std::isnan(vz)) vz = 0.0;
-        if (std::isinf(theta) || std::isnan(theta)) theta = 0.0;
-        if (std::isinf(phi) || std::isnan(phi)) phi = 0.0;
-        if (std::isinf(qOverP) || std::isnan(qOverP)) qOverP = 0.0;
-        if (std::isinf(time) || std::isnan(time)) time = 0.0;
-
-        // Format parameters as a JSON array
-        // Order: pdg, type, charge, px, py, pz, vx, vy, vz, theta, phi, q_over_p, loc_a, loc_b, time
-        return fmt::format("[{},\"{}\",{},{},{},{},{},{},{},{},{},{},{},{},{}]",
-                          pdgCode, particleName, charge,
-                          px, py, pz,
-                          vx, vy, vz,
-                          theta, phi, qOverP,
-                          locA, locB, time);
+      static std::string numbersJson(const std::vector<double>& values) {
+        std::string out = "[";
+        for (size_t i = 0; i < values.size(); ++i) {
+          if (i) out += ',';
+          out += fmt::format("{}", values[i]);
+        }
+        return out + "]";
       }
 
       /// Format a point (pre or post step) as a JSON array
@@ -275,47 +269,64 @@ namespace dd4hep {
         // Finalize previous event if there is one
         finalizeEvent();
 
-        // Reset track state
+        // Reset per-event columnar state
         m_prevTrackId = -1;
-        m_firstTrackInEvent = true;
         m_pointEntries.clear();
-
-        // Create the beginning of an event entry with header
-        m_currentEventEntry = fmt::format(R"({{"id":{},"groups":[)", eventNumber);
-
-        // Add component for track segments
-        m_currentEventEntry += fmt::format(R"({{"name":"{}","type":"PointTrajectory",)", m_componentName);
-
-        // Add origin type information
-        m_currentEventEntry += R"("origin":{"type":["G4Track","G4StepPoint"]},)";
-
-        // Define parameter columns
-        m_currentEventEntry += R"("paramColumns":["pdg","type","charge","px","py","pz","vx","vy","vz","theta","phi","q_over_p","loc_a","loc_b","time"],)";
-
-        // Define point columns
-        m_currentEventEntry += R"("pointColumns":["x","y","z","t","aux"],)";
-
-        // Start the lines array
-        m_currentEventEntry += R"("trajectories":[)";
+        m_currentEventNumber = eventNumber;
+        m_trackPointsJson.clear();
+        m_colPdg.clear(); m_colType.clear(); m_colCharge.clear();
+        m_colPx.clear(); m_colPy.clear(); m_colPz.clear();
+        m_colVx.clear(); m_colVy.clear(); m_colVz.clear();
+        m_colTheta.clear(); m_colPhi.clear(); m_colQOverP.clear(); m_colTime.clear();
 
         m_totalEvents++;
         fmt::print("Started processing event: {} (run: {})\n", eventNumber, runNumber);
       }
 
-      /// Finalize the current event and add it to the event entries
+      /// Finalize the current event: assemble the DEX v1 piece and store it
       void finalizeEvent() {
-        if (m_prevEvent >= 0) {
-          // Only save the event if it has at least one track
-          if (!m_firstTrackInEvent) {
-            // Close the trajectories array, component, and group array
-            m_currentEventEntry += "]}]}";
-            m_eventEntries.push_back(m_currentEventEntry);
+        if (m_prevEvent < 0) return;
 
-            fmt::print("Finalized event {} with {} tracks\n", m_prevEvent, m_totalTracks - m_filteredTracks);
-          } else {
-            fmt::print("Skipping empty event {}\n", m_prevEvent);
-          }
+        // Only save the event if it has at least one track
+        if (m_trackPointsJson.empty()) {
+          fmt::print("Skipping empty event {}\n", m_prevEvent);
+          return;
         }
+
+        std::string pdgJson = "[";
+        std::string typeJson = "[";
+        for (size_t i = 0; i < m_colPdg.size(); ++i) {
+          if (i) { pdgJson += ','; typeJson += ','; }
+          pdgJson += fmt::format("{}", m_colPdg[i]);
+          typeJson += fmt::format("\"{}\"", m_colType[i]);
+        }
+        pdgJson += ']';
+        typeJson += ']';
+
+        std::string columnsJson = fmt::format(
+          R"({{"pdg":{},"type":{},"charge":{},"px":{},"py":{},"pz":{},"vx":{},"vy":{},"vz":{},"theta":{},"phi":{},"q_over_p":{},"time":{}}})",
+          pdgJson, typeJson, numbersJson(m_colCharge),
+          numbersJson(m_colPx), numbersJson(m_colPy), numbersJson(m_colPz),
+          numbersJson(m_colVx), numbersJson(m_colVy), numbersJson(m_colVz),
+          numbersJson(m_colTheta), numbersJson(m_colPhi), numbersJson(m_colQOverP),
+          numbersJson(m_colTime));
+
+        std::string pointsJson = "[";
+        for (size_t i = 0; i < m_trackPointsJson.size(); ++i) {
+          if (i) pointsJson += ',';
+          pointsJson += m_trackPointsJson[i];
+        }
+        pointsJson += ']';
+
+        m_eventEntries.push_back(fmt::format(
+          R"({{"id":{},"pieces":[{{"name":"{}","type":"PointTrajectory","version":"1.0",)"
+          R"("origin":{{"type":["G4Track","G4StepPoint"]}},)"
+          R"("count":{},"columns":{},)"
+          R"("pointColumns":["x","y","z","t","aux"],)"
+          R"("points":{}}}]}})",
+          m_currentEventNumber, m_componentName, m_trackPointsJson.size(), columnsJson, pointsJson));
+
+        fmt::print("Finalized event {} with {} tracks\n", m_prevEvent, m_trackPointsJson.size());
       }
 
       /// Check if track passes filtering criteria
@@ -401,18 +412,14 @@ namespace dd4hep {
 
         m_skippingTrack = false;
 
-        // Add comma if not the first track in the event
-        if (!m_firstTrackInEvent) {
-          m_currentEventEntry += ",";
-        } else {
-          m_firstTrackInEvent = false;
-        }
-
-        // Start a new line object
-        m_currentEventEntry += "{\"points\":[";
+        // Capture the parameters now: the G4Track object is not available
+        // anymore when the next track begins
+        captureTrackParams(track);
 
         // Reset point entries for the new track
         m_pointEntries.clear();
+        m_currentTrackLength = 0;
+        m_hasLastPoint = false;
 
         if (trackId < 1000) {
           G4ThreeVector vertex = track->GetVertexPosition();
@@ -433,6 +440,13 @@ namespace dd4hep {
           return; // Skip this point
         }
 
+        // Accumulate path length for the TrackLengthMin cut
+        if (m_hasLastPoint) {
+          m_currentTrackLength += (point->GetPosition() - m_lastPointPosition).mag() / CLHEP::mm;
+        }
+        m_lastPointPosition = point->GetPosition();
+        m_hasLastPoint = true;
+
         // Format the point and add to the collection
         std::string pointEntry = formatPoint(point);
 
@@ -444,39 +458,40 @@ namespace dd4hep {
         }
       }
 
-      /// Finalize the current track with track parameters
-      void finalizeTrack(const G4Track* track) {
+      /// Finalize the current track: commit its points and the parameters
+      /// captured at track start to the event's columns
+      void finalizeTrack() {
         if (m_skippingTrack) return;
 
-        // Skip if no points passed the filters
-        if (m_pointEntries.empty()) {
+        // Skip if no points passed the filters or the track is too short
+        if (m_pointEntries.empty() || (m_minTrackLength > 0 && m_currentTrackLength < m_minTrackLength)) {
           m_skippingTrack = true;
           m_filteredTracks++;
           return;
         }
 
-        // Check track length if required
-        if (m_minTrackLength > 0 && m_pointEntries.size() > 1) {
-          // We need at least 2 points to calculate length
-          G4ThreeVector prevPos = track->GetVertexPosition();
-
-          // Add points to the track and calculate length
-          for (size_t i = 0; i < m_pointEntries.size(); i++) {
-            m_currentEventEntry += m_pointEntries[i];
-          }
-
-          // Close the points array
-          m_currentEventEntry += "]";
-
-          // Add track parameters
-          m_currentEventEntry += ",\"params\":";
-          m_currentEventEntry += generateTrackParams(track);
-
-          // Close the line object
-          m_currentEventEntry += "}";
-
-          m_totalTracks++;
+        std::string points = "[";
+        for (size_t i = 0; i < m_pointEntries.size(); i++) {
+          points += m_pointEntries[i];
         }
+        points += "]";
+        m_trackPointsJson.push_back(std::move(points));
+
+        m_colPdg.push_back(m_pendingPdg);
+        m_colType.push_back(m_pendingType);
+        m_colCharge.push_back(m_pendingCharge);
+        m_colPx.push_back(m_pendingPx);
+        m_colPy.push_back(m_pendingPy);
+        m_colPz.push_back(m_pendingPz);
+        m_colVx.push_back(m_pendingVx);
+        m_colVy.push_back(m_pendingVy);
+        m_colVz.push_back(m_pendingVz);
+        m_colTheta.push_back(m_pendingTheta);
+        m_colPhi.push_back(m_pendingPhi);
+        m_colQOverP.push_back(m_pendingQOverP);
+        m_colTime.push_back(m_pendingTime);
+
+        m_totalTracks++;
       }
 
     public:
@@ -504,7 +519,10 @@ namespace dd4hep {
       /// Destructor
       ~FirebirdTrajectoryWriterSteppingAction() override
       {
-        // Finalize the last event if needed
+        // Finalize the last track and event if needed
+        if (m_prevTrackId > 0 && !m_skippingTrack) {
+          finalizeTrack();
+        }
         finalizeEvent();
 
         // Write the output file if we have collected any events
@@ -553,7 +571,7 @@ namespace dd4hep {
         if (trackId != m_prevTrackId) {
           // If we were processing a track before, finalize it
           if (m_prevTrackId > 0 && !m_skippingTrack) {
-            finalizeTrack(track);
+            finalizeTrack();
           }
 
           // Start a new track

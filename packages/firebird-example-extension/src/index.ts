@@ -2,7 +2,7 @@
  * @firebird/example-extension — the whole public surface is one function.
  *
  * This package is the template for experiment extensions: a custom event
- * group (model, worker-safe), its painter (lazily loaded, three.js), and a
+ * piece (model, worker-safe), its painter (lazily loaded, three.js), and a
  * config key that obeys the full source precedence — all registered through
  * the public `provideFirebird()` API, with zero Firebird-internal imports.
  *
@@ -20,14 +20,13 @@ import {
   ConfigService,
   FirebirdFeature,
   firebirdFeatures,
-  withEventGroup,
+  withEventPiece,
   withLazyPainter,
 } from '@firebird/ng';
-import { CherenkovRingGroup, CherenkovRingGroupFactory } from './cherenkov-ring.group';
+import { CherenkovRingPiece, CherenkovRingPieceFactory } from './cherenkov-ring.piece';
 import { ringStyle } from './ring-style';
 
-export { CherenkovRingGroup, CherenkovRingGroupFactory } from './cherenkov-ring.group';
-export type { CherenkovRing } from './cherenkov-ring.group';
+export { CherenkovRingPiece, CherenkovRingPieceFactory } from './cherenkov-ring.piece';
 export { ringStyle } from './ring-style';
 
 /** Config key for the ring color — settable from yaml, URL, UI, or commands. */
@@ -36,10 +35,10 @@ export const RING_COLOR_CONFIG_KEY = 'examples.cherenkov.ringColor';
 export function withExampleCherenkov(): FirebirdFeature {
   return firebirdFeatures(
     // Model: teach DEX parsing the 'example.CherenkovRing' type
-    withEventGroup(CherenkovRingGroupFactory),
+    withEventPiece(CherenkovRingPieceFactory),
 
     // Painter: lazily loaded — three.js material code stays out of the initial bundle
-    withLazyPainter(CherenkovRingGroup.type, () => import('./cherenkov-ring.painter').then(m => m.CherenkovRingPainter)),
+    withLazyPainter(CherenkovRingPiece.type, () => import('./cherenkov-ring.painter').then(m => m.CherenkovRingPainter)),
 
     // Config: declared through the registry, so every source works —
     // defaults < server config.jsonc < localStorage < ?config.examples.cherenkov.ringColor=... < runtime

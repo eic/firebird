@@ -12,6 +12,7 @@ import type { Type } from '@angular/core';
 import type * as THREE from 'three';
 import type { WebGPURenderer, ClippingGroup } from 'three/webgpu';
 import type { Event as FbEvent } from '@firebird/core';
+import type { RenderView, RenderViewOptions } from '../services/render-view';
 
 /**
  * Everything an extension needs to work with the scene. Handed to
@@ -34,6 +35,20 @@ export interface SceneContext {
   renderer: WebGPURenderer;
   /** Attach input listeners here; do not query the DOM for the canvas. */
   canvas: HTMLCanvasElement;
+  /**
+   * The render views sharing this scene. Live list: multi-view pages add and
+   * remove views at runtime. `views[0]` is always the main view.
+   */
+  readonly views: readonly RenderView[];
+  /**
+   * The main view — the display page's camera/controls. Per-view overlays
+   * (like the navigation cube) attach here via `mainView.addOverlay()`.
+   */
+  readonly mainView: RenderView;
+  /** Adds a view of the shared scene (see RenderViewOptions for the contract). */
+  addView(options: RenderViewOptions): RenderView;
+  /** Removes a view added with addView. The main view cannot be removed. */
+  removeView(view: RenderView): void;
   /**
    * Signal that you changed renderable state.
    *

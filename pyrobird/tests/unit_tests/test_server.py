@@ -38,7 +38,7 @@ def test_open_edm4eic_file_local_allowed(client):
     data = response.get_json()
     assert data is not None
     assert 'events' in data
-    assert 'groups' in data['events'][0]
+    assert 'pieces' in data['events'][0]
     assert data['events'][0]["id"] == event_number
 
 
@@ -49,8 +49,8 @@ def test_open_edm4hep_file(client):
 
     assert response.status_code == 200
     data = response.get_json()
-    group_types = {group['type'] for group in data['events'][0]['groups']}
-    assert group_types == {'BoxHit', 'PointTrajectory'}
+    piece_types = {piece['type'] for piece in data['events'][0]['pieces']}
+    assert piece_types == {'BoxHit', 'PointTrajectory'}
 
 
 def test_open_file_auto_type(client):
@@ -60,7 +60,7 @@ def test_open_file_auto_type(client):
 
     assert response.status_code == 200
     data = response.get_json()
-    assert len(data['events'][0]['groups']) > 0
+    assert len(data['events'][0]['pieces']) > 0
 
 
 def test_open_file_unsupported_type(client):

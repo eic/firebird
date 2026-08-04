@@ -1,5 +1,5 @@
 /**
- * The built-in feature pack: Firebird's own group factories, painters, loaders
+ * The built-in feature pack: Firebird's own piece factories, painters, loaders
  * and command handlers, registered through the public extension API — exactly
  * how an experiment pack registers its own. If a built-in cannot live on this
  * surface, a user's feature cannot either.
@@ -8,13 +8,13 @@
 // Deep imports on purpose: this file is in the INITIAL bundle, and the
 // @firebird/core barrel re-exports painters whose modules pull three.js.
 // The model modules here are plain TS with no three dependency.
-import { BoxHitGroup, BoxHitGroupFactory } from '@firebird/core/model/box-hit.group';
-import { PointTrajectoryGroup, PointTrajectoryGroupFactory } from '@firebird/core/model/point-trajectory.group';
+import { BoxHitPiece, BoxHitPieceFactory } from '@firebird/core/model/box-hit.piece';
+import { PointTrajectoryPiece, PointTrajectoryPieceFactory } from '@firebird/core/model/point-trajectory.piece';
 import {
   FirebirdFeature,
   firebirdFeatures,
   withCommandHandler,
-  withEventGroup,
+  withEventPiece,
   withEventLoader,
   withGeometryLoader,
   withLazyPainter,
@@ -32,14 +32,14 @@ import {
 export function withFirebirdBuiltins(): FirebirdFeature {
   return firebirdFeatures(
     // Event model: DEX type decoders
-    withEventGroup(BoxHitGroupFactory),
-    withEventGroup(PointTrajectoryGroupFactory),
+    withEventPiece(BoxHitPieceFactory),
+    withEventPiece(PointTrajectoryPieceFactory),
 
     // Painters: data -> visuals. Lazy: painter classes pull three.js material
     // code, which must stay out of the initial bundle (the display route
     // chunk shares the same modules, so nothing loads twice).
-    withLazyPainter(BoxHitGroup.type, () => import('@firebird/core').then(m => m.BoxHitSimplePainter)),
-    withLazyPainter(PointTrajectoryGroup.type, () => import('@firebird/core').then(m => m.TrajectoryPainter)),
+    withLazyPainter(BoxHitPiece.type, () => import('@firebird/core').then(m => m.BoxHitSimplePainter)),
+    withLazyPainter(PointTrajectoryPiece.type, () => import('@firebird/core').then(m => m.TrajectoryPainter)),
 
     // IO: file formats and URL schemes
     withGeometryLoader(RootGeometryLoader),

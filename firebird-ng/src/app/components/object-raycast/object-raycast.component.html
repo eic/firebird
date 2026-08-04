@@ -43,4 +43,7 @@
 <div class="raycast-overlay" *ngIf="coordsEnabled || distanceEnabled">
   <div *ngIf="coordsEnabled">{{ coordsText() }}</div>
   <div *ngIf="distanceEnabled">{{ distanceText() }}</div>
+  @if (selection.selection(); as selected) {
+    <div>Selected: {{ selected.pieceName }} #{{ selected.entityIndex }}</div>
+  }
 </div>

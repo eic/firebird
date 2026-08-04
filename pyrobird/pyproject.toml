@@ -39,7 +39,9 @@ dependencies = [
 [project.optional-dependencies]
 batch = ["playwright"]
 xrootd = ["fsspec-xrootd", "xrootd"]
-dev = ["build", "twine", "coverage", "pytest"]
+# jsonschema exercises dex-schema/*.schema.json in tests (CI installs .[test])
+test = ["pytest", "jsonschema"]
+dev = ["build", "twine", "coverage", "pytest", "jsonschema"]
 
 [project.scripts]
 fbd = "pyrobird.cli:cli_app"

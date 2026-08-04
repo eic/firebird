@@ -1,161 +1,106 @@
 # test_edm4eic.py
 
-import pytest
 import os
-import json
-import uproot
-import numpy as np
-import awkward as ak
-from pyrobird.edm4eic import edm4eic_entry_to_dict
-# Helper function to import tracker_hits_to_box_hits
-from pyrobird.edm4eic import tracker_hits_to_box_hits
 
 import pytest
-from pyrobird.edm4eic import parse_entry_numbers
+import uproot
 
+from pyrobird.dex import validate_dex
+from pyrobird.edm4eic import (
+    edm4eic_entry_to_dict,
+    edm4eic_to_dex_dict,
+    parse_entry_numbers,
+    tracker_hits_to_box_hits,
+)
 
 # Path to the test ROOT file
 TEST_ROOT_FILE = os.path.join(os.path.dirname(__file__), 'data', 'reco_2024-09_craterlake_2evt.edm4eic.root')
 
-def test_edm4eic_to_dict_structure():
-    # Open the ROOT file
-    file = uproot.open(TEST_ROOT_FILE)
-    tree = file['events']
 
-    # Convert the first event
+def open_events_tree():
+    return uproot.open(TEST_ROOT_FILE)['events']
+
+
+def test_edm4eic_to_dict_structure():
+    tree = open_events_tree()
     event = edm4eic_entry_to_dict(tree, entry_index=0)
 
-    # Check that the event is a dictionary
-    assert isinstance(event, dict), "Event should be a dictionary"
+    assert isinstance(event, dict)
+    assert 'id' in event
+    assert isinstance(event['pieces'], list)
 
-    # Check that the event has 'id' and "groups" keys
-    assert 'id' in event, "'id' key missing in event dictionary"
-    assert 'groups' in event, "'groups' key missing in event dictionary"
+    for piece in event['pieces']:
+        assert isinstance(piece, dict)
+        assert isinstance(piece['name'], str)
+        assert isinstance(piece['type'], str)
+        assert isinstance(piece['version'], str)
+        assert 'origin' in piece
+        assert isinstance(piece['count'], int)
+        assert isinstance(piece['columns'], dict)
 
-    # Check that 'data' is a list
-    assert isinstance(event['groups'], list), "'groups' should be a list"
+        if piece['type'] == 'BoxHit':
+            columns = piece['columns']
+            # pos/dim are flat xyz triplets, scalar columns hold count values
+            assert len(columns['pos']) == 3 * piece['count']
+            assert len(columns['dim']) == 3 * piece['count']
+            for scalar in ('time', 'timeError', 'edep', 'edepError'):
+                assert len(columns[scalar]) == piece['count']
 
-    # Check that each item in 'data' is a dictionary with expected keys
-    for group in event['groups']:
-        assert isinstance(group, dict), "Each group in 'groups' should be a dictionary"
-        assert 'name' in group, "'name' key missing in group"
-        assert 'type' in group, "'type' key missing in group"
-        assert 'origin' in group, "'origin' key missing in group"
+        if piece['type'] == 'PointTrajectory':
+            assert piece['pointColumns'] == ['x', 'y', 'z', 't', 'dx', 'dy', 'dz', 'dt']
+            assert len(piece['points']) == piece['count']
+            for column in piece['columns'].values():
+                assert len(column) == piece['count']
 
-        if group["type"] == "BoxHit":
-            assert 'hits' in group, "'hits' key missing in group"
-            assert isinstance(group['hits'], list), "'hits' should be a list"
-
-        if group["type"] == "PointTrajectory":
-            assert "paramColumns" in group
-            assert "pointColumns" in group
-            assert "trajectories" in group
-
-        # Optionally, check the first hit for expected structure
-        if 'hits' in group and  len(group['hits']) > 0:
-            hit = group['hits'][0]
-            assert isinstance(hit, dict), "Each hit should be a dictionary"
-            assert 'pos' in hit, "'pos' key missing in hit"
-            assert 'dim' in hit, "'dim' key missing in hit"
-            assert 't' in hit, "'t' key missing in hit"
-            assert 'ed' in hit, "'ed' key missing in hit"
-
-            # Check that 'pos' is a list of three floats
-            assert isinstance(hit['pos'], list) and len(hit['pos']) == 3, "'pos' should be a list of three elements"
-            assert all(isinstance(x, (float, int)) for x in hit['pos']), "'pos' elements should be numbers"
-
-            # Check that 'dim' is a list of three floats
-            assert isinstance(hit['dim'], list) and len(hit['dim']) == 3, "'dim' should be a list of three elements"
-            assert all(isinstance(x, (float, int)) for x in hit['dim']), "'dim' elements should be numbers"
-
-            # Check that 't' is a list of two floats
-            assert isinstance(hit['t'], list) and len(hit['t']) == 2, "'t' should be a list of two elements"
-            assert all(isinstance(x, (float, int)) for x in hit['t']), "'t' elements should be numbers"
-
-            # Check that 'ed' is a list of two floats
-            assert isinstance(hit['ed'], list) and len(hit['ed']) == 2, "'ed' should be a list of two elements"
-            assert all(isinstance(x, (float, int)) for x in hit['ed']), "'ed' elements should be numbers"
 
 def test_edm4eic_to_dict_values():
-    # Open the ROOT file
-    file = uproot.open(TEST_ROOT_FILE)
-    tree = file['events']
-
-    # Convert the first event
+    tree = open_events_tree()
     event = edm4eic_entry_to_dict(tree, entry_index=0)
 
-    # Ensure there is at least one group with hits
-    assert len(event["groups"]) > 0, "No data groups found in event"
+    assert len(event['pieces']) > 0
 
-    # Get the first group
-    group = event["groups"][0]
-    hits = group['hits']
-    assert len(hits) > 0, "No hits found in the first group"
-
-    # Get the first hit
-    hit = hits[0]
-
-    # Uncomment and set the expected values based on your data
-    assert abs(hit['pos'][0]) > 0
-    assert len(hit['pos']) == 3
-    assert abs(hit['dim'][0]) > 0
-    assert len(hit['dim']) == 3
-    assert hit['t'][0] > 0
-    assert len(hit['t']) == 2
-    assert hit['ed'][0] > 0
-    assert len(hit['ed']) == 2
+    box_piece = next(p for p in event['pieces'] if p['type'] == 'BoxHit' and p['count'] > 0)
+    columns = box_piece['columns']
+    # First hit: id 0 == index 0 in every column
+    assert abs(columns['pos'][0]) > 0
+    assert abs(columns['dim'][0]) > 0
+    assert columns['time'][0] > 0
+    assert columns['edep'][0] > 0
 
 
 def test_edm4eic_to_dict_multiple_entries():
-    # Open the ROOT file
-    file = uproot.open(TEST_ROOT_FILE)
-    tree = file['events']
+    tree = open_events_tree()
 
-    # Loop over events in the ROOT file (assuming there are at least 2 events)
     for entry in range(2):
         event = edm4eic_entry_to_dict(tree, entry_index=entry)
+        assert event['id'] == entry
+        assert isinstance(event['pieces'], list)
+        assert len(event['pieces']) > 0
 
-        # Check that the event number matches
-        assert event['id'] == entry, f"Event name does not match entry number: {event['id']} != {entry}"
 
-        # Perform the same checks as in the previous test
-        assert "groups" in event, "groups key missing in event dictionary"
-        assert isinstance(event["groups"], list), "'data' should be a list"
-        assert len(event["groups"]) > 0, "No data groups found in event"
+def test_edm4eic_to_dex_dict_validates():
+    tree = open_events_tree()
+    result = edm4eic_to_dex_dict(tree, [0, 1], origin_info={'file': 'test'})
 
-        # Optionally, perform additional checks for each event
+    assert result['type'] == 'firebird-dex-json'
+    assert result['version'] == '1.0'
+    assert result['origin'] == {'file': 'test'}
+    assert len(result['events']) == 2
+    # raises on structural problems (column lengths, refs, ragged sizes)
+    validate_dex(result)
 
 
 def test_tracker_hits_to_box_hits():
-    # Open the ROOT file
-    file = uproot.open(TEST_ROOT_FILE)
-    tree = file['events']
-
-    # Get the list of tracker branches
+    tree = open_events_tree()
     tracker_branches = tree.typenames(recursive=False, full_paths=True, filter_typename="vector<edm4eic::TrackerHitData>")
+    assert len(tracker_branches) > 0
 
-    # Check that there are tracker branches
-    assert len(tracker_branches) > 0, "No tracker branches of type vector<edm4eic::TrackerHitData> found"
-
-    # Test the conversion for each tracker branch
     for branch_name in tracker_branches.keys():
-        group = tracker_hits_to_box_hits(tree, branch_name, entry_start=0)
-
-        # Check that the group has expected keys
-        assert isinstance(group, dict), "Group should be a dictionary"
-        assert 'name' in group, "'name' key missing in group"
-        assert 'type' in group, "'type' key missing in group"
-        assert 'origin' in group, "'origin' key missing in group"
-        assert 'hits' in group, "'hits' key missing in group"
-
-        # Check that 'hits' is a list
-        assert isinstance(group['hits'], list), "'hits' should be a list"
-
-        # Optionally, check the first hit
-        if len(group['hits']) > 0:
-            hit = group['hits'][0]
-            assert isinstance(hit, dict), "Each hit should be a dictionary"
-            # Perform the same checks as before
+        piece = tracker_hits_to_box_hits(tree, branch_name, entry_start=0)
+        assert piece['name'] == branch_name
+        assert piece['type'] == 'BoxHit'
+        assert piece['origin']['type'] == 'edm4eic::TrackerHitData'
+        assert len(piece['columns']['pos']) == 3 * piece['count']
 
 
 @pytest.mark.parametrize("input_value, expected", [

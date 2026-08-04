@@ -123,16 +123,16 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     "https://seeeic.org/d/reco_py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.firebird.zip",
     "https://seeeic.org/d/comb_py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.firebird.zip",
     "https://seeeic.org/d/background_py6_10x100_egas_bgas_smooth.firebird.zip",
-    "asset://data/dirc_optical.v0.4.firebird.zip",
-    "asset://data/py8_dis-cc_5x41_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
-    "asset://data/py8_dis-cc_5x41_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
-    "asset://data/py8_dis-cc_10x100_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
-    "asset://data/py8_dis-cc_10x100_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
-    "asset://data/py8_dis-cc_10x100_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
-    "asset://data/py8_dis-cc_18x275_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
-    "asset://data/py8_dis-cc_18x275_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
-    "asset://data/py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip",
-    "asset://data/rec_dis_18x275_fdex-v0.4.edm4eic.v0.4.firebird.zip",
+    "asset://data/dirc_optical.v1.firebird.zip",
+    "asset://data/py8_dis-cc_5x41_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip",
+    "asset://data/py8_dis-cc_5x41_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip",
+    "asset://data/py8_dis-cc_10x100_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip",
+    "asset://data/py8_dis-cc_10x100_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip",
+    "asset://data/py8_dis-cc_10x100_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip",
+    "asset://data/py8_dis-cc_18x275_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip",
+    "asset://data/py8_dis-cc_18x275_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip",
+    "asset://data/py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip",
+    "asset://data/rec_dis_18x275_fdex-v0.4.edm4eic.v1.firebird.zip",
   ];
 
 
@@ -189,7 +189,7 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
     // },
     'DIRC optical photons': {
       geometry: "https://eic.github.io/epic/artifacts/tgeo/epic_dirc_only.root",
-      dexjson: "asset://data/dirc_optical.v0.4.firebird.zip",
+      dexjson: "asset://data/dirc_optical.v1.firebird.zip",
       edm4eic: ""
     }
   };

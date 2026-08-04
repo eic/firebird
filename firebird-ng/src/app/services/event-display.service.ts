@@ -15,6 +15,8 @@ import {Mesh, MeshBasicMaterial, SphereGeometry, Vector3} from "three";
 import {arrangeEpicDetectors} from "../utils/epic-geometry-arranger";
 import {PAINTERS} from "../firebird/tokens";
 import {BatchStatusService} from "../firebird/batch-status.service";
+import {PainterConfigService} from "./painter-config.service";
+import {ConfigProperty} from "../utils/config-property";
 
 
 @Injectable({
@@ -71,6 +73,12 @@ export class EventDisplayService {
   /** Batch/headless readiness flags (window.firebird) — loads report through it. */
   private batchStatus = inject(BatchStatusService);
 
+  /** Painter selection + knob keys (painters.byPiece.*) over ConfigService. */
+  private painterConfig = inject(PainterConfigService);
+
+  /** Painter config keys already subscribed for live updates. */
+  private watchedPainterKeys = new Set<string>();
+
   /** Resolves when all lazily-registered painters (withLazyPainter) are in. */
   private paintersReady: Promise<void>;
 
@@ -87,14 +95,34 @@ export class EventDisplayService {
     const lazyPainterLoads: Promise<void>[] = [];
     for (const registration of inject(PAINTERS, {optional: true}) ?? []) {
       if (registration.painterClass) {
-        this.painter.registerPainter(registration.forGroupType, registration.painterClass);
+        this.painter.registerPainter(registration.forPieceType, registration.painterClass);
       } else if (registration.load) {
         lazyPainterLoads.push(registration.load().then(painterClass => {
-          this.painter.registerPainter(registration.forGroupType, painterClass);
+          this.painter.registerPainter(registration.forPieceType, painterClass);
         }));
       }
     }
     this.paintersReady = Promise.all(lazyPainterLoads).then(() => {});
+
+    // Painter selection and knobs are config keys (painters.byPiece.*):
+    // - the selector resolves which registered painter draws each piece,
+    //   watching the key so a selection change rebuilds the painters;
+    // - the config view hands the knob values to the painter instance,
+    //   watching each knob so changes restyle live (onConfigChanged).
+    this.painter.painterSelector = (piece, candidates) => {
+      if (candidates.length === 0) return undefined;
+      const property = this.painterConfig.selectionProperty(piece.name, candidates);
+      this.watchPainterKey(property, () => this.rebuildPainters());
+      return this.painterConfig.resolveSelection(piece.name, candidates);
+    };
+    this.painter.configViewProvider = (piece, painterClass) => {
+      for (const property of this.painterConfig.knobProperties(piece, painterClass).values()) {
+        this.watchPainterKey(property, () => {
+          this.painter.painterFor(piece.name)?.onConfigChanged();
+        });
+      }
+      return this.painterConfig.buildConfigView(piece, painterClass);
+    };
 
     // Connect painter to its scene place
     this.painter.setThreeSceneParent(this.three.sceneEvent);
@@ -151,6 +179,38 @@ export class EventDisplayService {
     })
   }
 
+
+  /** The painter drawing the named piece of the current event, or null. */
+  painterFor(pieceName: string) {
+    return this.painter.painterFor(pieceName);
+  }
+
+  /** Painter classes registered for a piece type (panel dropdown options). */
+  paintersForType(pieceType: string) {
+    return this.painter.paintersForType(pieceType);
+  }
+
+  /** Subscribes once per config key; runs `action` on every later change. */
+  private watchPainterKey(property: ConfigProperty<any>, action: () => void): void {
+    if (this.watchedPainterKeys.has(property.key)) return;
+    this.watchedPainterKeys.add(property.key);
+    let isFirst = true; // changes$ replays the current value on subscribe
+    property.changes$.subscribe(() => {
+      if (isFirst) {
+        isFirst = false;
+        return;
+      }
+      action();
+    });
+  }
+
+  /** Rebuilds the piece painters of the current entry (painter selection changed). */
+  private rebuildPainters(): void {
+    const entry = this.painter.getEntry();
+    if (!entry) return;
+    this.painter.setEntry(entry);
+    this.painter.paint(this.eventTime());
+  }
 
   // ****************************************************
   // *************** TIME *******************************

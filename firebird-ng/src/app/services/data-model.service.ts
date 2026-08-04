@@ -94,6 +94,10 @@ export class DataModelService {
       // Build DataExchange structure
       let data = DataExchange.fromDexObj(dexData);
       console.log(data);
+
+      // Publish to the entries signal, same as loadDexData — the event
+      // selector and show-event command read events from here
+      this.adoptLoadedEvents(data);
       return data;
 
     } catch (error) {
@@ -104,6 +108,14 @@ export class DataModelService {
       // No final cleanup needed right now
     }
     return null;
+  }
+
+  /** Publishes loaded events to the signals and selects the first one. */
+  private adoptLoadedEvents(data: DataExchange): void {
+    this.entries.set(data.events);
+    if (this.entries().length > 0) {
+      this.setNextEntry();   // Sets entry to be the first in this case
+    }
   }
 
   /**
@@ -161,17 +173,8 @@ export class DataModelService {
       let data = DataExchange.fromDexObj(dexData);
       console.log(data);
 
-      // Extract entry names/IDs for debugging or usage
-      const entryNames = data.events.map((entry) => entry.id);
-
       // Update service signals with the newly loaded entries
-      if (dexData) {
-        this.entries.set(data.events);
-        if (this.entries().length > 0) {
-          // If at least one entry is present, automatically set the first as current
-          this.setNextEntry();   // Sets entry to be the first in this case
-        }
-      }
+      this.adoptLoadedEvents(data);
 
       return data;
 

@@ -18,16 +18,16 @@ import {
   provideAppInitializer,
 } from '@angular/core';
 // Deep import (initial-bundle file): the core barrel re-exports painter
-// modules that pull three.js; event-group.ts is plain TS.
-import { registerEventGroupFactory } from '@firebird/core/model/event-group';
+// modules that pull three.js; event-piece.ts is plain TS.
+import { registerEventPieceFactory } from '@firebird/core/model/event-piece';
 import type {
-  ComponentPainterConstructor,
-  EventGroupFactory,
+  PiecePainterConstructor,
+  EventPieceFactory,
   GeometryDataLoader,
   EventDataLoader,
 } from '@firebird/core';
 import {
-  EVENT_GROUP_FACTORIES,
+  EVENT_PIECE_FACTORIES,
   GEOMETRY_LOADERS,
   EVENT_LOADERS,
   LAZY_THREE_EXTENSIONS,
@@ -73,27 +73,27 @@ export function firebirdFeatures(
 }
 
 /** Registers an event group factory (DEX type decoder). */
-export function withEventGroup(factory: Type<EventGroupFactory>): FirebirdFeature {
-  return { providers: [{ provide: EVENT_GROUP_FACTORIES, useClass: factory, multi: true }] };
+export function withEventPiece(factory: Type<EventPieceFactory>): FirebirdFeature {
+  return { providers: [{ provide: EVENT_PIECE_FACTORIES, useClass: factory, multi: true }] };
 }
 
 /**
  * Registers a painter for a group type. The type comes from
- * `opts.forGroupType`, or from the painter's static `meta.forGroupTypes`.
+ * `opts.forPieceType`, or from the painter's static `meta.forPieceTypes`.
  */
 export function withPainter(
-  painterClass: ComponentPainterConstructor,
-  opts?: { forGroupType?: string },
+  painterClass: PiecePainterConstructor,
+  opts?: { forPieceType?: string },
 ): FirebirdFeature {
-  const meta = (painterClass as unknown as { meta?: { forGroupTypes?: string[] } }).meta;
-  const types = opts?.forGroupType ? [opts.forGroupType] : (meta?.forGroupTypes ?? []);
+  const meta = (painterClass as unknown as { meta?: { forPieceTypes?: string[] } }).meta;
+  const types = opts?.forPieceType ? [opts.forPieceType] : (meta?.forPieceTypes ?? []);
   if (types.length === 0) {
-    throw new Error(`withPainter(${painterClass.name}): pass { forGroupType } or declare static meta.forGroupTypes`);
+    throw new Error(`withPainter(${painterClass.name}): pass { forPieceType } or declare static meta.forPieceTypes`);
   }
   return {
-    providers: types.map(forGroupType => ({
+    providers: types.map(forPieceType => ({
       provide: PAINTERS,
-      useValue: { forGroupType, painterClass },
+      useValue: { forPieceType, painterClass },
       multi: true,
     })),
   };
@@ -105,10 +105,10 @@ export function withPainter(
  * before the first event is painted.
  */
 export function withLazyPainter(
-  forGroupType: string,
-  load: () => Promise<ComponentPainterConstructor>,
+  forPieceType: string,
+  load: () => Promise<PiecePainterConstructor>,
 ): FirebirdFeature {
-  return { providers: [{ provide: PAINTERS, useValue: { forGroupType, load }, multi: true }] };
+  return { providers: [{ provide: PAINTERS, useValue: { forPieceType, load }, multi: true }] };
 }
 
 /** Registers a rendering-machinery extension (instantiated through DI). */
@@ -175,7 +175,7 @@ export function withDefaultGeometry(url: string): FirebirdFeature {
  *     provideFirebird(
  *       withFirebirdBuiltins(),
  *       withUrlAlias('epic://', 'https://eic.github.io/epic/artifacts/'),
- *       withPainter(MyPainter, { forGroupType: 'my.Type' }),
+ *       withPainter(MyPainter, { forPieceType: 'my.Type' }),
  *     ),
  *   ],
  * };
@@ -183,7 +183,7 @@ export function withDefaultGeometry(url: string): FirebirdFeature {
  *
  * Startup order inside the app initializer:
  * 1. Register DI-contributed event group factories into the core registry
- *    (workers call core's `initGroupFactories()` explicitly instead — core stays DI-free).
+ *    (workers call core's `initPieceFactories()` explicitly instead — core stays DI-free).
  * 2. Apply feature-contributed config defaults.
  * 3. Load the server config (server tier of the config precedence).
  * 4. Parse URL query parameters: `config.*` session overrides and startup
@@ -199,14 +199,14 @@ export function provideFirebird(
     provideAppInitializer(async () => {
       // All injections happen BEFORE any await — the injection context does
       // not survive across async boundaries (NG0203).
-      const factories = inject(EVENT_GROUP_FACTORIES, { optional: true }) ?? [];
+      const factories = inject(EVENT_PIECE_FACTORIES, { optional: true }) ?? [];
       const configService = inject(ConfigService);
       const defaultsList = inject(CONFIG_DEFAULTS, { optional: true }) ?? [];
       const serverConfig = inject(ServerConfigService);
       const urlStartup = inject(UrlStartupService);
 
       for (const factory of factories) {
-        registerEventGroupFactory(factory);
+        registerEventPieceFactory(factory);
       }
       for (const defaults of defaultsList) {
         configService.applyFeatureDefaults(defaults);

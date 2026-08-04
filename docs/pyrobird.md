@@ -126,6 +126,22 @@ has access to files in your current directory or a directory provided via `--wor
   the file `/home/username/datafiles/filename.root` will be opened
 
 
+## File conversion and DEX utilities
+
+```bash
+pyrobird convert input.edm4hep.root                  # EDM4hep/EDM4eic ROOT -> DEX v1 JSON
+pyrobird convert input.root -o out.firebird.json -e 0-4
+pyrobird merge file1.firebird.json file2.firebird.json -o merged.firebird.json
+pyrobird smooth input.firebird.json -o smoothed.firebird.json
+pyrobird upgrade old.firebird.json new.firebird.json # one-shot DEX 0.04 -> 1.0
+pyrobird upgrade events.firebird.zip                 # .zip in/out works too
+```
+
+`pyrobird upgrade` converts files written by older Firebird tools (DEX 0.04)
+to the current format (see [Data Format](/dex)); the current frontend loads
+version 1.0 only. Unknown custom group types fail the conversion with a list
+of what was found; add `--skip-unknown` to drop them and continue.
+
 ## Batch Screenshots
 
 The `pyrobird screenshot` command allows you to capture screenshots of Firebird visualizations in batch mode. This is particularly useful for:

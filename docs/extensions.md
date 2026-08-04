@@ -37,7 +37,7 @@ installable package (an "experiment pack"), compose them:
 ```ts
 export function withMyExperiment(): FirebirdFeature {
   return firebirdFeatures(
-    withEventGroup(MyDataFactory),
+    withEventPiece(MyDataFactory),
     withLazyPainter('my.DataType', () => import('./my.painter').then(m => m.MyPainter)),
     withDefaultGeometry('https://my.host/detector.root'),
   );
@@ -48,8 +48,8 @@ export function withMyExperiment(): FirebirdFeature {
 
 | Function | Registers | Notes |
 |----------|-----------|-------|
-| `withEventGroup(FactoryClass)` | A decoder that turns a DEX group of your `type` into a model object | The model class is plain TypeScript (worker-safe, no Angular) |
-| `withPainter(PainterClass, {forGroupType})` | A painter: turns model data into three.js objects | Eager — lands in the initial bundle |
+| `withEventPiece(FactoryClass)` | A decoder that turns a DEX piece of your `type` into a model object | The model class is plain TypeScript (worker-safe, no Angular) |
+| `withPainter(PainterClass, {forPieceType})` | A painter: turns model data into three.js objects | Eager — lands in the initial bundle |
 | `withLazyPainter(type, () => import(...))` | Same, loaded on demand | Preferred: painter code pulls three.js material code |
 | `withThreeExtension(ExtClass)` | A rendering-machinery hook (see lifecycle below) | Instantiated through DI; `inject()` works in the constructor |
 | `withLazyThreeExtension(() => import(...))` | Same, loaded after the scene is up, in its own chunk | For heavy extensions (VR, big overlays) |
@@ -62,8 +62,8 @@ export function withMyExperiment(): FirebirdFeature {
 
 ## Painter or ThreeExtension?
 
-If the code turns **data** (event groups, field maps, geometry) into visuals,
-it is a **painter** — time-aware, per-group, selected by the data's type.
+If the code turns **data** (event pieces, field maps, geometry) into visuals,
+it is a **painter** — time-aware, per-piece, selected by the data's type.
 If it hooks the **machinery** — scene lifecycle, frame loop, input, UI — it is
 a **ThreeExtension**. Magnetic field lines that visualize a field map are a
 painter; a hover-probe that raycasts under the mouse is an extension.
@@ -102,6 +102,77 @@ export class HoverInfoExtension implements ThreeExtension {
   loop switches to render-on-demand.
 - Do not start your own requestAnimationFrame chain against the scene; use
   `onFrame`.
+
+## Render views and overlays
+
+The display renders through view objects over one shared scene. `SceneContext`
+exposes them: `ctx.views` (live list), `ctx.mainView` (the display page's
+camera and controls), `ctx.addView(options)` and `ctx.removeView(view)`.
+Each view owns its DOM container, perspective+orthographic cameras, orbit
+controls, picking, and its viewport rectangle inside the shared canvas — the
+quad-projection page (`/split-window`) is four views over the same scene.
+
+To draw on top of a view (annotations, axes, widgets), attach an overlay:
+
+```ts
+onSceneInit(ctx: SceneContext): void {
+  this.overlay = {
+    render: (view) => { /* after the view's scene render, every frame */ },
+    onViewResize: (view) => { /* view size/position changed */ },
+    onViewContainerChange: (view) => { /* view moved to another element */ },
+    dispose: () => { /* view or overlay removed */ },
+  };
+  ctx.mainView.addOverlay(this.overlay);
+}
+```
+
+An overlay that renders its own viewport must set and restore the renderer's
+viewport/scissor itself; `view.viewportRect` gives the view's rectangle with
+the y coordinate already matching the active backend (WebGPU counts from the
+top-left, WebGL from the bottom-left). The camera navigation cube is the
+built-in consumer of this seam.
+
+## Painter selection and knobs
+
+A painter describes itself with a static `meta` block — its id, the piece
+types it paints, and its configurable knobs:
+
+```ts
+export class MyPainter extends EventPiecePainter {
+  static meta: PainterMeta = {
+    id: 'my-painter',
+    forPieceTypes: ['my.DataType'],
+    label: 'My painter',
+    configs: [
+      { key: 'colorMode', default: 'pid', options: ['pid', 'momentum', 'solid'], label: 'Coloring' },
+      { key: 'lineWidth', default: 30, min: 1, max: 300, label: 'Line width [mm]' },
+    ],
+  };
+
+  override onConfigChanged(): void {
+    // restyle existing objects from this.config.value(...) — live, no rebuild
+  }
+}
+```
+
+- When several painters register for one piece type, the config key
+  `painters.byPiece.<pieceName>` selects which one draws each piece — from
+  the painter panel, a server config file, or a `?config.` URL parameter.
+- Knobs are config keys too (`painters.byPiece.<pieceName>.<key>`), so the
+  same precedence and scriptability apply. The right-pane painter panel
+  auto-renders the knobs from the meta; there is no per-painter UI code.
+- In contexts without a config system (web workers, scripts), painters run on
+  the declared defaults.
+
+## Selection and the model tree
+
+The left pane's physics tree lists the event's pieces and entities from the
+data model. Clicking an entity highlights its objects in 3D; clicking an
+object in 3D reveals and highlights the entity in the tree. To join in,
+painters call `registerEntityObject(index, object)` while building, and piece
+types override `entityLabel(i)` / `entityRefs(i)` so entities get meaningful
+labels and navigable reference links (a ring links to its trajectory, for
+example).
 
 ## Settings for extensions
 

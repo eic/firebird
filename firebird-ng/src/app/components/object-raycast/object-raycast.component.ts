@@ -6,6 +6,7 @@ import {MatIcon} from "@angular/material/icon";
 import {MatIconButton} from "@angular/material/button";
 import {Subscription} from "rxjs";
 import {ThreeService} from "../../services/three.service";
+import {SelectionService} from "../../services/selection.service";
 import * as THREE from 'three';
 import {MatTooltip} from "@angular/material/tooltip";
 import {NgIf} from "@angular/common";
@@ -54,7 +55,10 @@ export class ObjectRaycastComponent implements OnDestroy {
   constructor(
     private dialog: MatDialog,
     private three: ThreeService,
-    private viewContainerRef: ViewContainerRef
+    private viewContainerRef: ViewContainerRef,
+    /** Selection is resolved by SelectionService (3D pick → entity), not by
+     * this component's own picking; the overlay shows the shared selection. */
+    public selection: SelectionService,
   ) {}
 
   /* ------------ UI ------------- */

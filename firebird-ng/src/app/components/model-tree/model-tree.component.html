@@ -1,0 +1,36 @@
+<div class="model-tree">
+  @if (pieces().length === 0) {
+    <div class="empty-note">No event loaded</div>
+  }
+  @for (piece of pieces(); track piece.name) {
+    <div class="piece-row"
+         [class.selected]="selection.selectedPiece() === piece.name"
+         (click)="togglePiece(piece.name); selection.selectPiece(piece.name)">
+      <mat-icon class="expand-icon">{{ isExpanded(piece.name) ? 'expand_more' : 'chevron_right' }}</mat-icon>
+      <span class="piece-name">{{ piece.name }}</span>
+      <span class="piece-meta">{{ piece.type }} · {{ piece.entityCount }}</span>
+    </div>
+    @if (isExpanded(piece.name)) {
+      @for (node of entityNodes(piece); track node.index) {
+        <div class="entity-row"
+             [id]="rowId(piece.name, node.index)"
+             [class.selected]="selection.isSelected(piece.name, node.index)"
+             (click)="selectEntity(piece.name, node.index)">
+          <span class="entity-label">{{ node.label }}</span>
+          @for (ref of node.refs; track ref.column) {
+            <button class="ref-link"
+                    title="Go to {{ ref.targetPiece }} #{{ ref.targetIndex }}"
+                    (click)="followRef(ref); $event.stopPropagation()">
+              {{ ref.column }} → #{{ ref.targetIndex }}
+            </button>
+          }
+        </div>
+      }
+      @if (piece.entityCount > limitFor(piece.name)) {
+        <button class="more-button" (click)="showMore(piece.name)">
+          … {{ piece.entityCount - limitFor(piece.name) }} more
+        </button>
+      }
+    }
+  }
+</div>

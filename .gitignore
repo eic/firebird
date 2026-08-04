@@ -166,3 +166,5 @@ docs/tutorials/.$01_04_inputs.drawio.bkp
 space/
 
 __pycache__/
+
+.angular/

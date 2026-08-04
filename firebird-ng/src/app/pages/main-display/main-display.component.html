@@ -33,7 +33,17 @@
 
 
   <div left-pane>
-    <app-scene-tree (configureItem)="onConfigureItemClicked($event)"></app-scene-tree>
+    <!-- Physics view (model tree) is the default; the scene tree stays as
+         the debug view of the raw three.js hierarchy. -->
+    <div class="tree-mode-switch">
+      <button [class.active]="leftTreeMode() === 'model'" (click)="leftTreeMode.set('model')">Physics</button>
+      <button [class.active]="leftTreeMode() === 'scene'" (click)="leftTreeMode.set('scene')">Scene</button>
+    </div>
+    @if (leftTreeMode() === 'model') {
+      <app-model-tree></app-model-tree>
+    } @else {
+      <app-scene-tree (configureItem)="onConfigureItemClicked($event)"></app-scene-tree>
+    }
   </div>
 
   <div central-pane #centralContainer class="central-fill">
@@ -45,7 +55,9 @@
   <div id="lilgui"></div>
 
   <div right-pane>
-    <app-painter-config-page *ngIf="rightPaneOpen()"></app-painter-config-page>
+    @if (rightPaneOpen()) {
+      <app-painter-config-panel></app-painter-config-panel>
+    }
   </div>
 
   <div footer-left class="hide-on-mobile">

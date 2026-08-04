@@ -220,7 +220,16 @@ captures reliable:
         &event=N                        select event index after load
         &config.<key>=<value>           session-scoped config override (not persisted)
         &cmd=type:arg;type:arg          generic command list, e.g. cmd=camera-preset:farforward
+/split-window?config.geometry.selectedGeometry=<url>&config.events.dexEventsSource=<url>
+                                        quad view (4 projections); loads via config keys,
+                                        does not run ?dex/?cmd startup commands
 ```
+
+Quad-view headless proof: `space/phase4/capture_quad.py <out.png> [base_url]`
+waits for 4 views + geometry + event data, forces explicit per-view renders,
+captures. With heavy geometry under software GL the first stable frame can
+take minutes (4 scene renders per frame) — the script uses a 300 s screenshot
+timeout.
 
 `pyrobird screenshot --commands "..."` and `pyrobird serve --startup-commands
 "..."` feed the same command grammar through the server config.
@@ -255,9 +264,14 @@ captures reliable:
 - **Dev server serves stale code after tsconfig/node_modules changes**:
   restart it (vite cache).
 - **Initial bundle jumps by hundreds of kB**: something referenced from
-  `app.config.ts` statically imports the display stack (three.js). Use
-  `withLazyPainter` / dynamic imports; check with `ng build --stats-json`.
-  Healthy initial total is ~430 kB.
+  `app.config.ts` statically imports the display stack (three.js), or a
+  route component is imported statically in `app.routes.ts` (all routes must
+  use `loadComponent`). Use `withLazyPainter` / dynamic imports; check with
+  `ng build --stats-json`. Healthy initial total is ~177 kB. Trap: a module
+  statically imported by an initial-bundle file carries its FULL used-export
+  set into main — Material's inputs import `@angular/forms/signals`, so an
+  eagerly-routed Material form page drags Signal Forms machinery into main
+  the moment any lazy page starts using it.
 - **`localStorage is not defined` in specs**: the test jsdom lacks it; a
   polyfill lives in `firebird-ng/src/test-setup.ts` — do not remove it.
 - **Every console line appears twice in captured logs**: artifact of CDP-based
@@ -287,13 +301,31 @@ It uses a **service-oriented architecture** with clear separation of concerns:
 
 #### Core Services Layer
 
-- **three.service.ts** (~1200 lines) - Central Three.js orchestration
+- **three.service.ts** (~1100 lines) - Central Three.js orchestration
   - `WebGPURenderer` (from `three/webgpu`) with automatic WebGL2 fallback; `init()` is **async**
-  - Scene setup (cameras, lights, rendering loop)
-  - Raycasting for object selection
-  - BVH (Bounding Volume Hierarchy) acceleration for performance
-  - Clipping via nested `ClippingGroup`s and measurement tools
-  - Frame callbacks for animations
+  - ONE Scene, ONE render loop, frame callbacks, clipping (scene-global), BVH
+  - Renders through **RenderView** objects (`services/render-view.ts`):
+    views[0] is the main view; `addView()/removeView()` add projections over
+    the same scene. ThreeService's `camera/controls/setCameraUp/...` API
+    delegates to the main view.
+
+- **render-view.ts** (~450 lines, plain TS class) - One view of the shared scene
+  - Owns: DOM container, perspective+orthographic cameras, OrbitControls
+    (listening on the container), viewport/scissor rect in the shared canvas
+    (backend-aware: WebGPU viewport origin is top-left, WebGL bottom-left),
+    per-view raycasting (`raycasterFromEvent`), overlays (`addOverlay`)
+  - Per-view camera.up handling: `setCameraUp` resyncs OrbitControls' captured
+    quaternion; pole-proximity re-anchoring keeps orbiting past the poles
+  - The navigation cube is a `ViewOverlay` on the main view; the quad view
+    (`/split-window`) is 4 views (perspective + top/front/right orthographic)
+    over one scene, rendered with scissors on one canvas
+
+- **selection.service.ts** - The one selection: `(pieceName, entityIndex)`
+  - 3D click → painter-stamped object resolves to its entity (`entityRefOf`);
+    tree/panel selection → painter highlights its objects
+    (`highlightEntity`/`unhighlightEntity`); painters own the entity↔object
+    arrays (id ≡ index), registered via `registerEntityObject`
+  - `selectedPiece` drives the right-pane painter panel
 
 - **event-display.service.ts** - High-level event visualization
   - Data loading (geometry, events, ROOT files)
@@ -315,12 +347,13 @@ It uses a **service-oriented architecture** with clear separation of concerns:
 The event model, DEX io, and painters live in **`packages/firebird-core`** (plain
 worker-safe TS, imported as `@firebird/core`), not in the Angular app.
 
-The **event group factory pattern** enables extensibility:
+The **event piece factory pattern** enables extensibility (a "piece" is one
+named block of typed entity data inside an event):
 
-- `EventGroup` - Abstract base class for all event components
-- `BoxHitGroup` - Tracker hits (3D boxes with energy/time)
-- `PointTrajectoryGroup` - Particle trajectories (polylines)
-- Core has NO import side effects: workers/scripts call `initGroupFactories()`
+- `EventPiece` - Abstract base class for all event components
+- `BoxHitPiece` - Tracker hits (columnar: `pos`/`dim`/`time`/`edep` typed arrays)
+- `PointTrajectoryPiece` - Particle trajectories (param columns + ragged points)
+- Core has NO import side effects: workers/scripts call `initPieceFactories()`
   and `registerDefaultPainters(painter)` explicitly; the Angular app registers
   the same classes through DI (see the extension system below).
 
@@ -338,7 +371,7 @@ provideFirebird(
 )
 ```
 
-Registration surfaces: `withEventGroup` (DEX decoders), `withPainter` /
+Registration surfaces: `withEventPiece` (DEX decoders), `withPainter` /
 `withLazyPainter` (data → visuals), `withThreeExtension` /
 `withLazyThreeExtension` (machinery hooks: onSceneInit after async init,
 onFrame, onEventLoaded, onDispose), `withGeometryLoader` / `withEventLoader`
@@ -375,6 +408,23 @@ Painters render event data to Three.js objects using **time-aware rendering**
 
 The system uses Angular signals for reactive time updates that automatically propagate through the painter hierarchy.
 
+**Painter meta and knobs:** painters declare `static meta: PainterMeta` —
+id, `forPieceTypes`, and `configs` (knob descriptors). Painter SELECTION is
+the config key `painters.byPiece.<pieceName>` (default: first registered for
+the type); knobs live under `painters.byPiece.<pieceName>.<key>` — both obey
+normal config precedence, so yaml/URL/panel all reach them. Instances read
+knobs through `this.config` (a `PainterConfigView` — plain signals, worker
+safe) and restyle live in `onConfigChanged()`. The right-pane painter panel
+(`components/painter-config-panel/`) auto-renders from the meta using Signal
+Forms (`@angular/forms/signals`) + Angular Aria listboxes. Note: `[formField]`
+rejects min/max bindings on the same input, so the range slider binds manually.
+
+**Model tree (left pane, default):** `components/model-tree/` walks the data
+model (Event → pieces → entities), never the three scene; the scene tree stays
+as the switchable debug view. Pieces describe entities via `entityCount`,
+`entityLabel(i)`, `entityRefs(i)` (base-class methods on `EventPiece` that
+custom types override); refs render as navigable links.
+
 ### Backend Architecture (pyrobird)
 
 Flask server with three main API endpoints:
@@ -409,29 +459,36 @@ Three Geant4 actions for trajectory extraction:
 
 ## Firebird Data Exchange Format (DEX)
 
-Standardized JSON format for event data interoperability:
+Standardized JSON format for event data interoperability. Version **1.0**,
+columnar: an event holds `pieces`, each piece holds parallel `columns` arrays
+where entity id equals array index. JSON Schema: `dex-schema/`; full format
+docs: `docs/dex.md`.
 
-```json
+```jsonc
 {
   "type": "firebird-dex-json",
-  "version": "0.04",
-  "origin": {
-    "source": "filename.root",
-    "by": "Pyrobird"
-  },
+  "version": "1.0",
+  "origin": { "source": "filename.root", "by": "Pyrobird" },
   "events": [
     {
       "id": "event_0",
-      "groups": [
+      "pieces": [
         {
-          "name": "BarrelHits",
-          "type": "BoxTrackerHit",
-          "hits": [{"pos": [x,y,z], "dim": [dx,dy,dz], "t": [t,dt], "ed": [e,de]}]
+          "name": "BarrelHits", "type": "BoxHit", "version": "1.0",
+          "count": 2,
+          "columns": {                       // parallel arrays, hit id == index
+            "pos": [x0,y0,z0, x1,y1,z1],     // flat xyz per hit
+            "dim": [...], "time": [t0,t1], "edep": [e0,e1]
+            // writers declare only the columns they have (sim omits errors)
+          }
         },
         {
-          "name": "CentralTracks",
-          "type": "TrackerLinePointTrajectory",
-          "lines": [{"points": [[x,y,z,t,dx,dy,dz,dt], ...], "params": [...]}]
+          "name": "CentralTracks", "type": "PointTrajectory", "version": "1.0",
+          "count": 1,
+          "columns": { "theta": [...], "pdg": [...] },   // one value per trajectory
+          "refs": { "particle": "McParticles" },         // optional: index columns into other pieces, -1 = null
+          "pointColumns": ["x","y","z","t","dx","dy","dz","dt"],
+          "points": [ [[x,y,z,t,...], ...] ]             // ragged: one point list per trajectory
         }
       ]
     }
@@ -440,15 +497,17 @@ Standardized JSON format for event data interoperability:
 ```
 
 **Key types:**
-- `BoxTrackerHit` - 3D box hits with energy/time information
-- `TrackerLinePointTrajectory` - Polyline trajectories with metadata
-- Extensible via factory pattern for custom component types
+- `BoxHit` - 3D box hits with energy/time information
+- `PointTrajectory` - Polyline trajectories with per-name parameter columns
+- Extensible via factory pattern for custom piece types (namespaced, e.g. `example.CherenkovRing`)
+
+Old 0.04 files do not load; convert once with `pyrobird upgrade in.firebird.json out.firebird.json` (.zip works).
 
 ## Important Architectural Patterns
 
 ### 1. Factory Pattern for Event Components
 
-Component factories enable DEX deserialization without modifying core code. In the Angular app, register new types with `withEventGroup(MyFactory)` inside `provideFirebird(...)`; in workers/scripts (no DI), call `registerEventGroupFactory()` explicitly. There are no import-side-effect registrations.
+Piece factories enable DEX deserialization without modifying core code. In the Angular app, register new types with `withEventPiece(MyFactory)` inside `provideFirebird(...)`; in workers/scripts (no DI), call `registerEventPieceFactory()` explicitly. There are no import-side-effect registrations.
 
 ### 2. Time-Aware Rendering
 
@@ -586,12 +645,13 @@ pyrobird convert simulation.edm4hep.root output.json
 
 Follow `packages/firebird-example-extension/` (the working template):
 
-1. Create a class extending `EventGroup` with `toDexObject()` and a factory
-   implementing `EventGroupFactory` (plain TS, worker-safe)
-2. Create a painter extending `EventGroupPainter` (avoid `LineLoop` —
+1. Create a class extending `EventPiece` with `toDexObject()` and a factory
+   implementing `EventPieceFactory` (plain TS, worker-safe; adopt columns as
+   typed arrays, check lengths against `count` loudly)
+2. Create a painter extending `EventPiecePainter` (avoid `LineLoop` —
    WebGPURenderer silently skips it; use closed `Line` strips)
-3. Export a feature: `withMyType() = firebirdFeatures(withEventGroup(MyFactory),
-   withLazyPainter(MyGroup.type, () => import('./my.painter').then(m => m.MyPainter)))`
+3. Export a feature: `withMyType() = firebirdFeatures(withEventPiece(MyFactory),
+   withLazyPainter(MyPiece.type, () => import('./my.painter').then(m => m.MyPainter)))`
 4. Add the feature to `provideFirebird(...)` in `app.config.ts`
 5. Update pyrobird conversion if needed
 

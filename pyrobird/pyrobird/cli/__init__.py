@@ -12,6 +12,7 @@ from pyrobird.cli.convert import convert as convert_cmd
 from pyrobird.cli.screenshot import screenshot as screenshot_cmd
 from pyrobird.cli.merge import merge as merge_cmd
 from pyrobird.cli.smooth import smooth as smooth_cmd
+from pyrobird.cli.upgrade import upgrade as upgrade_cmd
 
 
 def setup_logging(is_verbose):
@@ -60,3 +61,4 @@ cli_app.add_command(convert_cmd)
 cli_app.add_command(screenshot_cmd)
 cli_app.add_command(merge_cmd)
 cli_app.add_command(smooth_cmd)
+cli_app.add_command(upgrade_cmd)

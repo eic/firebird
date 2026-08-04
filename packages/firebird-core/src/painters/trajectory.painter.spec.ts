@@ -1,10 +1,10 @@
 // trajectory.painter.spec.ts
 import { TrajectoryPainter } from './trajectory.painter';
-import { PointTrajectoryGroup } from '../model/point-trajectory.group';
+import { PointTrajectoryPiece } from '../model/point-trajectory.piece';
 
 describe('TrajectoryPainter', () => {
     let mockParentNode: any;
-    let trajectoryGroup: PointTrajectoryGroup;
+    let trajectoryPiece: PointTrajectoryPiece;
 
     beforeEach(() => {
         // Create a simple mock parent node
@@ -13,48 +13,47 @@ describe('TrajectoryPainter', () => {
             remove: vi.fn()
         };
 
-        // Create a real PointTrajectoryGroup with test data
-        trajectoryGroup = new PointTrajectoryGroup('TestTrajectories');
-        trajectoryGroup.paramColumns = ['pdg', 'charge'];
-        trajectoryGroup.pointColumns = ['x', 'y', 'z', 't'];
-
-        // Add test trajectories
-        trajectoryGroup.trajectories = [
-            {
-                // Track 1: t=10 to t=20
-                points: [[0, 0, 0, 10], [10, 0, 0, 20]],
-                params: [11, -1] // electron
-            },
-            {
-                // Track 2: t=15 to t=35
-                points: [[0, 10, 0, 15], [10, 10, 0, 25], [20, 10, 0, 35]],
-                params: [22, 0] // gamma
-            },
-            {
-                // Track 3: t=40 to t=50
-                points: [[0, 20, 0, 40], [10, 20, 0, 50]],
-                params: [2212, 1] // proton
-            }
+        // Create a real PointTrajectoryPiece with columnar test data
+        trajectoryPiece = new PointTrajectoryPiece('TestTrajectories');
+        trajectoryPiece.pointColumns = ['x', 'y', 'z', 't'];
+        trajectoryPiece.count = 3;
+        // trajectory id == index in every column
+        trajectoryPiece.columns = {
+            pdg: [11, 22, 2212],      // electron, gamma, proton
+            charge: [-1, 0, 1],
+        };
+        trajectoryPiece.points = [
+            // Track 1: t=10 to t=20
+            [[0, 0, 0, 10], [10, 0, 0, 20]],
+            // Track 2: t=15 to t=35
+            [[0, 10, 0, 15], [10, 10, 0, 25], [20, 10, 0, 35]],
+            // Track 3: t=40 to t=50
+            [[0, 20, 0, 40], [10, 20, 0, 50]],
         ];
     });
 
     describe('initLines', () => {
-        // This test will use a custom subclass to inspect what initLines does
         it('should create the correct number of trajectories', () => {
 
             // Create a test instance
-            const testPainter = new TrajectoryPainter(mockParentNode, trajectoryGroup);
+            const testPainter = new TrajectoryPainter(mockParentNode, trajectoryPiece);
 
             // Check if trajectories were created correctly
             expect(testPainter.trajectories.length).toBe(3);
             expect(mockParentNode.add).toHaveBeenCalled();
+        });
+
+        it('should attach per-trajectory params read from the columns', () => {
+            const testPainter = new TrajectoryPainter(mockParentNode, trajectoryPiece);
+            expect(testPainter.trajectories[0].params['pdg']).toBe(11);
+            expect(testPainter.trajectories[2].params['charge']).toBe(1);
         });
     });
 
     describe('paintNoTime', () => {
         it('should make all trajectories fully visible', () => {
             // Create a painter instance with real initialization
-            const testPainter = new TrajectoryPainter(mockParentNode, trajectoryGroup);
+            const testPainter = new TrajectoryPainter(mockParentNode, trajectoryPiece);
 
             // Reset visibility and instance count for testing
             testPainter.trajectories.forEach(track => {
@@ -79,7 +78,7 @@ describe('TrajectoryPainter', () => {
 
         beforeEach(() => {
             // Create a real painter instance
-            painter = new TrajectoryPainter(mockParentNode, trajectoryGroup);
+            painter = new TrajectoryPainter(mockParentNode, trajectoryPiece);
 
             // Verify we have trajectories initialized
             expect(painter.trajectories.length).toBeGreaterThan(0);

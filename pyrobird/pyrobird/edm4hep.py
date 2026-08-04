@@ -4,6 +4,8 @@ from collections import defaultdict
 
 import awkward as ak
 
+from pyrobird.dex import make_dex, PIECE_VERSION
+
 """
 Converts EDM4hep simulation output (ddsim / DD4hep) to Firebird DEX format.
 
@@ -146,23 +148,27 @@ def sim_tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None
         logger.warning(f"No eDep/EDep field found in '{branch_name}', writing 0 energy deposit")
         edep = [0.0] * len(pos_x)
 
-    hits = []
-    for i in range(len(pos_x)):
-        hit = {
-            "pos": [pos_x[i], pos_y[i], pos_z[i]],
-            "dim": [box_size, box_size, box_size],
-            "t": [time[i], 0],
-            "ed": [edep[i], 0]
-        }
-        hits.append(hit)
+    # Columnar piece: parallel arrays, hit id == array index; pos is flat xyz triplets.
+    # Sim data carries no errors, so the error columns are omitted entirely.
+    count = len(pos_x)
+    pos = []
+    for i in range(count):
+        pos.extend((pos_x[i], pos_y[i], pos_z[i]))
 
-    group = {
+    piece = {
         "name": branch_name,
         "type": "BoxHit",
+        "version": PIECE_VERSION,
         "origin": {"type": "edm4hep::SimTrackerHitData", "name": branch_name},
-        "hits": hits,
+        "count": count,
+        "columns": {
+            "pos": pos,
+            "dim": [box_size] * (3 * count),
+            "time": time,
+            "edep": edep,
+        },
     }
-    return group
+    return piece
 
 
 def sim_hits_to_trajectories(tree, hit_branch_names, entry_start, entry_stop=None,
@@ -190,14 +196,18 @@ def sim_hits_to_trajectories(tree, hit_branch_names, entry_start, entry_stop=Non
     if entry_stop is None:
         entry_stop = entry_start + 1
 
+    # Columnar piece: track parameters are per-name columns (trajectory id == index),
+    # the ragged per-trajectory point lists stay nested under "points"
     result = {
         "name": "McHitTrajectories",
         "type": "PointTrajectory",
+        "version": PIECE_VERSION,
         "origin": {"type": ["edm4hep::SimTrackerHitData", "edm4hep::MCParticleData"],
                    "collections": list(hit_branch_names)},
-        "paramColumns": ["pdg", "charge", "px", "py", "pz", "p", "mc_index"],
+        "count": 0,
+        "columns": {},
         "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"],
-        "trajectories": []
+        "points": []
     }
 
     if mc_branch not in tree.keys(recursive=False):
@@ -255,7 +265,8 @@ def sim_hits_to_trajectories(tree, hit_branch_names, entry_start, entry_stop=Non
                 continue
             hits_by_particle[index].append((time[i], pos_x[i], pos_y[i], pos_z[i]))
 
-    trajectories = []
+    columns = {name: [] for name in ("pdg", "charge", "px", "py", "pz", "p", "mc_index")}
+    all_points = []
     for index in sorted(hits_by_particle.keys()):
         particle_hits = hits_by_particle[index]
         if len(particle_hits) < min_hits:
@@ -274,13 +285,18 @@ def sim_hits_to_trajectories(tree, hit_branch_names, entry_start, entry_stop=Non
             points.append([mc_end_x[index], mc_end_y[index], mc_end_z[index], last_time, 0, 0, 0, 0])
 
         momentum = math.sqrt(mc_mom_x[index] ** 2 + mc_mom_y[index] ** 2 + mc_mom_z[index] ** 2)
-        params = [mc_pdg[index], mc_charge[index],
-                  mc_mom_x[index], mc_mom_y[index], mc_mom_z[index],
-                  momentum, index]
+        columns["pdg"].append(mc_pdg[index])
+        columns["charge"].append(mc_charge[index])
+        columns["px"].append(mc_mom_x[index])
+        columns["py"].append(mc_mom_y[index])
+        columns["pz"].append(mc_mom_z[index])
+        columns["p"].append(momentum)
+        columns["mc_index"].append(index)
+        all_points.append(points)
 
-        trajectories.append({"points": points, "params": params})
-
-    result["trajectories"] = trajectories
+    result["count"] = len(all_points)
+    result["columns"] = columns if all_points else {}
+    result["points"] = all_points
     return result
 
 
@@ -302,23 +318,23 @@ def edm4hep_entry_to_dict(tree, entry_index, custom_name=None, collections=None,
     # Hits:
     if "tracker_hits" in collections:
         for branch_name in hit_branches:
-            group = sim_tracker_hits_to_box_hits(tree, branch_name, entry_index, box_size=box_size)
+            piece = sim_tracker_hits_to_box_hits(tree, branch_name, entry_index, box_size=box_size)
             # Collections empty in this event are skipped
-            if group["hits"]:
-                components.append(group)
+            if piece["count"] > 0:
+                components.append(piece)
 
     # MC-truth trajectories connecting the hits
     if "mc_trajectories" in collections:
         trajectory_branches = [b for b in hit_branches if b not in trajectory_excluded_collections]
-        trajectory_group = sim_hits_to_trajectories(tree, trajectory_branches, entry_index,
+        trajectory_piece = sim_hits_to_trajectories(tree, trajectory_branches, entry_index,
                                                     prepend_vertex=prepend_vertex,
                                                     append_endpoint=append_endpoint)
-        if trajectory_group["trajectories"]:
-            components.append(trajectory_group)
+        if trajectory_piece["count"] > 0:
+            components.append(trajectory_piece)
 
     entry = {
         "id": custom_name if custom_name else entry_index,
-        "groups": components
+        "pieces": components
     }
 
     return entry
@@ -339,11 +355,4 @@ def edm4hep_to_dex_dict(tree, event_ids, origin_info=None, collections=None,
             box_size=box_size, prepend_vertex=prepend_vertex, append_endpoint=append_endpoint,
             trajectory_excluded_collections=trajectory_excluded_collections))
 
-    result = {
-        "type": "firebird-dex-json",
-        "version": "0.04",
-        "origin": origin_info,
-        "events": event_data
-    }
-
-    return result
+    return make_dex(event_data, origin_info)

@@ -275,38 +275,82 @@ namespace dd4hep::sim {
 
     // ── JSON builders ──────────────────────────────────────────────────
 
-    /// Produce the per-trajectory parameter array (JSON).
-    std::string buildParamsJson(G4VTrajectory* trj) {
-      const auto mom = trj->GetInitialMomentum();
-      const double p = std::max(mom.mag(), 1e-10);  // avoid /0
+    /// One trajectory's parameters, collected into per-column vectors below.
+    /// DEX v1 stores parameters as parallel column arrays (trajectory id ==
+    /// array index), so the writer accumulates columns instead of per-track
+    /// parameter tuples.
+    struct ParamColumns {
+      std::vector<int>         pdg;
+      std::vector<std::string> type;      // particle name, string column
+      std::vector<double>      charge, px, py, pz, vx, vy, vz, theta, phi, qOverP, locA, locB, time;
 
-      const int    pdg    = trj->GetPDGEncoding();
-      const double charge = trj->GetCharge();
-      const double theta  = mom.theta();
-      const double phi    = mom.phi();
-      const double qOverP = charge / (p / CLHEP::GeV);
+      void add(G4VTrajectory* trj, double startTimeNs) {
+        const auto mom = trj->GetInitialMomentum();
+        const double p = std::max(mom.mag(), 1e-10);  // avoid /0
 
-      double vx = 0, vy = 0, vz = 0, time = 0;
-      if (trj->GetPointEntries() > 0) {
-        auto* pt0 = trj->GetPoint(0);
-        const auto pos = pt0->GetPosition();
-        vx = pos.x() / CLHEP::mm;
-        vy = pos.y() / CLHEP::mm;
-        vz = pos.z() / CLHEP::mm;
+        pdg.push_back(trj->GetPDGEncoding());
+        type.push_back(trj->GetParticleName());
+        charge.push_back(sanitise(trj->GetCharge()));
+        px.push_back(sanitise(mom.x() / CLHEP::MeV));
+        py.push_back(sanitise(mom.y() / CLHEP::MeV));
+        pz.push_back(sanitise(mom.z() / CLHEP::MeV));
 
-        double t = extractTimeFromPoint(pt0, 0, trj);
-        time = (t >= 0 ? t : 0.0) / CLHEP::ns;
+        double vertexX = 0, vertexY = 0, vertexZ = 0;
+        if (trj->GetPointEntries() > 0) {
+          const auto pos = trj->GetPoint(0)->GetPosition();
+          vertexX = pos.x() / CLHEP::mm;
+          vertexY = pos.y() / CLHEP::mm;
+          vertexZ = pos.z() / CLHEP::mm;
+        }
+        vx.push_back(sanitise(vertexX));
+        vy.push_back(sanitise(vertexY));
+        vz.push_back(sanitise(vertexZ));
+        theta.push_back(sanitise(mom.theta()));
+        phi.push_back(sanitise(mom.phi()));
+        qOverP.push_back(sanitise(trj->GetCharge() / (p / CLHEP::GeV)));
+        locA.push_back(0.0);
+        locB.push_back(0.0);
+        time.push_back(sanitise(startTimeNs));
       }
 
-      // pdg, type, charge, px, py, pz, vx, vy, vz, theta, phi, q/p, locA, locB, t
-      return fmt::format("[{},\"{}\",{},{},{},{},{},{},{},{},{},{},{},{},{}]",
-                         pdg, trj->GetParticleName(), sanitise(charge),
-                         sanitise(mom.x() / CLHEP::MeV),
-                         sanitise(mom.y() / CLHEP::MeV),
-                         sanitise(mom.z() / CLHEP::MeV),
-                         sanitise(vx), sanitise(vy), sanitise(vz),
-                         sanitise(theta), sanitise(phi), sanitise(qOverP),
-                         0.0, 0.0, sanitise(time));
+      size_t count() const { return pdg.size(); }
+
+      static std::string numbersJson(const std::vector<double>& values) {
+        std::string out = "[";
+        for (size_t i = 0; i < values.size(); ++i) {
+          if (i) out += ',';
+          out += fmt::format("{}", values[i]);
+        }
+        return out + "]";
+      }
+
+      /// The "columns" object of the DEX piece.
+      std::string toJson() const {
+        std::string pdgJson = "[";
+        std::string typeJson = "[";
+        for (size_t i = 0; i < pdg.size(); ++i) {
+          if (i) { pdgJson += ','; typeJson += ','; }
+          pdgJson += fmt::format("{}", pdg[i]);
+          typeJson += fmt::format("\"{}\"", type[i]);
+        }
+        pdgJson += ']';
+        typeJson += ']';
+
+        return fmt::format(
+          R"({{"pdg":{},"type":{},"charge":{},"px":{},"py":{},"pz":{},"vx":{},"vy":{},"vz":{},"theta":{},"phi":{},"q_over_p":{},"loc_a":{},"loc_b":{},"time":{}}})",
+          pdgJson, typeJson, numbersJson(charge),
+          numbersJson(px), numbersJson(py), numbersJson(pz),
+          numbersJson(vx), numbersJson(vy), numbersJson(vz),
+          numbersJson(theta), numbersJson(phi), numbersJson(qOverP),
+          numbersJson(locA), numbersJson(locB), numbersJson(time));
+      }
+    };
+
+    /// Start time [ns] of a trajectory (first point), 0 when unavailable.
+    double trajectoryStartTimeNs(G4VTrajectory* trj) {
+      if (trj->GetPointEntries() == 0) return 0.0;
+      double t = extractTimeFromPoint(trj->GetPoint(0), 0, trj);
+      return (t >= 0 ? t : 0.0) / CLHEP::ns;
     }
 
     /// Produce the points array (JSON) for one trajectory.
@@ -362,7 +406,7 @@ namespace dd4hep::sim {
       }
 
       out << fmt::format(
-        R"({{"type":"firebird-dex-json","version":"0.04",)"
+        R"({{"type":"firebird-dex-json","version":"1.0",)"
         R"("origin":{{"file":"{}","entries_count":{}}},)"
         R"("events":[)", m_outputFile, m_entries.size());
 
@@ -473,17 +517,12 @@ namespace dd4hep::sim {
 
       int nFiltered = 0, nSaved = 0;
 
-      // ── build event JSON ───────────────────────────────────────────
-      std::string ev = fmt::format(
-        R"({{"id":{},"groups":[{{"name":"{}","type":"PointTrajectory",)"
-        R"("origin":{{"type":["G4VTrajectory","G4VTrajectoryPoint"]}},)"
-        R"("paramColumns":["pdg","type","charge","px","py","pz",)"
-        R"("vx","vy","vz","theta","phi","q_over_p","loc_a","loc_b","time"],)"
-        R"("pointColumns":["x","y","z","t","aux"],)"
-        R"("trajectories":[)",
-        event->GetEventID(), m_componentName);
-
-      bool first = true;
+      // ── collect columnar piece data ────────────────────────────────
+      // DEX v1: parameters are parallel column arrays, the ragged point
+      // lists stay nested under "points" — one list per trajectory, same
+      // index as the parameter columns.
+      ParamColumns columns;
+      std::string pointsJson = "[";
 
       for (int i = 0; i < nTrajectories; ++i) {
         auto* trj = (*container)[i];
@@ -496,17 +535,23 @@ namespace dd4hep::sim {
         auto points = buildPointsJson(trj);
         if (points == "[]") { ++nFiltered; continue; }
 
-        if (!first) ev += ',';
-        first = false;
-
-        ev += fmt::format(R"({{"points":{},"params":{}}})", points, buildParamsJson(trj));
+        if (nSaved > 0) pointsJson += ',';
+        pointsJson += points;
+        columns.add(trj, trajectoryStartTimeNs(trj));
         ++nSaved;
       }
+      pointsJson += ']';
 
-      ev += "]}]}";
-
-      if (nSaved > 0)
+      if (nSaved > 0) {
+        std::string ev = fmt::format(
+          R"({{"id":{},"pieces":[{{"name":"{}","type":"PointTrajectory","version":"1.0",)"
+          R"("origin":{{"type":["G4VTrajectory","G4VTrajectoryPoint"]}},)"
+          R"("count":{},"columns":{},)"
+          R"("pointColumns":["x","y","z","t","aux"],)"
+          R"("points":{}}}]}})",
+          event->GetEventID(), m_componentName, nSaved, columns.toJson(), pointsJson);
         m_entries.push_back(std::move(ev));
+      }
 
       m_filteredTrajectories += nFiltered;
       m_savedTrajectories    += nSaved;

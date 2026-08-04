@@ -5,36 +5,36 @@ import {
   MeshBasicMaterial,
   Color,
 } from 'three';
-import { EventGroupPainter } from './event-group-painter';
-import { BoxHitGroup } from '../model/box-hit.group';
-import { EventGroup } from '../model/event-group';
+import { EventPiecePainter } from './event-piece-painter';
+import { BoxHitPiece } from '../model/box-hit.piece';
+import { EventPiece } from '../model/event-piece';
 
 /**
- * Alternative Painter class for rendering BoxHitGroup using individual Meshes.
+ * Alternative Painter class for rendering BoxHitPiece using individual Meshes.
  */
-export class BoxHitSimplePainter extends EventGroupPainter {
+export class BoxHitSimplePainter extends EventPiecePainter {
   /** Array of Mesh objects representing hits */
   private hitMeshes: Mesh[] = [];
 
-  private boxComponent: BoxHitGroup;
+  private boxPiece: BoxHitPiece;
 
   /**
    * Constructs a new BoxHitAlternativePainter.
    *
    * @param parentNode - The Object3D node where the hit meshes will be added.
-   * @param component - The BoxHitGroup containing the hit data.
+   * @param piece - The BoxHitPiece containing the hit data.
    */
-  constructor(parentNode: Object3D, component: EventGroup) {
-    super(parentNode, component);
+  constructor(parentNode: Object3D, piece: EventPiece) {
+    super(parentNode, piece);
 
     // Runtime type check
-    if (component.type !== BoxHitGroup.type) {
-      throw new Error('Invalid component type for BoxHitAlternativePainter');
+    if (piece.type !== BoxHitPiece.type) {
+      throw new Error('Invalid piece type for BoxHitAlternativePainter');
     }
 
-    this.boxComponent = component as BoxHitGroup;
+    this.boxPiece = piece as BoxHitPiece;
 
-    // Create a bright random color for this component collection
+    // Create a bright random color for this piece collection
     const hue = Math.random();
     const randomColor = new Color().setHSL(hue, 1, 0.5); // Bright color
 
@@ -47,29 +47,33 @@ export class BoxHitSimplePainter extends EventGroupPainter {
 
   /**
    * Creates Mesh instances for each hit and adds them to the parent node.
+   * Reads the piece columns directly: hit i lives at pos[3i..3i+2].
    *
    * @param material - The material to use for the hit meshes.
    */
   private createHitMeshes(material: MeshBasicMaterial): void {
-    for (const hit of this.boxComponent.hits) {
+    const piece = this.boxPiece;
+    for (let i = 0; i < piece.count; i++) {
       // Create geometry for the box
-      const geometry = new BoxGeometry(10,10,10
-        // hit.dimensions[0],
-        // hit.dimensions[1],
-        // hit.dimensions[2]
-      );
+      const geometry = new BoxGeometry(10, 10, 10);
 
       // Create the mesh
       const mesh = new Mesh(geometry, material);
 
       // Set position
-      mesh.position.set(hit.position[0], hit.position[1], hit.position[2]);
+      mesh.position.set(piece.pos[3 * i], piece.pos[3 * i + 1], piece.pos[3 * i + 2]);
 
-      // Store the hit time
-      mesh.userData['appearanceTime'] = hit.time[0];
+      // Store the hit time (0 = always visible when no time column)
+      mesh.userData['appearanceTime'] = piece.time !== null ? piece.time[i] : 0;
 
       // Initially make the mesh invisible
       mesh.visible = false;
+
+      // Selection mapping: hit id ≡ index. The material is shared by all
+      // hits, so the highlight scales the mesh instead of recoloring it.
+      this.registerEntityObject(i, mesh);
+      mesh.userData['highlightFunction'] = () => mesh.scale.setScalar(2.5);
+      mesh.userData['unhighlightFunction'] = () => mesh.scale.setScalar(1);
 
       // Add the mesh to the parent node and to the array
       this.parentNode.add(mesh);

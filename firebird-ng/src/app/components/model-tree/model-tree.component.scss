@@ -1,0 +1,94 @@
+.model-tree {
+  font-size: 13px;
+  padding: 4px 0;
+  user-select: none;
+}
+
+.empty-note {
+  padding: 12px;
+  opacity: 0.6;
+}
+
+.piece-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(128, 128, 128, 0.15);
+  }
+}
+
+.expand-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.piece-name {
+  font-weight: 600;
+}
+
+.piece-meta {
+  margin-left: auto;
+  opacity: 0.6;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.entity-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 34px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(128, 128, 128, 0.15);
+  }
+
+  &.selected {
+    background: rgba(75, 172, 132, 0.25);
+  }
+}
+
+.entity-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ref-link {
+  border: none;
+  background: rgba(75, 172, 132, 0.15);
+  color: inherit;
+  border-radius: 8px;
+  font-size: 11px;
+  padding: 1px 8px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(75, 172, 132, 0.4);
+  }
+}
+
+.more-button {
+  display: block;
+  border: none;
+  background: none;
+  color: inherit;
+  opacity: 0.7;
+  padding: 3px 8px 3px 34px;
+  cursor: pointer;
+  font-size: 12px;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.piece-row.selected {
+  background: rgba(75, 172, 132, 0.15);
+}

@@ -66,7 +66,7 @@ def apply_smoothing(dex_data: Dict[str, Any], step_time: float) -> Dict[str, Any
     Parameters
     ----------
     dex_data : dict
-        The loaded DEX data containing events and groups
+        The loaded DEX data containing events and pieces
     step_time : float
         Time step in nanoseconds for interpolation
 
@@ -79,11 +79,9 @@ def apply_smoothing(dex_data: Dict[str, Any], step_time: float) -> Dict[str, Any
     total_after = 0
     trajectories_processed = 0
 
-    for event_id, group_name, trajectory in iterate_trajectories(dex_data):
-        points = trajectory.get("points", [])
+    for piece, trajectory_index, points in iterate_trajectories(dex_data):
         original_count = len(points)
         total_before += original_count
-
 
         # Step 1: Sort points by time (time is at index 3) - ASCENDING order
         points.sort(key=lambda p: p[3] if len(p) > 3 else 0)
@@ -94,7 +92,7 @@ def apply_smoothing(dex_data: Dict[str, Any], step_time: float) -> Dict[str, Any
         # Step 3: Add time-based interpolation
         points = add_time_interpolation(points, step_time)
 
-        trajectory["points"] = points
+        piece["points"][trajectory_index] = points
         total_after += len(points)
         trajectories_processed += 1
 
@@ -113,29 +111,21 @@ def iterate_trajectories(dex_data: Dict[str, Any]):
     Parameters
     ----------
     dex_data : dict
-        The loaded DEX data containing events and groups
+        The loaded DEX data containing events and pieces
 
     Yields
     ------
     tuple
-        (event_id, group_name, trajectory) for each trajectory found
+        (piece, trajectory_index, points) for each trajectory found; points is
+        the point-tuple list of piece["points"][trajectory_index]
     """
     events = dex_data.get("events", [])
 
-    for event_idx, event in enumerate(events):
-        event_id = event.get("id", f"event_{event_idx}")
-        groups = event.get("groups", [])
-
-        for group in groups:
-            group_name = group.get("name", "unnamed")
-            group_type = group.get("type", "unknown")
-
-            # Check if this is a trajectory group
-            if group_type == "PointTrajectory":
-                trajectories = group.get("trajectories", [])
-
-                for trajectory in trajectories:
-                    yield event_id, group_name, trajectory
+    for event in events:
+        for piece in event.get("pieces", []):
+            if piece.get("type") == "PointTrajectory":
+                for trajectory_index, points in enumerate(piece.get("points", [])):
+                    yield piece, trajectory_index, points
 
 
 def is_point_in_volumes(point: List[float], volumes: List[List[float]]) -> bool:
@@ -271,21 +261,17 @@ def process_trajectories(dex_data: Dict[str, Any]) -> None:
     Parameters
     ----------
     dex_data : dict
-        The loaded DEX data containing events and groups
+        The loaded DEX data containing events and pieces
     """
     total_trajectories = 0
     total_points = 0
 
-    for traj_idx, (event_id, group_name, trajectory) in enumerate(iterate_trajectories(dex_data)):
-        points = trajectory.get("points", [])
+    for traj_idx, (piece, trajectory_index, points) in enumerate(iterate_trajectories(dex_data)):
         num_points = len(points)
 
         total_trajectories += 1
         total_points += num_points
 
-        logger.verbose(
-            f"Event '{event_id}', Group '{group_name}', "
-            f"Trajectory {traj_idx}: {num_points} points"
-        )
+        logger.debug(f"Piece '{piece.get('name')}', trajectory {trajectory_index}: {num_points} points")
 
     logger.info(f"\nTotal: {total_trajectories} trajectories with {total_points} points")

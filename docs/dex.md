@@ -1,300 +1,231 @@
-# Firebird Data Exchange format
+# Firebird Data Exchange format (DEX)
 
-Data exchange is both JSON and Javascript object compatible.
+DEX is the JSON format Firebird reads and writes. Version: **1.0**.
+The machine-readable JSON Schema lives in the repository at
+[`dex-schema/firebird-dex-v1.schema.json`](https://github.com/eic/firebird/tree/main/dex-schema);
+this page explains the format with annotated examples.
 
-It starts with (in this order) `"type":"firebird-dex-json"`.  
-Then goes `version` and `origin` - any custom origin info and a list of entries. They are described below.
+Files produced by older Firebird tools (version 0.04) do not load in the
+current frontend. Convert them once:
 
-Here `event` may correspond to `event` in HENP data, while has more technical definition: 
-data container for a time labeled data for particular time interval to be displayed.  
+```bash
+pyrobird upgrade old.firebird.json new.firebird.json   # .zip works too
+```
+
+## Design in one paragraph
+
+An event is a list of **pieces** — named blocks of typed data (a hits
+collection, a set of trajectories, an extension's custom type). Piece entity
+data is **columnar**: parallel arrays where the entity id IS the array index.
+Columns are declared by the writer, so a simulation file carries only
+simulation columns and a reconstruction file adds its own — readers bind to
+declared columns, never to a fixed set. **References between pieces are index
+columns**: a `refs` declaration names the target piece, and looking up a
+reference is a plain array access (`-1` means "no reference"). Data that is
+ragged per entity (trajectory point lists) stays nested.
+
+## Top level
 
 ```json
 {
-  "type":"firebird-dex-json",
-  "version": "0.04",
-  "origin": {"any custom origin info": "here"},
-  "events": [
-    event0, event1, ...
-  ]
+  "type": "firebird-dex-json",
+  "version": "1.0",
+  "origin": { "any custom origin info": "here" },
+  "events": [ ... ]
 }
 ```
 
-- **version** - is JSON schema version
-- **origin** - designed for any general custom info such as original file name,
-  timestamp, simulation software version, etc.
-- **events** - list of entries/events. The format is below.
+- **type** — always `"firebird-dex-json"`.
+- **version** — the DEX format version, `"1.0"`.
+- **origin** — free-form provenance: original file name, timestamp,
+  producing software, etc.
+- **events** — the list of events. An `event` may correspond to a physics
+  event, but the technical definition is broader: a container of time-labeled
+  data for one displayed time interval.
 
-## Event format
-
-
-```
-+------------------------------------------------+
-| Event                                          |
-|                                                |
-|   +--------------------+                       |
-|   |   Group            |                       |
-|   |    ~name type~     |                       |
-|   +--------------------+                       |
-|                                                |
-|   +-------------------+                        |
-|   |      hits a       |        +----------+    |
-|   +-------------------+        |  hits b  |    |
-|                                +----------+    |
-|   +----------------------------------+         |
-|   |      trajectories c              |         |
-|   +----------------------------------+         |
-|                                                |
-+------------------------------------------------+
-
-0------------------------------------------------> time
-
-
-```
-
-Event is an object with `id` and `groups` properties.
-By design groups represent different hits, tracks, vertices, collections, etc.
-While can be any arbitary data, that will be further rendered by the frontend.
+## Event
 
 ```json
 {
-  "id": "Event number or string - unique name",
-  "groups": [
-    
-   ...
-    
-  ]
+  "id": "event_0",
+  "pieces": [ ... ]
 }
 ```
 
-Requrired fields are `id` and `groups`. `id` must be unique across events in FDEX file. 
+- **id** — string or integer, unique within the file.
+- **pieces** — the data blocks of this event.
 
+## Piece
 
-## Group format
+Every piece has the same base structure:
 
-- `name`: unique string id
-- `type`: string with type (depends on what group will be used in the frontend to render it)
-- `origin`: optional dictionary with origin data info such as type of origin, 
-   e.g. "edm4eic::TrackerHitData", EDM collection name and so on
-
-- all other fields defined by "type"
-
-So far example of exchange format looks like (only required fields are used here):
-
-```json
+```jsonc
 {
-  "version": "0.04",
-  "events": [
-    {
-      "id": "event 0",
-      "groups": [
-        {
-          "name": "BarrelVertexHits",
-          "type": "BoxHit",
-          "origin": {"type": "edm4eic::TrackerHitData", "name": "MPGDBarrelRecHits"},
-           ...,
-        },
-        ...
-      ]
-    },
-    ...
-  ]
+  "name": "BarrelHits",          // unique within the event; refs target this
+  "type": "BoxHit",              // selects the reader/painter
+  "version": "1.0",              // schema version of this piece type
+  "origin": { "type": "edm4eic::TrackerHitData" },   // optional provenance
+  "count": 2,                    // number of entities
+  "columns": {                   // parallel arrays, entity id == index
+    "pos":  [1, 2, 3,  4, 5, 6], // a vector column: flat x,y,z per entity
+    "time": [4.1, 5.0]           // a scalar column: one value per entity
+  },
+  "refs": { }                    // optional, see References
 }
 ```
 
-## BoxHit group
+Column rules:
 
-```json
+- A scalar column holds exactly `count` values.
+- A fixed-width vector column (a position, a momentum) holds a whole multiple
+  of `count` values, flattened: entity `i` of a 3-wide column `pos` is
+  `pos[3i], pos[3i+1], pos[3i+2]`.
+- A column is homogeneous: numbers for measured values and references,
+  strings for labels (like particle names).
+- Writers declare only the columns they have. Omitting a column is the
+  correct way to say "this data does not exist here" — there are no
+  zero-filled placeholder columns.
+
+Piece `type` names: core types use bare names (`BoxHit`, `PointTrajectory`);
+extension types use a namespace prefix (`example.CherenkovRing`,
+`myexperiment.RpcHit`) to prevent collisions.
+
+## References
+
+A reference is an ordinary integer column plus a `refs` declaration naming
+the piece it points into. The value is the entity index in the target piece;
+`-1` means "no reference". Readers resolve references by array lookup —
+there are no id maps.
+
+```jsonc
 {
-  "pos": [1, 2, 3],
-  "dim": [10, 10, 1],
-  "t": [4, 1],
-  "ed": [0.001, 0.0001]
+  "name": "Rings", "type": "example.CherenkovRing", "version": "1.0",
+  "count": 3,
+  "columns": {
+    "center": [0,0,800, 0,0,1600, 0,0,-900],
+    "radius": [300, 700, 500],
+    "track":  [0, 0, -1]           // rings 0 and 1 belong to trajectory 0
+  },
+  "refs": { "track": "CentralTracks" }
 }
 ```
-Hit has
 
-- "pos": position [mm]  (x, y, z),
-- "dim": box dimensions [mm] (dx, dy, dz),
-- "t": time information [ns] (time, err_time),
-- "ed": energy deposit with error [GeV] (edep, err_edep)
+The writer guarantees, and the reader checks, that entity id equals array
+index — so an index stored today is valid forever within its file.
 
-Example
+## BoxHit piece
+
+Box-shaped hits: tracker hits, calorimeter cells.
+
+| Column | Width | Unit | Required | Meaning |
+|-----------|-------|------|----------|--------------------------------|
+| `pos` | 3 | mm | yes | box center x, y, z |
+| `dim` | 3 | mm | yes | box size dx, dy, dz |
+| `time` | 1 | ns | no | hit time (drives time animation) |
+| `timeError` | 1 | ns | no | time uncertainty |
+| `edep` | 1 | GeV | no | energy deposit |
+| `edepError` | 1 | GeV | no | energy deposit uncertainty |
 
 ```json
-"groups": [
 {
   "name": "MPGDBarrelRecHits",
   "type": "BoxHit",
-  "origin": {"type": "edm4eic::TrackerHitData", "name": "MPGDBarrelRecHits"}
-  "hits": [
-    {
-      "pos": [-567, -84.1, -908],
-      "dim": [0.05,  0.04,  0.0],
-      "t":   [-10.6, 10.0],
-      "ed":  [2e-06,  0.0]
-    },
-    {
-      "pos": [368, -424, 406],
-      "dim": [0.05, 0.045, 0.0],
-      "t":   [33, 10],
-      "ed":  [9e-06, 0.0]
-    },
-...]
-}]
+  "version": "1.0",
+  "origin": { "type": "edm4eic::TrackerHitData", "name": "MPGDBarrelRecHits" },
+  "count": 2,
+  "columns": {
+    "pos":       [-567, -84.1, -908,   368, -424, 406],
+    "dim":       [0.05, 0.04, 0.0,     0.05, 0.045, 0.0],
+    "time":      [-10.6, 33],
+    "timeError": [10.0, 10.0],
+    "edep":      [2e-06, 9e-06],
+    "edepError": [0.0, 0.0]
+  }
+}
 ```
 
-## Trajectory group
+A simulation writer omits the error columns entirely (sim hits have no
+measured uncertainties).
 
-Trajectories that are built based on lines connecting points.
+## PointTrajectory piece
 
-```json
-      "groups": [
-        {
-          "name": "CentralTrackSegments",
-          "type": "PointTrajectory",
-          "origin": { "type": ["edm4eic::TrackPoint","edm4eic::TrackSegment"]}
-          "paramColumns": [".."], // Param columns should correspond to what is written in line/track params
-          "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"] 
-              
-          "trajectories": [
-              {
-                  points: [
-                  [x, y, z, t, dx, dy, dz, dt],
-                  [x, y, z, t, dx, dy, dz, dt],
-                  ... // all points go here
-                  ],
-                  params: [...]   // values to parameter columns here
-              },
-              ...  // other lines
-          ]
-        ...
-      ]
+Polyline trajectories: tracks, MC particle paths. Track parameters are
+ordinary columns — a reconstruction writer declares `theta`, `phi`,
+`q_over_p`; a simulation writer declares `pdg`, `charge`, momentum
+components. The per-trajectory point lists are ragged, so they stay nested
+under `points`, with the tuple layout declared by `pointColumns`:
+
+```jsonc
+{
+  "name": "CentralTrackSegments",
+  "type": "PointTrajectory",
+  "version": "1.0",
+  "origin": { "type": ["edm4eic::TrackPoint", "edm4eic::TrackSegmentData"] },
+  "count": 2,
+  "columns": {                     // trajectory id == index in every column
+    "theta":    [1.57, 0.4],
+    "phi":      [0.3, 2.9],
+    "q_over_p": [-0.5, 0.2]
+  },
+  "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"],
+  "points": [                      // points[i] belongs to trajectory i
+    [ [0,0,0,0, 0,0,0,0], [10,10,10,1, 0,0,0,0] ],
+    [ [0,0,0,2, 0,0,0,0], [20,20,20,5, 0,0,0,0] ]
+  ]
+}
 ```
 
-## HomoHisto2D group
+Positions are in mm, times in ns. When a `t` point column is present, the
+frontend animates partial tracks over time.
 
-Square 2D histogram where elements are of the same size and arranged over cols and plots.
-The value of each histogram bin can change in time
+## TypeScript event model
 
-** - 
+The frontend mirrors the format with typed classes in `@firebird/core`
+(plain TypeScript, worker-safe, no Angular):
 
+- **DataExchange** — the whole document; `DataExchange.fromDexObj(obj)`
+  parses (and rejects non-1.0 versions loudly), `toDexObject()` serializes.
+- **Event** — `id` plus `pieces: EventPiece[]`.
+- **EventPiece** — abstract base: `name`, `type`, `origin`, `toDexObject()`,
+  `timeRange`.
+- **EventPieceFactory** — decoder interface: `type` string plus
+  `fromDexObject(obj)`; factories register in a piece registry that the
+  Event parser consults by `type`.
 
+Piece classes adopt columns as typed arrays. For example `BoxHitPiece` holds
+`pos: Float32Array`, `dim: Float32Array`, and nullable `time`/`edep` columns
+— there are no per-hit objects, painters read the columns directly. Readers
+check column lengths against `count` and throw on malformed files.
 
+### Adding a new piece type
 
+Write a piece class extending `EventPiece`, a factory implementing
+`EventPieceFactory`, and a painter — then register them through the
+extension system:
 
-## TypeScript Event Model
+```ts
+provideFirebird(
+  withFirebirdBuiltins(),
+  withEventPiece(MyPieceFactory),
+  withLazyPainter(MyPiece.type, () => import('./my.painter').then(m => m.MyPainter)),
+)
+```
 
+The package `packages/firebird-example-extension` in the repository is a
+complete working template (custom piece type, painter, config key, sample
+file). See [Extension System](/extensions) for the registration API and
+bundle rules. In contexts without Angular (web workers, scripts), register
+factories explicitly with `registerEventPieceFactory()`.
 
-The Firebird Data Exchange model provides a structured way to serialize and deserialize
-event data. The model is implemented in TypeScript and designed to be extensible by users, 
-so they could add their own custom groups without modifying the core parsing logic.
+## Producers
 
-The implementation TypeScript classes mirror the data exchange format 
-and provide methods for serialization and deserialization.
+Three writers produce DEX and stay in sync with the schema:
 
-- **DataExchange** class - Represents the entire data exchange object.
-- **Event** class - Represents an individual event.
-- **EventGroup** abstract class - A base class representing a generic group. Described below.
+- **pyrobird** — `pyrobird convert` (EDM4eic and EDM4hep ROOT files) and the
+  server convert endpoint.
+- **dd4hep-plugin** — C++ Geant4 actions writing trajectories during
+  simulation.
+- **frontend** — `toDexObject()` serialization of the loaded event model.
 
-It Typescript Firebird Data Exchange often referenced as Dex (Data EXchange) or FDEX. E.g.
-`toDexObject`, `fromDexObject`. `DexObject` is a JS object, that if serialized to JSON
-would correspond a part of DataExchangeFormat. E.g. Dex BoxHit will have `pos`, `dim` etc.
-
-What is JSON DEX and Typescript data model difference? 
-
-In general JSON format is very close to object definition in JS => TS.
-But despite that, Firebird JSON format is just a data exchange layer and when deserialized from
-JSON is not designed to be a 100% a convenient to work with JS data structure.
-More over, it lacks some methods and abstractions, that our domain data-model should have,
-such as links between event model and three.js rendering tree objects.
-
-Summarizing:
-
-- Firebird Data Exchange - is JSON schema shaping data exchange between backend and frontend
-- DexObject - JSON parsed to JS object
-- TypeScript event model - Frontend set of classes mimicking DexObject structure but designed
-  to be convenient in terms of the frontend API
-
-
-### EventGroups machinery
-
-Different collection of objects such as hits, tracks, vertexes, etc.
-that firebird can work with are represented as various **group-s**.
-Each type derive from `EventGroup` and registered in a system.
-Then corresponding `Painter`-s classes know how to render/paint them, there are rules how
-to display them in tables, etc. Corresponding `Component`class can show GUI configuring configs, etc. 
-
-- **EventGroup**  An abstract class representing a generic group.
-- Contains common properties:
-  - `name`: Unique identifier.
-  - `type`: group type (used for determining the appropriate factory).
-  - `origin`: Optional string indicating the origin type.
-- Declares an abstract method `toDexObject()` that must be implemented by subclasses.
-
-- **EventGroupFactory Interface**: Defines a factory for creating `EventGroup`
-  instances from Dex objects - deserialized data.
-- **group Registry**: A mapping of group types to their corresponding factories.
-- Functions:
-  - `registergroupFactory(factory: EventGroupFactory)`: Registers a new factory.
-  - `getgroupFactory(type: string)`: Retrieves a factory based on the group type.
-
-
-## Extending the Model
-
-### Adding a New group Type
-
-To add a new group type, follow these steps:
-
-1. **Create a New group Class**: Extend `EventGroup` and implement the `toDexObject()` method.
-
-   ```typescript
-   export class Customgroup extends EventGroup {
-     static type = 'CustomType';
-     // Define additional properties
-
-     constructor(name: string, /* additional parameters */, origin?: string) {
-       super(name, Customgroup.type, origin);
-       // Initialize additional properties
-     }
-
-     toDexObject(): any {
-       return {
-         name: this.name,
-         type: this.type,
-         origin: {type: this.origin},
-         // Serialize additional properties
-       };
-     }
-   }
-   ```
-
-2. **Create a Factory for the group**: Implement `EventGroupFactory` for your group.
-
-   ```typescript
-   export class CustomgroupFactory implements EventGroupFactory {
-     type: string = Customgroup.type;
-
-     fromDexObject(obj: any): EventGroup {
-       const name = obj["name"];
-       // Extract additional properties
-       const origin = obj["origin"];
-
-       // Validate required fields
-       if (!name /* || missing other required fields */) {
-         throw new Error("Missing required fields in Customgroup");
-       }
-
-       return new Customgroup(name, /* additional parameters */, origin);
-     }
-   }
-   ```
-
-3. **Register the Factory**: Use the `registerGroupFactory()` function to register your group factory.
-
-   ```typescript
-   // Register the custom group factory
-   registergroupFactory(new CustomgroupFactory());
-   ```
-
-4. **Update JSON Parsing Logic**: No need to modify existing parsing logic. The registry will dynamically resolve the new group type.
-
+`pyrobird merge` combines DEX files piece-wise; `pyrobird smooth`
+post-processes trajectory points; `pyrobird upgrade` converts 0.04 files.

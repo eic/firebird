@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/eic/firebird/main/dex-schema/firebird-dex-v1.schema.json",
+  "title": "Firebird DEX v1",
+  "description": "Firebird Data Exchange format, version 1.0. An event is a list of pieces. A piece holds entity data as parallel column arrays (entity id equals array index). References between pieces are declared index columns. Ragged per-entity payloads (trajectory point lists) stay nested.",
+  "type": "object",
+  "required": ["type", "version", "events"],
+  "properties": {
+    "type": { "const": "firebird-dex-json" },
+    "version": { "const": "1.0" },
+    "origin": {
+      "description": "Free-form provenance: source file, producing program, timestamps.",
+      "type": ["object", "array", "string", "null"]
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" }
+    }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "required": ["id", "pieces"],
+      "properties": {
+        "id": {
+          "description": "Event identifier, unique within the file.",
+          "type": ["string", "integer"]
+        },
+        "pieces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/piece" }
+        }
+      }
+    },
+    "piece": {
+      "description": "One named block of typed entity data. `count` entities live in parallel `columns` arrays; a scalar column has `count` values, a fixed-width vector column (like an xyz position) has a whole multiple of `count` values, flattened. A writer declares only the columns it has (a simulation writer omits reconstruction columns); readers bind to declared columns, never to a fixed set.",
+      "type": "object",
+      "required": ["name", "type", "version", "count", "columns"],
+      "properties": {
+        "name": {
+          "description": "Piece identifier, unique within the event. `refs` in other pieces target this name.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Piece type, selects the reader/painter. Core types use bare names (BoxHit, PointTrajectory); extension types use a namespace prefix (example.CherenkovRing).",
+          "type": "string"
+        },
+        "version": {
+          "description": "Schema version of this piece type.",
+          "type": "string"
+        },
+        "origin": {
+          "description": "Free-form provenance, e.g. the original EDM4hep/EDM4eic collection type.",
+          "type": ["object", "array", "string", "null"]
+        },
+        "count": {
+          "description": "Number of entities. Every column length is `count` (scalar) or a whole multiple of `count` (flattened fixed-width vector).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "columns": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/column" }
+        },
+        "refs": {
+          "description": "Declares reference columns: column name -> target piece name (in the same event). Values in a reference column are entity indexes into the target piece; -1 means no reference.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "allOf": [
+        { "$ref": "#/$defs/boxHitPiece" },
+        { "$ref": "#/$defs/pointTrajectoryPiece" }
+      ]
+    },
+    "column": {
+      "description": "One parallel array. Homogeneous per column: numbers for measured values and references, strings for labels.",
+      "type": "array",
+      "items": { "type": ["number", "string", "null"] }
+    },
+    "boxHitPiece": {
+      "description": "BoxHit: box-shaped hits. Required columns: pos (flat x,y,z per hit, 3*count values, mm), dim (flat dx,dy,dz box size per hit, 3*count, mm). Optional: time (ns), timeError (ns), edep (GeV), edepError (GeV), each `count` values.",
+      "if": { "properties": { "type": { "const": "BoxHit" } }, "required": ["type"] },
+      "then": {
+        "properties": {
+          "columns": {
+            "type": "object",
+            "required": ["pos", "dim"],
+            "properties": {
+              "pos": { "$ref": "#/$defs/numberColumn" },
+              "dim": { "$ref": "#/$defs/numberColumn" },
+              "time": { "$ref": "#/$defs/numberColumn" },
+              "timeError": { "$ref": "#/$defs/numberColumn" },
+              "edep": { "$ref": "#/$defs/numberColumn" },
+              "edepError": { "$ref": "#/$defs/numberColumn" }
+            }
+          }
+        }
+      }
+    },
+    "pointTrajectoryPiece": {
+      "description": "PointTrajectory: polyline trajectories. Track parameters are ordinary columns (a writer declares the ones it has: theta, phi, qOverP for reconstruction; pdg, charge, momentum for simulation). The per-trajectory point lists are ragged, so they stay nested in `points`: one list of point tuples per entity, tuple layout declared by `pointColumns`.",
+      "if": { "properties": { "type": { "const": "PointTrajectory" } }, "required": ["type"] },
+      "then": {
+        "required": ["pointColumns", "points"],
+        "properties": {
+          "pointColumns": {
+            "description": "Meaning of each position in a point tuple, e.g. [\"x\",\"y\",\"z\",\"t\",\"dx\",\"dy\",\"dz\",\"dt\"].",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "points": {
+            "description": "Ragged: points[i] is the point-tuple list of entity i; length equals `count`.",
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "numberColumn": {
+      "type": "array",
+      "items": { "type": "number" }
+    }
+  }
+}

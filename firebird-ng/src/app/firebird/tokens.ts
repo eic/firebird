@@ -12,8 +12,8 @@
 
 import { InjectionToken } from '@angular/core';
 import type {
-  EventGroupFactory,
-  ComponentPainterConstructor,
+  EventPieceFactory,
+  PiecePainterConstructor,
   GeometryDataLoader,
   EventDataLoader,
 } from '@firebird/core';
@@ -21,14 +21,14 @@ import type { ThreeExtension, LazyThreeExtensionLoader } from './three-extension
 import type { CommandHandler } from './command-bus.service';
 
 /**
- * One painter registration: which group type it paints and with what class.
+ * One painter registration: which piece type it paints and with what class.
  * Either `painterClass` (eager) or `load` (lazy — keeps heavy painter code
  * out of the initial bundle; resolved before the first event is painted).
  */
 export interface PainterRegistration {
-  forGroupType: string;
-  painterClass?: ComponentPainterConstructor;
-  load?: () => Promise<ComponentPainterConstructor>;
+  forPieceType: string;
+  painterClass?: PiecePainterConstructor;
+  load?: () => Promise<PiecePainterConstructor>;
 }
 
 /** A protocol alias: `epic://file.root` -> `https://.../file.root`. */
@@ -37,9 +37,9 @@ export interface UrlAlias {
   base: string;
 }
 
-/** Event group factories (DEX type string -> model object decoder). */
-export const EVENT_GROUP_FACTORIES =
-  new InjectionToken<EventGroupFactory[]>('firebird.event-group-factories');
+/** Event piece factories (DEX type string -> model object decoder). */
+export const EVENT_PIECE_FACTORIES =
+  new InjectionToken<EventPieceFactory[]>('firebird.event-piece-factories');
 
 /** Painter registrations consumed by EventDisplayService's DataModelPainter. */
 export const PAINTERS =

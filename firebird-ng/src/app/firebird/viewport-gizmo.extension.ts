@@ -5,8 +5,10 @@
  * edge or corner to animate there, drag to orbit, roll the view with the
  * curved-arrow buttons, or return to the home view. Rendering, axis
  * conventions and the WebGPU handling live in `@dexvis/viewport-gizmo`
- * (dexvis/viewport-gizmo submodule); this file only binds it to Firebird's
- * scene, controls, frame loop, and command bus.
+ * (dexvis/viewport-gizmo submodule); this file binds it to Firebird's main
+ * RenderView as a view overlay: the overlay renders after the view's scene
+ * render and follows the view's camera, container and resizes. An extension
+ * that wants its own overlay uses the same seam (`view.addOverlay`).
  *
  * Loaded through `withLazyThreeExtension` — the gizmo pulls three.js code and
  * must stay out of the initial bundle.
@@ -16,26 +18,26 @@ import { Injectable, inject } from '@angular/core';
 import { ViewportGizmo } from '@dexvis/viewport-gizmo';
 import type { OrthographicCamera, PerspectiveCamera } from 'three';
 
-import { ThreeService } from '../services/three.service';
+import type { RenderView, ViewOverlay } from '../services/render-view';
 import { CommandBusService } from './command-bus.service';
 import type { SceneContext, ThreeExtension } from './three-extension';
 
 @Injectable()
 export class ViewportGizmoExtension implements ThreeExtension {
-  private threeService = inject(ThreeService);
   private commandBus = inject(CommandBusService);
 
   private gizmo?: ViewportGizmo;
+  private view?: RenderView;
+  private overlay?: ViewOverlay;
   private lastCamera?: PerspectiveCamera | OrthographicCamera;
-  private resizeObserver?: ResizeObserver;
 
   onSceneInit(ctx: SceneContext): void {
-    // Overlay positioning is relative to the canvas parent (#eventDisplay),
-    // which starts right below the toolbar.
-    const container = ctx.canvas.parentElement ?? undefined;
+    const view = ctx.mainView;
+    this.view = view;
 
-    this.gizmo = new ViewportGizmo(ctx.camera, ctx.renderer, {
-      container,
+    this.gizmo = new ViewportGizmo(view.camera, ctx.renderer, {
+      // Overlay positioning is relative to the view container.
+      container: view.container,
       size: 90,
       placement: 'top-right',
       offset: { top: 10, right: 20 },
@@ -55,8 +57,8 @@ export class ViewportGizmoExtension implements ThreeExtension {
       ny: { label: 'Bottom' },
     });
 
-    this.gizmo.attachControls(this.threeService.controls);
-    this.lastCamera = ctx.camera;
+    this.gizmo.attachControls(view.controls);
+    this.lastCamera = view.camera;
 
     // Home goes through the command bus like any other camera move, so the
     // same view is reachable from deep links and batch: camera-preset:home.
@@ -64,32 +66,41 @@ export class ViewportGizmoExtension implements ThreeExtension {
       void this.commandBus.dispatch({ type: 'camera-preset', name: 'home', source: 'ui' });
     });
 
-    // Frame callbacks run after the main scene render — the gizmo overlay
-    // must draw on top of it.
-    this.threeService.addFrameCallback(this.renderGizmo);
-
-    // Recompute the gizmo viewport when the canvas area changes (pane
-    // toggles, window resize) — orbiting is not the only thing that moves it.
-    this.resizeObserver = new ResizeObserver(() => this.gizmo?.update(false));
-    this.resizeObserver.observe(container ?? ctx.canvas);
+    // View overlay: renders after the view's scene render (the cube must
+    // draw on top) and re-anchors when the view is resized (pane toggles,
+    // window resizes — the view calls onViewResize from updateViewport).
+    this.overlay = {
+      render: () => this.renderGizmo(),
+      onViewResize: () => this.gizmo?.update(false),
+      // The cube follows the view across page layouts (single display,
+      // quad view): its overlay div moves into the view's new container.
+      onViewContainerChange: (changed) => this.gizmo?.setContainer(changed.container),
+      dispose: () => this.disposeGizmo(),
+    };
+    view.addOverlay(this.overlay);
   }
 
   onDispose(): void {
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = undefined;
-    if (this.gizmo) {
-      this.threeService.removeFrameCallback(this.renderGizmo);
-      this.gizmo.dispose();
-      this.gizmo = undefined;
+    if (this.view && this.overlay) {
+      this.view.removeOverlay(this.overlay);
     }
+    this.disposeGizmo();
+    this.view = undefined;
+    this.overlay = undefined;
   }
 
-  private renderGizmo = (): void => {
+  private disposeGizmo(): void {
+    this.gizmo?.dispose();
+    this.gizmo = undefined;
+  }
+
+  private renderGizmo(): void {
     const gizmo = this.gizmo;
-    if (!gizmo) return;
+    const view = this.view;
+    if (!gizmo || !view) return;
 
     // Follow perspective/orthographic camera switches
-    const camera = this.threeService.camera;
+    const camera = view.camera;
     if (camera !== this.lastCamera) {
       this.lastCamera = camera;
       gizmo.camera = camera;
@@ -98,5 +109,5 @@ export class ViewportGizmoExtension implements ThreeExtension {
 
     gizmo.cameraUpdate();
     gizmo.render();
-  };
+  }
 }

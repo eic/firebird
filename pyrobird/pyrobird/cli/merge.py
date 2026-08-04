@@ -6,14 +6,15 @@ import sys
 from typing import Dict, List, Any, Set, Union
 
 from pyrobird.dex_utils import load_dex_file
+from pyrobird.dex import DEX_TYPE, DEX_VERSION
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 @click.command()
 @click.option('--reset-id', is_flag=True, help='Reset event IDs to sequential numbers (0,1,2...)')
-@click.option('--ignore', is_flag=True, help='Ignore duplicate group names from right files')
-@click.option('--overwrite', is_flag=True, help='Overwrite duplicate group names from left files')
+@click.option('--ignore', is_flag=True, help='Ignore duplicate piece names from right files')
+@click.option('--overwrite', is_flag=True, help='Overwrite duplicate piece names from left files')
 @click.option('-o', '--output', 'output_file', help='Output file name for the merged result')
 @click.argument('input_files', nargs=-1, required=True)
 def merge(reset_id, ignore, overwrite, output_file, input_files):
@@ -21,21 +22,21 @@ def merge(reset_id, ignore, overwrite, output_file, input_files):
     Merge multiple Firebird DEX JSON files.
 
     This command merges events from multiple Firebird DEX JSON files based on their IDs.
-    Groups with the same name in different files are handled according to specified flags.
+    Pieces with the same name in different files are handled according to specified flags.
 
-    By default, the command fails if duplicate group names are found.
+    By default, the command fails if duplicate piece names are found.
 
     Examples:
-      - Merge two files with default behavior (fail on duplicate groups):
+      - Merge two files with default behavior (fail on duplicate pieces):
           pyrobird merge file1.firebird.json file2.firebird.json
 
       - Merge multiple files, resetting event IDs to sequential numbers:
           pyrobird merge --reset-id file1.firebird.json file2.firebird.json file3.firebird.json
 
-      - Merge two files, ignoring duplicate groups from the second file:
+      - Merge two files, ignoring duplicate pieces from the second file:
           pyrobird merge --ignore file1.firebird.json file2.firebird.json
 
-      - Merge two files, overwriting duplicate groups from the first file:
+      - Merge two files, overwriting duplicate pieces from the first file:
           pyrobird merge --overwrite file1.firebird.json file2.firebird.json
 
       - Save merged result to a specific file:
@@ -107,8 +108,8 @@ def merge_dex_files(
     Args:
         dex_files: List of (file_path, dex_data) tuples
         reset_id: Whether to reset event IDs to sequential numbers
-        ignore: Whether to ignore duplicate groups from the right file
-        overwrite: Whether to overwrite duplicate groups in the left file
+        ignore: Whether to ignore duplicate pieces from the right file
+        overwrite: Whether to overwrite duplicate pieces in the left file
 
     Returns:
         The merged DEX data
@@ -144,21 +145,13 @@ def create_merged_header(dex_files: List[tuple]) -> Dict[str, Any]:
 
     # Start with a basic DEX structure
     result = {
-        "type": "firebird-dex-json",
-        "version": "0.04",  # Use latest version
+        "type": DEX_TYPE,
+        "version": DEX_VERSION,
         "origin": {
             "merged_from": [],
             "entries_count": 0
         }
     }
-
-    # Check if any of the input files have a version specified
-    for file_path, dex in dex_files:
-        if "version" in dex:
-            # Use the highest version number
-            current_version = dex["version"]
-            if current_version > result["version"]:
-                result["version"] = current_version
 
     # Add source file information
     total_entries = 0
@@ -197,8 +190,8 @@ def merge_events(
 
     Args:
         dex_files: List of (file_path, dex_data) tuples
-        ignore: Whether to ignore duplicate groups from the right file
-        overwrite: Whether to overwrite duplicate groups in the left file
+        ignore: Whether to ignore duplicate pieces from the right file
+        overwrite: Whether to overwrite duplicate pieces in the left file
 
     Returns:
         A list of merged events
@@ -232,83 +225,83 @@ def merge_events(
             continue
 
         # Merge events with the same ID
-        merged_event = merge_event_groups(event_id, events_with_this_id, ignore, overwrite)
+        merged_event = merge_event_pieces(event_id, events_with_this_id, ignore, overwrite)
         merged_events.append(merged_event)
 
     return merged_events
 
 
-def merge_event_groups(
+def merge_event_pieces(
         event_id: Union[str, int],
         events_with_id: List[tuple],
         ignore: bool = False,
         overwrite: bool = False
 ) -> Dict[str, Any]:
     """
-    Merge groups from multiple events with the same ID.
+    Merge pieces from multiple events with the same ID.
 
     Args:
         event_id: The event ID being processed
         events_with_id: List of (file_path, event) tuples for events with this ID
-        ignore: Whether to ignore duplicate groups from later files
-        overwrite: Whether to overwrite duplicate groups from earlier files
+        ignore: Whether to ignore duplicate pieces from later files
+        overwrite: Whether to overwrite duplicate pieces from earlier files
 
     Returns:
         A merged event
     """
     if not events_with_id:
-        return {"id": event_id, "groups": []}
+        return {"id": event_id, "pieces": []}
 
     # Start with the first event
     first_file_path, first_event = events_with_id[0]
     merged_event = {
         "id": event_id,
-        "groups": [],
+        "pieces": [],
         # Copy any additional fields from the first event
-        **{k: v for k, v in first_event.items() if k not in ["id", "groups"]}
+        **{k: v for k, v in first_event.items() if k not in ["id", "pieces"]}
     }
 
-    # Track groups by name for duplicate detection
-    groups_by_name = {}
+    # Track pieces by name for duplicate detection
+    pieces_by_name = {}
 
-    # Process each event's groups
+    # Process each event's pieces
     for file_idx, (file_path, event) in enumerate(events_with_id):
-        for group in event["groups"]:
-            group_name = group["name"]
+        for piece in event["pieces"]:
+            piece_name = piece["name"]
 
-            if group_name in groups_by_name:
-                # Handle duplicate group names
-                prev_idx, prev_group = groups_by_name[group_name]
+            if piece_name in pieces_by_name:
+                # Handle duplicate piece names
+                prev_idx, prev_piece = pieces_by_name[piece_name]
 
                 if ignore:
-                    # Ignore the current group, keep the previous one
+                    # Ignore the current piece, keep the previous one
                     logger.warning(
-                        f"Ignoring group '{group_name}' in event ID '{event_id}' from {file_path}"
+                        f"Ignoring piece '{piece_name}' in event ID '{event_id}' from {file_path}"
                     )
                     continue
 
                 elif overwrite:
-                    # Overwrite the previous group with the current one
-                    merged_event["groups"].remove(prev_group)
-                    merged_event["groups"].append(group)
-                    groups_by_name[group_name] = (file_idx, group)
+                    # Overwrite the previous piece with the current one
+                    merged_event["pieces"].remove(prev_piece)
+                    merged_event["pieces"].append(piece)
+                    pieces_by_name[piece_name] = (file_idx, piece)
                     logger.warning(
-                        f"Overwriting group '{group_name}' in event ID '{event_id}' with group from {file_path}"
+                        f"Overwriting piece '{piece_name}' in event ID '{event_id}' with piece from {file_path}"
                     )
 
                 else:
                     # Default behavior: fail with detailed error
                     prev_file_path = events_with_id[prev_idx][0]
                     error_msg = (
-                        f"Duplicate group name '{group_name}' found in event ID '{event_id}': "
+                        f"Duplicate piece name '{piece_name}' found in event ID '{event_id}': "
                         f"in files '{prev_file_path}' and '{file_path}'. "
                         "Use --ignore or --overwrite flags to handle duplicates."
                     )
                     raise ValueError(error_msg)
 
             else:
-                # No duplicate, add the group
-                merged_event["groups"].append(group)
-                groups_by_name[group_name] = (file_idx, group)
+                # No duplicate, add the piece
+                merged_event["pieces"].append(piece)
+                pieces_by_name[piece_name] = (file_idx, piece)
 
     return merged_event

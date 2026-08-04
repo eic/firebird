@@ -1,11 +1,8 @@
-import {EventGroupPainter} from "./event-group-painter";
-import {EventGroup} from "../model/event-group";
-import {
-  PointTrajectoryGroup,
-  PointTrajectory
-} from "../model/point-trajectory.group";
+import {EventPiecePainter, PainterConfigView, PainterMeta} from "./event-piece-painter";
+import {EventPiece} from "../model/event-piece";
+import {PointTrajectoryPiece} from "../model/point-trajectory.piece";
 
-import {Object3D} from "three";
+import {Color, Object3D} from "three";
 // Import from three/webgpu, NEVER from three/src/... : a deep src import can
 // be served as a second copy of the whole three node system (seen with the
 // vite dep optimizer), whose module-level TSL stack state is separate from
@@ -36,96 +33,100 @@ export enum NeonTrackColors {
  * We'll keep each line's full data in a small structure so we can rebuild partial geometry.
  */
 interface TrajectoryRenderContext {
-  collectionIndex: number;           // Index in the array
+  collectionIndex: number;           // Trajectory id == index in the piece columns
   lineObj: Line2;                    // the Line2 object in the scene
   points: number[][];                // the raw array of [x, y, z, t, dx, dy, dz, dt]
   lineMaterial: Line2NodeMaterial;        // the material used
   startTime: number;                 // The time of the first point
   endTime: number;                   // The end of the last point
-  params: Record<string, any>;       // Track parameters
+  params: Record<string, any>;       // Track parameters (column name -> value at this index)
   lastPaintIndex: number;            // This is needed for partial track draw optimization
 }
 
 /**
- * Painter that draws lines for a "PointTrajectoryComponent",
+ * Painter that draws lines for a "PointTrajectory" piece,
  * supporting partial display based on time.
  */
-export class TrajectoryPainter extends EventGroupPainter {
+export class TrajectoryPainter extends EventPiecePainter {
+
+  /**
+   * Knobs: coloring mode (particle id, momentum magnitude, or one solid
+   * color) and the line width in world units (mm) — 30 reads as a clear but
+   * thin ribbon at detector scale; values in the hundreds cover whole
+   * subdetectors. Live: changes restyle existing lines without a rebuild.
+   */
+  static meta: PainterMeta = {
+    id: 'trajectory-lines',
+    forPieceTypes: [PointTrajectoryPiece.type],
+    label: 'Trajectory lines',
+    configs: [
+      { key: 'colorMode', default: 'pid', options: ['pid', 'momentum', 'solid'], label: 'Coloring' },
+      { key: 'lineWidth', default: 30, min: 1, max: 300, step: 1, label: 'Line width [mm]' },
+      { key: 'color', default: '#00b7ff', label: 'Solid color' },
+    ],
+  };
+
   /** A small array to store each line's data and references. */
   public trajectories: TrajectoryRenderContext[] = [];
   private timeColumnIndex = 3;         // TODO check that line has time column
 
-  /** Default line width in world units */
-  private readonly defaultLineWidth = 300;
-
   public readonly trackColorHighlight = 0xff4081; // vivid pink for highlight
   public readonly trackWidthFactor = 2;          // how many times thicker when highlighted
 
-  constructor(parentNode: Object3D, component: EventGroup) {
-    super(parentNode, component);
+  /** Momentum ceiling [MeV] of this piece, for the momentum color scale. */
+  private maxMomentum = 0;
 
-    if (component.type !== PointTrajectoryGroup.type) {
-      throw new Error("Wrong component type given to PointTrajectoryPainter.");
+  constructor(parentNode: Object3D, piece: EventPiece, config?: PainterConfigView) {
+    super(parentNode, piece, config);
+
+    if (piece.type !== PointTrajectoryPiece.type) {
+      throw new Error("Wrong piece type given to TrajectoryPainter.");
     }
 
     // Build lines at construction
     this.initLines();
+    this.applyStyles();
   }
 
   /**
-   * Builds the Line2 objects for each line in the data.
+   * Builds the Line2 objects for each trajectory in the piece.
    * Initially, we set them fully visible (or we could set them invisible).
    */
   private initLines() {
 
-    const component = this.component as PointTrajectoryGroup;
-
-    // Let us see if paramColumns includes "pdg" or "charge" or something.
-    const pdgIndex = component.paramColumns.indexOf("pdg");
-    const chargeIndex = component.paramColumns.indexOf("charge");
-    let paramsToColumnsMismatchWarned = false;
+    const piece = this.piece as PointTrajectoryPiece;
+    const columnNames = Object.keys(piece.columns);
     let noPointsWarned = 0;
 
+    for (let trajIndex = 0; trajIndex < piece.count; trajIndex++) {
 
-    for (let trajIndex = 0; trajIndex < component.trajectories.length; trajIndex++) {
-      const trajectory = component.trajectories[trajIndex];
-
-      // Copy params
-      const paramColumns = component.paramColumns;
-      const params = trajectory.params;
-      if (params.length != paramColumns.length && !paramsToColumnsMismatchWarned) {
-        // We do the warning only once!
-        console.error(`params.length(${params.length})  != paramColumns.length(${paramColumns.length}) at '${component.name}'. This should never happen!`);
-        paramsToColumnsMismatchWarned = true;
-      }
-
-      // We intentionally use the very dumb method, but this method allows us to do at least something if they mismatch
-      const paramArrLen = Math.min(paramColumns.length, params.length);
+      // Collect this trajectory's parameters from the columns (id == index)
       const paramsDict: Record<string, any> = {};
-      for (let i = 0; i < paramArrLen; i++) {
-        paramsDict[paramColumns[i]] = params[i];
+      for (const columnName of columnNames) {
+        paramsDict[columnName] = piece.columns[columnName][trajIndex];
       }
+
+      const points = piece.points[trajIndex];
 
       // Check we have enough points to build at least something!
-      if (trajectory.points.length <= 1) {
+      if (points.length <= 1) {
         if (noPointsWarned < 10) {
           const result = Object.entries(paramsDict)
             .map(([key, value]) => `${key}:${value}`)
             .join(", ");
-          console.warn(`Trajectory has ${trajectory.points.length} points. This can't be. Track parameters: ${result}`);
+          console.warn(`Trajectory has ${points.length} points. This can't be. Track parameters: ${result}`);
           noPointsWarned++;
         }
         continue;   // Skip this line!
       }
 
       // Create proper material
-      const lineMaterial = this.createLine2NodeMaterial(trajectory, pdgIndex, chargeIndex);
+      const lineMaterial = this.createLine2NodeMaterial(paramsDict);
 
 
       // We'll start by building a geometry with *all* points, and rely on paint() to do partial logic.
-      // We'll store the full set of points in linesData, then paint() can rebuild partial geometry.
       const geometry = new LineGeometry();
-      const fullPositions = this.generateFlatXYZ(trajectory.points);
+      const fullPositions = this.generateFlatXYZ(points);
       geometry.setPositions(fullPositions);
 
 
@@ -137,42 +138,40 @@ export class TrajectoryPainter extends EventGroupPainter {
 
       let startTime = 0;
       let endTime = 0;
-      if (trajectory.points[0].length > this.timeColumnIndex) {
-        startTime = trajectory.points[0][this.timeColumnIndex];
-        endTime = trajectory.points[trajectory.points.length - 1][this.timeColumnIndex]
+      if (points[0].length > this.timeColumnIndex) {
+        startTime = points[0][this.timeColumnIndex];
+        endTime = points[points.length - 1][this.timeColumnIndex]
       }
 
       const trajData: TrajectoryRenderContext = {
         collectionIndex: trajIndex,
         lineObj: line2,
         lineMaterial: lineMaterial,
-        points: trajectory.points,
+        points: points,
         startTime: startTime,
         endTime: endTime,
         params: paramsDict,
         lastPaintIndex: 0,
       }
 
-      trajData.lineObj.name = this.getNodeName(trajData, component.trajectories.length);
+      trajData.lineObj.name = this.getNodeName(trajData, piece.count);
       trajData.lineObj.userData["track_params"] = trajData.params;
 
+      // Selection mapping: trajectory id ≡ index; the Line2 is the entity object
+      this.registerEntityObject(trajIndex, trajData.lineObj);
 
-      // Store the original material properties for highlighting
-      const origColor = lineMaterial.color.getHex();
-      const origWidth = lineMaterial.linewidth;
 
-      // Define proper highlight and unhighlight functions
+      // Highlight captures the CURRENT material state at highlight time (not
+      // at build time): the color/width knobs restyle materials live, and a
+      // build-time snapshot would restore stale values.
       trajData.lineObj.userData["highlightFunction"] = () => {
-        // Store original values if not already stored
-        if (!trajData.lineObj.userData["origColor"]) {
-          trajData.lineObj.userData["origColor"] = origColor;
-          trajData.lineObj.userData["origWidth"] = origWidth;
-        }
-
-        // Apply highlight
         const mat = trajData.lineObj.material as unknown as Line2NodeMaterial;
+        if (trajData.lineObj.userData["origColor"] === undefined) {
+          trajData.lineObj.userData["origColor"] = mat.color.getHex();
+          trajData.lineObj.userData["origWidth"] = mat.linewidth;
+        }
         mat.color.setHex(this.trackColorHighlight);
-        mat.linewidth = origWidth * this.trackWidthFactor;
+        mat.linewidth = (trajData.lineObj.userData["origWidth"] as number) * this.trackWidthFactor;
         mat.needsUpdate = true;
       };
 
@@ -183,6 +182,8 @@ export class TrajectoryPainter extends EventGroupPainter {
           mat.color.setHex(trajData.lineObj.userData["origColor"]);
           mat.linewidth = trajData.lineObj.userData["origWidth"];
           mat.needsUpdate = true;
+          delete trajData.lineObj.userData["origColor"];
+          delete trajData.lineObj.userData["origWidth"];
         }
       };
 
@@ -200,7 +201,7 @@ export class TrajectoryPainter extends EventGroupPainter {
   private newSolidMaterial(color: NeonTrackColors, linewidth?: number): Line2NodeMaterial {
     return new Line2NodeMaterial({
       color: color,
-      linewidth: linewidth ?? this.defaultLineWidth,
+      linewidth: linewidth ?? this.config.value<number>('lineWidth'),
       worldUnits: true,
       dashed: false,
       alphaToCoverage: true,
@@ -210,7 +211,7 @@ export class TrajectoryPainter extends EventGroupPainter {
   private newDashedMaterial(color: NeonTrackColors): Line2NodeMaterial {
     return new Line2NodeMaterial({
       color: color,
-      linewidth: this.defaultLineWidth,
+      linewidth: this.config.value<number>('lineWidth'),
       worldUnits: true,
       dashed: true,
       dashSize: 100,
@@ -221,17 +222,16 @@ export class TrajectoryPainter extends EventGroupPainter {
 
   /**
    * Creates or picks a line material based on PDG or charge, etc.
+   * Reads the "pdg" and "charge" columns when the writer declared them.
    */
-  private createLine2NodeMaterial(line: PointTrajectory, pdgIndex: number, chargeIndex: number) {
+  private createLine2NodeMaterial(params: Record<string, any>) {
 
-    // Try to read PDG and/or charge from line.params
-    // This assumes line.params matches paramColumns.
     let pdg = 0, charge = 0;
-    if (pdgIndex >= 0 && pdgIndex < line.params.length) {
-      pdg = Math.floor(line.params[pdgIndex]);
+    if (typeof params["pdg"] === "number") {
+      pdg = Math.floor(params["pdg"]);
     }
-    if (chargeIndex >= 0 && chargeIndex < line.params.length) {
-      charge = line.params[chargeIndex];
+    if (typeof params["charge"] === "number") {
+      charge = params["charge"];
     }
 
     // Minimal PDG-based color logic
@@ -253,6 +253,83 @@ export class TrajectoryPainter extends EventGroupPainter {
 
     // Neutral fallback
     return this.newSolidMaterial(NeonTrackColors.Gray);
+  }
+
+  /** |p| [MeV] from the px/py/pz columns, or null when the writer omitted them. */
+  private momentumOf(params: Record<string, any>): number | null {
+    const px = params['px'], py = params['py'], pz = params['pz'];
+    if (typeof px !== 'number' || typeof py !== 'number' || typeof pz !== 'number') return null;
+    return Math.sqrt(px * px + py * py + pz * pz);
+  }
+
+  /** The pid-mode color, matching the material choice in createLine2NodeMaterial. */
+  private pidColorOf(params: Record<string, any>): number {
+    const pdg = typeof params['pdg'] === 'number' ? Math.floor(params['pdg']) : 0;
+    const charge = typeof params['charge'] === 'number' ? params['charge'] : 0;
+    switch (pdg) {
+      case 22: return NeonTrackColors.Yellow;
+      case -22: return NeonTrackColors.Salad;
+      case 11: return NeonTrackColors.Blue;
+      case -11: return NeonTrackColors.Orange;
+      case 211: return NeonTrackColors.Pink;
+      case -211: return NeonTrackColors.Teal;
+      case 2212: return NeonTrackColors.Violet;
+      case 2112: return NeonTrackColors.Green;
+    }
+    if (charge > 0) return NeonTrackColors.Red;
+    if (charge < 0) return NeonTrackColors.DeepBlue;
+    return NeonTrackColors.Gray;
+  }
+
+  /** Restyle existing lines from the config knobs. Called live on knob changes. */
+  override onConfigChanged(): void {
+    this.applyStyles();
+  }
+
+  /**
+   * Applies colorMode/lineWidth/color to all line materials in place —
+   * no geometry rebuild, so knob changes are instant even for large events.
+   */
+  private applyStyles(): void {
+    const colorMode = this.config.value<string>('colorMode');
+    const lineWidth = this.config.value<number>('lineWidth');
+    const solidColor = this.config.value<string>('color');
+
+    if (colorMode === 'momentum' && this.maxMomentum === 0) {
+      for (const track of this.trajectories) {
+        this.maxMomentum = Math.max(this.maxMomentum, this.momentumOf(track.params) ?? 0);
+      }
+    }
+
+    const scratch = new Color();
+    for (const track of this.trajectories) {
+      const material = track.lineObj.material as unknown as Line2NodeMaterial;
+      const params = track.params;
+
+      // Optical photons keep their deliberately thin lines
+      const isOpticalPhoton = typeof params['pdg'] === 'number' && Math.floor(params['pdg']) === -22;
+      material.linewidth = isOpticalPhoton ? Math.min(3, lineWidth) : lineWidth;
+
+      if (colorMode === 'solid') {
+        material.color.set(solidColor);
+      } else if (colorMode === 'momentum') {
+        const momentum = this.momentumOf(params);
+        if (momentum === null || this.maxMomentum <= 0) {
+          material.color.setHex(NeonTrackColors.Gray);
+        } else {
+          // Blue (low) -> red (high), linear in |p|
+          const fraction = Math.min(1, momentum / this.maxMomentum);
+          material.color.copy(scratch.setHSL(0.66 * (1 - fraction), 1, 0.5));
+        }
+      } else {
+        material.color.setHex(this.pidColorOf(params));
+      }
+      material.needsUpdate = true;
+
+      // A restyle invalidates any pending highlight-restore snapshot
+      delete track.lineObj.userData['origColor'];
+      delete track.lineObj.userData['origWidth'];
+    }
   }
 
   /**
@@ -391,7 +468,7 @@ export class TrajectoryPainter extends EventGroupPainter {
     } else if ("pdg" in trajData.params) {
       name = trajData.params["pdg"]
     } else if ("charge" in trajData.params) {
-      const charge = parseFloat(trajData.params["cahrge"]);
+      const charge = parseFloat(trajData.params["charge"]);
       if (Math.abs(charge) < 0.00001) {
         name = "NeuTrk";
       }

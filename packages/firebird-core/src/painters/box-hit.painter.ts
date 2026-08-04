@@ -3,19 +3,17 @@ import {
   InstancedMesh,
   BoxGeometry,
   ShaderMaterial,
-  Object3D as THREEObject3D,
   InstancedBufferAttribute,
   Color,
-  Matrix4,
 } from 'three';
-import { EventGroupPainter } from './event-group-painter';
-import { BoxHitGroup } from '../model/box-hit.group';
-import {EventGroup} from "../model/event-group";
+import { EventPiecePainter } from './event-piece-painter';
+import { BoxHitPiece } from '../model/box-hit.piece';
+import { EventPiece } from "../model/event-piece";
 
 /**
- * Painter class for rendering BoxHitGroup using InstancedMesh.
+ * Painter class for rendering BoxHitPiece using InstancedMesh.
  */
-export class BoxHitPainter extends EventGroupPainter {
+export class BoxHitPainter extends EventPiecePainter {
   /** The InstancedMesh object to store multiple hit boxes. */
   private instancedMesh: InstancedMesh;
 
@@ -29,25 +27,25 @@ export class BoxHitPainter extends EventGroupPainter {
   private geometry: BoxGeometry;
 
 
-  private boxComponent: BoxHitGroup;
+  private boxPiece: BoxHitPiece;
 
   /**
    * Constructs a new BoxHitPainter.
    *
    * @param node - The Object3D node where the instanced mesh will be added.
-   * @param component - The BoxHitGroup containing the hit data.
+   * @param piece - The BoxHitPiece containing the hit data.
    */
-  constructor(node: Object3D, component: EventGroup) {
-    super(node, component);
+  constructor(node: Object3D, piece: EventPiece) {
+    super(node, piece);
 
     // Runtime type check
-    if (component.type !== BoxHitGroup.type) {
-      throw new Error('Invalid component type for BoxHitPainter');
+    if (piece.type !== BoxHitPiece.type) {
+      throw new Error('Invalid piece type for BoxHitPainter');
     }
 
-    this.boxComponent = component as BoxHitGroup;
+    this.boxPiece = piece as BoxHitPiece;
 
-    this.count = this.boxComponent.hits.length;
+    this.count = this.boxPiece.count;
 
     // Define geometry for a unit box
     this.geometry = new BoxGeometry(1, 1, 1);
@@ -67,7 +65,7 @@ export class BoxHitPainter extends EventGroupPainter {
     this.instancedMesh = new InstancedMesh(this.geometry, this.material, this.count);
 
     // Set up each instance (position, scale, color, appearance time)
-    this.setupInstances(this.boxComponent);
+    this.setupInstances(this.boxPiece);
 
     // Add the instanced mesh to the node
     node.add(this.instancedMesh);
@@ -75,22 +73,19 @@ export class BoxHitPainter extends EventGroupPainter {
 
   /**
    * Sets up the instances of the hits, including position, scale, color, and time.
+   * Reads the piece columns directly: hit i lives at pos[3i..3i+2], dim[3i..3i+2].
    *
-   * @param component - The BoxHitGroup with the hit data.
+   * @param piece - The BoxHitPiece with the hit data.
    */
-  private setupInstances(component: BoxHitGroup): void {
+  private setupInstances(piece: BoxHitPiece): void {
     const instanceColors: number[] = [];
     const instanceTimes: number[] = [];
     const dummy = new Object3D();
 
-    for (let i = 0; i < component.hits.length; i++) {
-      const hit = component.hits[i];
-
-      // Set position from hit data
-      dummy.position.set(hit.position[0], hit.position[1], hit.position[2]);
-
-      // Set non-uniform scale from hit dimensions
-      dummy.scale.set(hit.dimensions[0], hit.dimensions[1], hit.dimensions[2]);
+    for (let i = 0; i < piece.count; i++) {
+      // Set position and non-uniform scale from the flat xyz columns
+      dummy.position.set(piece.pos[3 * i], piece.pos[3 * i + 1], piece.pos[3 * i + 2]);
+      dummy.scale.set(piece.dim[3 * i], piece.dim[3 * i + 1], piece.dim[3 * i + 2]);
 
       // Update the transformation matrix for this instance
       dummy.updateMatrix();
@@ -98,13 +93,13 @@ export class BoxHitPainter extends EventGroupPainter {
 
       // Set color (e.g., based on energy deposit)
       // For example, mapping energy deposit to color intensity
-      const edep = hit.energyDeposit[0];
+      const edep = piece.edep !== null ? piece.edep[i] : 0;
       const color = new Color().setHSL(0.0, 1.0, Math.min(1.0, edep));
 
       instanceColors.push(color.r, color.g, color.b);
 
-      // Set appearance time for this hit
-      instanceTimes.push(hit.time[0]);
+      // Set appearance time for this hit (0 = always visible when no time column)
+      instanceTimes.push(piece.time !== null ? piece.time[i] : 0);
     }
 
     // Add per-instance color attribute
