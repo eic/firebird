@@ -241,6 +241,13 @@ timeout.
 - **Object exists in scene, visible=true, but never draws**: WebGPURenderer
   silently skips `LineLoop` objects (no warning). Use closed `Line` strips.
   `Line`, `LineSegments`, `Line2`, meshes are fine.
+- **Clipping cut follows the camera after toggling clipping on/off** (orbit
+  moves the cut, zoom clips deeper): a stale-shader three.js bug — cached
+  shader states bind the plane arrays a ClippingContext held at build time,
+  and the context REPLACES those arrays when its parent group chain changes.
+  Guarded by `patchThreeClippingContextArrayStability` in three.service.ts +
+  three-clipping-context-patch.spec.ts; if it reappears (e.g. after a three
+  upgrade), check the console for the patch's warning and that spec first.
 - **UI value frozen while console shows updates**: zoneless change detection —
   the template reads a plain field mutated outside Angular (RxJS subscribe,
   rAF, native listener). Convert the state to a signal.

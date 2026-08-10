@@ -51,6 +51,88 @@ function patchThreeHardwareClippingBug(): void {
   (THREE.Material.prototype as unknown as { hardwareClipping: boolean }).hardwareClipping = false;
 }
 
+/**
+ * Workaround for a three.js (r183-r185) clipping bug: stale clipping planes
+ * frozen in camera space after the SET of active planes changes.
+ *
+ * Shaders read clipping planes through a uniform array bound to the ARRAY
+ * INSTANCE held by the object's ClippingContext at shader-build time
+ * (ClippingNode captures `clippingContext.intersectionPlanes/unionPlanes`;
+ * UniformArrayNode re-reads that array's CONTENTS every render). But
+ * ClippingContext.update() REPLACES both arrays with `Array.from(...)`
+ * whenever the parent context chain changes — e.g. when an outer
+ * ClippingGroup is enabled or disabled, reparenting the inner group's
+ * context. Built shader states are cached by plane COUNTS
+ * (`"${intersection.length}:${union.length}"` inside RenderObject's cache
+ * key), so when a toggle brings the counts back to a previously-seen shape,
+ * the cached shader is reused — still bound to the ORPHANED arrays, whose
+ * view-space plane values nobody re-projects anymore. A clipping plane
+ * frozen in view space is glued to the camera: the cut moves and scales
+ * with every orbit and zoom. (RenderObjects.dispose() clears only its chain
+ * maps and never evicts the node-builder cache, so the stale states live
+ * forever.)
+ *
+ * The patch makes the array IDENTITY stable: after the original update()
+ * runs, the previous array instances are refilled with the new contents and
+ * swapped back in. Nothing in three keys on array identity, and every cached
+ * shader state reuse is then valid by construction — the uniform array it
+ * reads is the live one being re-projected each frame. This is also what
+ * makes the "no shader recompilation on clip toggles" behavior of
+ * updateClippingGroups() actually correct.
+ *
+ * ClippingContext is not exported from `three/webgpu` (and `three/src/...`
+ * must never be imported — it loads a second copy of the node system), so
+ * the prototype is reached from a live instance: the renderer stores one
+ * per render context, created during the first frame. applyOnce() is a
+ * cheap no-op after the patch lands; if three's internals move and no
+ * instance is ever found, a warning is logged once so the regression is
+ * visible instead of silent.
+ */
+export const patchThreeClippingContextArrayStability = {
+  patched: false,
+  warned: false,
+
+  applyOnce(renderer: WebGPURenderer): void {
+    if (this.patched) return;
+    const contexts = (renderer as unknown as {
+      _renderContexts?: { _renderContexts?: Record<string, { clippingContext?: object }> };
+    })._renderContexts?._renderContexts;
+    const instance = contexts && Object.values(contexts).find(c => c?.clippingContext)?.clippingContext;
+    if (!instance) return; // no frame rendered yet; retry on the next call
+
+    type PlanesContext = { intersectionPlanes: unknown[]; unionPlanes: unknown[] };
+    const proto = Object.getPrototypeOf(instance) as {
+      update?: (this: PlanesContext, parent: unknown, group: unknown) => void;
+    } | null;
+    const originalUpdate = proto?.update;
+    if (!proto || typeof originalUpdate !== 'function') {
+      if (!this.warned) {
+        this.warned = true;
+        console.warn('[ThreeService] ClippingContext.update not found — stale-clipping patch NOT applied; '
+          + 'toggling clipping groups may freeze planes in camera space.');
+      }
+      return;
+    }
+
+    proto.update = function (this: PlanesContext, parent: unknown, group: unknown): void {
+      const intersection = this.intersectionPlanes;
+      const union = this.unionPlanes;
+      originalUpdate.call(this, parent, group);
+      if (intersection && this.intersectionPlanes !== intersection) {
+        intersection.length = 0;
+        intersection.push(...this.intersectionPlanes);
+        this.intersectionPlanes = intersection;
+      }
+      if (union && this.unionPlanes !== union) {
+        union.length = 0;
+        union.push(...this.unionPlanes);
+        this.unionPlanes = union;
+      }
+    };
+    this.patched = true;
+  },
+};
+
 
 import {
   acceleratedRaycast,
@@ -682,6 +764,10 @@ export class ThreeService implements OnDestroy {
         this.renderer.setViewport(0, 0, canvas.clientWidth, canvas.clientHeight);
       }
 
+      // The first rendered frame creates the renderer's clipping contexts;
+      // patch their prototype as soon as one exists (no-op afterwards).
+      patchThreeClippingContextArrayStability.applyOnce(this.renderer);
+
       // Profiling end
       this.perfService.updateStats(this.renderer, frameStartTime);
 
@@ -827,9 +913,11 @@ export class ThreeService implements OnDestroy {
     // planes keeps rendering unclipped after planes appear (and vice versa).
     // Dropping the cached render objects forces a rebuild against the current
     // clipping structure; built shader states stay cached by key, so toggling
-    // back and forth does not recompile. Only runs when the structure —
-    // enabled flags, plane count, intersection mode — changes, never while a
-    // slider drags plane positions around.
+    // back and forth does not recompile. Reusing those cached states across
+    // toggles is only correct because the clipping-plane arrays keep their
+    // identity — see patchThreeClippingContextArrayStability. Only runs when
+    // the structure — enabled flags, plane count, intersection mode —
+    // changes, never while a slider drags plane positions around.
     const structure = `${this.sceneGeometry.enabled}:${this.sceneGeometry.clipIntersection}:${this.sceneGeometry.clippingPlanes.length}:${this.zClippingEnabled}`;
     if (structure !== this.lastClippingStructure) {
       this.lastClippingStructure = structure;
