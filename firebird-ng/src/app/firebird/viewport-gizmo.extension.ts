@@ -66,6 +66,13 @@ export class ViewportGizmoExtension implements ThreeExtension {
       void this.commandBus.dispatch({ type: 'camera-preset', name: 'home', source: 'ui' });
     });
 
+    // Render-on-demand chain for cube interactions: clicks and view
+    // transitions emit 'change' per step (the transition advances inside the
+    // overlay render), so each step schedules the next frame until the
+    // animation settles.
+    this.gizmo.addEventListener('start', () => ctx.invalidate());
+    this.gizmo.addEventListener('change', () => ctx.invalidate());
+
     // View overlay: renders after the view's scene render (the cube must
     // draw on top) and re-anchors when the view is resized (pane toggles,
     // window resizes — the view calls onViewResize from updateViewport).

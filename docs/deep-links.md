@@ -5,12 +5,21 @@ select an event, change settings, and position the camera. Use deep links to
 share a specific view with a colleague, embed a preconfigured display in a web
 page, or drive batch screenshots.
 
-All parameters attach to the display route:
+All parameters attach to the display route, and equally to the quad
+projection view (`/split-window` — Top/Side/Front cross-sections plus the 3D
+view, each with its own geometry cut):
 
 ```
 https://seeeic.org/display?dex=<url>&event=2
 http://localhost:5454/display?dex=mydata.firebird.zip&event=0
+https://seeeic.org/split-window?dex=<url>&event=2&config.quadView.front.clipPos=1500
 ```
+
+Quad-view settings (usable as `config.<key>=` overrides): cut positions
+`quadView.top.clipPos`, `quadView.side.clipPos`, `quadView.front.clipPos`
+(millimeters), and tracks-over-geometry toggles `quadView.top.tracksOnTop`,
+`quadView.side.tracksOnTop`, `quadView.front.tracksOnTop`,
+`quadView.main.tracksOnTop`.
 
 ## Parameter cheat sheet
 

@@ -17,6 +17,7 @@ import {
   MathUtils,
   OrthographicCamera,
   PerspectiveCamera,
+  Plane,
   Quaternion,
   Raycaster,
   Vector2,
@@ -25,6 +26,8 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { WebGPURenderer } from 'three/webgpu';
 import { BehaviorSubject } from 'rxjs';
+import type { ClippedGeometrySlice } from './geometry-slice';
+import { EVENT_DATA_LAYER } from './geometry-slice';
 
 /**
  * Something drawn on top of a view after its scene render — an orientation
@@ -64,6 +67,22 @@ export interface RenderViewOptions {
    * controls allow pan/zoom but not rotation.
    */
   fixedDirection?: { direction: [number, number, number]; up: [number, number, number] };
+  /**
+   * Extra camera layers this view renders in addition to the shared layer 0
+   * (event data, helpers, lights). Layer routing is how views select which
+   * geometry copy they see — see ClippedGeometrySlice.
+   */
+  extraLayers?: number[];
+  /**
+   * Per-view geometry cut: the world-space plane this view writes into its
+   * geometry slice before rendering. Requires `geometrySlice`. Mutate
+   * `view.clipPlane` (normal/constant) at runtime to move the cut.
+   */
+  clipPlane?: { normal: [number, number, number]; constant: number };
+  /** The slice this view's clip plane applies to (shared between views). */
+  geometrySlice?: ClippedGeometrySlice;
+  /** Draw event data over geometry regardless of depth (see RenderView.tracksOnTop). */
+  tracksOnTop?: boolean;
 }
 
 /** Viewport rectangle in CSS pixels, plus the backend-aware y for three.js calls. */
@@ -95,6 +114,35 @@ export class RenderView {
   /** Fixed-projection views (top/front/right) disable rotation. */
   readonly isRotationLocked: boolean;
 
+  /**
+   * This view's world-space geometry cut, applied through `geometrySlice`
+   * right before the view renders. Null when the view has no per-view cut.
+   */
+  clipPlane: Plane | null = null;
+  /** The shared slice the clip plane is written into (see ClippedGeometrySlice). */
+  geometrySlice: ClippedGeometrySlice | null = null;
+
+  /**
+   * When true, event data draws over geometry regardless of depth: the scene
+   * renders in two passes (geometry+helpers first, then the event layer over
+   * a cleared depth buffer). Projection views default this ON — the point of
+   * a cross-section view is watching tracks curve over the detector outline.
+   * Toggling is a per-render-call camera-layer/clear-flag change, never a
+   * material change (per-view material flips would rebuild shader pipelines
+   * every frame).
+   */
+  tracksOnTop = false;
+
+  /**
+   * Render-on-demand flag: true when this view needs a new frame. SET by
+   * events (controls 'change', per-view knob changes) or by
+   * ThreeService.invalidate(); the render loop reads and clears it. Any
+   * dirty view triggers a frame that repaints ALL views — the shared
+   * canvas's drawing buffer does not survive compositing, so partial
+   * repaints would leave the other rectangles as cleared background.
+   */
+  dirty = true;
+
   private renderer: WebGPURenderer;
   private overlays: ViewOverlay[] = [];
 
@@ -114,6 +162,15 @@ export class RenderView {
     this.renderer = renderer;
     this.container = options.container;
     this.isRotationLocked = !!options.fixedDirection;
+    if (options.clipPlane) {
+      this.clipPlane = new Plane(new Vector3(...options.clipPlane.normal), options.clipPlane.constant);
+    }
+    this.geometrySlice = options.geometrySlice ?? null;
+    this.tracksOnTop = options.tracksOnTop ?? false;
+    // Picking is scoped by subtree (event data, original geometry), not by
+    // layer — and original geometry moves off layer 0 when a slice exists,
+    // so the raycaster must not filter by layers at all.
+    this.raycaster.layers.enableAll();
 
     // The startup view is the HENP top view: camera above the detector
     // looking down, beam (Z) pointing right on screen, X toward the top of
@@ -139,6 +196,15 @@ export class RenderView {
     this.camera = options.orthographic ? this.orthographicCamera : this.perspectiveCamera;
     this.cameraMode$.next(!options.orthographic);
 
+    for (const layer of options.extraLayers ?? []) {
+      this.perspectiveCamera.layers.enable(layer);
+      this.orthographicCamera.layers.enable(layer);
+    }
+    // Event data lives on its own layer (so tracks-on-top can isolate it);
+    // every view shows it.
+    this.perspectiveCamera.layers.enable(EVENT_DATA_LAYER);
+    this.orthographicCamera.layers.enable(EVENT_DATA_LAYER);
+
     // Controls listen on the container, not the canvas: in multi-view pages
     // the shared canvas sits behind the view containers and never receives
     // pointer events (in the single-view page canvas events bubble up).
@@ -150,6 +216,11 @@ export class RenderView {
     this.controls.maxDistance = SCENE_RADIUS * 5;
     this.camera.far = this.controls.maxDistance * 1.1;
     this.camera.updateProjectionMatrix();
+
+    // Any camera interaction (orbit, pan, zoom, damping ticks) marks the
+    // view for re-render. This is the event side of render-on-demand — the
+    // loop never polls camera state.
+    this.controls.addEventListener('change', () => { this.dirty = true; });
 
     if (options.fixedDirection) {
       const { direction, up } = options.fixedDirection;
@@ -259,12 +330,92 @@ export class RenderView {
    * this in multi-view mode; the single-view fast path renders directly
    * without viewport state changes (identical to a plain full-canvas render).
    */
-  renderTo(renderer: WebGPURenderer, scene: import('three').Scene): void {
-    const { x, y, width, height } = this.viewport;
+  renderTo(renderer: WebGPURenderer, scene: import('three').Scene, rect?: ViewportRect): void {
+    // Per-view geometry cut: write this view's plane into the shared slice.
+    // Plane values are re-projected on every render call, so sequential
+    // views each render with their own cut from the one shared group.
+    if (this.geometrySlice && this.clipPlane) {
+      this.geometrySlice.plane.copy(this.clipPlane);
+    }
+    // rect overrides the on-screen viewport for off-screen composition
+    // (frame capture renders views into arbitrary rectangles).
+    const { x, y, width, height } = rect ?? this.viewport;
     renderer.setViewport(x, y, width, height);
     renderer.setScissor(x, y, width, height);
+    this.renderScenePasses(renderer, scene);
+    if (!rect) {
+      this.renderOverlays();
+    }
+  }
+
+  /**
+   * Renders this view over the WHOLE canvas (its camera, cut and
+   * tracks-on-top applied), independent of the on-screen layout. Used by
+   * the single-view render loop path and by frame capture at target
+   * resolution. No overlays — the loop renders them separately; captures
+   * record the scene, not navigation chrome. For capture, the caller is
+   * responsible for camera aspect (see setCaptureAspect) and canvas size.
+   */
+  renderFullFrame(renderer: WebGPURenderer, scene: import('three').Scene): void {
+    if (this.geometrySlice && this.clipPlane) {
+      this.geometrySlice.plane.copy(this.clipPlane);
+    }
+    this.renderScenePasses(renderer, scene);
+  }
+
+  /**
+   * Points the cameras at an off-screen target of the given aspect (frame
+   * capture). The orthographic frustum keeps its visible world height and
+   * adjusts width. Call `updateViewport()` afterwards to restore the
+   * on-screen aspect from the container.
+   */
+  setCaptureAspect(width: number, height: number): void {
+    const aspect = width / Math.max(1, height);
+    this.perspectiveCamera.aspect = aspect;
+    this.perspectiveCamera.updateProjectionMatrix();
+
+    const ortho = this.orthographicCamera;
+    const worldHeight = (ortho.top - ortho.bottom);
+    const halfW = (worldHeight * aspect) / 2;
+    ortho.left = -halfW;
+    ortho.right = halfW;
+    ortho.updateProjectionMatrix();
+  }
+
+  /**
+   * The view's scene render: one pass normally, two when `tracksOnTop` —
+   * geometry+helpers first, then the event layer over a cleared depth
+   * buffer. Both selections are camera-layer masks flipped per render call:
+   * no material or object mutation, so cached render objects stay valid.
+   * The lights carry the event layer too, keeping the collected light set
+   * identical in both passes (see EVENT_DATA_LAYER).
+   */
+  private renderScenePasses(renderer: WebGPURenderer, scene: import('three').Scene): void {
+    if (!this.tracksOnTop) {
+      renderer.render(scene, this.camera);
+      return;
+    }
+
+    const savedMask = this.camera.layers.mask;
+    this.camera.layers.disable(EVENT_DATA_LAYER);
     renderer.render(scene, this.camera);
-    this.renderOverlays();
+
+    this.camera.layers.mask = 0;
+    this.camera.layers.enable(EVENT_DATA_LAYER);
+    // Clear depth only (keep the geometry pass's colors). Clear flags, not
+    // an explicit renderer.clear(): the clear must happen inside the render
+    // pass with the scissor applied, exactly like the first pass's clear.
+    const autoClearColor = renderer.autoClearColor;
+    const autoClearDepth = renderer.autoClearDepth;
+    const autoClearStencil = renderer.autoClearStencil;
+    renderer.autoClearColor = false;
+    renderer.autoClearStencil = false;
+    renderer.autoClearDepth = true;
+    renderer.render(scene, this.camera);
+    renderer.autoClearColor = autoClearColor;
+    renderer.autoClearDepth = autoClearDepth;
+    renderer.autoClearStencil = autoClearStencil;
+    this.camera.layers.mask = savedMask;
   }
 
   /** Runs the overlay renders (the loop calls this after the scene render). */

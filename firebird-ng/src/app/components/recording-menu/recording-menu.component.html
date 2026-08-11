@@ -1,0 +1,67 @@
+<button #openBtn mat-icon-button (click)="openDialog()"
+        matTooltip="Recording: live video and frame capture"
+        aria-label="Recording">
+  <mat-icon>videocam</mat-icon>
+</button>
+
+<ng-template #dialogTemplate>
+  <div class="recording-dialog">
+    <div class="dialog-header">
+      <span class="dialog-title">Recording</span>
+      <button mat-icon-button mat-dialog-close aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Live video (webm)</div>
+      <div class="section-hint">Records the canvas as shown on screen — on this page, all visible views.</div>
+      <div class="row">
+        @if (!liveRecording()) {
+          <button mat-button (click)="startLiveRecording()"><mat-icon>fiber_manual_record</mat-icon> Start</button>
+        } @else {
+          <button mat-button (click)="stopLiveRecording()"><mat-icon>stop</mat-icon> Stop</button>
+        }
+        <button mat-button (click)="downloadLiveRecording()"><mat-icon>download</mat-icon> Download</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Frame capture (PNG sequence)</div>
+      <div class="section-hint">Renders the chosen view frame by frame while stepping event time.</div>
+      <div class="row">
+        <label class="field-label" for="capture-source">Source</label>
+        <select id="capture-source" [(ngModel)]="captureSource" [disabled]="offlineRecording()">
+          @for (option of sourceOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="row">
+        <label class="field-label">Size</label>
+        <input type="number" [(ngModel)]="captureWidth" [disabled]="offlineRecording()" min="320" max="7680" />
+        <span>×</span>
+        <input type="number" [(ngModel)]="captureHeight" [disabled]="offlineRecording()" min="240" max="4320" />
+      </div>
+      <div class="row">
+        <label class="field-label">
+          <input type="checkbox" [(ngModel)]="includeCollision" [disabled]="offlineRecording()" />
+          Collision intro
+        </label>
+      </div>
+      <div class="row">
+        @if (!offlineRecording()) {
+          <button mat-button (click)="startOfflineRecording()"><mat-icon>fiber_manual_record</mat-icon> Start capture</button>
+        } @else {
+          <button mat-button (click)="stopOfflineRecording()"><mat-icon>stop</mat-icon> Stop</button>
+        }
+        <button mat-button (click)="downloadFrames()" [disabled]="framesReady === 0">
+          <mat-icon>download</mat-icon> Download frames
+        </button>
+      </div>
+      @if (offlineProgress()) {
+        <div class="progress">{{ offlineProgress() }}</div>
+      }
+    </div>
+  </div>
+</ng-template>

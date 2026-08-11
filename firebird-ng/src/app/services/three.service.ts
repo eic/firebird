@@ -51,89 +51,6 @@ function patchThreeHardwareClippingBug(): void {
   (THREE.Material.prototype as unknown as { hardwareClipping: boolean }).hardwareClipping = false;
 }
 
-/**
- * Workaround for a three.js (r183-r185) clipping bug: stale clipping planes
- * frozen in camera space after the SET of active planes changes.
- *
- * Shaders read clipping planes through a uniform array bound to the ARRAY
- * INSTANCE held by the object's ClippingContext at shader-build time
- * (ClippingNode captures `clippingContext.intersectionPlanes/unionPlanes`;
- * UniformArrayNode re-reads that array's CONTENTS every render). But
- * ClippingContext.update() REPLACES both arrays with `Array.from(...)`
- * whenever the parent context chain changes — e.g. when an outer
- * ClippingGroup is enabled or disabled, reparenting the inner group's
- * context. Built shader states are cached by plane COUNTS
- * (`"${intersection.length}:${union.length}"` inside RenderObject's cache
- * key), so when a toggle brings the counts back to a previously-seen shape,
- * the cached shader is reused — still bound to the ORPHANED arrays, whose
- * view-space plane values nobody re-projects anymore. A clipping plane
- * frozen in view space is glued to the camera: the cut moves and scales
- * with every orbit and zoom. (RenderObjects.dispose() clears only its chain
- * maps and never evicts the node-builder cache, so the stale states live
- * forever.)
- *
- * The patch makes the array IDENTITY stable: after the original update()
- * runs, the previous array instances are refilled with the new contents and
- * swapped back in. Nothing in three keys on array identity, and every cached
- * shader state reuse is then valid by construction — the uniform array it
- * reads is the live one being re-projected each frame. This is also what
- * makes the "no shader recompilation on clip toggles" behavior of
- * updateClippingGroups() actually correct.
- *
- * ClippingContext is not exported from `three/webgpu` (and `three/src/...`
- * must never be imported — it loads a second copy of the node system), so
- * the prototype is reached from a live instance: the renderer stores one
- * per render context, created during the first frame. applyOnce() is a
- * cheap no-op after the patch lands; if three's internals move and no
- * instance is ever found, a warning is logged once so the regression is
- * visible instead of silent.
- */
-export const patchThreeClippingContextArrayStability = {
-  patched: false,
-  warned: false,
-
-  applyOnce(renderer: WebGPURenderer): void {
-    if (this.patched) return;
-    const contexts = (renderer as unknown as {
-      _renderContexts?: { _renderContexts?: Record<string, { clippingContext?: object }> };
-    })._renderContexts?._renderContexts;
-    const instance = contexts && Object.values(contexts).find(c => c?.clippingContext)?.clippingContext;
-    if (!instance) return; // no frame rendered yet; retry on the next call
-
-    type PlanesContext = { intersectionPlanes: unknown[]; unionPlanes: unknown[] };
-    const proto = Object.getPrototypeOf(instance) as {
-      update?: (this: PlanesContext, parent: unknown, group: unknown) => void;
-    } | null;
-    const originalUpdate = proto?.update;
-    if (!proto || typeof originalUpdate !== 'function') {
-      if (!this.warned) {
-        this.warned = true;
-        console.warn('[ThreeService] ClippingContext.update not found — stale-clipping patch NOT applied; '
-          + 'toggling clipping groups may freeze planes in camera space.');
-      }
-      return;
-    }
-
-    proto.update = function (this: PlanesContext, parent: unknown, group: unknown): void {
-      const intersection = this.intersectionPlanes;
-      const union = this.unionPlanes;
-      originalUpdate.call(this, parent, group);
-      if (intersection && this.intersectionPlanes !== intersection) {
-        intersection.length = 0;
-        intersection.push(...this.intersectionPlanes);
-        this.intersectionPlanes = intersection;
-      }
-      if (union && this.unionPlanes !== union) {
-        union.length = 0;
-        union.push(...this.unionPlanes);
-        this.unionPlanes = union;
-      }
-    };
-    this.patched = true;
-  },
-};
-
-
 import {
   acceleratedRaycast,
   computeBoundsTree,
@@ -144,6 +61,8 @@ import {THREE_EXTENSIONS, LAZY_THREE_EXTENSIONS} from '../firebird/tokens';
 import type {ThreeExtension, SceneContext, FrameContext} from '../firebird/three-extension';
 import type {Event as FbEvent} from '@firebird/core';
 import {RenderView, RenderViewOptions} from './render-view';
+import {ClippedGeometrySlice, GEOMETRY_MAIN_LAYER, EVENT_DATA_LAYER} from './geometry-slice';
+import {ConfigService} from './config.service';
 
 
 
@@ -215,6 +134,9 @@ export class ThreeService implements OnDestroy {
   /** Last clipping structure applied to the renderer; see updateClippingGroups. */
   private lastClippingStructure = '';
 
+  /** The projection views' independently clipped geometry copy (see ClippedGeometrySlice). */
+  public geometrySlice: ClippedGeometrySlice | null = null;
+
   /** Functions callbacks that help organize performance */
   public profileBeginFunc: (() => void) | null = null;
   public profileEndFunc: (() => void) | null = null;
@@ -222,6 +144,19 @@ export class ThreeService implements OnDestroy {
   /** Animation loop control */
   private animationFrameId: number | null = null;
   private shouldRender = false;
+
+  /**
+   * Render scheduling (config key `rendering.mode`). On-demand is the
+   * default: the RAF loop keeps ticking, but scene renders happen only when
+   * something flagged a change. Dirty flags are SET by events, signals and
+   * `invalidate()` calls — the loop only reads and clears them; it never
+   * polls application state.
+   */
+  private continuousMode = false;
+  /** "Render every view on the next frame" — set by invalidate(). */
+  private renderRequested = true;
+  /** Frames that actually rendered (idle gates and the perf box read this). */
+  public renderedFrameCount = 0;
 
   /** Callbacks to run each frame before rendering. */
   private frameCallbacks: Array<() => void> = [];
@@ -236,6 +171,8 @@ export class ThreeService implements OnDestroy {
   private extensions: ThreeExtension[] = (inject(THREE_EXTENSIONS, {optional: true}) ?? []).slice();
   private lazyExtensionLoaders = inject(LAZY_THREE_EXTENSIONS, {optional: true}) ?? [];
   private injector = inject(Injector);
+  /** Optional so plain `new ThreeService(...)` in tests works without DI. */
+  private configService = inject(ConfigService, {optional: true});
   private sceneContext: SceneContext | null = null;
   private frameContext: FrameContext | null = null;
   private lastFrameStartTime = 0;
@@ -432,6 +369,19 @@ export class ThreeService implements OnDestroy {
     // It is important not to set this flag at the function end as functions, such as setSize will check the flag
     this.initialized = true;
 
+    // Render scheduling mode. Normal config precedence applies, so a URL
+    // (?config.rendering.mode=continuous), server config or the user can
+    // override the on-demand default at any time.
+    if (this.configService) {
+      const modeProperty = this.configService.getConfigOrCreate<string>('rendering.mode', 'on-demand');
+      const applyMode = (mode: string) => {
+        this.continuousMode = mode === 'continuous';
+        this.invalidate();
+      };
+      applyMode(modeProperty.value);
+      modeProperty.subject.subscribe(applyMode); // root-singleton lifetime
+    }
+
     // Apply any clipping state that was set by Angular effects before init completed
     this.updateClippingGroups();
 
@@ -464,10 +414,10 @@ export class ThreeService implements OnDestroy {
 
   /** Builds the extension contexts and runs onSceneInit for eager extensions. */
   private initExtensions(): void {
-    // invalidate() is a documented no-op: the loop is continuous today; the
-    // contract exists so extensions keep working if it goes render-on-demand
-    // later.
-    const invalidate = () => {};
+    // The render-on-demand contract: extensions call invalidate() after
+    // mutating renderable state, and the next frame renders. Extensions
+    // that already followed the documented contract work unmodified.
+    const invalidate = () => this.invalidate();
     const service = this;
     this.sceneContext = {
       scene: this.scene,
@@ -484,6 +434,10 @@ export class ThreeService implements OnDestroy {
       get mainView() { return service.mainView; },
       addView: (options: RenderViewOptions) => this.addView(options),
       removeView: (view: RenderView) => this.removeView(view),
+      get geometrySlice() { return service.geometrySlice; },
+      createGeometrySlice: () => this.createGeometrySlice(),
+      rebuildGeometrySlice: () => this.rebuildGeometrySlice(),
+      removeGeometrySlice: () => this.removeGeometrySlice(),
       invalidate,
     };
     this.frameContext = {
@@ -533,6 +487,7 @@ export class ThreeService implements OnDestroy {
         console.error('[ThreeService] Extension onEventLoaded failed:', extension, error);
       }
     }
+    this.invalidate();
   }
 
   /**
@@ -567,6 +522,7 @@ export class ThreeService implements OnDestroy {
     view.setContainer(container);
     this.installRaycastHandlers(view);
     view.updateViewport();
+    this.invalidate();
   }
 
   /**
@@ -593,6 +549,7 @@ export class ThreeService implements OnDestroy {
     this.views.push(view);
     this.installRaycastHandlers(view);
     view.updateViewport();
+    this.invalidate();
     return view;
   }
 
@@ -607,6 +564,51 @@ export class ThreeService implements OnDestroy {
     this.views.splice(index, 1);
     this.removeRaycastHandlers(view);
     view.dispose();
+    this.invalidate();
+  }
+
+  /**
+   * Creates (or returns) the geometry slice: a second copy of the detector
+   * geometry that projection views clip independently of the main view (see
+   * ClippedGeometrySlice for the mechanism and the layer routing). The main
+   * view keeps rendering the original geometry; pass the returned slice plus
+   * a `clipPlane` in `addView` options to give an added view its own cut.
+   *
+   * Call `rebuildGeometrySlice()` after a geometry load while a slice exists.
+   */
+  createGeometrySlice(): ClippedGeometrySlice {
+    this.ensureInitialized('createGeometrySlice');
+    if (this.geometrySlice) return this.geometrySlice;
+    const slice = new ClippedGeometrySlice();
+    slice.rebuild(this.sceneGeometry);
+    this.scene.add(slice.group);
+    // Originals moved off layer 0 — the main view must opt into their layer.
+    this.mainView.perspectiveCamera.layers.enable(GEOMETRY_MAIN_LAYER);
+    this.mainView.orthographicCamera.layers.enable(GEOMETRY_MAIN_LAYER);
+    this.geometrySlice = slice;
+    // A previous slice's shader states (same plane-count shape) would be
+    // bound to its orphaned plane array — force rebuilds against this one.
+    this.dropClippingShaderState();
+    this.invalidate();
+    return slice;
+  }
+
+  /** Rebuilds the slice spine from the current geometry content (after loads). */
+  rebuildGeometrySlice(): void {
+    if (!this.geometrySlice) return;
+    this.geometrySlice.rebuild(this.sceneGeometry);
+    this.dropClippingShaderState();
+    this.invalidate();
+  }
+
+  /** Removes the geometry slice and restores single-copy layer routing. */
+  removeGeometrySlice(): void {
+    if (!this.geometrySlice) return;
+    this.scene.remove(this.geometrySlice.group);
+    this.geometrySlice.dispose();
+    this.geometrySlice = null;
+    this.dropClippingShaderState();
+    this.invalidate();
   }
 
   /**
@@ -662,6 +664,15 @@ export class ThreeService implements OnDestroy {
     this.spotLight.castShadow = true;
     this.spotLight.name = "Light-Spot";
     this.sceneHelpers.add(this.spotLight);
+
+    // Lights are collected per render pass by camera-layer test. A
+    // tracks-on-top pass renders with ONLY the event layer enabled, and the
+    // light set it collects must be IDENTICAL to every other pass — the set
+    // is part of the render-object cache key, so a differing set would
+    // rebuild every shared render object on every frame.
+    for (const light of [this.ambientLight, this.hemisphereLight, this.directionalLight, this.pointLight, this.spotLight]) {
+      light.layers.enable(EVENT_DATA_LAYER);
+    }
   }
 
   /**
@@ -714,7 +725,27 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * The render loop: updates controls, executes frame callbacks, renders the scene, and schedules the next frame.
+   * Schedules a render of every view on the next animation frame. THE
+   * render-on-demand primitive: anything that changes renderable state calls
+   * this (directly, or through the SceneContext/FrameContext contract).
+   * Cheap and idempotent — flags are consumed once per frame.
+   */
+  invalidate(): void {
+    this.renderRequested = true;
+    for (const view of this.views) {
+      view.dirty = true;
+    }
+  }
+
+  /**
+   * The render loop. Runs every animation frame; whether it RENDERS depends
+   * on the scheduling mode: continuous renders always, on-demand only when a
+   * dirty flag was set since the last frame (invalidate(), controls 'change',
+   * per-view knobs). Flags are read-and-cleared here — never polled state.
+   *
+   * Animations sustain their own chains: a rendered frame runs the frame
+   * callbacks and extension onFrame hooks, and an active animator (tween
+   * group, gizmo transition, damping) re-invalidates until it settles.
    */
   private renderLoop(): void {
     if (!this.shouldRender) {
@@ -724,60 +755,81 @@ export class ThreeService implements OnDestroy {
     this.animationFrameId = requestAnimationFrame(() => this.renderLoop());
 
     try {
-      const frameStartTime = performance.now();  // Add this
-      // Profiling start
-      this.profileBeginFunc?.();
+      const frameStartTime = performance.now();
 
-
-      // Add frustum culling before rendering
-      // this.frustumCuller.cullMeshes(this.scene, this.camera);
-
-      // Extension onFrame hooks run before rendering. Keep them cheap:
-      // animation only, no state polling (state changes travel through signals).
-      if (this.frameContext && this.extensions.length > 0) {
-        this.frameContext.deltaTime = this.lastFrameStartTime ? frameStartTime - this.lastFrameStartTime : 0;
-        for (const extension of this.extensions) {
-          extension.onFrame?.(this.frameContext);
-        }
-      }
-      this.lastFrameStartTime = frameStartTime;
-
-      if (this.views.length === 1) {
-        // Single view: plain full-canvas render, no viewport/scissor state.
-        const view = this.mainView;
+      // Controls progression (damping, active interaction) — the one
+      // permitted per-frame animator. It fires 'change' events that set the
+      // per-view dirty flags, and goes quiet when motion settles.
+      for (const view of this.views) {
         view.controls.update();
-        this.renderer.render(this.scene, view.camera);
-        view.renderOverlays();
-      } else {
-        // Multiple views: each renders its own scissored rectangle of the
-        // shared canvas. autoClear stays on — with the scissor test enabled
-        // the clear applies per-rectangle, so views do not erase each other.
-        for (const view of this.views) {
-          view.controls.update();
-        }
-        this.renderer.setScissorTest(true);
-        for (const view of this.views) {
-          view.renderTo(this.renderer, this.scene);
-        }
-        this.renderer.setScissorTest(false);
-        const canvas = this.renderer.domElement;
-        this.renderer.setViewport(0, 0, canvas.clientWidth, canvas.clientHeight);
       }
 
-      // The first rendered frame creates the renderer's clipping contexts;
-      // patch their prototype as soon as one exists (no-op afterwards).
-      patchThreeClippingContextArrayStability.applyOnce(this.renderer);
+      const anythingDirty = this.renderRequested || this.views.some(view => view.dirty);
+      const rendering = this.continuousMode || anythingDirty;
 
-      // Profiling end
-      this.perfService.updateStats(this.renderer, frameStartTime);
+      if (rendering) {
+        // Profiling start
+        this.profileBeginFunc?.();
 
+        // Extension onFrame hooks run before rendering. Keep them cheap:
+        // animation only, no state polling (state changes travel through
+        // signals). deltaTime = ms since the previous RENDERED frame.
+        if (this.frameContext && this.extensions.length > 0) {
+          this.frameContext.deltaTime = this.lastFrameStartTime ? frameStartTime - this.lastFrameStartTime : 0;
+          for (const extension of this.extensions) {
+            extension.onFrame?.(this.frameContext);
+          }
+        }
+        this.lastFrameStartTime = frameStartTime;
 
-      // Run all custom/users callbacks
-      for (const cb of this.frameCallbacks) {
-        cb();
+        this.renderRequested = false;
+
+        if (this.views.length === 1) {
+          // Single view: full-canvas render, no viewport/scissor state.
+          // Goes through the view so per-view modes (tracks-on-top) apply
+          // on the display page too; with them off this is exactly a plain
+          // renderer.render.
+          const view = this.mainView;
+          view.dirty = false;
+          view.renderFullFrame(this.renderer, this.scene);
+          view.renderOverlays();
+        } else {
+          // Multiple views: each renders its own scissored rectangle of the
+          // shared canvas. autoClear stays on — with the scissor test enabled
+          // the clear applies per-rectangle, so views do not erase each other
+          // WITHIN the frame. Every view must repaint EVERY frame: the
+          // drawing buffer does not survive compositing
+          // (preserveDrawingBuffer is false; WebGPU swap-chain textures
+          // likewise start undefined), so a skipped view's rectangle would
+          // show cleared background once the previous frame was presented.
+          // Dirty flags decide whether a frame happens at all — never which
+          // views paint within it.
+          for (const view of this.views) {
+            view.dirty = false;
+          }
+          this.renderer.setScissorTest(true);
+          for (const view of this.views) {
+            view.renderTo(this.renderer, this.scene);
+          }
+          this.renderer.setScissorTest(false);
+          const canvas = this.renderer.domElement;
+          this.renderer.setViewport(0, 0, canvas.clientWidth, canvas.clientHeight);
+        }
+
+        this.renderedFrameCount++;
+
+        // Frame callbacks (tween advancement etc.) run on rendered frames;
+        // an active animation re-invalidates, sustaining its own chain.
+        for (const cb of this.frameCallbacks) {
+          cb();
+        }
+
+        this.profileEndFunc?.();
       }
 
-      this.profileEndFunc?.();
+      // Stats update every RAF tick: FPS counts rendered frames only, so an
+      // idle on-demand display correctly reads 0 (shown as "idle").
+      this.perfService.updateStats(this.renderer, frameStartTime, rendering, this.continuousMode);
     } catch (error) {
       console.error('(!!!) ThreeService Render Loop Error:', error);
       this.stopRendering();
@@ -828,6 +880,7 @@ export class ThreeService implements OnDestroy {
     for (const view of this.views) {
       view.updateViewport();
     }
+    this.invalidate();
   }
 
   /**
@@ -883,6 +936,7 @@ export class ThreeService implements OnDestroy {
   updateZClipping(zPosition: number, forward: boolean): void {
     this.zClipPlane.normal.set(0, 0, forward ? 1 : -1);
     this.zClipPlane.constant = forward ? -zPosition : zPosition;
+    this.invalidate();
   }
 
   /**
@@ -921,7 +975,49 @@ export class ThreeService implements OnDestroy {
     const structure = `${this.sceneGeometry.enabled}:${this.sceneGeometry.clipIntersection}:${this.sceneGeometry.clippingPlanes.length}:${this.zClippingEnabled}`;
     if (structure !== this.lastClippingStructure) {
       this.lastClippingStructure = structure;
-      (this.renderer as unknown as { _objects?: { dispose(): void } })._objects?.dispose();
+      this.dropClippingShaderState();
+    }
+    this.invalidate();
+  }
+
+  /**
+   * Drops the renderer's cached render objects AND built node states so the
+   * next frame rebuilds them against the current clipping structure. Called
+   * whenever the SET of active clipping planes changes (never for plane
+   * position updates — those are uniforms).
+   *
+   * Both caches must go, for two different three.js (r183–r185) defects:
+   *
+   * - Render objects: RenderObjects.get short-circuits on material.version
+   *   before consuming the one-shot clippingNeedsUpdate getter, so a pipeline
+   *   compiled without planes keeps rendering unclipped after planes appear.
+   *
+   * - Node states: built shaders bind clipping planes to the ARRAY INSTANCE
+   *   their ClippingContext held at build time, but ClippingContext.update()
+   *   REPLACES its arrays whenever the parent group chain changes (e.g. an
+   *   outer clipping group toggled). The state cache is keyed by plane
+   *   COUNTS, so a toggle that returns to a previously-seen count would reuse
+   *   a shader bound to the ORPHANED array — whose view-space plane values
+   *   nobody re-projects, leaving the cut frozen to the camera (orbit moves
+   *   the cut, zoom clips deeper). Evicting the states forces a rebuild that
+   *   captures the live arrays. GPU programs are NOT recompiled on the way
+   *   back: Pipelines caches programs by generated shader source, and equal
+   *   clipping structure generates equal source — the rebuild cost is CPU
+   *   node-graph work only, on a rare user action.
+   *
+   * three-clipping-internals.spec.ts pins the array-replacement behavior;
+   * if a three upgrade makes it fail, re-evaluate whether this is still
+   * needed.
+   */
+  private dropClippingShaderState(): void {
+    const internals = this.renderer as unknown as {
+      _objects?: { dispose(): void };
+      _nodes?: { nodeBuilderCache?: Map<unknown, unknown> };
+    };
+    internals._objects?.dispose();
+    internals._nodes?.nodeBuilderCache?.clear();
+    if (!internals._objects || !internals._nodes?.nodeBuilderCache) {
+      console.warn('[ThreeService] Renderer clipping caches not found — clipping toggles may show stale cuts (three internals moved?).');
     }
   }
 
@@ -931,6 +1027,7 @@ export class ThreeService implements OnDestroy {
    */
   toggleOrthographicView(useOrtho: boolean): void {
     this.mainView.toggleOrthographicView(useOrtho);
+    this.invalidate();
   }
 
   /**
@@ -939,6 +1036,7 @@ export class ThreeService implements OnDestroy {
    */
   setCameraUp(up: THREE.Vector3): void {
     this.mainView.setCameraUp(up);
+    this.invalidate();
   }
 
 
@@ -1045,6 +1143,7 @@ export class ThreeService implements OnDestroy {
       });
 
       object.material = Array.isArray(object.material) ? highlightedMaterials : highlightedMaterials[0];
+      this.invalidate();
     }
   }
 
@@ -1059,6 +1158,7 @@ export class ThreeService implements OnDestroy {
       }
       this.originalMaterials.delete(this.highlightedObject);
       this.highlightedObject = null;
+      this.invalidate();
     }
   }
 
@@ -1293,6 +1393,7 @@ export class ThreeService implements OnDestroy {
     // Add to helpers scene
     this.sceneHelpers.add(sphere);
     this.measurementPoints.push(sphere);
+    this.invalidate();
   }
 
 //  Reset measurement state and clear visual indicators
@@ -1310,6 +1411,7 @@ export class ThreeService implements OnDestroy {
       }
     });
     this.measurementPoints = [];
+    this.invalidate();
   }
 
   /**

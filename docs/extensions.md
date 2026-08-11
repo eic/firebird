@@ -97,9 +97,14 @@ export class HoverInfoExtension implements ThreeExtension {
   ready" logic of their own.
 - Rendering rules: state changes travel through signals/effects — never poll
   application state inside `onFrame`. After mutating anything renderable, call
-  `ctx.invalidate()`. It is currently a no-op (the loop renders continuously),
-  but it is the contract that keeps your extension working unchanged if the
-  loop switches to render-on-demand.
+  `ctx.invalidate()` — the next animation frame renders. The render loop is
+  on-demand by default (config key `rendering.mode`, values `on-demand` and
+  `continuous`): a mutation without an `invalidate()` appears only when
+  something else triggers a render.
+- `onFrame` runs only on frames that render. An animation sustains itself by
+  calling `invalidate()` from its own update — start it with one seed
+  `invalidate()`, and the chain ends when the animation stops updating.
+  `deltaTime` is the time since the previous rendered frame.
 - Do not start your own requestAnimationFrame chain against the scene; use
   `onFrame`.
 
@@ -111,6 +116,17 @@ camera and controls), `ctx.addView(options)` and `ctx.removeView(view)`.
 Each view owns its DOM container, perspective+orthographic cameras, orbit
 controls, picking, and its viewport rectangle inside the shared canvas — the
 quad-projection page (`/split-window`) is four views over the same scene.
+
+A view can carry its own geometry cut. Create the shared slice with
+`ctx.createGeometrySlice()` (an independently clipped copy of the detector
+geometry; event data is never clipped), then pass `geometrySlice`, a
+`clipPlane` (world-space normal + constant) and optionally
+`tracksOnTop: true` (event data drawn over geometry regardless of depth) in
+the `addView` options. Mutate `view.clipPlane` to move the cut at runtime,
+and call `ctx.rebuildGeometrySlice()` after loading new geometry. All views
+sharing the slice write their own plane value before rendering — per-view
+cut positions are free; do not try to give views different plane COUNTS
+(that is what the slice copy exists for).
 
 To draw on top of a view (annotations, axes, widgets), attach an overlay:
 

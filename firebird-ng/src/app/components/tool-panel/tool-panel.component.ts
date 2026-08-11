@@ -1,8 +1,10 @@
-import { Component, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Output, EventEmitter, ChangeDetectionStrategy, Signal, inject } from '@angular/core';
 import { NgIf } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIcon } from '@angular/material/icon';
 import { ViewOptionsComponent } from '../view-options/view-options.component';
 import { ThreeService } from '../../services/three.service';
+import { ConfigService } from '../../services/config.service';
 import {MatIconButton} from "@angular/material/button";
 import {MatTooltip} from "@angular/material/tooltip";
 import * as THREE from 'three';
@@ -31,6 +33,19 @@ export class ToolPanelComponent {
   private zoomFactor = 1.1;
   /** Whether camera is orthographic or perspective. */
   private orthographicView = false;
+
+  /**
+   * Draw event data over geometry regardless of depth — tracks stay visible
+   * from every camera angle instead of hiding behind detector volumes.
+   * Config-backed (`display.tracksOnTop`), so the mode is deep-linkable and
+   * survives reloads; EventDisplayService applies it to the main view.
+   */
+  private tracksOnTopProperty = inject(ConfigService).getConfigOrCreate<boolean>('display.tracksOnTop', false);
+  tracksOnTop: Signal<boolean> = toSignal(this.tracksOnTopProperty.subject, { requireSync: true });
+
+  toggleTracksOnTop() {
+    this.tracksOnTopProperty.value = !this.tracksOnTopProperty.value;
+  }
 
   constructor(
     private threeService: ThreeService // no more EventDisplayService

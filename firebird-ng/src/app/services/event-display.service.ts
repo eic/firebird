@@ -1,4 +1,5 @@
 import {computed, effect, inject, Injectable, linkedSignal, Signal, signal, WritableSignal} from '@angular/core';
+import {Subscription} from 'rxjs';
 import {Group as TweenGroup, Tween} from '@tweenjs/tween.js';
 import {ThreeService} from './three.service';
 import {GeometryService} from './geometry.service';
@@ -13,10 +14,13 @@ import {DataExchange, DataModelPainter, DisplayMode, LoadedGeometry} from '@fire
 import {AnimationManager} from "../animation/animation-manager";
 import {Mesh, MeshBasicMaterial, SphereGeometry, Vector3} from "three";
 import {arrangeEpicDetectors} from "../utils/epic-geometry-arranger";
+import {EVENT_DATA_LAYER} from "./geometry-slice";
 import {PAINTERS} from "../firebird/tokens";
 import {BatchStatusService} from "../firebird/batch-status.service";
+import {CommandBusService} from "../firebird/command-bus.service";
 import {PainterConfigService} from "./painter-config.service";
 import {ConfigProperty} from "../utils/config-property";
+import type {RenderView} from "./render-view";
 
 
 @Injectable({
@@ -73,11 +77,21 @@ export class EventDisplayService {
   /** Batch/headless readiness flags (window.firebird) — loads report through it. */
   private batchStatus = inject(BatchStatusService);
 
+  /** Startup command queue (?dex=, ?geometry=, ?cmd=, server startupCommands). */
+  private commandBus = inject(CommandBusService);
+
+  /** Loading indicators for the display pages' footers (service-owned so
+   * every page shows the same state). */
+  readonly loadingDex = signal(false);
+  readonly loadingEdm = signal(false);
+  readonly loadingGeometry = signal(false);
+
   /** Painter selection + knob keys (painters.byPiece.*) over ConfigService. */
   private painterConfig = inject(PainterConfigService);
 
-  /** Painter config keys already subscribed for live updates. */
-  private watchedPainterKeys = new Set<string>();
+  /** Painter config keys subscribed for live updates, with their
+   * subscriptions so watchers of vanished pieces can be pruned. */
+  private watchedPainterKeys = new Map<string, Subscription>();
 
   /** Resolves when all lazily-registered painters (withLazyPainter) are in. */
   private paintersReady: Promise<void>;
@@ -119,6 +133,7 @@ export class EventDisplayService {
       for (const property of this.painterConfig.knobProperties(piece, painterClass).values()) {
         this.watchPainterKey(property, () => {
           this.painter.painterFor(piece.name)?.onConfigChanged();
+          this.three.invalidate();
         });
       }
       return this.painterConfig.buildConfigView(piece, painterClass);
@@ -134,6 +149,8 @@ export class EventDisplayService {
     effect(() => {
       const time = this.eventTime();
       this.painter.paint(time);
+      this.stampEventLayers();
+      this.three.invalidate();
     }, {debugName: "EventDisplayService.OnTimeChange"});
 
     effect(() => {
@@ -152,8 +169,11 @@ export class EventDisplayService {
       if (event === null || this.painter.getEntry() == event) return;
       this.painter.setEntry(event);
       this.painter.paint(null);
+      this.stampEventLayers();
+      this.pruneStalePainterWatchers();
 
       // Let ThreeExtensions react to the freshly painted event
+      // (notifyEventLoaded also invalidates the render loop)
       this.three.notifyEventLoaded(event);
 
       console.log("[eventDisplay] Entry change effect end")
@@ -173,11 +193,53 @@ export class EventDisplayService {
     this.painter.setThreeSceneParent(this.three.sceneEvent);
     this.three.startRendering();
 
-    // We need this to update the animation group
-    this.three.addFrameCallback(() => {
-      this.tweenGroup.update();
-    })
+    // Advances the tween group each frame. A stable bound member, not an
+    // inline closure: initThree runs once per display-page mount, and
+    // addFrameCallback deduplicates by function identity — an inline closure
+    // would stack one registration per page visit.
+    this.three.addFrameCallback(this.tweenFrameCallback);
+
+    this.wireDisplayTracksOnTop();
   }
+
+  /** Guards the one-time config subscription (initThree runs per page mount). */
+  private displayTracksOnTopWired = false;
+
+  /**
+   * Applies the display page's tracks-over-geometry mode to the main view.
+   * Runs on every page init (the quad page overrides the main view's flag
+   * from its own quadView.main key right after its views are created) and
+   * subscribes once so the tool-panel toggle takes effect live.
+   */
+  private wireDisplayTracksOnTop(): void {
+    const property = this.config.getConfigOrCreate<boolean>('display.tracksOnTop', false);
+    const apply = (onTop: boolean) => {
+      const main = this.three.views[0];
+      if (main) {
+        main.tracksOnTop = onTop;
+        main.dirty = true;
+      }
+    };
+    apply(property.value);
+    if (!this.displayTracksOnTopWired) {
+      this.displayTracksOnTopWired = true;
+      property.subject.subscribe(apply);
+    }
+  }
+
+  /** See initThree — identity matters for addFrameCallback deduplication.
+   * A PLAYING tween re-invalidates the loop each frame, sustaining the
+   * animation chain under render-on-demand; the chain ends when every tween
+   * stopped or completed. allStopped(), not getAll().length: tween.js keeps
+   * stopped/finished tweens in the group (update() defaults to
+   * preserve=true and never evicts), so a length check would keep the loop
+   * rendering forever after the first animation. */
+  private readonly tweenFrameCallback = () => {
+    if (!this.tweenGroup.allStopped()) {
+      this.tweenGroup.update();
+      this.three.invalidate();
+    }
+  };
 
 
   /** The painter drawing the named piece of the current event, or null. */
@@ -193,15 +255,35 @@ export class EventDisplayService {
   /** Subscribes once per config key; runs `action` on every later change. */
   private watchPainterKey(property: ConfigProperty<any>, action: () => void): void {
     if (this.watchedPainterKeys.has(property.key)) return;
-    this.watchedPainterKeys.add(property.key);
     let isFirst = true; // changes$ replays the current value on subscribe
-    property.changes$.subscribe(() => {
+    const subscription = property.changes$.subscribe(() => {
       if (isFirst) {
         isFirst = false;
         return;
       }
       action();
     });
+    this.watchedPainterKeys.set(property.key, subscription);
+  }
+
+  /**
+   * Drops watchers whose piece is absent from the current entry — piece names
+   * come and go with data files, and a vanished piece must not keep a live
+   * config subscription. Watchers for still-present pieces are recreated by
+   * the painter hooks during paint, so pruning after setEntry is safe.
+   * Key shapes: painters.byPiece.<piece> and painters.byPiece.<piece>.<knob>.
+   */
+  private pruneStalePainterWatchers(): void {
+    const entry = this.painter.getEntry();
+    if (!entry) return;
+    const activePieces = new Set(entry.pieces.map(piece => piece.name));
+    for (const [key, subscription] of this.watchedPainterKeys) {
+      const pieceName = key.split('.')[2];
+      if (pieceName && !activePieces.has(pieceName)) {
+        subscription.unsubscribe();
+        this.watchedPainterKeys.delete(key);
+      }
+    }
   }
 
   /** Rebuilds the piece painters of the current entry (painter selection changed). */
@@ -210,6 +292,19 @@ export class EventDisplayService {
     if (!entry) return;
     this.painter.setEntry(entry);
     this.painter.paint(this.eventTime());
+    this.stampEventLayers();
+    this.three.invalidate();
+  }
+
+  /**
+   * Routes every painted event object to EVENT_DATA_LAYER (see
+   * geometry-slice.ts for the layer scheme). Layers are per-object and
+   * painters create objects with the default layer, so the stamp runs after
+   * every paint that may have created objects. Idempotent and cheap — the
+   * event subtree is small.
+   */
+  private stampEventLayers(): void {
+    this.three.sceneEvent?.traverse(object => object.layers.set(EVENT_DATA_LAYER));
   }
 
   // ****************************************************
@@ -298,6 +393,10 @@ export class EventDisplayService {
       })
       // .easing(TWEEN.Easing.Quadratic.In) // This can be changed to other easing functions
       .start();
+
+    // Seed the render-on-demand chain: the first rendered frame advances the
+    // tween, whose update re-invalidates until it completes.
+    this.three.invalidate();
   }
 
   /**
@@ -328,6 +427,8 @@ export class EventDisplayService {
     ion.position.setZ(-distanceFromOrigin);
 
     const particles = [electron, ion];
+    // Added outside the paint path — route to the event layer directly.
+    for (const particle of particles) particle.layers.set(EVENT_DATA_LAYER);
 
     this.three.sceneEvent.add(...particles);
 
@@ -357,6 +458,9 @@ export class EventDisplayService {
       this.three.sceneEvent.remove(...particles);
       onEnd?.();
     });
+
+    // Seed the render-on-demand chain (see animateCurrentTime).
+    this.three.invalidate();
   }
 
   animateWithCollision() {
@@ -399,6 +503,7 @@ export class EventDisplayService {
         trackInfo.newLine.geometry.instanceCount = startAttr ? startAttr.count : 0;
       }
     }
+    this.three.invalidate();
   }
 
   // Animation cycling methods
@@ -420,6 +525,106 @@ export class EventDisplayService {
   // ****************************************************
   // *************** DATA LOADING ***********************
   // ****************************************************
+
+  /**
+   * Config-driven auto-load with startup-command awareness — the one code
+   * path every display page uses, so landing on any of them covers the same
+   * sources. Queued startup commands (?dex=..., ?geometry=..., ?cmd=...,
+   * server startupCommands) replace the config-driven load for the data
+   * types they carry; the queue itself runs after the loads are kicked off.
+   *
+   * `onError` receives human-readable load failures (pages surface them in
+   * their own way — snackbar, console).
+   */
+  autoLoadAndRunStartup(onError?: (message: string) => void): void {
+    const startupCommands = this.commandBus.peekStartupCommands();
+    const startupHas = (type: string) => startupCommands.some(c => c.type === type);
+
+    if (!startupHas('open-dex')) {
+      this.autoLoadDexFromConfig(onError);
+      this.autoLoadRootFromConfig(onError);
+    }
+    if (!startupHas('open-geometry')) {
+      this.autoLoadGeometryFromConfig(onError);
+    }
+
+    void this.commandBus.runStartupCommands();
+  }
+
+  private autoLoadDexFromConfig(onError?: (message: string) => void): void {
+    // getConfigOrCreate, not getConfig: on a direct page landing nothing
+    // declared the key yet, and only declaration applies pending URL/server
+    // values for it.
+    const url = this.config.getConfigOrCreate<string>('events.dexEventsSource', '').value;
+    if (!url || url.trim().length === 0) {
+      console.log('[eventDisplay]: No DEX event source configured, skipping.');
+      return;
+    }
+    if (this.lastLoadedDexUrl === url) {
+      console.log(`[eventDisplay]: Event data (DEX) already loaded from '${url}', skipping.`);
+      return;
+    }
+    this.loadingDex.set(true);
+    this.loadDexData(url)
+      .catch(error => {
+        const message = `Error loading events: ${error}`;
+        console.error(`[eventDisplay]: ${message}`);
+        onError?.(message);
+      })
+      .finally(() => this.loadingDex.set(false));
+  }
+
+  private autoLoadRootFromConfig(onError?: (message: string) => void): void {
+    const url = this.config.getConfigOrCreate<string>('events.rootEventSource', '').value;
+    let eventRange = this.config.getConfigOrCreate<string>('events.rootEventRange', '').value;
+    if (!url || url.trim().length === 0) {
+      console.log('[eventDisplay]: No EDM4eic ROOT source configured, skipping.');
+      return;
+    }
+    if (!eventRange || eventRange.trim().length === 0) {
+      eventRange = '0';
+    }
+    if (this.lastLoadedRootUrl === url && this.lastLoadedRootEventRange === eventRange) {
+      console.log(`[eventDisplay]: ROOT events already loaded from '${url}' (${eventRange}), skipping.`);
+      return;
+    }
+    this.loadingEdm.set(true);
+    this.loadRootData(url, eventRange)
+      .catch(error => {
+        const message = `Error loading events: ${error}`;
+        console.error(`[eventDisplay]: ${message}`);
+        onError?.(message);
+      })
+      .finally(() => this.loadingEdm.set(false));
+  }
+
+  private autoLoadGeometryFromConfig(onError?: (message: string) => void): void {
+    const url = this.config.getConfigOrCreate<string>('geometry.selectedGeometry', '').value;
+    if (!url || url.trim().length === 0) {
+      console.log('[eventDisplay]: No geometry configured, skipping.');
+      return;
+    }
+    if (this.lastLoadedGeometryUrl === url) {
+      console.log(`[eventDisplay]: Geometry already loaded from '${url}', skipping.`);
+      return;
+    }
+    // A load may still be running from another page visit — supersede it.
+    if (this.geomService.isLoading()) {
+      this.geomService.cancelLoading();
+    }
+    this.loadingGeometry.set(true);
+    this.loadGeometry(url)
+      .then(result => {
+        if (result.cancelled) {
+          console.log('[eventDisplay]: Geometry load superseded by a newer one.');
+        }
+      })
+      .catch(error => {
+        console.error(`[eventDisplay]: Error loading geometry: ${error}`);
+        onError?.("Error loading Geometry. Open 'Configure' to change. Press F12->Console for logs");
+      })
+      .finally(() => this.loadingGeometry.set(false));
+  }
 
   /**
    * Load geometry
@@ -458,6 +663,10 @@ export class EventDisplayService {
       // Arrange by category
       arrangeEpicDetectors(sceneGeo);
 
+      // The projection views' geometry copy tracks every load (no-op when
+      // no slice exists — single-view pages).
+      this.three.rebuildGeometrySlice();
+
       this.lastLoadedGeometryUrl = url;
       this.batchStatus.endGeometryLoad(true);
       return {root: threeGeometry};
@@ -484,6 +693,8 @@ export class EventDisplayService {
         this.painter.setEntry(data.events[0]);
         this.eventTime.set(null);
         this.painter.paint(this.eventTime());
+        this.stampEventLayers();
+        this.three.invalidate();
         this.lastLoadedDexUrl = url;
         return data;
       } else {
@@ -514,6 +725,8 @@ export class EventDisplayService {
         this.painter.setEntry(data.events[0]);
         this.eventTime.set(null);
         this.painter.paint(this.eventTime());
+        this.stampEventLayers();
+        this.three.invalidate();
         this.lastLoadedRootUrl = url;
         this.lastLoadedRootEventRange = eventRange;
         return data;
@@ -590,6 +803,12 @@ export class EventDisplayService {
   /**
    * Offline frame-by-frame render. Steps the tween manually,
    * captures each frame as PNG, returns array of blobs.
+   *
+   * `views` selects what is recorded: one view renders FULL-FRAME at the
+   * target resolution (its camera, per-view cut and tracks-on-top applied —
+   * not cropped from the on-screen grid); several views render a 2-column
+   * grid composite the way the quad page draws them. Default is the main
+   * view — the original single-camera behavior.
    */
   async captureFramesOffline(options: {
     overrideResolution?: boolean;
@@ -599,9 +818,11 @@ export class EventDisplayService {
     includeCollision?: boolean;
     onProgress?: (current: number, total: number) => void;
     signal?: AbortSignal;
+    views?: RenderView[];
   }): Promise<Blob[]> {
     const { width, height, eventTimeStep, onProgress } = options;
     const renderer = this.three.renderer;
+    const views = options.views?.length ? options.views : [this.three.mainView];
 
     // ── Save original state ──
     const origWidth = renderer.domElement.width;
@@ -609,20 +830,55 @@ export class EventDisplayService {
     const origPixelRatio = renderer.getPixelRatio();
     const origCameraPos = this.three.camera.position.clone();
     const origTarget = this.three.controls.target.clone();
-    const origAspect = this.three.perspectiveCamera.aspect;
 
     // ── Force render resolution (opt-in) ──
     if (options.overrideResolution) {
       renderer.setSize(width, height, false);
       renderer.setPixelRatio(1);
-      this.three.perspectiveCamera.aspect = width / height;
-      this.three.perspectiveCamera.updateProjectionMatrix();
+    }
+
+    // Aim each recorded view's cameras at its capture rectangle's aspect
+    // (full frame for one view, a quadrant for the composite — same aspect
+    // either way). updateViewport() restores on-screen aspects afterwards.
+    const captureWidth = options.overrideResolution ? width : renderer.domElement.width / origPixelRatio;
+    const captureHeight = options.overrideResolution ? height : renderer.domElement.height / origPixelRatio;
+    for (const view of views) {
+      view.setCaptureAspect(captureWidth, captureHeight);
     }
 
     const frames: Blob[] = [];
 
+    const renderCaptureFrame = (): void => {
+      if (views.length === 1) {
+        renderer.setScissorTest(false);
+        renderer.setViewport(0, 0, captureWidth, captureHeight);
+        views[0].renderFullFrame(renderer, this.three.scene);
+        return;
+      }
+      // Grid composite: 2 columns, views in reading order (the quad page
+      // passes [top, side, front, main] to reproduce its layout).
+      const columns = 2;
+      const rows = Math.ceil(views.length / columns);
+      const cellWidth = captureWidth / columns;
+      const cellHeight = captureHeight / rows;
+      renderer.setScissorTest(true);
+      views.forEach((view, index) => {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        // This renderer's viewport origin is top-left (WebGPURenderer
+        // convention on both backends — same math as RenderView.updateViewport).
+        view.renderTo(renderer, this.three.scene, {
+          x: column * cellWidth,
+          y: row * cellHeight,
+          width: cellWidth,
+          height: cellHeight,
+        });
+      });
+      renderer.setScissorTest(false);
+    };
+
     const captureFrame = (): Promise<Blob> => {
-      renderer.render(this.three.scene, this.three.camera);
+      renderCaptureFrame();
       return new Promise((resolve, reject) => {
         renderer.domElement.toBlob(
           blob => blob ? resolve(blob) : reject(new Error('toBlob failed')),
@@ -663,6 +919,9 @@ export class EventDisplayService {
         const ion = new Mesh(ionGeom, ionMat);
         ion.position.setZ(-dist);
 
+        // Added outside the paint path — route to the event layer directly.
+        electron.layers.set(EVENT_DATA_LAYER);
+        ion.layers.set(EVENT_DATA_LAYER);
         this.three.sceneEvent.add(electron, ion);
 
         // Opacity fade-in
@@ -705,6 +964,12 @@ export class EventDisplayService {
 
         const currentTime = Math.min(this.minTime + i * effectiveStep, this.maxTime);
         this.eventTime.set(currentTime);
+        // Paint NOW: signal effects flush asynchronously, and the capture
+        // renders synchronously below — without the direct paint every frame
+        // would show the PREVIOUS step's state (and the first frame whatever
+        // was on screen). The later effect flush repaints the same time.
+        this.painter.paint(currentTime);
+        this.stampEventLayers();
 
         // Camera movement (matches animateCurrentTime tween onUpdate)
         if (this.animateCameraMovement) {
@@ -730,12 +995,15 @@ export class EventDisplayService {
       if (options.overrideResolution) {
         renderer.setSize(origWidth, origHeight, false);
         renderer.setPixelRatio(origPixelRatio);
-        this.three.perspectiveCamera.aspect = origAspect;
-        this.three.perspectiveCamera.updateProjectionMatrix();
       }
       this.three.camera.position.copy(origCameraPos);
       this.three.controls.target.copy(origTarget);
       this.three.camera.updateMatrix();
+      // On-screen aspects come back from the view containers.
+      for (const view of views) {
+        view.updateViewport();
+      }
+      this.three.invalidate();
     }
 
     return frames;

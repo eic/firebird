@@ -76,6 +76,8 @@ export class SelectionService {
       this.selectedPieceSignal.set(ref.pieceName);
     }
     this.selectionSignal.set(ref);
+    // Highlights mutate materials directly — schedule a render.
+    this.three.invalidate();
   }
 
   clear(): void {

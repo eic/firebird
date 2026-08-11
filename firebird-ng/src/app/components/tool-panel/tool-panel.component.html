@@ -32,6 +32,15 @@
           <mat-icon>zoom_out</mat-icon>
         </button>
 
+        <!-- Event data over geometry (tracks always visible) vs normal depth -->
+        <button mat-icon-button
+          class="panel-button"
+          [matTooltip]="tracksOnTop() ? 'Event on top is ON — switch to normal depth' : 'Draw event data on top of geometry'"
+          (click)="toggleTracksOnTop()"
+        >
+          <mat-icon>{{ tracksOnTop() ? 'flip_to_back' : 'flip_to_front' }}</mat-icon>
+        </button>
+
         <!-- The ViewOptionsComponent (for grid, axis toggles, etc.) -->
         <app-custom-view-options></app-custom-view-options>
 

@@ -69,12 +69,17 @@ the quad-projection page adds three orthographic views over the same scene.
 ## Rendering rules (read before writing onFrame)
 
 1. **No per-frame polling as change propagation.** State changes travel
-   through signals and effects; `onFrame` is for animation only. Code that
-   polls app state every frame breaks silently if the loop later switches to
-   render-on-demand — and it will not be your code that gets debugged.
-2. **Changed something renderable? Call `ctx.invalidate()`.** It is a no-op
-   today (the loop renders continuously), but it is the contract that keeps
-   your extension working unmodified if the loop later renders on demand.
+   through signals and effects; `onFrame` is for animation only. The loop
+   renders ON DEMAND by default (config `rendering.mode`), so code that
+   polls app state every frame does not merely waste cycles — it never runs
+   while the display is idle.
+2. **Changed something renderable? Call `ctx.invalidate()`.** The next
+   animation frame renders. Without it, your mutation appears only when
+   something else triggers a render. For an animation: seed one
+   `invalidate()` when it starts and call it again from every update — the
+   chain ends by itself when the animation stops updating. `onFrame` runs
+   only on frames that render; its `deltaTime` is the time since the
+   previous rendered frame.
 3. **The render loop lives in exactly one place** (`ThreeService.renderLoop`).
    Do not start your own rAF chain against the same scene; use `onFrame`.
 

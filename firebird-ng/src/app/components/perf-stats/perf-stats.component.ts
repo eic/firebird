@@ -17,6 +17,6 @@ export class PerfStatsComponent {
   // toSignal keeps the template updating under zoneless: the perf$ stream is
   // produced inside the render loop, outside any Angular scheduling.
   perf: Signal<PerfLog> = toSignal(inject(PerfService).perf$, {
-    initialValue: { fps: 0, frameTime: 0, calls: 0, triangles: 0 },
+    initialValue: { fps: 0, frameTime: 0, calls: 0, triangles: 0, mode: 'continuous', idle: false },
   });
 }

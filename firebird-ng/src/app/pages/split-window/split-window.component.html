@@ -1,16 +1,91 @@
-<div class="quad-host" #host>
-  <div class="quad-grid">
-    <div class="cell" #cellMain>
-      <span class="view-label">3D</span>
-    </div>
-    <div class="cell" #cellTop>
-      <span class="view-label">Top</span>
-    </div>
-    <div class="cell" #cellFront>
-      <span class="view-label">Front</span>
-    </div>
-    <div class="cell" #cellRight>
-      <span class="view-label">Right</span>
+<app-firebird-shell>
+  <!-- Desktop header: the controls relevant to this page. Event/data
+       selection and the 3D view's clipping belong; full display config and
+       side panes do not. -->
+  <ng-container header>
+    <app-custom-event-selector></app-custom-event-selector>
+    <app-geometry-clipping></app-geometry-clipping>
+    <app-recording-menu></app-recording-menu>
+  </ng-container>
+
+  <ng-container mobile-header>
+    <app-custom-event-selector></app-custom-event-selector>
+  </ng-container>
+
+  <ng-container mobile-tools>
+    <app-geometry-clipping></app-geometry-clipping>
+  </ng-container>
+
+  <div central-pane #host class="quad-host">
+    <div class="quad-grid">
+      <div class="cell" #cellTop>
+        <span class="view-label">Top</span>
+      </div>
+      <div class="cell" #cellSide>
+        <span class="view-label">Side</span>
+      </div>
+      <div class="cell" #cellFront>
+        <span class="view-label">Front (XY)</span>
+      </div>
+      <div class="cell" #cellMain>
+        <span class="view-label">3D</span>
+      </div>
     </div>
   </div>
-</div>
+
+  <div footer-left class="hide-on-mobile">
+    <app-perf-stats></app-perf-stats>
+  </div>
+
+  <div footer-center>
+    <div class="time-controls">
+      <app-animation-settings></app-animation-settings>
+      <app-event-time-control></app-event-time-control>
+
+      <button mat-icon-button aria-label="Rewind" matTooltip="Rewind time to 0" class="tcontrol" (click)="eventDisplay.rewindTime()">
+        <mat-icon>first_page</mat-icon>
+      </button>
+      <button mat-icon-button aria-label="Collision" matTooltip="Animate with beam particles collision" class="tcontrol" (click)="eventDisplay.animateWithCollision()">
+        <mat-icon>close_fullscreen</mat-icon>
+      </button>
+      <button mat-icon-button aria-label="Play" matTooltip="Play time forward" class="tcontrol" (click)="eventDisplay.animateTime()">
+        <mat-icon>play_arrow</mat-icon>
+      </button>
+      <button mat-icon-button aria-label="Pause" matTooltip="Pause time playing" class="tcontrol" (click)="eventDisplay.stopTimeAnimation()">
+        <mat-icon>pause</mat-icon>
+      </button>
+      <button mat-icon-button aria-label="Stop" matTooltip="Stop and show all particles" class="tcontrol" (click)="eventDisplay.exitTimedDisplay()">
+        <mat-icon>stop</mat-icon>
+      </button>
+      <button mat-icon-button aria-label="Step back" matTooltip="Step backward" (click)="eventDisplay.timeStepBack()" class="tcontrol">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button mat-icon-button aria-label="Step forward" matTooltip="Step forward" (click)="eventDisplay.timeStep()" class="tcontrol">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div footer-right>
+    <div class="loading-indicators">
+      @if (loadingDex()) {
+        <div class="loader-container">
+          <mat-spinner diameter="24" color="accent"></mat-spinner>
+          <div class="loader-label">loading json</div>
+        </div>
+      }
+      @if (loadingEdm()) {
+        <div class="loader-container">
+          <mat-spinner diameter="24" color="accent"></mat-spinner>
+          <div class="loader-label">loading root</div>
+        </div>
+      }
+      @if (loadingGeometry()) {
+        <div class="loader-container">
+          <mat-spinner diameter="24" color="accent"></mat-spinner>
+          <div class="loader-label">loading geo</div>
+        </div>
+      }
+    </div>
+  </div>
+</app-firebird-shell>

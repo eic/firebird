@@ -220,24 +220,33 @@ captures reliable:
         &event=N                        select event index after load
         &config.<key>=<value>           session-scoped config override (not persisted)
         &cmd=type:arg;type:arg          generic command list, e.g. cmd=camera-preset:farforward
-/split-window?config.geometry.selectedGeometry=<url>&config.events.dexEventsSource=<url>
-                                        quad view (4 projections); loads via config keys,
-                                        does not run ?dex/?cmd startup commands
+/split-window?dex=<url>&event=N&cmd=...  quad projection view (Top/Side/Front-XY/3D with
+                                        per-view geometry cuts, tracks-on-top, lil-gui
+                                        panel); same startup commands and config keys as
+                                        /display (one shared auto-load path). Demonstrator
+                                        knobs: config.quadView.{top,side,front}.clipPos [mm],
+                                        config.quadView.{top,side,front,main}.tracksOnTop
 ```
 
-Quad-view headless proof: `space/phase4/capture_quad.py <out.png> [base_url]`
-waits for 4 views + geometry + event data, forces explicit per-view renders,
+Quad-view headless proof: `space/phase5/capture_quad.py <out.png> [base_url]
+[front_clip_z] [zoom]` waits for 4 views + geometry + event data + the
+geometry slice, enables the 3D wedge, forces explicit per-view renders,
 captures. With heavy geometry under software GL the first stable frame can
 take minutes (4 scene renders per frame) — the script uses a 300 s screenshot
-timeout.
+timeout. Render-on-demand + recording gates: `space/phase5/check_on_demand.py`,
+`space/phase5/check_recording.py`.
 
 `pyrobird screenshot --commands "..."` and `pyrobird serve --startup-commands
 "..."` feed the same command grammar through the server config.
 
 ### What goes wrong (symptoms → causes)
 
-- **Blank/stale canvas in captures**: rAF throttling (see Level 3) — force
-  renders explicitly; check the FPS box shows ~1.
+- **Blank/stale canvas in captures**: two distinct causes. (a) rAF throttling
+  in background tabs (see Level 3) — force renders explicitly. (b) The
+  render loop is ON-DEMAND by default (config `rendering.mode`): with nothing
+  changing, nothing redraws and the perf box shows "idle" — that is correct
+  behavior, not a hang. Scripts must force renders (they already do) or pass
+  `?config.rendering.mode=continuous`.
 - **Object exists in scene, visible=true, but never draws**: WebGPURenderer
   silently skips `LineLoop` objects (no warning). Use closed `Line` strips.
   `Line`, `LineSegments`, `Line2`, meshes are fine.
@@ -245,9 +254,17 @@ timeout.
   moves the cut, zoom clips deeper): a stale-shader three.js bug — cached
   shader states bind the plane arrays a ClippingContext held at build time,
   and the context REPLACES those arrays when its parent group chain changes.
-  Guarded by `patchThreeClippingContextArrayStability` in three.service.ts +
-  three-clipping-context-patch.spec.ts; if it reappears (e.g. after a three
-  upgrade), check the console for the patch's warning and that spec first.
+  Guarded by `ThreeService.dropClippingShaderState()` (drops render objects
+  AND the node-builder cache on every clipping STRUCTURE change) +
+  three-clipping-internals.spec.ts, which pins the three behavior; if the
+  symptom reappears (e.g. after a three upgrade), check the console for the
+  drop method's warning and that spec first.
+- **Two clipping groups clip with the same (wrong) planes**: the renderer
+  caches built shader states by plane COUNTS only — sibling ClippingGroups
+  with the same (intersection:union) count shape share one shader bound to
+  ONE group's plane array. Every group must have a distinct shape; the
+  geometry slice uses `1 intersection : 0 union` (a shape the wedge/Z chain
+  never produces) for exactly this reason. See geometry-slice.ts.
 - **UI value frozen while console shows updates**: zoneless change detection —
   the template reads a plain field mutated outside Angular (RxJS subscribe,
   rAF, native listener). Convert the state to a signal.
@@ -308,24 +325,44 @@ It uses a **service-oriented architecture** with clear separation of concerns:
 
 #### Core Services Layer
 
-- **three.service.ts** (~1100 lines) - Central Three.js orchestration
+- **three.service.ts** (~1400 lines) - Central Three.js orchestration
   - `WebGPURenderer` (from `three/webgpu`) with automatic WebGL2 fallback; `init()` is **async**
-  - ONE Scene, ONE render loop, frame callbacks, clipping (scene-global), BVH
+  - ONE Scene, ONE render loop, frame callbacks, clipping, BVH
+  - The loop is a SCHEDULER: on-demand by default (config `rendering.mode`,
+    `'on-demand' | 'continuous'`) — renders happen when dirty flags were set
+    by events/signals/`invalidate()`, never by polling. `invalidate()` is the
+    primitive; animations seed one invalidate and re-invalidate from their
+    update until they settle (tween group, gizmo transitions, damping).
+    Per-view dirty flags gate WHETHER a frame renders; a multi-view frame
+    always repaints ALL views — the canvas drawing buffer does not survive
+    compositing, so partial per-view repaints would present skipped views
+    as cleared background.
+  - Clipping: the main chain (wedge + Z groups) clips the ORIGINAL geometry;
+    `createGeometrySlice()` adds an independently clipped geometry COPY for
+    projection views (see geometry-slice.ts — per-view plane VALUES are free,
+    per-view plane COUNTS require the copy). `sceneEvent` is never clipped.
   - Renders through **RenderView** objects (`services/render-view.ts`):
     views[0] is the main view; `addView()/removeView()` add projections over
     the same scene. ThreeService's `camera/controls/setCameraUp/...` API
     delegates to the main view.
 
-- **render-view.ts** (~450 lines, plain TS class) - One view of the shared scene
+- **render-view.ts** (~600 lines, plain TS class) - One view of the shared scene
   - Owns: DOM container, perspective+orthographic cameras, OrbitControls
     (listening on the container), viewport/scissor rect in the shared canvas
     (backend-aware: WebGPU viewport origin is top-left, WebGL bottom-left),
-    per-view raycasting (`raycasterFromEvent`), overlays (`addOverlay`)
+    per-view raycasting (`raycasterFromEvent`), overlays (`addOverlay`),
+    per-view clipping (`clipPlane` + `geometrySlice`), `tracksOnTop`
+    (event data over geometry via a second pass with a depth-only clear),
+    `dirty` (render-on-demand flag)
   - Per-view camera.up handling: `setCameraUp` resyncs OrbitControls' captured
     quaternion; pole-proximity re-anchoring keeps orbiting past the poles
   - The navigation cube is a `ViewOverlay` on the main view; the quad view
-    (`/split-window`) is 4 views (perspective + top/front/right orthographic)
-    over one scene, rendered with scissors on one canvas
+    (`/split-window`) is Top/Side/Front-XY orthographic + the main 3D view
+    over one scene, rendered with scissors on one canvas, each with its own
+    geometry cut
+  - Layer scheme (geometry-slice.ts): 0 shared/helpers, 1 original geometry
+    (main view), 2 slice copy (projection views), 3 event data (all views;
+    lights carry it too so tracks-on-top passes collect identical light sets)
 
 - **selection.service.ts** - The one selection: `(pieceName, entityIndex)`
   - 3D click → painter-stamped object resolves to its entity (`entityRefOf`);
@@ -523,11 +560,18 @@ The painter system filters data by time range using Angular signals:
 - Components show/hide based on time range
 - Tween.js enables smooth animations
 
-### 3. Clipping (Angular Wedge / Z-axis)
+### 3. Clipping (Angular Wedge / Z-axis / per-view cuts)
 
-- **Only `sceneGeometry` is clipped** — event data (`sceneEvent`) must NEVER be clipped.
+- **Only geometry is clipped** — event data (`sceneEvent`) must NEVER be clipped.
 - `sceneGeometry` is a `ClippingGroup` (WebGPU); clipping planes are set on the group, not on individual materials.
 - `sceneEvent` is a regular `THREE.Group` — do not convert it to `ClippingGroup`.
+- Per-view cuts (projection views) use `ThreeService.createGeometrySlice()`:
+  an independently clipped geometry COPY routed by camera layers, with one
+  shared plane whose VALUE each view writes before its render. Never give a
+  view a different plane COUNT on the same objects — shader caches key on
+  counts and per-frame count flips rebuild every render object. Every
+  ClippingGroup in the scene must keep a DISTINCT (intersection:union)
+  count shape (see geometry-slice.ts).
 
 ### 4. BVH Acceleration
 

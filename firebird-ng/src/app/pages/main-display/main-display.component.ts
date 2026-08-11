@@ -3,7 +3,7 @@ import {
   OnInit,
   AfterViewInit,
   Input,
-  ViewChild, OnDestroy, TemplateRef, ElementRef, signal,
+  ViewChild, OnDestroy, TemplateRef, ElementRef, signal, effect,
   ChangeDetectionStrategy
 } from '@angular/core';
 
@@ -36,7 +36,8 @@ import {AnimationSettingsComponent} from "../../components/animation-settings/an
 import GUI from 'lil-gui';
 import {ConfigProperty} from "../../utils/config-property";
 import {CommandBusService} from "../../firebird/command-bus.service";
-import JSZip from 'jszip';
+import {DataModelService} from "../../services/data-model.service";
+import {RecordingMenuComponent} from "../../components/recording-menu/recording-menu.component";
 
 
 
@@ -71,6 +72,7 @@ import JSZip from 'jszip';
     MatProgressSpinner,
     SceneExportComponent,
     AnimationSettingsComponent,
+    RecordingMenuComponent,
   ]
 })
 export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -126,24 +128,14 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   private resizeObserver?: ResizeObserver;
   private resizeDebounce?: ReturnType<typeof setTimeout>;
 
-  // Loading indicators
-  loadingDex     = signal(false);
-  loadingEdm     = signal(false);
-  loadingGeometry = signal(false);
+  // Loading indicators (service-owned so every display page shows the same state)
+  get loadingDex() { return this.eventDisplay.loadingDex; }
+  get loadingEdm() { return this.eventDisplay.loadingEdm; }
+  get loadingGeometry() { return this.eventDisplay.loadingGeometry; }
 
   // lil GUI for right panel
   lilGui = new GUI();
   showGui = false;
-
-  // video recording
-  offlineRecording = signal(false);
-  offlineProgress = signal('');
-  private offlineAbort: AbortController | null = null;
-  capturedFrames: Blob[] = [];
-  captureOverrideResolution = true;
-  captureWidth = 3840;
-  captureHeight = 2160;
-
 
   constructor(
     private controller: GameControllerService,
@@ -153,6 +145,7 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     private serverConfig: ServerConfigService,
     public  geomService: GeometryService,
     private commandBus: CommandBusService,
+    private dataService: DataModelService,
   ) {
     // addConfig returns the canonical instance for the key — keep the
     // returned reference so all writers/readers share one property.
@@ -162,6 +155,18 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.dexJsonEventSource = config.addConfig(this.dexJsonEventSource);
     this.rootEventSource = config.addConfig(this.rootEventSource);
     this.rootEventRange = config.addConfig(this.rootEventRange);
+
+    // Scene-tree debug view refresh on data arrival. Signal-driven so it
+    // also covers command-driven loads (?dex=/?geometry=), which the old
+    // per-load callbacks missed.
+    effect(() => {
+      this.geomService.geometry();
+      this.updateSceneTreeComponent();
+    });
+    effect(() => {
+      this.dataService.currentEntry();
+      this.updateSceneTreeComponent();
+    });
   }
 
 
@@ -181,19 +186,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     // Must happen in ngAfterViewInit so the DOM container #eventDisplay exists
     await this.eventDisplay.initThree('eventDisplay');
 
-    // Startup commands (URL deep link ?dex=&event=N, server startupCommands,
-    // batch) replace the config-driven auto-load for the data they carry.
-    const startupCommands = this.commandBus.peekStartupCommands();
-    const startupHas = (type: string) => startupCommands.some(c => c.type === type);
-
-    if (this.isAutoLoadOnInit && !startupHas('open-dex')) {
-      // Load JSON based data files
-      this.initDexEventSource();
-
-      // Load Root file based data files
-      this.initRootData();
-    }
-
     // One mechanism for every resize source (pane toggle, pane drag, window):
     // observe the central pane container. Debounced because pane dragging
     // fires per animation frame.
@@ -204,14 +196,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.resizeObserver.observe(this.centralContainer.nativeElement);
     this.onRendererElementResize();
 
-    // Loads the geometry (do it last as it might be long)
-    if (this.isAutoLoadOnInit && !startupHas('open-geometry')) {
-      this.initGeometry();
+    // Config-driven auto-load + the queued startup commands (?dex=&event=N,
+    // server startupCommands, batch) — one shared path with the quad view.
+    if (this.isAutoLoadOnInit) {
+      this.eventDisplay.autoLoadAndRunStartup(message => this.showError(message));
+    } else {
+      void this.commandBus.runStartupCommands();
     }
-
-    // Scene is up — run the queued startup commands (sequential; a
-    // show-event command waits internally for its data to arrive).
-    void this.commandBus.runStartupCommands();
 
     // Init gui
     this.lilGui.add(this, 'cameraToCenter').name('Camera to center');
@@ -233,25 +224,8 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.lilGui.domElement.style.right = '120px';
     this.lilGui.domElement.style.display = 'none';
 
-    this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen, false);
-
-    // Video Capture controls
-    const videoFolder = this.lilGui.addFolder('Video Capture');
-    videoFolder.close();
-    videoFolder.add(this, 'startRecording').name('Start recording');
-    videoFolder.add(this, 'stopRecording').name('Stop recording');
-    videoFolder.add(this, 'download').name('Download recording');
-
-    // High Resolution Capture controls
-    const captureFolder = this.lilGui.addFolder('High Resolution Capture');
-    captureFolder.close();
-    captureFolder.add(this, 'captureOverrideResolution').name('Override resolution');
-    captureFolder.add(this, 'captureWidth', 640, 7680, 1).name('Width');
-    captureFolder.add(this, 'captureHeight', 360, 4320, 1).name('Height');
-    captureFolder.add(this, 'startOfflineRecording').name('▶ Start Capture');
-    captureFolder.add(this, 'stopOfflineRecording').name('⏹ Stop');
-    captureFolder.add(this, 'downloadFrames').name('💾 Download Frames');
-
+    // Recording lives in the toolbar (app-recording-menu), not in this
+    // debug GUI.
   }
 
   // 3) UI - Toggling panes
@@ -316,131 +290,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.rightPaneOpen.set(true);
   }
 
-  private initDexEventSource() {
-
-    // We set loadingDex=false to be safe
-    this.loadingDex.set(false);
-
-    let dexUrl = this.config.getConfig<string>('events.dexEventsSource')?.value;
-
-    if (!dexUrl || dexUrl.trim().length === 0) {
-      console.log("[main-display]: No event data source specified. Skip loadDexData.");
-    }
-    // Check if we have the same data
-    else if (this.eventDisplay.lastLoadedDexUrl === dexUrl) {
-      console.log(`[main-display]: Event data (DEX) url is the same as before: '${dexUrl}', skip loading.`);
-    }
-    // Try to load
-    else {
-      this.loadingDex.set(true);
-      this.eventDisplay.loadDexData(dexUrl).catch(error => {
-        const msg = `Error loading events: ${error}`;
-        console.error(`[main-display]: ${msg}`);
-        this.showError(msg);
-      }).then(() => {
-        console.log("[main-display]: Event data loaded.");
-        this.updateSceneTreeComponent();
-      }).finally(()=>{
-        this.loadingDex.set(false);   // switch off loading indicator
-      });
-    }
-  }
-
-
-  private initRootData() {
-    let url = (
-      this.config.getConfig<string>('events.rootEventSource')
-      ?? this.config.createConfig('events.rootEventSource', '')
-    ).subject.getValue();
-
-    let eventRange = (
-      this.config.getConfig<string>('events.rootEventRange')
-      ?? this.config.createConfig('events.rootEventRange', '')
-    ).subject.getValue();
-
-
-    // Do we have url?
-    if (!url || url.trim().length === 0) {
-      console.log("[main-display]: No Edm4Eic source specified. Nothing to load");
-      return;
-    }
-
-    // Do we have event Range?
-    if (!eventRange || eventRange.trim().length === 0) {
-      console.log("[main-display]: Event Range specified. Trying '0', to load the first event");
-      eventRange = "0";
-    }
-
-    // Check if we have the same data
-    if (this.eventDisplay.lastLoadedRootUrl === url && this.eventDisplay.lastLoadedRootEventRange === eventRange) {
-      console.log(`[main-display]: Edm url is the same as before: '${url}', eventRange: '${eventRange}' - skip loading.`);
-      return;
-    }
-
-    // Try to load
-    else {
-      this.loadingEdm.set(true);
-      this.eventDisplay.loadRootData(url, eventRange).catch(error => {
-        const msg = `Error loading events: ${error}`;
-        console.error(`[main-display]: ${msg}`);
-        this.showError(msg);
-      }).then(() => {
-        console.log("[main-display]: Event data loaded.");
-        this.updateSceneTreeComponent();
-      }).finally(()=>{
-        this.loadingEdm.set(false);   // switch off loading indicator
-      });
-    }
-  }
-
-
-  /**
-   * Cancel any ongoing geometry loading operation
-   */
-  cancelGeometryLoading(): void {
-    if (this.geomService.isLoading()) {
-      console.log("[main-display]: Cancelling geometry loading...");
-      this.geomService.cancelLoading();
-    }
-  }
-
-  private initGeometry() {
-    const url = (this.config.getConfigOrCreate<string>('geometry.selectedGeometry', '')).value;
-
-    if (!url || url.trim().length === 0) {
-      console.log("[main-display]: No geometry specified. Skip loadGeometry ");
-      return;
-    }
-
-    if (this.eventDisplay.lastLoadedGeometryUrl === url) {
-      console.log(`[main-display]: Geometry url is the same as before: '${url}', skip loading`);
-      return;
-    }
-
-    // Cancel any existing geometry load before starting a new one
-    this.cancelGeometryLoading();
-
-    this.loadingGeometry.set(true);
-    this.eventDisplay.loadGeometry(url)
-      .then((result) => {
-        // loadGeometry always resolves an object; `cancelled` is set when another
-        // load superseded this one — nothing was added to the scene in that case.
-        if (result.cancelled) {
-          console.log("[main-display]: Geometry loading was cancelled");
-        } else {
-          this.updateSceneTreeComponent();
-          console.log("[main-display]: Geometry loaded");
-        }
-      })
-      .catch(error => {
-        const msg = `Error loading geometry: ${error}`;
-        console.error(`[main-display]: ${msg}`);
-        this.showError("Error loading Geometry. Open 'Configure' to change. Press F12->Console for logs");
-      })
-      .finally(() => this.loadingGeometry.set(false));
-  }
-
-
   animateWithCollision() {
     this.eventDisplay.animateWithCollision();
   }
@@ -477,250 +326,4 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     document.body.removeChild(link);
   }
 
-  mediaSource = new MediaSource();
-
-  mediaRecorder?: MediaRecorder;
-  recordedBlobs = [];
-  sourceBuffer!:SourceBuffer;
-  originalSize?:{width:number, height:number}|null;
-
-
-  // Arrow property: registered as a listener directly, so a method would run
-  // with the event target as `this` and assign sourceBuffer to the wrong object.
-  handleSourceOpen = (event: any) => {
-    console.log('MediaSource opened');
-    this.sourceBuffer = this.mediaSource.addSourceBuffer('video/webm; codecs="vp8"');
-    console.log('Source buffer: ', this.sourceBuffer);
-  };
-
-  handleDataAvailable(event:any) {
-    if (event.data && event.data.size > 0) {
-      // @ts-ignore
-      this.recordedBlobs.push(event.data);
-    }
-  }
-
-  handleStop(event: any) {
-    console.log('Recorder stopped: ', event);
-    const superBuffer = new Blob(this.recordedBlobs, {type: 'video/webm'});
-    const url = window.URL.createObjectURL(superBuffer);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    a.download = 'recording.webm';
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-  }
-
-  startRecording() {
-    // Save current size so we can restore later
-
-    const stream = this.eventDisplay.three.renderer.domElement.captureStream(60);
-    this.recordedBlobs = [];
-
-    const optionsList = [
-      { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 200_000_000 },  // 200 Mbps for 4K
-      { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 200_000_000 },
-      { mimeType: 'video/webm', videoBitsPerSecond: 200_000_000 },
-    ];
-
-    let recorder: MediaRecorder | null = null;
-    for (const options of optionsList) {
-      if (MediaRecorder.isTypeSupported(options.mimeType)) {
-        try {
-          recorder = new MediaRecorder(stream, options);
-          console.log('Created MediaRecorder with', options);
-          break;
-        } catch (e) {
-          console.warn('Failed with options', options, e);
-        }
-      }
-    }
-
-    if (!recorder) {
-      alert('MediaRecorder is not supported by this browser.');
-      return;
-    }
-
-    this.mediaRecorder = recorder;
-    this.mediaRecorder.onstop = (event) => this.handleStop(event);
-    this.mediaRecorder.ondataavailable = (event) => this.handleDataAvailable(event);
-    this.mediaRecorder.start(100);
-  }
-
-  stopRecording() {
-    this.mediaRecorder?.stop();
-    console.log('Recorded Blobs: ', this.recordedBlobs);
-  }
-
-
-
-
-  download() {
-    const blob = new Blob(this.recordedBlobs, {type: 'video/webm'});
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    a.download = 'test.webm';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    }, 100);
-  }
-
-  async startOfflineRecording() {
-    if (this.offlineRecording()) return;
-    this.snackBar.open('Capture may distort video in your browser. Resulting captures will be fine.', 'OK', { duration: 5000 });
-    this.offlineRecording.set(true);
-    this.offlineProgress.set('Preparing...');
-
-    this.offlineAbort = new AbortController();
-    let frames: Blob[] = [];
-
-    try {
-      frames = await this.eventDisplay.captureFramesOffline({
-        overrideResolution: this.captureOverrideResolution,
-        width: this.captureWidth,
-        height: this.captureHeight,
-        eventTimeStep: 0.1,
-        includeCollision: true,
-        signal: this.offlineAbort.signal,
-        onProgress: (current, total) => {
-          if (total > 0) {
-            this.offlineProgress.set(`Frame ${current} / ${total}`);
-          } else {
-            this.offlineProgress.set(`Frame ${current} (collision phase)`);
-          }
-        },
-      });
-
-      if (this.offlineAbort.signal.aborted) {
-        this.offlineProgress.set(`Stopped. Captured ${frames.length} frames.`);
-      }
-    } catch (err) {
-      console.error('Offline recording failed:', err);
-      this.showError(`Offline recording failed: ${err}`);
-      this.offlineRecording.set(false);
-      return;
-    }
-
-    // Store frames so we can download later even after stopping
-    this.capturedFrames = frames;
-    this.offlineRecording.set(false);
-
-    if (frames.length > 0) {
-      this.offlineProgress.set(`${frames.length} frames ready. Use "Download frames" button.`);
-    }
-  }
-
-  stopOfflineRecording() {
-    this.offlineAbort?.abort();
-  }
-
-  async downloadFrames() {
-    if (this.capturedFrames.length === 0) {
-      this.showError('No frames captured yet.');
-      return;
-    }
-
-    const total = this.capturedFrames.length;
-
-    // Prefer File System Access API (Chromium) — writes each PNG directly,
-    // no memory spike at all. Falls back to chunked ZIPs for Firefox/Safari.
-    if ('showDirectoryPicker' in window) {
-      try {
-        await this.downloadFramesToDirectory(total);
-        return;
-      } catch (err: any) {
-        if (err.name === 'AbortError') return; // user cancelled picker
-        console.warn('Directory picker failed, falling back to chunked ZIPs:', err);
-      }
-    }
-
-    await this.downloadFramesAsChunkedZips(total);
-  }
-
-  /** Write each frame as an individual PNG into a user-chosen folder. */
-  private async downloadFramesToDirectory(total: number) {
-    this.offlineProgress.set('Choose a folder to save frames...');
-    const dirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-
-    const yieldToUI = () => new Promise(resolve => setTimeout(resolve, 0));
-    this.snackBar.open(`Saving ${total} frames to folder...`, undefined, { duration: 0 });
-
-    for (let i = 0; i < total; i++) {
-      const name = `frame_${String(i).padStart(6, '0')}.png`;
-      const fileHandle = await dirHandle.getFileHandle(name, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(this.capturedFrames[i]);
-      await writable.close();
-
-      if (i % 10 === 0) {
-        this.offlineProgress.set(`Saving frame ${i + 1} / ${total}...`);
-        await yieldToUI();
-      }
-    }
-
-    this.offlineProgress.set(`Done! Saved ${total} frames to folder.`);
-    this.snackBar.open(`Saved ${total} frames`, 'OK', { duration: 5000 });
-  }
-
-  /**
-   * Fallback: split frames into small ZIPs (~200 frames each) so no single
-   * ZIP blob exceeds browser ArrayBuffer limits.
-   */
-  private async downloadFramesAsChunkedZips(total: number) {
-    const CHUNK_SIZE = 200;
-    const numChunks = Math.ceil(total / CHUNK_SIZE);
-
-    this.snackBar.open(
-      `Saving ${total} frames in ${numChunks} ZIP file(s)...`, undefined, { duration: 0 }
-    );
-
-    const yieldToUI = () => new Promise(resolve => setTimeout(resolve, 0));
-
-    for (let chunk = 0; chunk < numChunks; chunk++) {
-      const start = chunk * CHUNK_SIZE;
-      const end = Math.min(start + CHUNK_SIZE, total);
-
-      this.offlineProgress.set(
-        `ZIP ${chunk + 1}/${numChunks}: packing frames ${start}–${end - 1}...`
-      );
-      await yieldToUI();
-
-      const zip = new JSZip();
-      const folder = zip.folder('frames')!;
-      for (let i = start; i < end; i++) {
-        folder.file(`frame_${String(i).padStart(6, '0')}.png`, this.capturedFrames[i]);
-      }
-
-      const blob = await zip.generateAsync(
-        { type: 'blob', compression: 'STORE' },
-        (meta) => this.offlineProgress.set(
-          `ZIP ${chunk + 1}/${numChunks}: ${meta.percent.toFixed(0)}%`
-        )
-      );
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = numChunks === 1
-        ? 'frames_4k.zip'
-        : `frames_4k_part${String(chunk + 1).padStart(2, '0')}.zip`;
-      a.click();
-
-      // Give browser time to start the download before revoking
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      URL.revokeObjectURL(url);
-      await yieldToUI();
-    }
-
-    this.offlineProgress.set(`Done! Downloaded ${total} frames in ${numChunks} ZIP(s).`);
-    this.snackBar.open(`Downloaded ${total} frames`, 'OK', { duration: 5000 });
-  }
 }

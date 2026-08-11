@@ -13,6 +13,7 @@ import type * as THREE from 'three';
 import type { WebGPURenderer, ClippingGroup } from 'three/webgpu';
 import type { Event as FbEvent } from '@firebird/core';
 import type { RenderView, RenderViewOptions } from '../services/render-view';
+import type { ClippedGeometrySlice } from '../services/geometry-slice';
 
 /**
  * Everything an extension needs to work with the scene. Handed to
@@ -50,12 +51,22 @@ export interface SceneContext {
   /** Removes a view added with addView. The main view cannot be removed. */
   removeView(view: RenderView): void;
   /**
-   * Signal that you changed renderable state.
-   *
-   * Currently a no-op: the render loop runs continuously. It is part of the
-   * contract so that extensions written correctly today keep working
-   * unmodified if the loop later switches to render-on-demand.
-   * Call it after mutating anything the next frame must show.
+   * The independently clipped geometry copy for projection views, or null
+   * when no view uses one. Create with `createGeometrySlice()`, give added
+   * views their own cut via the `geometrySlice` + `clipPlane` view options,
+   * and call `rebuildGeometrySlice()` after loading new geometry. See
+   * ClippedGeometrySlice for the mechanism.
+   */
+  readonly geometrySlice: ClippedGeometrySlice | null;
+  createGeometrySlice(): ClippedGeometrySlice;
+  rebuildGeometrySlice(): void;
+  removeGeometrySlice(): void;
+  /**
+   * Signal that you changed renderable state — the next animation frame
+   * renders. The render loop is on-demand by default (config
+   * `rendering.mode`): a mutation without an invalidate() shows up only
+   * when something else triggers a render. Call it after mutating anything
+   * the next frame must show. Cheap and idempotent.
    */
   invalidate(): void;
 }
@@ -65,15 +76,18 @@ export interface SceneContext {
  * Keep `onFrame` cheap: no allocation, no per-frame polling of app state.
  *
  * Rule: `onFrame` is for animation only. State changes must travel through
- * signals/effects, never by polling inside the frame loop — polling breaks
- * silently if the loop ever goes render-on-demand.
+ * signals/effects, never by polling inside the frame loop. Under the
+ * default on-demand scheduling, `onFrame` runs only on frames that render;
+ * an animation sustains itself by calling `invalidate()` from its update
+ * (start it with one seed `invalidate()`), and the chain ends by itself
+ * when the animation stops updating.
  */
 export interface FrameContext {
-  /** Milliseconds since the previous frame. */
+  /** Milliseconds since the previous RENDERED frame. */
   deltaTime: number;
   renderer: WebGPURenderer;
   camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
-  /** Same contract as SceneContext.invalidate — documented no-op for now. */
+  /** Same contract as SceneContext.invalidate. */
   invalidate(): void;
 }
 

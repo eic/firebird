@@ -6,7 +6,13 @@
         <span class="perf-label" title="Frames Per Second">FPS</span>
       </td>
       <td>
-        <span class="perf-value" title="Frames Per Second">{{ perf().fps | number:'1.0-0' }}</span>
+        <!-- On-demand and nothing changed: 0 FPS is the display being up to
+             date, not a hang. -->
+        @if (perf().idle) {
+          <span class="perf-value" title="Render-on-demand: no changes, nothing to redraw">idle</span>
+        } @else {
+          <span class="perf-value" title="Frames Per Second">{{ perf().fps | number:'1.0-0' }}</span>
+        }
       </td>
       <td class="perf-item">
         <span class="perf-label" title="Average Frame Time (ms)">T(ms)</span>
