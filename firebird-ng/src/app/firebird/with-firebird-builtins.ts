@@ -14,13 +14,19 @@ import {
   FirebirdFeature,
   firebirdFeatures,
   withCommandHandler,
+  withConfigDefaults,
   withEventPiece,
   withEventLoader,
   withGeometryLoader,
   withLazyPainter,
   withLazyThreeExtension,
 } from './firebird-features';
-import { DexEventLoader, Edm4eicEventLoader, RootGeometryLoader } from './builtin-loaders';
+import {
+  DexEventLoader,
+  Edm4eicEventLoader,
+  Root2DexEventLoader,
+  RootGeometryLoader,
+} from './builtin-loaders';
 import {
   CameraPresetCommandHandler,
   OpenDexCommandHandler,
@@ -39,11 +45,21 @@ export function withFirebirdBuiltins(): FirebirdFeature {
     // code, which must stay out of the initial bundle (the display route
     // chunk shares the same modules, so nothing loads twice).
     withLazyPainter(BoxHitPiece.type, () => import('@firebird/core').then(m => m.BoxHitSimplePainter)),
+    // Registration order matters: the per-track painter stays the default,
+    // the batched one (2 draw calls for the whole piece — for huge pieces
+    // like MCParticles background frames) is the selectable alternative:
+    // painters.byPiece.<name> = trajectory-lines-batched
     withLazyPainter(PointTrajectoryPiece.type, () => import('@firebird/core').then(m => m.TrajectoryPainter)),
+    withLazyPainter(PointTrajectoryPiece.type, () => import('@firebird/core').then(m => m.BatchedTrajectoryPainter)),
 
     // IO: file formats and URL schemes
     withGeometryLoader(RootGeometryLoader),
     withEventLoader(DexEventLoader),
+    // Order matters: the in-browser ROOT converter is asked first and claims
+    // only what the browser can byte-range itself (http/asset URLs, picked
+    // files). XRootD `root://` sources and pyrobird-served paths fall through
+    // to the server-conversion loader below, which keeps that path unchanged.
+    withEventLoader(Root2DexEventLoader),
     withEventLoader(Edm4eicEventLoader),
 
     // Command vocabulary (URL deep links, server startup, batch)
@@ -58,5 +74,13 @@ export function withFirebirdBuiltins(): FirebirdFeature {
     withLazyThreeExtension(() =>
       import('./viewport-gizmo.extension').then(m => m.ViewportGizmoExtension)
     ),
+
+    // MCParticles straight lines convert by default but start hidden: every
+    // particle of the event is a lot of lines, so the user opts in per piece
+    // through the model tree eye (normal config precedence — a deep link or a
+    // saved user toggle overrides this default).
+    withConfigDefaults({
+      'painters.byPiece.MCParticles.visible': false,
+    }),
   );
 }

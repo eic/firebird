@@ -18,6 +18,7 @@ export default defineConfig({
       { text: "Pyrobird", link: "/pyrobird" },
       { text: "DD4Hep Plugin", link: "/dd4hep-plugin"},
       { text: "Deep Links", link: "/deep-links"},
+      { text: "Open ROOT Events", link: "/open-root-events"},
       { text: "Troubleshoot", link: "/troubleshoot"},
 
       { text: "Tutorials",

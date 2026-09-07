@@ -17,6 +17,7 @@ import {FirebirdShellComponent} from '../../components/firebird-shell/firebird-s
 import {ToolPanelComponent} from '../../components/tool-panel/tool-panel.component';
 import {EventSelectorComponent} from '../../components/event-selector/event-selector.component';
 import {GeometryClippingComponent} from '../../components/geometry-clipping/geometry-clipping.component';
+import {OpenEventComponent} from '../../components/open-event/open-event.component';
 
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {MatIcon} from '@angular/material/icon';
@@ -63,6 +64,7 @@ import {RecordingMenuComponent} from "../../components/recording-menu/recording-
     FirebirdShellComponent,
     ToolPanelComponent,
     EventSelectorComponent,
+    OpenEventComponent,
     GeometryClippingComponent,
     PerfStatsComponent,
     EventTimeControlComponent,

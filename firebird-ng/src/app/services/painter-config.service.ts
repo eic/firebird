@@ -39,6 +39,26 @@ export class PainterConfigService {
     return `painters.byPiece.${pieceName}.${knob}`;
   }
 
+  visibilityKey(pieceName: string): string {
+    return this.knobKey(pieceName, 'visible');
+  }
+
+  /**
+   * Declares (or returns) the piece visibility property. 'visible' is a
+   * RESERVED knob name: it lives under the painter knob namespace so the
+   * normal config precedence applies (a pack ships a piece hidden via
+   * `withConfigDefaults`, a deep link or the panel overrides), but it is
+   * applied to the painter's root node by EventDisplayService, not read by
+   * painter code — painter meta must not declare a knob named 'visible'.
+   */
+  visibilityProperty(pieceName: string): ConfigProperty<boolean> {
+    return this.config.declare<boolean>({
+      key: this.visibilityKey(pieceName),
+      default: true,
+      label: 'Visible',
+    });
+  }
+
   /**
    * Declares (or returns) the painter-selection property of a piece.
    * The default is the first registered painter's id.

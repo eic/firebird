@@ -69,6 +69,17 @@
             <mat-form-field appearance="fill" class="full-width">
               <input matInput type="text" placeholder="0-5" [formControl]="rootEventRange">
             </mat-form-field>
+            <p>Collection groups to convert. A group the opened file does not have is skipped.</p>
+            <div class="conversion-groups">
+              @for (group of conversionGroups; track group.key) {
+                <label class="conversion-group-checkbox">
+                  <input type="checkbox"
+                         [checked]="isConversionGroupOn(group.key)"
+                         (change)="toggleConversionGroup(group.key)"/>
+                  <span>{{ group.label }}</span>
+                </label>
+              }
+            </div>
           </div>
         </mat-card-content>
 

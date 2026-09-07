@@ -38,6 +38,31 @@
   white-space: nowrap;
 }
 
+.visibility-toggle {
+  border: none;
+  background: none;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &.hidden-piece {
+    opacity: 0.35;
+  }
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
 .entity-row {
   display: flex;
   align-items: center;

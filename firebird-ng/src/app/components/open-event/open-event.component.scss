@@ -1,0 +1,210 @@
+// Panel chrome matches the other drop-down panels (see geometry-clipping)
+.custom-position-dialog {
+  padding: 45px 24px 24px 24px;
+  border-radius: 18px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.close-round-btn {
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  border-radius: 50%;
+  z-index: 10;
+  border: none;
+  background: none;
+  box-shadow: var(--mat-sys-level2);
+}
+
+.close-round-btn:hover {
+  color: #bec2ff;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px;
+  border: 2px dashed var(--mat-sys-outline, rgba(128, 128, 128, 0.6));
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+
+  &:hover,
+  &.drag-over {
+    border-color: #bec2ff;
+    background: color-mix(in srgb, #bec2ff 12%, transparent);
+  }
+
+  mat-icon {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+  }
+}
+
+.drop-hint {
+  font-size: 0.85rem;
+}
+
+.drop-note {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  // Long paths must not stretch the panel
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+.badge {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #bec2ff 25%, transparent);
+  font-family: monospace;
+}
+
+.clear-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.event-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.event-range-input {
+  width: 7rem;
+  padding: 4px 8px;
+  border: 1px solid var(--mat-sys-outline, rgba(128, 128, 128, 0.6));
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  outline: none;
+}
+
+.range-hint {
+  opacity: 0.7;
+  font-size: 0.72rem;
+}
+
+.collections-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.collections-label {
+  opacity: 0.8;
+}
+
+.collection-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  input {
+    accent-color: var(--mat-sys-primary, #4bac84);
+    cursor: pointer;
+  }
+}
+
+.url-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.url-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--mat-sys-outline, rgba(128, 128, 128, 0.6));
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8rem;
+  color: inherit;
+  outline: none;
+}
+
+.status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+}
+
+.status.error {
+  color: var(--mat-sys-error, #d32f2f);
+}
+
+.status.warning {
+  opacity: 0.85;
+}
+
+.status.ok {
+  opacity: 0.85;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.show-btn {
+  min-width: 96px;
+}

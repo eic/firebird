@@ -2,6 +2,7 @@ import logging
 import click
 from pyrobird.edm4eic import edm4eic_to_dex_dict, parse_entry_numbers
 from pyrobird.edm4hep import edm4hep_to_dex_dict, detect_file_type, DEFAULT_HIT_BOX_SIZE
+from pyrobird.mc_particles import DEFAULT_MC_STEP_TIME, DEFAULT_MC_MAX_POINTS
 import os
 import json
 
@@ -45,8 +46,9 @@ def guess_output_name(input_entry, output_extension='.firebird.json'):
 )
 @click.option(
     "-c", "--collections", "collections_str", default="",
-    help="Comma-separated list of collection types to convert. "
-         "For example: 'tracker_hits,tracks' (edm4eic) or 'tracker_hits,mc_trajectories' (edm4hep)."
+    help="Comma-separated list of collection groups to convert. "
+         "edm4eic: 'tracker_hits,tracks,mc_particles'; "
+         "edm4hep: 'tracker_hits,mc_trajectories,mc_particles'. Empty means all."
 )
 @click.option(
     "-t", "--type", "input_type", type=click.Choice(["auto", "edm4eic", "edm4hep"]), default="auto",
@@ -66,9 +68,19 @@ def guess_output_name(input_entry, output_extension='.firebird.json'):
     "--traj-endpoint", "traj_endpoint", is_flag=True, default=False,
     help="[edm4hep] Append the MCParticle endpoint as the last trajectory point (default: off)."
 )
+@click.option(
+    "--mc-step-time", "mc_step_time", type=float, default=DEFAULT_MC_STEP_TIME,
+    help=f"[mc_particles] Time step in ns of the straight-line interpolation grid "
+         f"(default: {DEFAULT_MC_STEP_TIME})."
+)
+@click.option(
+    "--mc-max-points", "mc_max_points", type=int, default=DEFAULT_MC_MAX_POINTS,
+    help=f"[mc_particles] Maximum points per particle line; longer flights get a "
+         f"coarser grid (default: {DEFAULT_MC_MAX_POINTS})."
+)
 @click.argument("filename", required=True)
 def convert(filename, output_file, entries_str, collections_str, input_type,
-            hit_box_size, traj_vertex, traj_endpoint):
+            hit_box_size, traj_vertex, traj_endpoint, mc_step_time, mc_max_points):
     """
     Converts an input EDM4eic or EDM4hep ROOT file to a Firebird-compatible JSON file.
 
@@ -92,10 +104,12 @@ def convert(filename, output_file, entries_str, collections_str, input_type,
     For edm4eic:
       - tracker_hits     - edm4eic::TrackerHitData
       - tracks           - edm4eic::TrackSegmentData with associated tracks
+      - mc_particles     - straight vertex->endpoint line per MCParticle
 
     For edm4hep:
       - tracker_hits     - edm4hep::SimTrackerHitData
       - mc_trajectories  - MC-truth trajectories connecting sim hits per MCParticle
+      - mc_particles     - straight vertex->endpoint line per MCParticle
 
     **Example usage:**
 
@@ -151,9 +165,11 @@ def convert(filename, output_file, entries_str, collections_str, input_type,
         fdex_dict = edm4hep_to_dex_dict(tree, entries, origin_info, collections=collections,
                                         box_size=hit_box_size,
                                         prepend_vertex=traj_vertex,
-                                        append_endpoint=traj_endpoint)
+                                        append_endpoint=traj_endpoint,
+                                        mc_step_time=mc_step_time, mc_max_points=mc_max_points)
     else:
-        fdex_dict = edm4eic_to_dex_dict(tree, entries, origin_info, collections=collections)
+        fdex_dict = edm4eic_to_dex_dict(tree, entries, origin_info, collections=collections,
+                                        mc_step_time=mc_step_time, mc_max_points=mc_max_points)
 
     # Convert the event data to JSON format
     json_data = json.dumps(fdex_dict)

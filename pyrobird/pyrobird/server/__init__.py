@@ -186,6 +186,12 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     filename - Name or URL of the file to open
     file_type - String identifying file type: "edm4hep" or "edm4eic" or else...
     entries - List of entries, May be one entry, range or comma separated list
+
+    Query parameters
+    ----------------
+    filename (or f) - the file to open when not given in the path
+    collections (or c) - comma-separated collection groups to convert, same
+        values as `pyrobird convert --collections`. Empty means all groups.
     """
 
     start_time = time.perf_counter()
@@ -208,6 +214,10 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
                 abort(400, description="Filename not provided.")
 
     filename = unquote(filename)
+
+    # Which collection groups to convert; empty/absent means all
+    collections_str = request.args.get('collections') or request.args.get('c') or ""
+    collections = [x.strip() for x in collections_str.split(',') if x.strip()] or None
 
     try:
         # Parse the event numbers using the parse_entry_numbers function
@@ -284,9 +294,9 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
 
         # Extract the event data
         if file_type == "edm4hep":
-            event = edm4hep_to_dex_dict(tree, entries_index_list)
+            event = edm4hep_to_dex_dict(tree, entries_index_list, collections=collections)
         else:
-            event = edm4eic_to_dex_dict(tree, entries_index_list)
+            event = edm4eic_to_dex_dict(tree, entries_index_list, collections=collections)
     except Exception as e:
         # Log detailed error server-side, return generic message to client
         logger.error(f"Error processing events {entries} from file {filename}: {e}")

@@ -1,12 +1,13 @@
 {
   "name": "firebird-monorepo",
-  "version": "2026.03rc1",
+  "version": "2026.08.0",
   "private": true,
   "description": "Firebird event display monorepo: Angular frontend, dexvis packages, Python backend (pyrobird), DD4Hep plugin",
   "workspaces": [
     "firebird-ng",
     "packages/firebird-core",
     "packages/firebird-example-extension",
+    "packages/root2dex",
     "dexvis/root-geo-tree-editor",
     "dexvis/threejs-tree-editor",
     "dexvis/viewport-gizmo",

@@ -6,6 +6,8 @@ import json
 import math
 
 from pyrobird.dex import make_dex, PIECE_VERSION
+from pyrobird.mc_particles import (mc_particles_to_trajectories,
+                                   DEFAULT_MC_STEP_TIME, DEFAULT_MC_MAX_POINTS)
 
 """
 We have types: 
@@ -301,14 +303,16 @@ def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_st
     return result
 
 
-def edm4eic_entry_to_dict(tree, entry_index, custom_name=None, collections=None):
+def edm4eic_entry_to_dict(tree, entry_index, custom_name=None, collections=None,
+                          mc_step_time=DEFAULT_MC_STEP_TIME, mc_max_points=DEFAULT_MC_MAX_POINTS):
     # the result of this function
     components = []
 
     if not collections:
         collections = [
             "tracker_hits",
-            "tracks"
+            "tracks",
+            "mc_particles",
         ]
 
     # Hits:
@@ -328,6 +332,14 @@ def edm4eic_entry_to_dict(tree, entry_index, custom_name=None, collections=None)
             line_comp = track_segments_to_line_trajectories(tree, seg_collection, entry_index, entry_stop=entry_index+1)
             components.append(line_comp)
 
+    # Straight vertex->endpoint lines for every MCParticle (eicrecon files
+    # carry the sim MCParticles collection through to the output)
+    if "mc_particles" in collections:
+        mc_piece = mc_particles_to_trajectories(tree, entry_index,
+                                                step_time=mc_step_time, max_points=mc_max_points)
+        if mc_piece["count"] > 0:
+            components.append(mc_piece)
+
     entry = {
         "id": custom_name if custom_name else entry_index,
         "pieces": components
@@ -336,13 +348,15 @@ def edm4eic_entry_to_dict(tree, entry_index, custom_name=None, collections=None)
     return entry
 
 
-def edm4eic_to_dex_dict(tree, event_ids, origin_info=None, collections=None):
+def edm4eic_to_dex_dict(tree, event_ids, origin_info=None, collections=None,
+                        mc_step_time=DEFAULT_MC_STEP_TIME, mc_max_points=DEFAULT_MC_MAX_POINTS):
     event_data = []
 
     if isinstance(event_ids, int):
         event_ids = [event_ids]
 
     for entry_id in event_ids:
-        event_data.append(edm4eic_entry_to_dict(tree, entry_id, custom_name=None, collections=collections))
+        event_data.append(edm4eic_entry_to_dict(tree, entry_id, custom_name=None, collections=collections,
+                                                mc_step_time=mc_step_time, mc_max_points=mc_max_points))
 
     return make_dex(event_data, origin_info)

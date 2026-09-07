@@ -199,11 +199,15 @@ export class UrlService {
    * @param entries Additional entries for conversion.
    * @returns The resolved URL for conversion.
    */
-  public resolveConvertUrl(inputUrl: string, fileType: string, entries: string): string {
+  public resolveConvertUrl(inputUrl: string, fileType: string, entries: string, collections?: string[]): string {
     inputUrl = this.resolveProtocolAliases(inputUrl);
 
     if (this.isBackendAvailable && this.serverAddress) {
-      return `${this.serverAddress}/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(inputUrl)}`;
+      // `collections` matches `pyrobird convert --collections`; absent means all groups
+      const collectionsParam = collections?.length
+        ? `&collections=${encodeURIComponent(collections.join(','))}`
+        : '';
+      return `${this.serverAddress}/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(inputUrl)}${collectionsParam}`;
     } else {
       const message = "Backend is not available to convert the file";
       console.warn(message);

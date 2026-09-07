@@ -97,12 +97,24 @@ export interface EntityRef {
  * was built from, by walking up to the nearest ancestor a painter stamped
  * with `registerEntityObject`. Returns null for objects that do not belong
  * to any painted entity (geometry, helpers).
+ *
+ * Batched painters draw MANY entities in one object, so a per-object stamp
+ * cannot name the entity — they stamp `userData['entityIndexResolver']`, a
+ * function mapping the raycast intersection (its picked segment/instance)
+ * to the entity index. Pass the intersection through when there is one.
  */
-export function entityRefOf(object: Object3D): EntityRef | null {
+export function entityRefOf(object: Object3D, intersection?: unknown): EntityRef | null {
   for (let node: Object3D | null = object; node; node = node.parent) {
-    const entityIndex = node.userData?.["entityIndex"];
     const pieceName = node.userData?.["pieceName"];
-    if (typeof entityIndex === "number" && typeof pieceName === "string") {
+    if (typeof pieceName !== "string") continue;
+
+    const resolver = node.userData?.["entityIndexResolver"];
+    if (typeof resolver === "function" && intersection !== undefined) {
+      const resolved = resolver(intersection);
+      if (typeof resolved === "number") return { pieceName, entityIndex: resolved };
+    }
+    const entityIndex = node.userData?.["entityIndex"];
+    if (typeof entityIndex === "number") {
       return { pieceName, entityIndex };
     }
   }
@@ -142,6 +154,15 @@ export abstract class EventPiecePainter {
   /** The name of the painted piece (unique within its event). */
   public get pieceName() {
     return this.piece.name;
+  }
+
+  /**
+   * The scene group holding everything this painter builds. Piece-level
+   * show/hide (the model tree eye, `painters.byPiece.<name>.visible`) flips
+   * `visible` here instead of touching individual entity objects.
+   */
+  public get node(): Object3D {
+    return this.parentNode;
   }
 
   /**

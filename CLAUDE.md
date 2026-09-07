@@ -18,6 +18,7 @@ This is a **monorepo** with **npm workspaces** (root `package.json` lists the me
 
 - **firebird-ng/** - Angular 22 frontend (TypeScript, Three.js WebGPU, signals, zoneless)
 - **packages/firebird-core/** - `@firebird/core`: worker-safe plain TS (event model, DEX io, painters). No Angular injector, no bootstrap; the web workers run this code. Enforced by `packages/firebird-core/src/no-injector.spec.ts`.
+- **packages/root2dex/** - `@firebird/root2dex`: EDM4eic/EDM4hep podio ROOT -> DEX through the JSROOT API, the TypeScript twin of `pyrobird convert`. Plain worker-safe TS; reads only the baskets of the requested entry, so multi-GB files never load into the browser. Parity with pyrobird is pinned value-for-value by `src/parity.spec.ts` against reference documents in `packages/root2dex/test-data/`.
 - **dexvis/** - git submodules of the generic [github.com/dexvis](https://github.com/dexvis) packages, wired into the workspaces so `@dexvis/*` imports resolve to the submodule sources (tsconfig `paths`):
   - `root-geo-tree-editor` -> `@dexvis/root-geo-tree-editor` (TGeo walk/find/edit)
   - `threejs-tree-editor` -> `@dexvis/threejs-tree-editor` (three tree edit/merge/outline, geometry processor)
@@ -47,6 +48,7 @@ npm run serve                  # http://localhost:4200
 npm test                       # Interactive tests
 npm run test:headless          # CI mode
 npm test -w @firebird/core     # Core package tests (from repo root)
+npm test -w @firebird/root2dex # ROOT -> DEX converter tests (pyrobird parity)
 npm test -w @dexvis/threejs-tree-editor   # Dexvis submodule tests (from repo root)
 
 # Building
@@ -117,20 +119,19 @@ ddsim --steeringFile=firebird_steering.py \
 
 ```bash
 # Root level orchestration
-python build.py all              # Build frontend and copy to pyrobird
-python build.py --dry-run all    # Test build without changes
+python build.py full             # ng build + all tests + copy to pyrobird + python package
+python build.py notests          # the same without any test step
+python build.py --dry-run full   # test build without changes
 
-# build all with changing version (source files will be changed)
-python build.py all --version=v2025.12.1
+# build with changing version (source files will be changed)
+python build.py full --version=2026.08.1
 ```
 
-`build.py all` also runs the test suites. The backend tests use `pyrobird/.venv`
-when it exists, otherwise `uv run --extra dev`, so the interpreter that starts
-build.py does not need pyrobird's dependencies. To skip the test steps:
-
-```bash
-python build.py all --no-test
-```
+Composite modes: `full`, `notests`, `ng` (frontend build + frontend tests),
+`py` (python package), `test` (all tests only). `all` still works as an alias
+of `full`. The backend tests use `pyrobird/.venv` when it exists, otherwise
+`uv run --extra dev`, so the interpreter that starts build.py does not need
+pyrobird's dependencies.
 
 Itemized steps, to build and deploy the frontend into pyrobird only:
 
@@ -150,6 +151,7 @@ alone.
 ```bash
 npm run test:headless --workspace=firebird-ng   # Angular app (vitest)
 npm test -w @firebird/core                      # core package
+npm test -w @firebird/root2dex                  # ROOT -> DEX converter (pyrobird parity)
 npm test -w @dexvis/threejs-tree-editor
 npm test -w @dexvis/root-geo-tree-editor
 cd pyrobird && .venv/bin/python -m pytest ./tests/unit_tests -q
@@ -215,7 +217,9 @@ captures reliable:
 ### Deep-link cheat sheet (works in browser and headless)
 
 ```
-/display?dex=<url>                      load event data (DEX json/zip, or .root via server conversion)
+/display?dex=<url>                      load event data (DEX json/zip, or .root — converted in
+                                        the browser for http/asset URLs, via pyrobird for root://)
+        &config.events.rootEventRange=0-4  which events a .root source converts ('1', '0,2,4-5')
         &geometry=<url>                 load detector geometry
         &event=N                        select event index after load
         &config.<key>=<value>           session-scoped config override (not persisted)
@@ -364,6 +368,23 @@ It uses a **service-oriented architecture** with clear separation of concerns:
     (main view), 2 slice copy (projection views), 3 event data (all views;
     lights carry it too so tracks-on-top passes collect identical light sets)
 
+- **root-file.service.ts** - The app's ROOT-file facility, over
+  `workers/root-file.worker.ts`: `probe()` reports a file's top-level keys with
+  their ROOT class names (neutral facts, no interpretation), `open()`/`convert()`
+  delegate to `@firebird/root2dex`. The file stays open between conversions and
+  is never uploaded or fully read - only the baskets of the requested entries.
+  Results reach the display via `EventDisplayService.showDexDocument()`.
+
+- **file-open-router.service.ts** - Decides WHICH registered loader opens a
+  picked/dropped/typed source, and holds no format knowledge itself. `.root` is
+  claimed by name from both registries (geometry and events), so on that tie the
+  router probes and asks each loader's `canLoadContent()`; the geometry loader
+  recognizes `TGeoManager`, the event loader an `events` TTree. Used by
+  `components/open-event/` (the "Open event" toolbar panel), which drops a
+  geometry file straight into the geometry path, offers the event picker for
+  loaders whose `meta.offersEventPicker` is true (the ROOT converter), and
+  loads everything else (dropped DEX json/zip) in one direct `loadEvents` call.
+
 - **selection.service.ts** - The one selection: `(pieceName, entityIndex)`
   - 3D click → painter-stamped object resolves to its entity (`entityRefOf`);
     tree/panel selection → painter highlights its objects
@@ -420,7 +441,40 @@ Registration surfaces: `withEventPiece` (DEX decoders), `withPainter` /
 `withLazyThreeExtension` (machinery hooks: onSceneInit after async init,
 onFrame, onEventLoaded, onDispose), `withGeometryLoader` / `withEventLoader`
 (file formats, registry-selected by `canLoad()`), `withCommandHandler`
-(command bus), `withConfigDefaults`. Author guide with the rendering and
+(command bus), `withConfigDefaults`.
+
+**Loader claiming is two-stage.** `canLoad(source)` decides from the source
+alone (extension, scheme) and `source` is a `DataSource` — a URL/path OR a
+`File` the user picked (never uploaded; loaders read it in place). When the name
+is ambiguous — `.root` holds geometry OR events — the optional
+`canLoadContent(probe)` decides from the file's top-level keys. Keep that
+knowledge in the loader, never in the control that opened the file.
+
+**Which converter runs for a `.root` event source** is registration order in
+`with-firebird-builtins.ts`: `Root2DexEventLoader` is asked first and claims
+only what the browser can byte-range itself (http/https/asset URLs, picked
+files); `root://` XRootD URLs and pyrobird-served paths fall through to
+`Edm4eicEventLoader`, which keeps using pyrobird's convert endpoint. Do not
+reorder these without meaning to move XRootD off the server. `events.rootConverter
+= 'server'` forces everything back through pyrobird.
+
+**Conversion collection groups** are selectable everywhere with the same
+names (`tracker_hits`, `tracks` [edm4eic], `mc_trajectories` [edm4hep],
+`mc_particles` [both]): checkboxes in the open-event panel and the config
+page, config key `events.rootCollections` (comma list, '' = all; both ROOT
+event loaders honor it), server query param `collections=`, CLI
+`--collections`. `mc_particles` converts EVERY MCParticle to a straight
+vertex→endpoint line on a fixed time grid (flight time from relativistic β;
+`pyrobird/mc_particles.py` ↔ `packages/root2dex/src/mc-particles.ts`, pinned
+by parity.spec.ts). The piece converts by default but ships HIDDEN via the
+builtins config default `painters.byPiece.MCParticles.visible=false`.
+
+**Per-piece visibility**: `painters.byPiece.<pieceName>.visible` (reserved
+knob name, default true) is applied to the painter's root node by
+EventDisplayService and toggled by the eye in the model tree. Config
+properties must not be DECLARED during template evaluation or computed() —
+the first declare applies pending layer values (signal writes) and throws
+NG0600; wrap creation in `untracked()` (see model-tree.component.ts). Author guide with the rendering and
 bundle rules: `firebird-ng/src/app/firebird/README.md`. Template package:
 `packages/firebird-example-extension/`.
 
@@ -600,7 +654,7 @@ Restrictive defaults prevent unauthorized file access:
 ### Frontend Testing
 - **Framework:** Vitest (Angular `unit-test` builder); `@firebird/core` and the dexvis packages run plain Vitest
 - **CI:** GitHub Actions on every push/PR
-- Run tests: `npm test` or `npm run test:headless` (app); `npm test -w @firebird/core` (core)
+- Run tests: `npm test` or `npm run test:headless` (app); `npm test -w @firebird/core` (core); `npm test -w @firebird/root2dex` (ROOT converter)
 
 ### Backend Testing
 - **Framework:** pytest
@@ -736,4 +790,4 @@ Follow `packages/firebird-example-extension/` (the working template):
 - **XRootD support:** Install with `pip install pyrobird[xrootd]` for remote file access.
 - **Docker for DD4Hep:** EIC provides `eicweb/eic_xl:nightly` with full HENP stack.
 - **Git LFS:** This repository may use Git LFS for large binary files.
-- **Documentation:** User-facing documentation is in `docs/` (VitePress site, deployed to https://eic.github.io/firebird/). Key developer pages: `docs/extensions.md`, `docs/command-bus.md`; user pages: `docs/deep-links.md`, tutorials.
+- **Documentation:** User-facing documentation is in `docs/` (VitePress site, deployed to https://eic.github.io/firebird/). Key developer pages: `docs/extensions.md`, `docs/command-bus.md`; user pages: `docs/deep-links.md`, `docs/open-root-events.md`, tutorials.

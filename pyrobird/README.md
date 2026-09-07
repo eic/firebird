@@ -240,6 +240,9 @@ Processes an EDM4eic file to extract a specific event and returns the event data
 - **Query Parameters**:
     - `filename` (optional): The name or path of the file to process.
     - `f` (optional): An alternative parameter for the filename.
+    - `collections` (or `c`, optional): Comma-separated collection groups to
+      convert, same values as `pyrobird convert --collections`
+      (e.g. `tracker_hits,tracks,mc_particles`). Empty means all groups.
 
 **Note**: You can provide the filename either as a query parameter or as part of the URL path.
 

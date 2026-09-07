@@ -30,6 +30,31 @@ export enum NeonTrackColors {
 }
 
 /**
+ * The pid-mode track color, shared by the per-track and batched trajectory
+ * painters so switching between them keeps the palette.
+ */
+export function pidColorFor(pdg: number, charge: number): number {
+  switch (pdg) {
+    case 22: return NeonTrackColors.Yellow;      // γ
+    case -22: return NeonTrackColors.Salad;      // optical photon
+    case 11: return NeonTrackColors.Blue;        // e⁻
+    case -11: return NeonTrackColors.Orange;     // e⁺
+    case 211: return NeonTrackColors.Pink;       // π⁺
+    case -211: return NeonTrackColors.Teal;      // π⁻
+    case 2212: return NeonTrackColors.Violet;    // proton
+    case 2112: return NeonTrackColors.Green;     // neutron
+  }
+  if (charge > 0) return NeonTrackColors.Red;
+  if (charge < 0) return NeonTrackColors.DeepBlue;
+  return NeonTrackColors.Gray;
+}
+
+/** Whether pid-mode draws this particle dashed (photons and neutrons). */
+export function pidIsDashed(pdg: number): boolean {
+  return pdg === 22 || pdg === 2112;
+}
+
+/**
  * We'll keep each line's full data in a small structure so we can rebuild partial geometry.
  */
 interface TrajectoryRenderContext {
@@ -98,6 +123,13 @@ export class TrajectoryPainter extends EventPiecePainter {
     const columnNames = Object.keys(piece.columns);
     let noPointsWarned = 0;
 
+    // [load-timing] accumulators: where construction time goes across ALL
+    // lines of this piece (materials vs geometry vs distances vs the rest)
+    const buildStart = performance.now();
+    let materialMs = 0, geometryMs = 0, distancesMs = 0;
+    let builtLines = 0;
+    let stepStart = 0;
+
     for (let trajIndex = 0; trajIndex < piece.count; trajIndex++) {
 
       // Collect this trajectory's parameters from the columns (id == index)
@@ -121,17 +153,24 @@ export class TrajectoryPainter extends EventPiecePainter {
       }
 
       // Create proper material
+      stepStart = performance.now();
       const lineMaterial = this.createLine2NodeMaterial(paramsDict);
+      materialMs += performance.now() - stepStart;
 
 
       // We'll start by building a geometry with *all* points, and rely on paint() to do partial logic.
+      stepStart = performance.now();
       const geometry = new LineGeometry();
       const fullPositions = this.generateFlatXYZ(points);
       geometry.setPositions(fullPositions);
+      geometryMs += performance.now() - stepStart;
 
 
       const line2 = new Line2(geometry, lineMaterial as any);
+      stepStart = performance.now();
       line2.computeLineDistances();
+      distancesMs += performance.now() - stepStart;
+      builtLines++;
 
       // Add to the scene
       this.parentNode.add(line2);
@@ -189,6 +228,14 @@ export class TrajectoryPainter extends EventPiecePainter {
 
       // Keep the data
       this.trajectories.push(trajData);
+    }
+
+    const totalMs = performance.now() - buildStart;
+    if (totalMs > 10) {
+      const otherMs = totalMs - materialMs - geometryMs - distancesMs;
+      console.log(`[load-timing] TrajectoryPainter '${this.pieceName}' build ${totalMs.toFixed(1)} ms ` +
+        `(${builtLines} lines): materials ${materialMs.toFixed(1)}, geometry ${geometryMs.toFixed(1)}, ` +
+        `lineDistances ${distancesMs.toFixed(1)}, other ${otherMs.toFixed(1)}`);
     }
   }
 
@@ -266,19 +313,7 @@ export class TrajectoryPainter extends EventPiecePainter {
   private pidColorOf(params: Record<string, any>): number {
     const pdg = typeof params['pdg'] === 'number' ? Math.floor(params['pdg']) : 0;
     const charge = typeof params['charge'] === 'number' ? params['charge'] : 0;
-    switch (pdg) {
-      case 22: return NeonTrackColors.Yellow;
-      case -22: return NeonTrackColors.Salad;
-      case 11: return NeonTrackColors.Blue;
-      case -11: return NeonTrackColors.Orange;
-      case 211: return NeonTrackColors.Pink;
-      case -211: return NeonTrackColors.Teal;
-      case 2212: return NeonTrackColors.Violet;
-      case 2112: return NeonTrackColors.Green;
-    }
-    if (charge > 0) return NeonTrackColors.Red;
-    if (charge < 0) return NeonTrackColors.DeepBlue;
-    return NeonTrackColors.Gray;
+    return pidColorFor(pdg, charge);
   }
 
   /** Restyle existing lines from the config knobs. Called live on knob changes. */

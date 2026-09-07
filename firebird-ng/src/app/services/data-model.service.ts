@@ -65,9 +65,11 @@ export class DataModelService {
    *
    * @param url - The original location of the EDM4eic ROOT file (or other source).
    * @param entryNames - Comma-separated entry indices (default "0"). Passed to the converter service.
+   * @param collections - Collection groups to convert (server `collections` query
+   *   parameter, same names as `pyrobird convert --collections`). Empty means all.
    * @returns A Promise that resolves to a DataExchange object or null if there's an error.
    */
-  async loadRootData(url: string, entryNames: string = "0"): Promise<DataExchange | null> {
+  async loadRootData(url: string, entryNames: string = "0", collections?: string[]): Promise<DataExchange | null> {
     try {
       // Early exit if no URL is provided
       if (!url) {
@@ -76,7 +78,7 @@ export class DataModelService {
       }
 
       // Let urlService build the final convert URL
-      let finalUrl = this.urlService.resolveConvertUrl(url, "edm4eic", entryNames);
+      let finalUrl = this.urlService.resolveConvertUrl(url, "edm4eic", entryNames, collections);
       console.log(`[DataModelService.loadDexData] Fetching: ${finalUrl}`);
 
       // Load the text from that URL
@@ -114,7 +116,12 @@ export class DataModelService {
   private adoptLoadedEvents(data: DataExchange): void {
     this.entries.set(data.events);
     if (this.entries().length > 0) {
-      this.setNextEntry();   // Sets entry to be the first in this case
+      // Explicitly the first entry, not setNextEntry(): `currentEntry` is a
+      // linkedSignal that has already recomputed to entries[0], so "next"
+      // would step to entries[1]. With a single event that wrapped back around
+      // and looked right; loading several events showed the second one while
+      // the painter drew the first.
+      this.setCurrentEntry(this.entries()[0]);
     }
   }
 
@@ -185,6 +192,23 @@ export class DataModelService {
       // No final cleanup needed right now
     }
     return null;
+  }
+
+  /**
+   * Adopts a DEX document that is already in memory - converted in the browser
+   * rather than fetched, e.g. by the ROOT event converter.
+   *
+   * @param dexData - A parsed Firebird DEX document.
+   * @returns The DataExchange, or null when the object is not DEX.
+   */
+  loadDexObject(dexData: unknown): DataExchange | null {
+    if (!this.isFirebirdDex(dexData)) {
+      console.error("[DataModelService.loadDexObject] The object does not conform to Firebird DEX JSON format.");
+      return null;
+    }
+    const data = DataExchange.fromDexObj(dexData);
+    this.adoptLoadedEvents(data);
+    return data;
   }
 
   /**

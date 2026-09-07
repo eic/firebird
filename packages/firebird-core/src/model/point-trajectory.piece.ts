@@ -202,9 +202,12 @@ export class PointTrajectoryPieceFactory implements EventPieceFactory {
 
     // Copy point lists sorted by time so partial-track painting can assume
     // monotonic time per trajectory
+    const sortStart = performance.now();
     const timeIndex = piece.pointColumns.indexOf("t");
+    let totalPoints = 0;
     piece.points = points.map((trajectoryPoints: number[][]) => {
       const copy = Array.isArray(trajectoryPoints) ? [...trajectoryPoints] : [];
+      totalPoints += copy.length;
       if (timeIndex !== -1 && copy.length > 1) {
         copy.sort((a, b) => {
           if (a.length <= timeIndex || b.length <= timeIndex) return 0;
@@ -213,6 +216,11 @@ export class PointTrajectoryPieceFactory implements EventPieceFactory {
       }
       return copy;
     });
+    const sortMs = performance.now() - sortStart;
+    if (sortMs > 10) {
+      console.log(`[load-timing] adopt PointTrajectory '${piece.name}': copy+sort ` +
+        `${sortMs.toFixed(1)} ms (${piece.count} trajectories, ${totalPoints} points)`);
+    }
 
     return piece;
   }

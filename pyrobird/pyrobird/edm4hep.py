@@ -5,6 +5,8 @@ from collections import defaultdict
 import awkward as ak
 
 from pyrobird.dex import make_dex, PIECE_VERSION
+from pyrobird.mc_particles import (mc_particles_to_trajectories,
+                                   DEFAULT_MC_STEP_TIME, DEFAULT_MC_MAX_POINTS)
 
 """
 Converts EDM4hep simulation output (ddsim / DD4hep) to Firebird DEX format.
@@ -13,6 +15,9 @@ Supported collections:
     vector<edm4hep::SimTrackerHitData> - simulated tracker hits, converted to BoxHit groups
     vector<edm4hep::MCParticleData>    - MC particles, used to build MC-truth trajectories
                                          connecting the sim hits of each particle
+                                         ('mc_trajectories'), and straight vertex->endpoint
+                                         lines for every particle ('mc_particles',
+                                         see pyrobird.mc_particles)
 
 SimTrackerHitData branch layout (edm4hep >= 0.99; older versions use 'EDep' instead of 'eDep'
 and name the particle relation '_<Collection>_MCParticle' instead of '_<Collection>_particle'):
@@ -303,14 +308,16 @@ def sim_hits_to_trajectories(tree, hit_branch_names, entry_start, entry_stop=Non
 def edm4hep_entry_to_dict(tree, entry_index, custom_name=None, collections=None,
                           box_size=DEFAULT_HIT_BOX_SIZE,
                           prepend_vertex=True, append_endpoint=False,
-                          trajectory_excluded_collections=DEFAULT_TRAJECTORY_EXCLUDED_COLLECTIONS):
+                          trajectory_excluded_collections=DEFAULT_TRAJECTORY_EXCLUDED_COLLECTIONS,
+                          mc_step_time=DEFAULT_MC_STEP_TIME, mc_max_points=DEFAULT_MC_MAX_POINTS):
     # the result of this function
     components = []
 
     if not collections:
         collections = [
             "tracker_hits",
-            "mc_trajectories"
+            "mc_trajectories",
+            "mc_particles",
         ]
 
     hit_branches = get_sim_hit_branches(tree)
@@ -332,6 +339,13 @@ def edm4hep_entry_to_dict(tree, entry_index, custom_name=None, collections=None,
         if trajectory_piece["count"] > 0:
             components.append(trajectory_piece)
 
+    # Straight vertex->endpoint lines for every MCParticle
+    if "mc_particles" in collections:
+        mc_piece = mc_particles_to_trajectories(tree, entry_index,
+                                                step_time=mc_step_time, max_points=mc_max_points)
+        if mc_piece["count"] > 0:
+            components.append(mc_piece)
+
     entry = {
         "id": custom_name if custom_name else entry_index,
         "pieces": components
@@ -343,7 +357,8 @@ def edm4hep_entry_to_dict(tree, entry_index, custom_name=None, collections=None,
 def edm4hep_to_dex_dict(tree, event_ids, origin_info=None, collections=None,
                         box_size=DEFAULT_HIT_BOX_SIZE,
                         prepend_vertex=True, append_endpoint=False,
-                        trajectory_excluded_collections=DEFAULT_TRAJECTORY_EXCLUDED_COLLECTIONS):
+                        trajectory_excluded_collections=DEFAULT_TRAJECTORY_EXCLUDED_COLLECTIONS,
+                        mc_step_time=DEFAULT_MC_STEP_TIME, mc_max_points=DEFAULT_MC_MAX_POINTS):
     event_data = []
 
     if isinstance(event_ids, int):
@@ -353,6 +368,7 @@ def edm4hep_to_dex_dict(tree, event_ids, origin_info=None, collections=None,
         event_data.append(edm4hep_entry_to_dict(
             tree, entry_id, custom_name=None, collections=collections,
             box_size=box_size, prepend_vertex=prepend_vertex, append_endpoint=append_endpoint,
-            trajectory_excluded_collections=trajectory_excluded_collections))
+            trajectory_excluded_collections=trajectory_excluded_collections,
+            mc_step_time=mc_step_time, mc_max_points=mc_max_points))
 
     return make_dex(event_data, origin_info)

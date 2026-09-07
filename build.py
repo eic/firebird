@@ -82,13 +82,26 @@ def build_ng(is_dry_run):
     _run(["npm", "run", "build"], cwd=firebird_ng_path, prefix="ng")
 
 
+# Workspace packages with their own vitest suites. The Angular app's builder
+# does not see them, so they are run explicitly by their workspace name.
+FRONTEND_PACKAGE_WORKSPACES = [
+    "@firebird/core",
+    "@firebird/root2dex",
+]
+
+
 def test_frontend(is_dry_run):
-    """Run headless tests for the Angular frontend"""
+    """Run headless tests for the Angular frontend and the workspace packages"""
     print("Running headless tests for firebird-ng")
     if is_dry_run:
         return
 
     _run(["npm", "run", "test:headless"], cwd=firebird_ng_path, prefix="ng-test")
+
+    for workspace in FRONTEND_PACKAGE_WORKSPACES:
+        print(f"Running tests for {workspace}")
+        _run(["npm", "test", "-w", workspace], cwd=script_path, prefix=workspace.split("/")[-1])
+
     print("Frontend tests passed!")
 
 
@@ -142,7 +155,7 @@ def test_backend(is_dry_run):
         print(f"ERROR: pytest is not installed for {sys.executable}, and uv was not found")
         print("Install the test dependencies:")
         print(f"  cd {pyrobird_path} && uv sync --extra=dev --dev")
-        print("Or skip the test step: build.py all --no-test")
+        print("Or build without the test steps: build.py notests")
         sys.exit(1)
 
     _run(command + ["./tests/unit_tests", "-v"], cwd=pyrobird_path, prefix="pytest")
@@ -209,14 +222,62 @@ def publish_py(is_dry_run):
     print(f"  cd {pyrobird_path} && uv publish")
 
 
+USAGE = """Composite modes:
+  full      Everything: ng build, all tests, copy into pyrobird, python package
+  notests   The same without any test step
+  ng        Frontend only: ng build + frontend tests
+  py        Python package only: build + publish hint
+  test      All tests (frontend and backend), nothing else
+
+Itemized steps:
+  build_ng, cp_ng, test_frontend, test_backend, py_build, py_publish"""
+
+# Composite modes and the steps they run, in order. 'notests' is 'full' minus
+# the test step, so a build machine without the test dependencies still works.
+COMPOSITE_MODES = {
+    "full": ["build_ng", "test", "cp_ng", "py_build", "py_publish"],
+    "notests": ["build_ng", "cp_ng", "py_build", "py_publish"],
+    "ng": ["build_ng", "test_frontend"],
+    "py": ["py_build", "py_publish"],
+    "test": ["test"],
+}
+
+# Old spellings kept working: 'all' is what CI and older docs call the full build
+MODE_ALIASES = {
+    "all": "full",
+    "no-test": "notests",
+    "no_test": "notests",
+    "build-ng": "build_ng",
+    "cp-ng": "cp_ng",
+    "test-frontend": "test_frontend",
+    "test-backend": "test_backend",
+    "py-build": "py_build",
+    "py-publish": "py_publish",
+}
+
+STEPS = {
+    "build_ng": build_ng,
+    "test": test_all,
+    "test_frontend": test_frontend,
+    "test_backend": test_backend,
+    "cp_ng": copy_frontend,
+    "py_build": build_py,
+    "py_publish": publish_py,
+}
+
+
 def main():
     """Main is main! la-la la-la-la"""
 
-    parser = argparse.ArgumentParser(description="Helper script that builds everything and places in the right places")
-    parser.add_argument("mode", nargs="*", default="", help="all, py, test Or itemized: build_ng, cp_ng, test_frontend, test_backend, py_build, py_publish")
-    parser.add_argument("-d","--dry-run", action="store_true", help="Don't do actual files operations")
+    parser = argparse.ArgumentParser(
+        description="Helper script that builds everything and places it in the right places",
+        epilog=USAGE,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("mode", nargs="*", default="", help="full, notests, ng, py, test, or an itemized step (see below)")
+    parser.add_argument("-d", "--dry-run", action="store_true", help="Don't do actual files operations")
     parser.add_argument("-v", "--version", help="Set version for both frontend and pyrobird packages")
-    parser.add_argument("--no-test", action="store_true", help="Skip the test steps of the composite modes 'all' and 'ng'")
+    parser.add_argument("--no-test", action="store_true", help="Deprecated: 'full --no-test' is 'notests'")
     args = parser.parse_args()
 
     # Update versions first if specified
@@ -224,36 +285,23 @@ def main():
         update_npm_version(args.version, is_dry_run=args.dry_run)
         update_py_version(args.version, is_dry_run=args.dry_run)
 
-    # Next steps depend on mode
     mode = args.mode[0] if args.mode else ""
+    mode = MODE_ALIASES.get(mode, mode)
 
-    # --no-test only suppresses tests inside the composite modes. The itemized test_* modes
-    # below are an explicit request for tests, so they ignore the flag.
-    skip_tests = args.no_test and mode in ["all", "ng"]
+    steps = COMPOSITE_MODES.get(mode, [mode] if mode in STEPS else None)
+    if steps is None:
+        print(f"Unknown mode: '{mode}'\n" if mode else "No mode given\n")
+        print(USAGE)
+        sys.exit(1)
 
-    if mode in ["all", "ng", "build_ng", "build-ng"]:
-        build_ng(is_dry_run=args.dry_run)
+    # 'full --no-test' was the old way to ask for 'notests'. An itemized test_*
+    # mode is an explicit request for tests, so the flag does not apply there.
+    if args.no_test and mode in COMPOSITE_MODES:
+        print("Note: --no-test is deprecated, use: build.py notests")
+        steps = [step for step in steps if not step.startswith("test")]
 
-    if skip_tests:
-        print("Skipping tests (--no-test)")
-
-    if mode in ["all", "test"] and not skip_tests:
-        test_all(is_dry_run=args.dry_run)
-
-    if mode in ["test_frontend", "ng", "test-frontend"] and not skip_tests:
-        test_frontend(is_dry_run=args.dry_run)
-
-    if mode in ["test_backend", "test-backend"]:
-        test_backend(is_dry_run=args.dry_run)
-
-    if mode in ["all", "cp_ng"]:
-        copy_frontend(is_dry_run=args.dry_run)
-
-    if mode in ["all", "py", "py_build", "py-build"]:
-        build_py(is_dry_run=args.dry_run)
-
-    if mode in ["all", "py", "py_publish", "py-publish"]:
-        publish_py(is_dry_run=args.dry_run)
+    for step in steps:
+        STEPS[step](is_dry_run=args.dry_run)
 
 if __name__ == "__main__":
     main()

@@ -9,6 +9,12 @@
       <mat-icon class="expand-icon">{{ isExpanded(piece.name) ? 'expand_more' : 'chevron_right' }}</mat-icon>
       <span class="piece-name">{{ piece.name }}</span>
       <span class="piece-meta">{{ piece.type }} · {{ piece.entityCount }}</span>
+      <button class="visibility-toggle"
+              [class.hidden-piece]="!isPieceVisible(piece.name)"
+              title="{{ isPieceVisible(piece.name) ? 'Hide' : 'Show' }} {{ piece.name }}"
+              (click)="togglePieceVisibility(piece.name); $event.stopPropagation()">
+        <mat-icon>{{ isPieceVisible(piece.name) ? 'visibility' : 'visibility_off' }}</mat-icon>
+      </button>
     </div>
     @if (isExpanded(piece.name)) {
       @for (node of entityNodes(piece); track node.index) {

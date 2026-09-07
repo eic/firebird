@@ -3,6 +3,7 @@ import {BoxHitPiece} from "../model/box-hit.piece";
 import {BoxHitSimplePainter} from "./box-hit-simple.painter";
 import {PointTrajectoryPiece} from "../model/point-trajectory.piece";
 import {TrajectoryPainter} from "./trajectory.painter";
+import {BatchedTrajectoryPainter} from "./batched-trajectory.painter";
 
 /**
  * Registers the built-in painters on a DataModelPainter instance.
@@ -14,5 +15,9 @@ import {TrajectoryPainter} from "./trajectory.painter";
  */
 export function registerDefaultPainters(painter: DataModelPainter): void {
   painter.registerPainter(BoxHitPiece.type, BoxHitSimplePainter);
+  // Registration order matters: the per-track painter registers first and
+  // stays the default; the batched one is the selectable alternative
+  // (painters.byPiece.<name> = trajectory-lines-batched)
   painter.registerPainter(PointTrajectoryPiece.type, TrajectoryPainter);
+  painter.registerPainter(PointTrajectoryPiece.type, BatchedTrajectoryPainter);
 }

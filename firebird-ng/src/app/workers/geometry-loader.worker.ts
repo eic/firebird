@@ -26,7 +26,12 @@ import {pruneTopLevelDetectors, RootGeometryProcessor} from '../data-pipelines/r
 export interface GeometryLoadRequest {
   type: 'load';
   requestId: string;
-  url: string;
+  /**
+   * Where to read the geometry from: a URL, or a file the user picked or
+   * dropped. A File is structured-cloneable, so it crosses to the worker
+   * without being read - jsroot slices it the same way it byte-ranges a URL.
+   */
+  url: string | File;
   options: GeometryLoadOptions;
 }
 

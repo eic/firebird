@@ -356,16 +356,18 @@ export class GeometryService {
    * @returns Promise resolving to the loaded geometry or null if cancelled
    */
   async loadGeometry(
-    url: string,
+    url: string | File,
     onProgress?: GeometryProgressCallback
   ): Promise<{rootGeometry: any | null, threeGeometry: Object3D | null}> {
 
     this.subdetectors = [];
     this.rootGeometry = null;
 
-    const finalUrl = this.urlService.resolveDownloadUrl(url);
+    // A picked/dropped file is read where it lies - there is no URL to resolve
+    const finalUrl = typeof url === 'string' ? this.urlService.resolveDownloadUrl(url) : url;
+    const label = typeof finalUrl === 'string' ? finalUrl : finalUrl.name;
 
-    console.log(`[GeometryService]: Loading geometry from ${finalUrl}`);
+    console.log(`[GeometryService]: Loading geometry from ${label}`);
     console.time('[GeometryService]: Total load geometry time');
 
     // Cancel any existing load operation and immediately resolve old promise

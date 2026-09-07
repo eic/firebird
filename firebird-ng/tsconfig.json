@@ -24,6 +24,7 @@
       "@firebird/core": ["../packages/firebird-core/src/index.ts"],
       "@firebird/core/*": ["../packages/firebird-core/src/*"],
       "@firebird/ng": ["./src/app/firebird/index.ts"],
+      "@firebird/root2dex": ["../packages/root2dex/src/index.ts"],
       "@firebird/example-extension": ["../packages/firebird-example-extension/src/index.ts"],
       "@dexvis/root-geo-tree-editor": ["../dexvis/root-geo-tree-editor/src/index.ts"],
       "@dexvis/threejs-tree-editor": ["../dexvis/threejs-tree-editor/src/index.ts"],

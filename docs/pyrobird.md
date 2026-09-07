@@ -131,11 +131,26 @@ has access to files in your current directory or a directory provided via `--wor
 ```bash
 pyrobird convert input.edm4hep.root                  # EDM4hep/EDM4eic ROOT -> DEX v1 JSON
 pyrobird convert input.root -o out.firebird.json -e 0-4
+pyrobird convert input.root -c tracker_hits,mc_particles   # select collection groups
 pyrobird merge file1.firebird.json file2.firebird.json -o merged.firebird.json
 pyrobird smooth input.firebird.json -o smoothed.firebird.json
+pyrobird smooth events.firebird.zip -o events_s.firebird.zip   # .zip in/out works too
 pyrobird upgrade old.firebird.json new.firebird.json # one-shot DEX 0.04 -> 1.0
-pyrobird upgrade events.firebird.zip                 # .zip in/out works too
+pyrobird upgrade events.firebird.zip
 ```
+
+`pyrobird convert` collection groups (`-c`/`--collections`, empty = all):
+
+- `tracker_hits` — hit collections as box hits (both models)
+- `tracks` — `CentralTrackSegments` reconstructed trajectories (edm4eic)
+- `mc_trajectories` — MC-truth trajectories connecting sim hits (edm4hep)
+- `mc_particles` — a straight vertex→endpoint line for **every** `MCParticles`
+  entry (both models), subdivided on a fixed time grid (`--mc-step-time`,
+  default 0.2 ns; `--mc-max-points` caps points per line) so the time
+  animation reveals each line at the particle's real speed. Trajectory id
+  equals the MCParticle index. The Firebird display converts this group by
+  default but starts it hidden — the eye on the `MCParticles` row of the
+  Physics tree shows it.
 
 `pyrobird upgrade` converts files written by older Firebird tools (DEX 0.04)
 to the current format (see [Data Format](/dex)); the current frontend loads
@@ -475,6 +490,9 @@ Processes an EDM4eic file to extract a specific event and returns the event data
 - **Query Parameters**:
   - `filename` (optional): The name or path of the file to process.
   - `f` (optional): An alternative parameter for the filename.
+  - `collections` (or `c`, optional): Comma-separated collection groups to
+    convert, same values as `pyrobird convert --collections`
+    (e.g. `tracker_hits,tracks,mc_particles`). Empty means all groups.
 
 **Note**: You can provide the filename either as a query parameter or as part of the URL path.
 

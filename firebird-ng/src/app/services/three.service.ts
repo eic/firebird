@@ -210,7 +210,7 @@ export class ThreeService implements OnDestroy {
 
   // Events
   public trackHovered = new Subject<{track: THREE.Object3D, point: THREE.Vector3}>();
-  public trackClicked = new Subject<{track: THREE.Object3D, point: THREE.Vector3}>();
+  public trackClicked = new Subject<{track: THREE.Object3D, point: THREE.Vector3, intersection: THREE.Intersection}>();
 
   // Raw hit point every frame (hover)
   public pointHovered = new Subject<THREE.Vector3>();
@@ -1312,7 +1312,7 @@ export class ThreeService implements OnDestroy {
       if (selected && selected.object.visible && selected.object.name &&
         selected.object.name !== 'HoverPoint' &&
         !selected.object.name.startsWith('MeasurePoint_')) {
-        this.trackClicked.next({ track: selected.object, point: selected.point.clone() });
+        this.trackClicked.next({ track: selected.object, point: selected.point.clone(), intersection: selected });
         console.log('[raycast] SELECTED', selected.object.name, selected.point);
       }
     };

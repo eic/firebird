@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, ChangeDetectionStrategy, untracked } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { ConfigService } from '../../services/config.service';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -69,6 +69,21 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   serverUseApi = new FormControl<boolean>(false);
   serverApiUrl = new FormControl<string>('http://localhost:5454');
   rootEventRange = new FormControl<string>('0');
+
+  /**
+   * Collection groups a ROOT event conversion produces, offered as checkboxes.
+   * The union over both data models: 'tracks' applies to edm4eic files,
+   * 'mc_trajectories' to edm4hep files; a group missing from the opened file
+   * is skipped by the converter. The choice is stored in the
+   * `events.rootCollections` config key ('' = all groups), the same key the
+   * open-event panel, deep links, and `pyrobird convert --collections` share.
+   */
+  readonly conversionGroups = [
+    { key: 'tracker_hits', label: 'Tracker hits' },
+    { key: 'tracks', label: 'Tracks (edm4eic)' },
+    { key: 'mc_trajectories', label: 'MC hit trajectories (edm4hep)' },
+    { key: 'mc_particles', label: 'MC particles' },
+  ];
 
   // Add form controls and options
   geometryThemeName = new FormControl<string>('cool2');
@@ -257,6 +272,33 @@ export class InputConfigComponent implements OnInit, AfterViewInit {
   }
 
   selectedPreset = 'Full ePIC detector geometry (no events)';
+
+  /**
+   * The `events.rootCollections` property ('' = convert all groups).
+   * Creation is untracked: a first declare applies pending layer values
+   * (signal writes), which template evaluation forbids (NG0600).
+   */
+  private get rootCollectionsConfig() {
+    return untracked(() => this.userConfigService.getConfigOrCreate<string>('events.rootCollections', ''));
+  }
+
+  isConversionGroupOn(groupKey: string): boolean {
+    // Read through the signal: zoneless change detection only refreshes the
+    // checkboxes on config changes when the template read is reactive
+    const configured = (this.rootCollectionsConfig.valueSignal() || '')
+      .split(',').map(group => group.trim()).filter(Boolean);
+    return configured.length === 0 || configured.includes(groupKey);
+  }
+
+  toggleConversionGroup(groupKey: string): void {
+    const selected = this.conversionGroups
+      .map(group => group.key)
+      .filter(key => key === groupKey ? !this.isConversionGroupOn(key) : this.isConversionGroupOn(key));
+    // All groups selected collapses back to '' (= all), so new groups added in
+    // later versions stay included by default
+    this.rootCollectionsConfig.value =
+      selected.length === this.conversionGroups.length ? '' : selected.join(',');
+  }
 
   ngOnInit(): void {
     this.bindConfigToControl(this.serverUseApi, 'server.useApi', false);

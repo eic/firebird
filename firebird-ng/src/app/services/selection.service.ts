@@ -40,9 +40,11 @@ export class SelectionService {
 
   constructor() {
     // 3D pick → selection. trackClicked fires for any picked scene object;
-    // only objects painters stamped resolve to an entity.
-    this.three.trackClicked.subscribe(({ track }) => {
-      const ref = entityRefOf(track);
+    // only objects painters stamped resolve to an entity. The intersection
+    // rides along for batched painters, which resolve the entity from the
+    // picked segment instead of the object.
+    this.three.trackClicked.subscribe(({ track, intersection }) => {
+      const ref = entityRefOf(track, intersection);
       if (ref) {
         this.select(ref);
       }

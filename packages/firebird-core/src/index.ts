@@ -21,3 +21,4 @@ export * from './painters/box-hit-simple.painter';
 // painter's copy is the exported one.
 export { StepTrackComponentPainter, type ProcessTrackInfo } from './painters/step-track.painter';
 export * from './painters/trajectory.painter';
+export * from './painters/batched-trajectory.painter';

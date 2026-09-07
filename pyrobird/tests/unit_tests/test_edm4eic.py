@@ -47,7 +47,10 @@ def test_edm4eic_to_dict_structure():
                 assert len(columns[scalar]) == piece['count']
 
         if piece['type'] == 'PointTrajectory':
-            assert piece['pointColumns'] == ['x', 'y', 'z', 't', 'dx', 'dy', 'dz', 'dt']
+            # Track segments carry point errors; MC particle lines do not
+            expected_point_columns = (['x', 'y', 'z', 't'] if piece['name'] == 'MCParticles'
+                                      else ['x', 'y', 'z', 't', 'dx', 'dy', 'dz', 'dt'])
+            assert piece['pointColumns'] == expected_point_columns
             assert len(piece['points']) == piece['count']
             for column in piece['columns'].values():
                 assert len(column) == piece['count']

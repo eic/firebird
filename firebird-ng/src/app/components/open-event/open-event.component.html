@@ -1,0 +1,122 @@
+<button #openBtn mat-icon-button matTooltip="Open events or geometry from a ROOT file" (click)="openDialog()" class="panel-button">
+  <mat-icon>folder_open</mat-icon>
+</button>
+
+<ng-template #dialogTemplate>
+  <button mat-dialog-close aria-label="Close dialog" class="close-round-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <div class="mat-menu custom-position-dialog open-event-panel">
+    <h3 class="panel-title">Open event</h3>
+
+    <!-- Drop zone doubles as the file picker: click it or drop a file on it -->
+    <label class="drop-zone"
+           [class.drag-over]="dragOver()"
+           (dragover)="onDragOver($event)"
+           (dragleave)="onDragLeave($event)"
+           (drop)="onDrop($event)">
+      <input type="file" accept=".root,.json,.zip" hidden (change)="onFilePicked($event)"/>
+      <mat-icon>upload_file</mat-icon>
+      <span class="drop-hint">Drop a <code>.root</code> or <code>.firebird.json/.zip</code> file here, or click to choose</span>
+      <span class="drop-note">Event data or detector geometry — Firebird looks inside and routes it</span>
+      <span class="drop-note">The file stays on your computer; a ROOT file is read only for the events you ask for</span>
+    </label>
+
+    <div class="url-row">
+      <input class="url-input"
+             type="url"
+             placeholder="…or paste a https:// URL to a .root or DEX file"
+             [value]="urlInput()"
+             [disabled]="busy()"
+             (input)="setUrl($any($event.target).value)"
+             (keydown.enter)="openUrl()"/>
+      <button mat-icon-button matTooltip="Open this URL" [disabled]="!urlInput().trim() || busy()" (click)="openUrl()">
+        <mat-icon>arrow_forward</mat-icon>
+      </button>
+    </div>
+
+    @if (openedFile(); as file) {
+      <div class="file-info">
+        <div class="file-name" [title]="file.sourceName">{{ file.sourceName }}</div>
+        <div class="file-meta">
+          <span class="badge">{{ file.model }}</span>
+          <span>{{ file.entryCount }} events</span>
+          <button mat-icon-button class="clear-btn" matTooltip="Close this file" (click)="closeFile()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="event-row">
+        <label for="open-event-range">Events</label>
+        <input id="open-event-range"
+               class="event-range-input"
+               type="text"
+               [value]="eventRange()"
+               [disabled]="busy()"
+               (input)="setEventRange($any($event.target).value)"
+               (keydown.enter)="show()"/>
+        <span class="range-hint">single, list or range within 0&ndash;{{ maxEventNumber }} (e.g. <code>0,2,4-5</code>)</span>
+      </div>
+
+      <!-- Same choice as `pyrobird convert --collections` and the
+           events.rootCollections config key -->
+      <div class="collections-row">
+        <span class="collections-label">Convert</span>
+        @for (group of file.collectionGroups; track group) {
+          <label class="collection-checkbox">
+            <input type="checkbox"
+                   [checked]="isGroupSelected(group)"
+                   [disabled]="busy()"
+                   (change)="toggleGroup(group)"/>
+            <span>{{ groupLabel(group) }}</span>
+          </label>
+        }
+      </div>
+    }
+
+    @if (busy()) {
+      <div class="status busy">
+        <mat-spinner diameter="20"></mat-spinner>
+        <span>Reading ROOT file&hellip;</span>
+      </div>
+    }
+
+    @if (errorMessage(); as message) {
+      <div class="status error">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ message }}</span>
+      </div>
+    }
+
+    @if (warnings().length) {
+      <div class="status warning">
+        <mat-icon>warning_amber</mat-icon>
+        <div>
+          @for (warning of warnings(); track warning) {
+            <div>{{ warning }}</div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (statusMessage(); as message) {
+      @if (!errorMessage()) {
+        <div class="status ok">
+          <mat-icon>check_circle_outline</mat-icon>
+          <span>{{ message }}</span>
+        </div>
+      }
+    }
+
+    <div class="dialog-actions">
+      <button mat-raised-button
+              class="show-btn"
+              [disabled]="!openedFile() || busy()"
+              (click)="show()">
+        Show
+      </button>
+    </div>
+  </div>
+</ng-template>

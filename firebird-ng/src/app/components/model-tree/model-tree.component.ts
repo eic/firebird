@@ -5,11 +5,13 @@ import {
   effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 
 import { EntityRefLink, EventPiece } from '@firebird/core';
 import { DataModelService } from '../../services/data-model.service';
+import { PainterConfigService } from '../../services/painter-config.service';
 import { SelectionService } from '../../services/selection.service';
 
 interface EntityNode {
@@ -41,6 +43,7 @@ const ENTITY_PAGE = 200;
 })
 export class ModelTreeComponent {
   private dataService = inject(DataModelService);
+  private painterConfig = inject(PainterConfigService);
   public selection = inject(SelectionService);
 
   pieces = computed<EventPiece[]>(() => this.dataService.currentEntry()?.pieces ?? []);
@@ -79,6 +82,29 @@ export class ModelTreeComponent {
 
   isExpanded(pieceName: string): boolean {
     return this.expanded().has(pieceName);
+  }
+
+  /**
+   * The eye toggle reads/writes the piece visibility config key
+   * (`painters.byPiece.<name>.visible`) — the same key deep links and packs
+   * set, applied to the 3D scene by EventDisplayService. Reading through the
+   * property's signal keeps the icon in sync with changes from anywhere.
+   *
+   * Property CREATION is untracked: the first declare of a key applies
+   * pending layer values (signal writes), which template evaluation — a
+   * reactive context — forbids (NG0600).
+   */
+  private visibilityPropertyOf(pieceName: string) {
+    return untracked(() => this.painterConfig.visibilityProperty(pieceName));
+  }
+
+  isPieceVisible(pieceName: string): boolean {
+    return this.visibilityPropertyOf(pieceName).valueSignal() !== false;
+  }
+
+  togglePieceVisibility(pieceName: string): void {
+    const property = this.visibilityPropertyOf(pieceName);
+    property.value = property.value === false;
   }
 
   togglePiece(pieceName: string): void {

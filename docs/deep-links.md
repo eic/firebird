@@ -62,6 +62,8 @@ Examples of useful keys:
 config.geometry.themeName=cad            # geometry color theme: cool2, cool2no, cad, grey
 config.geometry.FastDefaultMaterial=true # fast opaque materials (faster on weak GPUs)
 config.events.rootEventRange=0-5         # which entries to convert from .root event files
+config.events.rootCollections=tracker_hits,mc_particles  # which collection groups to convert (empty = all)
+config.painters.byPiece.MCParticles.visible=true  # show the MC particle lines (hidden by default)
 ```
 
 ## Commands: `cmd=`

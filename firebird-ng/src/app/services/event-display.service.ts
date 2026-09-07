@@ -10,7 +10,7 @@ import {UrlService} from './url.service';
 
 import {disposeHierarchy} from '@dexvis/threejs-tree-editor';
 import {ThreeEventProcessor} from '../data-pipelines/three-event.processor';
-import {DataExchange, DataModelPainter, DisplayMode, LoadedGeometry} from '@firebird/core';
+import {DataExchange, DataModelPainter, DisplayMode, Event, LoadedGeometry} from '@firebird/core';
 import {AnimationManager} from "../animation/animation-manager";
 import {Mesh, MeshBasicMaterial, SphereGeometry, Vector3} from "three";
 import {arrangeEpicDetectors} from "../utils/epic-geometry-arranger";
@@ -170,6 +170,7 @@ export class EventDisplayService {
       this.painter.setEntry(event);
       this.painter.paint(null);
       this.stampEventLayers();
+      this.applyPieceVisibility();
       this.pruneStalePainterWatchers();
 
       // Let ThreeExtensions react to the freshly painted event
@@ -293,6 +294,23 @@ export class EventDisplayService {
     this.painter.setEntry(entry);
     this.painter.paint(this.eventTime());
     this.stampEventLayers();
+    this.applyPieceVisibility();
+    this.three.invalidate();
+  }
+
+  /**
+   * Applies the per-piece visibility config (`painters.byPiece.<name>.visible`)
+   * to each painter's root node. Runs after every (re)paint of an entry and
+   * again on every toggle — the model tree eye and deep links flip the same
+   * config key. A hidden piece keeps its painter and objects; only the group
+   * node is switched, so showing it again is instant.
+   */
+  private applyPieceVisibility(): void {
+    for (const painter of this.painter.getPainters()) {
+      const property = this.painterConfig.visibilityProperty(painter.pieceName);
+      this.watchPainterKey(property, () => this.applyPieceVisibility());
+      painter.node.visible = property.value !== false;
+    }
     this.three.invalidate();
   }
 
@@ -629,7 +647,7 @@ export class EventDisplayService {
   /**
    * Load geometry
    */
-  async loadGeometry(url: string, scale = 10, clearGeometry = true): Promise<LoadedGeometry> {
+  async loadGeometry(url: string | File, scale = 10, clearGeometry = true): Promise<LoadedGeometry> {
     this.lastLoadedGeometryUrl = null;
     this.batchStatus.beginGeometryLoad();
     try {
@@ -667,7 +685,8 @@ export class EventDisplayService {
       // no slice exists — single-view pages).
       this.three.rebuildGeometrySlice();
 
-      this.lastLoadedGeometryUrl = url;
+      // A picked/dropped file has no URL to compare a later auto-load against
+      this.lastLoadedGeometryUrl = typeof url === 'string' ? url : null;
       this.batchStatus.endGeometryLoad(true);
       return {root: threeGeometry};
     } catch (error) {
@@ -681,7 +700,9 @@ export class EventDisplayService {
     this.batchStatus.beginEventLoad();
     await this.paintersReady;
     try {
+      const modelStart = performance.now();
       const data = await this.dataService.loadDexData(url);
+      const modelMs = performance.now() - modelStart;
       if (data == null) {
         console.warn(
           'DataService.loadDexData() Received data is null or undefined'
@@ -690,11 +711,9 @@ export class EventDisplayService {
       }
 
       if ((data.events?.length ?? 0) > 0) {
-        this.painter.setEntry(data.events[0]);
-        this.eventTime.set(null);
-        this.painter.paint(this.eventTime());
-        this.stampEventLayers();
-        this.three.invalidate();
+        // modelMs includes fetch/unzip/parse; those are broken out by the
+        // console.time lines of data-fetching.utils
+        this.showEntry(data.events[0], modelMs);
         this.lastLoadedDexUrl = url;
         return data;
       } else {
@@ -707,13 +726,82 @@ export class EventDisplayService {
     }
   }
 
-  async loadRootData(url: string, eventRange: string = "0"): Promise<DataExchange | null> {
+  /**
+   * Shows a DEX document that is already in memory instead of fetching one -
+   * the path taken by the in-browser ROOT converter, which produces DEX from a
+   * local file or a byte-ranged URL without the app ever holding the file.
+   *
+   * @param dex A parsed DEX document.
+   * @param sourceUrl The URL it came from, when there is one. Recorded so a
+   *   later configured auto-load of the same URL is skipped; a local file has
+   *   no URL, so the marker is cleared and the auto-load stays free to run.
+   */
+  async showDexDocument(dex: unknown, sourceUrl?: string): Promise<DataExchange | null> {
+    this.lastLoadedDexUrl = null;
+    this.batchStatus.beginEventLoad();
+    await this.paintersReady;
+    try {
+      const modelStart = performance.now();
+      const data = this.dataService.loadDexObject(dex);
+      const modelMs = performance.now() - modelStart;
+      if (data == null) return null;
+      if ((data.events?.length ?? 0) === 0) {
+        console.warn('EventDisplayService.showDexDocument() the document had no events');
+        return null;
+      }
+      this.showEntry(data.events[0], modelMs);
+      if (sourceUrl) this.lastLoadedDexUrl = sourceUrl;
+      return data;
+    } finally {
+      this.batchStatus.endEventLoad();
+    }
+  }
+
+  /**
+   * The shared "put this entry on screen" tail of every load path, with
+   * [load-timing] stage accounting: model adoption (measured by the caller),
+   * painter construction (setEntry), first paint, layer stamping. The finer
+   * grain inside these stages is logged by DataModelPainter and the painters.
+   */
+  private showEntry(entry: Event, modelMs: number): void {
+    const paintersStart = performance.now();
+    this.painter.setEntry(entry);
+    this.eventTime.set(null);
+    const paintStart = performance.now();
+    this.painter.paint(this.eventTime());
+    const layersStart = performance.now();
+    this.stampEventLayers();
+    // The entry-change effect skips entries already set here (getEntry() ==
+    // event), so per-piece visibility must be applied on this path too —
+    // otherwise a piece shipped hidden (MCParticles) renders on first show
+    this.applyPieceVisibility();
+    const invalidateStart = performance.now();
+    this.three.invalidate();
+    const end = performance.now();
+    const totalMs = modelMs + end - paintersStart;
+    if (totalMs > 100) {
+      console.log(`[load-timing] show entry total ${totalMs.toFixed(1)} ms: ` +
+        `model ${modelMs.toFixed(1)}, painters ${(paintStart - paintersStart).toFixed(1)}, ` +
+        `paint ${(layersStart - paintStart).toFixed(1)}, layers ${(invalidateStart - layersStart).toFixed(1)}, ` +
+        `invalidate ${(end - invalidateStart).toFixed(1)}`);
+      // First frames after showing: the initial render compiles pipelines and
+      // uploads buffers for every new object, a cost no stage above sees.
+      // Two chained rAFs bracket one full frame of the render loop.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        console.log(`[load-timing] first rendered frame after show: +${(performance.now() - end).toFixed(1)} ms`);
+      }));
+    }
+  }
+
+  async loadRootData(url: string, eventRange: string = "0", collections?: string[]): Promise<DataExchange | null> {
     this.lastLoadedRootUrl = null;
     this.lastLoadedRootEventRange = null;
     this.batchStatus.beginEventLoad();
     await this.paintersReady;
     try {
-      const data = await this.dataService.loadRootData(url, eventRange);
+      const modelStart = performance.now();
+      const data = await this.dataService.loadRootData(url, eventRange, collections);
+      const modelMs = performance.now() - modelStart;
       if (data == null) {
         console.warn(
           'DataService.loadRootData() Received data is null or undefined'
@@ -722,11 +810,8 @@ export class EventDisplayService {
       }
 
       if ((data.events?.length ?? 0) > 0) {
-        this.painter.setEntry(data.events[0]);
-        this.eventTime.set(null);
-        this.painter.paint(this.eventTime());
-        this.stampEventLayers();
-        this.three.invalidate();
+        // modelMs includes the server conversion round trip
+        this.showEntry(data.events[0], modelMs);
         this.lastLoadedRootUrl = url;
         this.lastLoadedRootEventRange = eventRange;
         return data;

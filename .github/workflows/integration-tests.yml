@@ -48,14 +48,14 @@ jobs:
         run: |
           cd pyrobird
           uv sync --extra=dev --dev
-          uv run ../build.py all
+          uv run ../build.py full
 
       # - name: Install Python dependencies and Build Frontend
       #   run: |
-      #     cd pyrobird          
+      #     cd pyrobird
       #     python -m pip install -e .[dev,batch]
       #     cd ..
-      #     python build.py all
+      #     python build.py full
 
       - name: Run integration tests
         run: |

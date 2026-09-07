@@ -4,42 +4,15 @@
 
 """One-shot upgrade of Firebird DEX files from version 0.04 to 1.0."""
 
-import json
 import logging
 import os
-import zipfile
 
 import click
 
 from pyrobird.dex import upgrade_dex, validate_dex, UnknownPieceTypeError
+from pyrobird.dex_utils import read_dex_json, write_dex_json
 
 logger = logging.getLogger(__name__)
-
-
-def read_dex_json(input_file):
-    """Reads a DEX document from a .json file or from the first .json member of a .zip."""
-    if input_file.lower().endswith(".zip"):
-        with zipfile.ZipFile(input_file) as zf:
-            json_names = [n for n in zf.namelist() if n.lower().endswith(".json")]
-            if not json_names:
-                raise click.FileError(input_file, "zip archive contains no .json file")
-            return json.loads(zf.read(json_names[0]))
-    with open(input_file, "r") as f:
-        return json.load(f)
-
-
-def write_dex_json(dex_data, output_file):
-    """Writes a DEX document to a .json file, or zip-compressed when the name ends with .zip
-    (the archive holds one member named like the output with .zip replaced by .json)."""
-    if output_file.lower().endswith(".zip"):
-        inner_name = os.path.basename(output_file)[:-len(".zip")]
-        if not inner_name.lower().endswith(".json"):
-            inner_name += ".json"
-        with zipfile.ZipFile(output_file, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(inner_name, json.dumps(dex_data))
-    else:
-        with open(output_file, "w") as f:
-            json.dump(dex_data, f)
 
 
 def guess_output_name(input_file):

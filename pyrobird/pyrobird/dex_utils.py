@@ -5,13 +5,45 @@
 """Utilities for working with Firebird DEX (Data Exchange) format files."""
 
 import json
-from typing import Dict, Any
+import os
+import zipfile
+from typing import Any, Dict, Optional
+
 import click
+
+
+def read_dex_json(file_path: str) -> Dict[str, Any]:
+    """Reads a DEX document from a .json file or from the first .json member of a .zip."""
+    if file_path.lower().endswith(".zip"):
+        with zipfile.ZipFile(file_path) as zf:
+            json_names = [n for n in zf.namelist() if n.lower().endswith(".json")]
+            if not json_names:
+                raise click.FileError(file_path, "zip archive contains no .json file")
+            with zf.open(json_names[0]) as f:
+                return json.load(f)
+    with open(file_path, "r") as f:
+        return json.load(f)
+
+
+def write_dex_json(dex_data: Dict[str, Any], output_file: str, indent: Optional[int] = None) -> None:
+    """Writes a DEX document to a .json file, or zip-compressed when the name ends
+    with .zip (the archive holds one member named like the output with .zip
+    replaced by .json)."""
+    text = json.dumps(dex_data, indent=indent)
+    if output_file.lower().endswith(".zip"):
+        inner_name = os.path.basename(output_file)[:-len(".zip")]
+        if not inner_name.lower().endswith(".json"):
+            inner_name += ".json"
+        with zipfile.ZipFile(output_file, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(inner_name, text)
+        return
+    with open(output_file, "w") as f:
+        f.write(text)
 
 
 def load_dex_file(file_path: str) -> Dict[str, Any]:
     """
-    Load and validate a Firebird DEX JSON file.
+    Load and validate a Firebird DEX JSON file (.json, or a .zip holding one).
 
     Parameters
     ----------
@@ -29,8 +61,9 @@ def load_dex_file(file_path: str) -> Dict[str, Any]:
         If file cannot be loaded or is invalid
     """
     try:
-        with open(file_path, 'r') as f:
-            dex_data = json.load(f)
+        dex_data = read_dex_json(file_path)
+    except click.FileError:
+        raise
     except FileNotFoundError:
         raise click.FileError(file_path, "File not found")
     except json.JSONDecodeError:

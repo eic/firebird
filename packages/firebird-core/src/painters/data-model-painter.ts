@@ -96,6 +96,7 @@ export class DataModelPainter {
       throw new Error('Three.js parent node is not set.');
     }
 
+    const entryStart = performance.now();
     for (const piece of entry.pieces) {
       const candidates = this.piecePainterRegistry[piece.type] ?? [];
       if (candidates.length === 0) {
@@ -110,9 +111,18 @@ export class DataModelPainter {
       this.threeParentNode.add(pieceNode);
 
       const configView = this.configViewProvider?.(piece, PainterClass);
+      const painterStart = performance.now();
       const painter = new PainterClass(pieceNode, piece, configView);
+      const painterMs = performance.now() - painterStart;
+      if (painterMs > 10) {
+        console.log(`[load-timing] painter '${piece.name}' (${PainterClass.name}): ${painterMs.toFixed(1)} ms`);
+      }
 
       this.painters.push(painter);
+    }
+    const entryMs = performance.now() - entryStart;
+    if (entryMs > 100) {
+      console.log(`[load-timing] setEntry total (${entry.pieces.length} pieces): ${entryMs.toFixed(1)} ms`);
     }
   }
 

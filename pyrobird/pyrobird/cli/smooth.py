@@ -8,7 +8,7 @@ import logging
 import math
 from typing import Dict, Any, List
 
-from pyrobird.dex_utils import load_dex_file
+from pyrobird.dex_utils import load_dex_file, write_dex_json
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -33,27 +33,29 @@ def smooth(output_file, input_file, step_time):
     2. Cutting points outside detector volumes
     3. Time-based interpolation for smooth visualization
 
+    Input and output can be .json files or .zip archives holding one
+    (an output name ending in .zip writes a zip-compressed result).
+
     Examples:
       - Smooth trajectories with default 0.2 ns time step:
           pyrobird smooth input.firebird.json -o smoothed.firebird.json
 
       - Smooth with custom time step:
           pyrobird smooth input.firebird.json -o smoothed.firebird.json --step-time 0.1
+
+      - Smooth a zipped file into a zipped result:
+          pyrobird smooth events.firebird.zip -o events_s.firebird.zip
     """
-    # Load the input DEX file
+    # Load the input DEX file (.json or .zip)
     dex_data = load_dex_file(input_file)
 
     # Apply smoothing algorithms
     logger.info("Applying trajectory smoothing...")
     smoothed_data = apply_smoothing(dex_data, step_time)
 
-    # Process trajectories and print statistics
-    #process_trajectories(smoothed_data)
-
     # Save the result
     try:
-        with open(output_file, 'w') as f:
-            json.dump(smoothed_data, f, indent=2)
+        write_dex_json(smoothed_data, output_file)
         logger.info(f"Smoothed data saved to {output_file}")
     except Exception as e:
         raise click.FileError(output_file, f"Error saving smoothed data: {e}")

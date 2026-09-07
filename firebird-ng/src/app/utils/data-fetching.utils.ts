@@ -1,6 +1,5 @@
 
 import JSZip from 'jszip';
-import * as events from "node:events";
 
 /**
  * Read a zip file and return its contents as an object.
@@ -21,6 +20,23 @@ export async function readZipFile(file: File | ArrayBuffer) {
   }
 
   return filesWithData;
+}
+
+/**
+ * Reads a DEX document from a picked/dropped file: a .json file, or a .zip
+ * whose .json members are merged into one object (the same rule the URL zip
+ * path uses). The file is read in place, never uploaded.
+ */
+export async function readDexFile(file: File): Promise<unknown> {
+  if (file.name.toLowerCase().endsWith('.zip')) {
+    const filesWithData = await readZipFile(file);
+    const dexObject = {};
+    for (const [name, text] of filesWithData) {
+      if (name.endsWith('.json')) Object.assign(dexObject, JSON.parse(text));
+    }
+    return dexObject;
+  }
+  return JSON.parse(await file.text());
 }
 
 export async function fetchTextFile(fileURL: string): Promise<string> {
