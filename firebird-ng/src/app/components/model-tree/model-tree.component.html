@@ -1,4 +1,13 @@
 <div class="model-tree">
+  @if (selection.selection(); as selected) {
+    <div class="selection-bar">
+      <span class="selection-label">Selected: {{ selected.pieceName }} #{{ selected.entityIndex }}</span>
+      <button class="clear-selection" title="Clear the selection" aria-label="Clear the selection"
+              (click)="clearSelection()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
   @if (pieces().length === 0) {
     <div class="empty-note">No event loaded</div>
   }

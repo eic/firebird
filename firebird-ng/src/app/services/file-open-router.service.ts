@@ -20,8 +20,8 @@ import type {
   EventDataLoader,
   FileContentProbe,
   GeometryDataLoader,
-} from '@firebird/core';
-import { sourceName } from '@firebird/core/loaders';
+} from '@dexvis/firebird-core';
+import { sourceName } from '@dexvis/firebird-core/loaders';
 import { EVENT_LOADERS, GEOMETRY_LOADERS } from '../firebird/tokens';
 import { RootFileService } from './root-file.service';
 

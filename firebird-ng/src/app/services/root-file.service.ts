@@ -5,25 +5,27 @@
  * Scope: this service moves BYTES and FACTS. It never decides what a file is
  * for - `probe()` returns the file's top-level keys and the routing control
  * (FileOpenRouterService) asks the registered loaders what to do with them. The
- * DEX conversion itself belongs to @firebird/root2dex; this is only its
+ * DEX conversion itself belongs to @dexvis/root2dex; this is only its
  * transport.
  *
- * The file stays open across conversions, so the "pick a file, then step
- * through events" loop pays the tree-metadata read once. Nothing here reads the
- * whole file: a multi-GB file is fine, only the baskets of the requested events
- * cross the wire.
+ * Files are opened under handles (`createHandle()`): each client keeps its own
+ * file open across conversions, so the "pick a file, then step through events"
+ * loop pays the tree-metadata read once, and one client opening a file never
+ * replaces another client's. Nothing here reads the whole file: a multi-GB
+ * file is fine, only the baskets of the requested events cross the wire.
  *
  * Bundle note: the worker is created on the first use, so jsroot and the
  * converter are fetched when a user actually opens a file.
  */
 
-import { Injectable, signal } from '@angular/core';
-import type { FileContentProbe } from '@firebird/core';
+import { Injectable, inject, signal } from '@angular/core';
+import type { FileContentProbe } from '@dexvis/firebird-core';
 import type {
   RootFileRequest,
   RootFileResponse,
   RootFileSource,
-} from '../workers/root-file.worker';
+} from '../workers/root-file.protocol';
+import { UrlService } from './url.service';
 
 /** What was learned about a file when it was opened. */
 export interface OpenedRootFile {
@@ -47,22 +49,106 @@ export interface ConvertedEvents {
 interface PendingRequest {
   resolve: (value: never) => void;
   reject: (error: Error) => void;
+  /** The handle the request belongs to; undefined for handle-free requests (probe). */
+  handle?: number;
+}
+
+/**
+ * One client's view of the worker: a file opened under its own handle id, so
+ * that the data selector's picker and the display's loads never replace each
+ * other's open file. Close it when done; closing releases only this handle's
+ * file, and the handle can open another file afterwards.
+ */
+export class RootFileHandle {
+  /** The file currently open under this handle, or null. */
+  readonly openedFile = signal<OpenedRootFile | null>(null);
+  /** True while an open or a conversion of this handle is in flight. */
+  readonly busy = signal(false);
+
+  private inFlight = 0;
+  /** Bumped by every open and by close: only the latest open sets `openedFile`. */
+  private openToken = 0;
+
+  constructor(
+    readonly id: number,
+    private readonly service: RootFileService,
+  ) {}
+
+  /**
+   * Opens a ROOT file and reads its tree metadata, replacing what this handle
+   * had open. When opens overlap, only the latest one sets `openedFile`.
+   */
+  async open(source: File | string): Promise<OpenedRootFile> {
+    const token = ++this.openToken;
+    this.openedFile.set(null);
+    const opened = await this.track(this.service.request<OpenedRootFile>(this.id, requestId => ({
+      type: 'open',
+      requestId,
+      handle: this.id,
+      source: this.service.sourceOf(source),
+    })));
+    const file: OpenedRootFile = {
+      sourceName: opened.sourceName,
+      model: opened.model,
+      entryCount: opened.entryCount,
+      collectionGroups: opened.collectionGroups,
+    };
+    if (token === this.openToken) this.openedFile.set(file);
+    return file;
+  }
+
+  /**
+   * Converts events of this handle's open file to one DEX document.
+   *
+   * @param entries Entry numbers as typed by the user: '1', '0,2,4-5'. A
+   *   selection with any entry outside the file is rejected.
+   * @param collections Collection groups to convert (names from the opened
+   *   file's `collectionGroups`); absent or empty means all groups.
+   */
+  async convert(entries: string, collections?: string[]): Promise<ConvertedEvents> {
+    const result = await this.track(this.service.request<{ entries: number[]; dex: unknown; warnings: string[] }>(
+      this.id,
+      requestId => ({ type: 'convert', requestId, handle: this.id, entries, collections }),
+    ));
+    return { entries: result.entries, dex: result.dex, warnings: result.warnings };
+  }
+
+  /** Releases this handle's file in the worker; its in-flight requests reject. */
+  close(): void {
+    this.openToken++;
+    this.openedFile.set(null);
+    this.service.release(this.id);
+  }
+
+  private async track<T>(request: Promise<T>): Promise<T> {
+    this.inFlight++;
+    this.busy.set(true);
+    try {
+      return await request;
+    } finally {
+      this.inFlight--;
+      this.busy.set(this.inFlight > 0);
+    }
+  }
 }
 
 @Injectable({ providedIn: 'root' })
 export class RootFileService {
-  /** The file currently open in the worker, or null. */
-  readonly openedFile = signal<OpenedRootFile | null>(null);
-  /** True while a probe, an open or a conversion is in flight. */
-  readonly busy = signal(false);
+  private readonly urls = inject(UrlService);
 
   private worker: Worker | null = null;
   private readonly pending = new Map<string, PendingRequest>();
   private requestCounter = 0;
+  private handleCounter = 0;
 
   /** True when this browser can run the converter at all. */
   get isSupported(): boolean {
     return typeof Worker !== 'undefined';
+  }
+
+  /** A new handle: one client's open file in the worker. */
+  createHandle(): RootFileHandle {
+    return new RootFileHandle(++this.handleCounter, this);
   }
 
   /**
@@ -70,7 +156,7 @@ export class RootFileService {
    * the key directory is read, no event data and no geometry.
    */
   async probe(source: File | string): Promise<FileContentProbe> {
-    const result = await this.send<{ probe: FileContentProbe }>(requestId => ({
+    const result = await this.request<{ probe: FileContentProbe }>(undefined, requestId => ({
       type: 'probe',
       requestId,
       source: this.sourceOf(source),
@@ -79,55 +165,40 @@ export class RootFileService {
   }
 
   /**
-   * Opens a ROOT file and reads its tree metadata. Replaces whatever file was
-   * open before.
+   * URL aliases (`asset://`, `epic://`) and server-relative paths are resolved
+   * here, on the main thread: the worker's jsroot reader fetches whatever URL
+   * it is handed and knows nothing about Firebird's schemes.
    */
-  async open(source: File | string): Promise<OpenedRootFile> {
-    this.openedFile.set(null);
-    const opened = await this.send<OpenedRootFile>(requestId => ({
-      type: 'open',
-      requestId,
-      source: this.sourceOf(source),
-    }));
-    const file: OpenedRootFile = {
-      sourceName: opened.sourceName,
-      model: opened.model,
-      entryCount: opened.entryCount,
-      collectionGroups: opened.collectionGroups,
-    };
-    this.openedFile.set(file);
-    return file;
+  sourceOf(source: File | string): RootFileSource {
+    return typeof source === 'string'
+      ? { kind: 'url', url: this.urls.resolveDownloadUrl(source) }
+      : { kind: 'file', file: source };
   }
 
-  /**
-   * Converts events of the open file to one DEX document.
-   *
-   * @param entries Entry numbers as typed by the user: '1', '0,2,4-5'.
-   * @param collections Collection groups to convert (names from the opened
-   *   file's `collectionGroups`); absent or empty means all groups.
-   */
-  async convert(entries: string, collections?: string[]): Promise<ConvertedEvents> {
-    const result = await this.send<{ entries: number[]; dex: unknown; warnings: string[] }>(
-      requestId => ({ type: 'convert', requestId, entries, collections }),
-    );
-    return { entries: result.entries, dex: result.dex, warnings: result.warnings };
+  /** Sends one request to the worker; `handle` ties it to a RootFileHandle. */
+  request<T>(handle: number | undefined, build: (requestId: string) => RootFileRequest): Promise<T> {
+    const worker = this.ensureWorker();
+    const requestId = `root-file-${++this.requestCounter}`;
+    return new Promise<T>((resolve, reject) => {
+      this.pending.set(requestId, {
+        resolve: resolve as (value: never) => void,
+        reject,
+        handle,
+      });
+      worker.postMessage(build(requestId));
+    });
   }
 
-  /** Closes the open file and releases the worker. */
-  close(): void {
-    this.openedFile.set(null);
-    if (!this.worker) return;
-    this.worker.terminate();
-    this.worker = null;
-    for (const request of this.pending.values()) {
-      request.reject(new Error('ROOT file service was closed'));
+  /** Drops a handle's file in the worker and rejects its in-flight requests. */
+  release(handle: number): void {
+    for (const [requestId, request] of this.pending) {
+      if (request.handle !== handle) continue;
+      this.pending.delete(requestId);
+      request.reject(new Error('The ROOT file was closed'));
     }
-    this.pending.clear();
-    this.busy.set(false);
-  }
-
-  private sourceOf(source: File | string): RootFileSource {
-    return typeof source === 'string' ? { kind: 'url', url: source } : { kind: 'file', file: source };
+    if (!this.worker) return;
+    const requestId = `root-file-${++this.requestCounter}`;
+    this.worker.postMessage({ type: 'close', requestId, handle } satisfies RootFileRequest);
   }
 
   private ensureWorker(): Worker {
@@ -144,7 +215,9 @@ export class RootFileService {
       console.error(`[RootFileService]: ${message}`);
       for (const request of this.pending.values()) request.reject(new Error(message));
       this.pending.clear();
-      this.busy.set(false);
+      // A broken worker is dropped; the next request starts a fresh one
+      worker.terminate();
+      if (this.worker === worker) this.worker = null;
     };
     this.worker = worker;
     return worker;
@@ -154,7 +227,6 @@ export class RootFileService {
     const request = this.pending.get(data.requestId);
     if (!request) return;
     this.pending.delete(data.requestId);
-    this.busy.set(this.pending.size > 0);
     if (data.type === 'error') {
       request.reject(new Error(data.error));
       return;
@@ -169,18 +241,5 @@ export class RootFileService {
       }
     }
     request.resolve(data as never);
-  }
-
-  private send<T>(build: (requestId: string) => RootFileRequest): Promise<T> {
-    const worker = this.ensureWorker();
-    const requestId = `root-file-${++this.requestCounter}`;
-    this.busy.set(true);
-    return new Promise<T>((resolve, reject) => {
-      this.pending.set(requestId, {
-        resolve: resolve as (value: never) => void,
-        reject,
-      });
-      worker.postMessage(build(requestId));
-    });
   }
 }

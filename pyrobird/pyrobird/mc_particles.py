@@ -16,7 +16,7 @@ EDM4hep stores no endpoint time; the flight duration is computed from the
 relativistic speed beta = p/E with E = sqrt(p^2 + m^2), which is exact for the
 straight-line (no field, no energy loss) picture this piece draws.
 
-IMPORTANT: `@firebird/root2dex` (mc-particles.ts) mirrors this module value for
+IMPORTANT: `@dexvis/root2dex` (mc-particles.ts) mirrors this module value for
 value - the browser conversion must produce the same DEX document. Keep the
 arithmetic expression-for-expression identical when changing either side.
 """

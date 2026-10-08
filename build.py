@@ -13,18 +13,16 @@ script_path = os.path.dirname(os.path.abspath(__file__))
 firebird_ng_path = os.path.abspath(os.path.join(script_path, 'firebird-ng'))
 dist_path = os.path.join(firebird_ng_path, 'dist', 'firebird', 'browser')
 static_path = os.path.join(script_path, 'pyrobird', 'pyrobird', 'server', 'static')
-doc_path = os.path.join(script_path, 'doc')
-dist_doc_path = os.path.join(dist_path, 'assets', 'doc')
 package_json_path = os.path.join(firebird_ng_path, 'package.json')
+root_package_json_path = os.path.join(script_path, 'package.json')
+package_lock_path = os.path.join(script_path, 'package-lock.json')
 pyrobird_version_path = os.path.join(script_path, 'pyrobird', 'pyrobird', '__version__.py')
 pyrobird_path = os.path.join(script_path, 'pyrobird')
 
 # Print the paths
 print(f"Script Path:        {script_path}")
-print(f"Docs:               {doc_path}")
 print(f"Firebird NG:        {firebird_ng_path}")
 print(f"NG dist:            {dist_path}")
-print(f"NG dist doc:        {dist_doc_path}")
 print(f"Flask static Path:  {static_path}")
 
 
@@ -46,16 +44,36 @@ def _run(command, cwd, prefix):
         raise subprocess.CalledProcessError(proc.returncode, command)
 
 
+def _write_json(path, data):
+    """Write JSON the way npm does: 2-space indent, UTF-8, trailing newline."""
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write('\n')
+
+
 def update_npm_version(version, is_dry_run):
-    """Update version in firebird-ng/package.json"""
-    print(f"Updating {package_json_path} to version {version}")
+    """Update the version of the monorepo root and firebird-ng, in their package.json and the root lockfile.
+
+    The lockfile repeats both versions (its top level, packages[""] and
+    packages["firebird-ng"]); updating them here keeps it consistent with the
+    manifests without an `npm install`.
+    """
+    for path in (root_package_json_path, package_json_path):
+        print(f"Updating {path} to version {version}")
+        if not is_dry_run:
+            with open(path, 'r', encoding='utf-8') as f:
+                package_data = json.load(f)
+            package_data['version'] = version
+            _write_json(path, package_data)
+
+    print(f"Updating {package_lock_path} to version {version}")
     if not is_dry_run:
-        with open(package_json_path, 'r') as f:
-            package_data = json.load(f)
-        package_data['version'] = version
-        with open(package_json_path, 'w') as f:
-            json.dump(package_data, f, indent=2)
-            f.write('\n')
+        with open(package_lock_path, 'r', encoding='utf-8') as f:
+            lock_data = json.load(f)
+        lock_data['version'] = version
+        for key in ('', 'firebird-ng'):
+            lock_data['packages'][key]['version'] = version
+        _write_json(package_lock_path, lock_data)
 
 
 def update_py_version(version, is_dry_run):
@@ -83,10 +101,16 @@ def build_ng(is_dry_run):
 
 
 # Workspace packages with their own vitest suites. The Angular app's builder
-# does not see them, so they are run explicitly by their workspace name.
+# does not see them, so they are run explicitly by their workspace name. Every
+# `test` script here must run once and exit (`vitest run`, never bare `vitest`,
+# which watches). .github/workflows/frontend.yaml runs the same list.
 FRONTEND_PACKAGE_WORKSPACES = [
-    "@firebird/core",
-    "@firebird/root2dex",
+    "@dexvis/app-features",
+    "@dexvis/firebird-core",
+    "@dexvis/root2dex",
+    "@dexvis/threejs-tree-editor",
+    "@dexvis/root-geo-tree-editor",
+    "@dexvis/viewport-gizmo",
 ]
 
 
@@ -127,8 +151,8 @@ def pytest_command():
     bare system python that has neither pytest nor flask, so the tests used to fail there.
 
     An existing pyrobird/.venv is used as-is rather than through `uv run`, because `uv run`
-    syncs the environment exactly and would uninstall extras that are not part of the test
-    run - in particular playwright, which `pyrobird screenshot` needs.
+    first syncs the environment to pyrobird/uv.lock and can change packages the developer
+    installed on purpose - in particular playwright, which `pyrobird screenshot` needs.
     """
     venv_python = pyrobird_venv_python()
     if venv_python and has_module(venv_python, "pytest"):
@@ -193,26 +217,28 @@ def copy_frontend(is_dry_run):
         sys.exit(1)
 
 
-def copy_docs(is_dry_run):
-
-    # Copy all files and directories from script_path/firebird-ng/dist/firebird to script_path/pyrobird/server/static
-    print(f"Copying '{doc_path}' to '{dist_doc_path}' ")
-
-    if not os.path.exists(dist_doc_path):
-        print(f"Source directory {doc_path} does not exist.")
-        sys.exit(1)
-
-    if not is_dry_run:
-        shutil.copytree(doc_path, dist_doc_path, dirs_exist_ok=True)
+def newest_distributions(dist_dir):
+    """The most recently written wheel and sdist in dist_dir (older versions may sit next to them)."""
+    newest = []
+    for suffix in (".whl", ".tar.gz"):
+        candidates = [os.path.join(dist_dir, name) for name in os.listdir(dist_dir) if name.endswith(suffix)]
+        if candidates:
+            newest.append(max(candidates, key=os.path.getmtime))
+    return newest
 
 
 def build_py(is_dry_run):
-    """Build pyrobird package using uv"""
+    """Build pyrobird package using uv, then check the wheel and sdist before any upload"""
     print("Building pyrobird package with uv")
     if is_dry_run:
         return
 
     _run(["uv", "build"], cwd=pyrobird_path, prefix="uv-build")
+
+    # Required files (frontend, sample data) and PyPI's size limit; exits 1 on failure
+    distributions = newest_distributions(os.path.join(pyrobird_path, "dist"))
+    _run([sys.executable, os.path.join("scripts", "check_dist.py")] + distributions,
+         cwd=pyrobird_path, prefix="check-dist")
     print("Python build completed!")
 
 

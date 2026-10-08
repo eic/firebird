@@ -1,26 +1,78 @@
-import {computed, effect, inject, Injectable, linkedSignal, Signal, signal, WritableSignal} from '@angular/core';
+import {computed, effect, inject, Injectable, signal, untracked, WritableSignal} from '@angular/core';
 import {Subscription} from 'rxjs';
 import {Group as TweenGroup, Tween} from '@tweenjs/tween.js';
 import {ThreeService} from './three.service';
 import {GeometryService} from './geometry.service';
 import {DataModelService} from './data-model.service';
-import {ConfigService} from './config.service';
+import {CommandBusService, ConfigProperty, ConfigService} from '@dexvis/app-features';
 import {UrlService} from './url.service';
 
 
 import {disposeHierarchy} from '@dexvis/threejs-tree-editor';
 import {ThreeEventProcessor} from '../data-pipelines/three-event.processor';
-import {DataExchange, DataModelPainter, DisplayMode, Event, LoadedGeometry} from '@firebird/core';
+import {DataExchange, DataModelPainter, DisplayMode, Event, LoadedGeometry} from '@dexvis/firebird-core';
 import {AnimationManager} from "../animation/animation-manager";
-import {Mesh, MeshBasicMaterial, SphereGeometry, Vector3} from "three";
+import {Mesh, MeshBasicMaterial, SphereGeometry, Vector2, Vector3} from "three";
 import {arrangeEpicDetectors} from "../utils/epic-geometry-arranger";
 import {EVENT_DATA_LAYER} from "./geometry-slice";
-import {PAINTERS} from "../firebird/tokens";
+import {EVENT_LOADERS, PAINTERS} from "../firebird/tokens";
+import {
+  DEX_EVENTS_SOURCE_CONFIG,
+  GEOMETRY_URL_CONFIG,
+  ROOT_COLLECTIONS_CONFIG,
+  ROOT_EVENT_RANGE_CONFIG,
+  ROOT_EVENTS_SOURCE_CONFIG,
+} from "../firebird/config-keys";
+import {DataSelectionService, isRootSource} from "./data-selection.service";
 import {BatchStatusService} from "../firebird/batch-status.service";
-import {CommandBusService} from "../firebird/command-bus.service";
 import {PainterConfigService} from "./painter-config.service";
-import {ConfigProperty} from "../utils/config-property";
 import type {RenderView} from "./render-view";
+import {MessageService} from "./message.service";
+
+
+/**
+ * Identifies an events source the way the display compares sources: the URL,
+ * plus for a ROOT file the entries and collection groups that were converted
+ * (the same file with another range is another source).
+ */
+export interface EventsSourceId {
+  url: string;
+  /** For a ROOT source: entry numbers as typed ('0', '0-4', '1,3'). */
+  entries?: string;
+  /** For a ROOT source: collection groups, a comma list or an array; empty means all. */
+  collections?: string | string[];
+}
+
+/**
+ * One requested events load, handed to `showDexDocument()` by loaders that do
+ * their own work first (see `EventDisplayService.runEventsLoad()`).
+ */
+export interface EventsLoadRequest {
+  /** False once a newer events load was requested; its data is then not shown. */
+  readonly isCurrent: boolean;
+}
+
+/** What a load request loads, and the configured source when it was requested. */
+interface LoadTarget {
+  /** The source's key; null for a picked file or an unnamed document. */
+  key: string | null;
+  /** The configured source's key ('' for none) at request time. */
+  configKey: string;
+}
+
+/** The comparison key of an events source; see EventsSourceId. */
+export function eventsSourceKey(source: EventsSourceId | string): string {
+  if (typeof source === 'string') return source.trim();
+  const url = source.url.trim();
+  if (source.entries === undefined && source.collections === undefined) return url;
+  const groups = Array.isArray(source.collections) ? source.collections : (source.collections ?? '').split(',');
+  const collections = groups.map(group => group.trim()).filter(Boolean).join(',');
+  return `${url}#entries=${(source.entries ?? '').trim() || '0'}&collections=${collections}`;
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 
 @Injectable({
@@ -30,7 +82,6 @@ export class EventDisplayService {
 
   private eventsByName = new Map<string, any>();
   private eventsArray: any[] = [];
-  private _animationSpeed: number = 1.0;
 
   selectedEventKey: string | undefined;
 
@@ -45,8 +96,15 @@ export class EventDisplayService {
   public animateCameraMovement: boolean = false;
 
 
-  public maxTime = 200;
-  public minTime = 0;
+  // Time range and step of the time slider. Signals: the time control's
+  // dialog changes them, and templates outside the dialog read them.
+  /** End of the event time range [ns]. */
+  readonly maxTime = signal(200);
+  /** Start of the event time range [ns]. */
+  readonly minTime = signal(0);
+  private readonly animationSpeedSignal = signal(1.0);
+  /** Time step per animation tick and per step button (at least 0.1). */
+  readonly animationSpeed = this.animationSpeedSignal.asReadonly();
 
 
   // Time animation
@@ -64,30 +122,46 @@ export class EventDisplayService {
   // Animation manager
   private animationManager: AnimationManager;
 
-  /** The last successfully loaded Firebird DEX JSON url. Switches to null on every new load attempt */
-  public lastLoadedDexUrl: string | null = "";
-
-  /** The last successfully loaded Geometry url. Switches to null on every new load attempt */
-  public lastLoadedGeometryUrl: string | null = "";
-
-  /** The last successfully loaded Edm4Eic converted url. Switches to null on every new load attempt */
-  public lastLoadedRootUrl: string | null = "";
-  public lastLoadedRootEventRange: string | null = "";
-
   /** Batch/headless readiness flags (window.firebird) — loads report through it. */
   private batchStatus = inject(BatchStatusService);
 
   /** Startup command queue (?dex=, ?geometry=, ?cmd=, server startupCommands). */
   private commandBus = inject(CommandBusService);
 
+  /** The user-visible error channel; see reportError(). */
+  private messages = inject(MessageService);
+
+  /** Which kind of events load runs for the footer spinners; null when none. */
+  private readonly eventsLoading = signal<'dex' | 'root' | null>(null);
+
   /** Loading indicators for the display pages' footers (service-owned so
-   * every page shows the same state). */
-  readonly loadingDex = signal(false);
-  readonly loadingEdm = signal(false);
+   * every page shows the same state). Each shows the LATEST requested load:
+   * a superseded load that ends later does not touch them. */
+  readonly loadingDex = computed(() => this.eventsLoading() === 'dex');
+  readonly loadingEdm = computed(() => this.eventsLoading() === 'root');
   readonly loadingGeometry = signal(false);
+
+  /** Bumped by every requested events / geometry load; the latest one wins. */
+  private eventsGeneration = 0;
+  private geometryGeneration = 0;
+  /** Releases the readiness count of the latest events request (once). */
+  private releaseEventsReadiness: (() => void) | null = null;
+
+  /**
+   * What the latest events / geometry request loads and the configured source
+   * at that moment. A display remount compares the config against both: what
+   * a deep link, a startup command or a picked file put on screen stays until
+   * the configured source changes. Cleared when that request fails, so a
+   * remount retries the configured source.
+   */
+  private eventsTarget: LoadTarget | null = null;
+  private geometryTarget: LoadTarget | null = null;
 
   /** Painter selection + knob keys (painters.byPiece.*) over ConfigService. */
   private painterConfig = inject(PainterConfigService);
+  private dataSelection = inject(DataSelectionService);
+  /** Registered event loaders (withEventLoader), asked in order for the config-driven ROOT source. */
+  private eventLoaders = inject(EVENT_LOADERS, {optional: true}) ?? [];
 
   /** Painter config keys subscribed for live updates, with their
    * subscriptions so watchers of vanished pieces can be pruned. */
@@ -107,16 +181,26 @@ export class EventDisplayService {
     // Painters come from DI (PAINTERS token, `withPainter()` features).
     // Group factories are registered by the provideFirebird app initializer.
     const lazyPainterLoads: Promise<void>[] = [];
+    // Registration rejects painters that declare reserved knob names; such a
+    // painter is reported and left out, like one that fails to load.
     for (const registration of inject(PAINTERS, {optional: true}) ?? []) {
       if (registration.painterClass) {
-        this.painter.registerPainter(registration.forPieceType, registration.painterClass);
+        try {
+          this.painter.registerPainter(registration.forPieceType, registration.painterClass);
+        } catch (error) {
+          this.reportError(`The painter for '${registration.forPieceType}' pieces was not registered: ${errorText(error)}`);
+        }
       } else if (registration.load) {
-        lazyPainterLoads.push(registration.load().then(painterClass => {
-          this.painter.registerPainter(registration.forPieceType, painterClass);
-        }));
+        lazyPainterLoads.push(registration.load()
+          .then(painterClass => this.painter.registerPainter(registration.forPieceType, painterClass))
+          .catch(error => this.reportError(
+            `The painter for '${registration.forPieceType}' pieces failed to load: ${errorText(error)}`)));
       }
     }
-    this.paintersReady = Promise.all(lazyPainterLoads).then(() => {});
+    // Every load awaits this. A painter module that fails to load is reported
+    // once; its pieces fall back to another registered painter or stay
+    // undrawn, and the other pieces and later loads are not affected.
+    this.paintersReady = Promise.allSettled(lazyPainterLoads).then(() => {});
 
     // Painter selection and knobs are config keys (painters.byPiece.*):
     // - the selector resolves which registered painter draws each piece,
@@ -153,32 +237,38 @@ export class EventDisplayService {
       this.three.invalidate();
     }, {debugName: "EventDisplayService.OnTimeChange"});
 
+    // On current entry change (event selector, show-event command, cycling).
+    // Load paths present their first entry right away; for those the
+    // identity check in presentEntry() makes this a no-op.
     effect(() => {
-      //this.processCurrentTimeChange(this.eventTime());
-      const geometry = this.geomService.geometry();
-    }, {debugName: "EventDisplayService.OnTimeChange"});
-
-    // On current entry change
-    effect(() => {
-      console.log("[eventDisplay] Entry change effect start")
-      let event = this.dataService.currentEntry();
-
-      // Make sure to clean-up even if event is null
-      // this.painter.cleanupCurrentEntry();
-
-      if (event === null || this.painter.getEntry() == event) return;
-      this.painter.setEntry(event);
-      this.painter.paint(null);
-      this.stampEventLayers();
-      this.applyPieceVisibility();
-      this.pruneStalePainterWatchers();
-
-      // Let ThreeExtensions react to the freshly painted event
-      // (notifyEventLoaded also invalidates the render loop)
-      this.three.notifyEventLoaded(event);
-
-      console.log("[eventDisplay] Entry change effect end")
+      const event = this.dataService.currentEntry();
+      if (event === null) return;
+      untracked(() => this.presentEntry(event));
     }, {debugName: "EventDisplayService.OnEventChange"});
+  }
+
+  /**
+   * Makes `entry` the painted entry: builds its piece painters, paints it,
+   * routes its objects to the event layer, applies per-piece visibility,
+   * drops config watchers of vanished pieces, and calls the ThreeExtensions'
+   * `onEventLoaded`. This is the one "entry became current" path: load paths
+   * call it at once (through showEntry), the entry-change effect calls it for
+   * event switches. An entry that is already painted is skipped, so
+   * extensions hear about each load and each switch exactly once.
+   *
+   * @returns False when the entry already was the painted one.
+   */
+  private presentEntry(entry: Event): boolean {
+    if (this.painter.getEntry() === entry) return false;
+    this.painter.setEntry(entry);
+    this.painter.paint(null);
+    this.stampEventLayers();
+    this.applyPieceVisibility();
+    this.pruneStalePainterWatchers();
+    // Let ThreeExtensions react to the freshly painted event
+    // (notifyEventLoaded also invalidates the render loop)
+    this.three.notifyEventLoaded(entry);
+    return true;
   }
 
   // ****************************************************
@@ -189,10 +279,23 @@ export class EventDisplayService {
    * Initialize the default three.js scene
    * @param container
    */
-  async initThree(container: string | HTMLElement) {
-    await this.three.init(container);
+  /**
+   * Attaches the display to a page's container and wires the display
+   * services. Resolves to false when the page went away (or another display
+   * page attached) while the renderer initialized: the caller must then skip
+   * its own setup, because the page that superseded it owns the display.
+   */
+  async initThree(container: string | HTMLElement): Promise<boolean> {
+    // init() starts the render loop. It reports false when the page went
+    // away (or another page attached) while it waited; that page owns the
+    // wiring below.
+    if (!await this.three.init(container)) return false;
+    // The data selector's Show button reloads through the same config path
+    // the startup uses (see loadFromConfig). Attached only while a display
+    // page is mounted: the config page applies without a display, and its
+    // display page then loads on its own init.
+    this.dataSelection.attachDisplay(parts => this.loadFromConfig(parts));
     this.painter.setThreeSceneParent(this.three.sceneEvent);
-    this.three.startRendering();
 
     // Advances the tween group each frame. A stable bound member, not an
     // inline closure: initThree runs once per display-page mount, and
@@ -201,6 +304,7 @@ export class EventDisplayService {
     this.three.addFrameCallback(this.tweenFrameCallback);
 
     this.wireDisplayTracksOnTop();
+    return true;
   }
 
   /** Guards the one-time config subscription (initThree runs per page mount). */
@@ -334,38 +438,40 @@ export class EventDisplayService {
   }
 
   getMaxTime(): number {
-    return this.maxTime;
+    return this.maxTime();
   }
 
   getMinTime(): number {
-    return this.minTime;
+    return this.minTime();
   }
 
-  get animationSpeed(): number {
-    return this._animationSpeed;
+  /** Sets the time range the slider and the animations cover. */
+  setTimeRange(minTime: number, maxTime: number): void {
+    this.minTime.set(minTime);
+    this.maxTime.set(maxTime);
   }
 
-  set animationSpeed(value: number) {
-    this._animationSpeed = Math.max(0.1, value);
+  /** Sets the time step; values below 0.1 are raised to 0.1 (never a zero step). */
+  setAnimationSpeed(value: number): void {
+    this.animationSpeedSignal.set(Math.max(0.1, value));
   }
 
   private get timeStepSize(): number {
-    // never allow a zero step
-    return Math.max(this._animationSpeed, 0.1);
+    return this.animationSpeedSignal();
   }
 
 
   animateTime() {
-    let time = this.eventTime() ?? this.minTime;
-    const timeToTravel = this.maxTime - time;
+    let time = this.eventTime() ?? this.minTime();
+    const timeToTravel = this.maxTime() - time;
 
     // Speed: the higher the animationSpeed, the faster (less duration)
     const baseMsPerUnit = 200;
-    const speed = this.animationSpeed;
+    const speed = this.animationSpeed();
 
     const duration = timeToTravel * (baseMsPerUnit / speed);
 
-    this.animateCurrentTime(this.maxTime, duration);
+    this.animateCurrentTime(this.maxTime(), duration);
   }
 
 
@@ -385,7 +491,7 @@ export class EventDisplayService {
       this.stopTimeAnimation();
     }
 
-    this.tween = new Tween({currentTime: this.eventTime() ?? this.minTime}, this.tweenGroup)
+    this.tween = new Tween({currentTime: this.eventTime() ?? this.minTime()}, this.tweenGroup)
       .to({currentTime: targetTime}, duration)
       .onUpdate((obj) => {
         this.eventTime.set(obj.currentTime);
@@ -497,15 +603,15 @@ export class EventDisplayService {
   }
 
   timeStepBack(): void {
-    const t = this.eventTime() ?? this.minTime;
-    this.updateEventTime(Math.max(t - this.timeStepSize, this.minTime));
+    const t = this.eventTime() ?? this.minTime();
+    this.updateEventTime(Math.max(t - this.timeStepSize, this.minTime()));
   }
 
 
   timeStep(): void {
     const t = this.eventTime();
     if (t == null) return;
-    this.updateEventTime(Math.min(t + this.timeStepSize, this.maxTime));
+    this.updateEventTime(Math.min(t + this.timeStepSize, this.maxTime()));
   }
 
   exitTimedDisplay() {
@@ -551,113 +657,219 @@ export class EventDisplayService {
    * server startupCommands) replace the config-driven load for the data
    * types they carry; the queue itself runs after the loads are kicked off.
    *
-   * `onError` receives human-readable load failures (pages surface them in
-   * their own way — snackbar, console).
+   * On a return to a display page the scene is still there (the services are
+   * singletons), so the config is reconciled with what is displayed: a
+   * deep-linked, command-loaded or picked geometry or event source stays
+   * until the configured source changes, or until the data selector applies a
+   * choice. Failures reach the user through reportError().
    */
-  autoLoadAndRunStartup(onError?: (message: string) => void): void {
+  autoLoadAndRunStartup(): void {
     const startupCommands = this.commandBus.peekStartupCommands();
     const startupHas = (type: string) => startupCommands.some(c => c.type === type);
-
-    if (!startupHas('open-dex')) {
-      this.autoLoadDexFromConfig(onError);
-      this.autoLoadRootFromConfig(onError);
-    }
-    if (!startupHas('open-geometry')) {
-      this.autoLoadGeometryFromConfig(onError);
-    }
-
-    void this.commandBus.runStartupCommands();
-  }
-
-  private autoLoadDexFromConfig(onError?: (message: string) => void): void {
-    // getConfigOrCreate, not getConfig: on a direct page landing nothing
-    // declared the key yet, and only declaration applies pending URL/server
-    // values for it.
-    const url = this.config.getConfigOrCreate<string>('events.dexEventsSource', '').value;
-    if (!url || url.trim().length === 0) {
-      console.log('[eventDisplay]: No DEX event source configured, skipping.');
-      return;
-    }
-    if (this.lastLoadedDexUrl === url) {
-      console.log(`[eventDisplay]: Event data (DEX) already loaded from '${url}', skipping.`);
-      return;
-    }
-    this.loadingDex.set(true);
-    this.loadDexData(url)
-      .catch(error => {
-        const message = `Error loading events: ${error}`;
-        console.error(`[eventDisplay]: ${message}`);
-        onError?.(message);
-      })
-      .finally(() => this.loadingDex.set(false));
-  }
-
-  private autoLoadRootFromConfig(onError?: (message: string) => void): void {
-    const url = this.config.getConfigOrCreate<string>('events.rootEventSource', '').value;
-    let eventRange = this.config.getConfigOrCreate<string>('events.rootEventRange', '').value;
-    if (!url || url.trim().length === 0) {
-      console.log('[eventDisplay]: No EDM4eic ROOT source configured, skipping.');
-      return;
-    }
-    if (!eventRange || eventRange.trim().length === 0) {
-      eventRange = '0';
-    }
-    if (this.lastLoadedRootUrl === url && this.lastLoadedRootEventRange === eventRange) {
-      console.log(`[eventDisplay]: ROOT events already loaded from '${url}' (${eventRange}), skipping.`);
-      return;
-    }
-    this.loadingEdm.set(true);
-    this.loadRootData(url, eventRange)
-      .catch(error => {
-        const message = `Error loading events: ${error}`;
-        console.error(`[eventDisplay]: ${message}`);
-        onError?.(message);
-      })
-      .finally(() => this.loadingEdm.set(false));
-  }
-
-  private autoLoadGeometryFromConfig(onError?: (message: string) => void): void {
-    const url = this.config.getConfigOrCreate<string>('geometry.selectedGeometry', '').value;
-    if (!url || url.trim().length === 0) {
-      console.log('[eventDisplay]: No geometry configured, skipping.');
-      return;
-    }
-    if (this.lastLoadedGeometryUrl === url) {
-      console.log(`[eventDisplay]: Geometry already loaded from '${url}', skipping.`);
-      return;
-    }
-    // A load may still be running from another page visit — supersede it.
-    if (this.geomService.isLoading()) {
-      this.geomService.cancelLoading();
-    }
-    this.loadingGeometry.set(true);
-    this.loadGeometry(url)
-      .then(result => {
-        if (result.cancelled) {
-          console.log('[eventDisplay]: Geometry load superseded by a newer one.');
-        }
-      })
-      .catch(error => {
-        console.error(`[eventDisplay]: Error loading geometry: ${error}`);
-        onError?.("Error loading Geometry. Open 'Configure' to change. Press F12->Console for logs");
-      })
-      .finally(() => this.loadingGeometry.set(false));
+    // Applied on the config page while no display was mounted: the user asked
+    // for these, so they load even when the config value did not change
+    const requested = this.dataSelection.takePendingReload();
+    if (!startupHas('open-dex')) this.loadEventsFromConfig(requested.events);
+    if (!startupHas('open-geometry')) this.loadGeometryFromConfig(requested.geometry);
+    void this.runStartupCommands();
   }
 
   /**
-   * Load geometry
+   * Runs the queued startup commands. Each failure reaches reportError()
+   * before `window.firebird.startupCommandsDone` turns true.
+   */
+  async runStartupCommands(): Promise<void> {
+    await this.commandBus.runStartupCommands({
+      onFailure: ({command, message}) => {
+        // The command's main argument names what failed (open-dex: the URL)
+        const argument = [command['url'], command['value'], command['name']]
+          .find(value => typeof value === 'string' && value !== '');
+        const label = argument ? `${command.type}:${argument}` : command.type;
+        this.reportError(`Startup command '${label}' failed: ${message}`);
+      },
+    });
+  }
+
+  /** Display pages call this on destroy; see initThree. */
+  detachDataSelection(): void {
+    this.dataSelection.detachDisplay();
+  }
+
+  /**
+   * The one user-visible error channel for loads and startup commands: logs
+   * the message, shows it to the user (MessageService), and lists it in
+   * `window.firebird.errors`, where batch tools such as `pyrobird screenshot`
+   * read it.
+   */
+  reportError(message: string): void {
+    console.error(`[eventDisplay]: ${message}`);
+    this.messages.addMessage('error', message);
+    this.batchStatus.addError(message);
+  }
+
+  /**
+   * Loads geometry and events from the config keys (`geometry.selectedGeometry`,
+   * `events.dexEventsSource`, or `events.rootEventSource` with
+   * `events.rootEventRange` and `events.rootCollections`). Files the user
+   * picked in the data selector are waiting in DataSelectionService and load
+   * instead of the keys.
+   *
+   * This is THE config load path: the data selector's Show button (through
+   * DataSelectionService.apply) calls it, and the display startup
+   * (autoLoadAndRunStartup) shares its parts.
+   *
+   * @param parts Which halves to load; both by default.
+   * @param options.explicit True (the default) loads every configured source
+   *   that is not what the display already shows or is loading. False is the
+   *   remount rule of autoLoadAndRunStartup().
+   */
+  loadFromConfig(parts: { events?: boolean; geometry?: boolean } = {}, options: { explicit?: boolean } = {}): void {
+    const explicit = options.explicit ?? true;
+    if (parts.events ?? true) this.loadEventsFromConfig(explicit);
+    if (parts.geometry ?? true) this.loadGeometryFromConfig(explicit);
+  }
+
+  /** The configured geometry URL ('' for none). */
+  private configuredGeometry(): string {
+    // declare, not getConfig: on a direct page landing nothing declared the
+    // key yet, and only declaration applies pending URL/server values for it.
+    return (this.config.declare(GEOMETRY_URL_CONFIG).value || '').trim();
+  }
+
+  /**
+   * The configured events source: the DEX key when it is set, otherwise the
+   * ROOT key with its entry range and collection groups. The data selector
+   * keeps only one of the two keys set.
+   */
+  private configuredEvents(): (EventsSourceId & { kind: 'dex' | 'root' }) | null {
+    const dex = (this.config.declare(DEX_EVENTS_SOURCE_CONFIG).value || '').trim();
+    if (dex) return {kind: 'dex', url: dex};
+    const root = (this.config.declare(ROOT_EVENTS_SOURCE_CONFIG).value || '').trim();
+    if (!root) return null;
+    return {
+      kind: 'root',
+      url: root,
+      entries: this.config.declare(ROOT_EVENT_RANGE_CONFIG).value || ROOT_EVENT_RANGE_CONFIG.default,
+      collections: this.config.declare(ROOT_COLLECTIONS_CONFIG).value || '',
+    };
+  }
+
+  private configuredEventsKey(): string {
+    const configured = this.configuredEvents();
+    return configured ? eventsSourceKey(configured) : '';
+  }
+
+  /**
+   * Whether the configured source `configKey` should load, given the latest
+   * request of that kind. Never when that request already loads exactly this
+   * source. An explicit load (Show) runs otherwise; a remount runs only when
+   * the configured source changed since that request.
+   */
+  private isConfigLoadDue(target: LoadTarget | null, configKey: string, explicit: boolean): boolean {
+    if (!target) return true;
+    if (target.key === configKey) return false;
+    return explicit || target.configKey !== configKey;
+  }
+
+  private loadEventsFromConfig(explicit: boolean): void {
+    const pickedFile = this.dataSelection.takePickedEventsFile();
+    if (pickedFile) {
+      this.loadPickedEventsFile(pickedFile);
+      return;
+    }
+    const configured = this.configuredEvents();
+    if (!configured) {
+      console.log('[eventDisplay]: No event source configured, skipping.');
+      return;
+    }
+    if (!this.isConfigLoadDue(this.eventsTarget, eventsSourceKey(configured), explicit)) {
+      console.log(`[eventDisplay]: Events from '${configured.url}' need no load (shown, loading, or replaced by a deep link, command or picked file).`);
+      return;
+    }
+    let load: Promise<unknown>;
+    if (configured.kind === 'dex') {
+      load = this.loadDexData(configured.url);
+    } else {
+      // The registered event loaders decide where the conversion runs (in the
+      // browser for http/asset URLs, pyrobird for root:// and served paths);
+      // they read the range and collections from config themselves. The
+      // request starts here, so readiness and the spinner cover the loader's
+      // own work too.
+      const loader = this.eventLoaders.find(candidate => candidate.canLoad(configured.url));
+      load = loader
+        ? this.runEventsLoad('root', configured, () => loader.loadEvents(configured.url))
+        : this.loadRootData(configured.url, configured.entries, this.collectionList(configured.collections));
+    }
+    load.catch(error => this.reportError(`Could not load events from '${configured.url}': ${errorText(error)}`));
+  }
+
+  private collectionList(collections: EventsSourceId['collections']): string[] | undefined {
+    const groups = (Array.isArray(collections) ? collections : (collections ?? '').split(','))
+      .map(group => group.trim()).filter(Boolean);
+    return groups.length ? groups : undefined;
+  }
+
+  /** A picked/dropped local file: the loader that claims its name reads it in place. */
+  private loadPickedEventsFile(file: File): void {
+    const loader = this.eventLoaders.find(candidate => candidate.canLoad(file));
+    if (!loader) {
+      this.reportError(`No event loader claims the file '${file.name}'`);
+      return;
+    }
+    this.runEventsLoad(isRootSource(file) ? 'root' : 'dex', undefined, () => loader.loadEvents(file))
+      .catch(error => this.reportError(`Could not load events from '${file.name}': ${errorText(error)}`));
+  }
+
+  private loadGeometryFromConfig(explicit: boolean): void {
+    const pickedFile = this.dataSelection.takePickedGeometryFile();
+    const configured = this.configuredGeometry();
+    if (!pickedFile) {
+      if (!configured) {
+        console.log('[eventDisplay]: No geometry configured, skipping.');
+        return;
+      }
+      if (!this.isConfigLoadDue(this.geometryTarget, configured, explicit)) {
+        console.log(`[eventDisplay]: Geometry '${configured}' needs no load (shown, loading, or replaced by a deep link, command or picked file).`);
+        return;
+      }
+    }
+    const source = pickedFile ?? configured;
+    const name = typeof source === 'string' ? source : source.name;
+    // A load still running (from another page visit) is superseded by this
+    // one: GeometryService resolves the older request as cancelled
+    this.loadGeometry(source)
+      .then(result => {
+        if (result.cancelled) console.log('[eventDisplay]: Geometry load superseded by a newer one.');
+      })
+      .catch(error => this.reportError(
+        `Could not load geometry from '${name}': ${errorText(error)}. Open 'Configure' to choose another.`));
+  }
+
+  /**
+   * Loads geometry and puts it on screen, replacing the current geometry.
+   * When a newer geometry load starts before this one finishes, this one
+   * resolves with `cancelled: true` and leaves the scene to the newer load.
+   *
+   * @throws Error with the reason when the geometry cannot be loaded.
    */
   async loadGeometry(url: string | File, scale = 10, clearGeometry = true): Promise<LoadedGeometry> {
-    this.lastLoadedGeometryUrl = null;
+    const generation = ++this.geometryGeneration;
+    const target: LoadTarget = {key: typeof url === 'string' ? url.trim() : null, configKey: this.configuredGeometry()};
+    this.geometryTarget = target;
+    this.loadingGeometry.set(true);
     this.batchStatus.beginGeometryLoad();
+    let loaded = false;
     try {
-      let {rootGeometry, threeGeometry} = await this.geomService.loadGeometry(url);
-      if (!threeGeometry) return {root: null, cancelled: true};
+      const {threeGeometry} = await this.geomService.loadGeometry(url);
+      if (!threeGeometry || generation !== this.geometryGeneration) return {root: null, cancelled: true};
 
       const sceneGeo = this.three.sceneGeometry;
 
       // There should be only one geometry if clearGeometry=true
       if (clearGeometry && sceneGeo.children.length > 0) {
+        // The hover highlight parks a mesh's own material; give it back
+        // first so the disposal reaches it.
+        this.three.clearHoverHighlight();
         disposeHierarchy(sceneGeo, /* disposeSelf= */ false);
       }
 
@@ -666,6 +878,8 @@ export class EventDisplayService {
         sceneGeometry: this.three.sceneGeometry,
         scene: this.three.scene,
       });
+      // A newer load started during post-processing: the scene is its now
+      if (generation !== this.geometryGeneration) return {root: null, cancelled: true};
 
       sceneGeo.add(threeGeometry);
 
@@ -681,49 +895,98 @@ export class EventDisplayService {
       // Arrange by category
       arrangeEpicDetectors(sceneGeo);
 
-      // The projection views' geometry copy tracks every load (no-op when
-      // no slice exists — single-view pages).
-      this.three.rebuildGeometrySlice();
+      // Rebuilds the projection views' geometry copy (when a slice exists),
+      // queues the picking BVHs and schedules the render that shows the new
+      // geometry under on-demand rendering.
+      this.three.geometryChanged();
 
-      // A picked/dropped file has no URL to compare a later auto-load against
-      this.lastLoadedGeometryUrl = typeof url === 'string' ? url : null;
-      this.batchStatus.endGeometryLoad(true);
+      loaded = true;
       return {root: threeGeometry};
     } catch (error) {
-      this.batchStatus.endGeometryLoad(false);
+      if (this.geometryTarget === target) this.geometryTarget = null;
       throw error;
+    } finally {
+      // Every path ends here, the superseded one included: a load that never
+      // reports its end would keep window.firebird.ready false forever
+      this.batchStatus.endGeometryLoad(loaded);
+      if (generation === this.geometryGeneration) this.loadingGeometry.set(false);
     }
   }
 
-  async loadDexData(url: string): Promise<DataExchange | null> {
-    this.lastLoadedDexUrl = null;
-    this.batchStatus.beginEventLoad();
-    await this.paintersReady;
-    try {
-      const modelStart = performance.now();
-      const data = await this.dataService.loadDexData(url);
-      const modelMs = performance.now() - modelStart;
-      if (data == null) {
-        console.warn(
-          'DataService.loadDexData() Received data is null or undefined'
-        );
-        return null;
-      }
+  /**
+   * Runs one events load as a request. From this call on the load counts for
+   * readiness (`window.firebird`), shows its footer spinner, and supersedes
+   * every earlier events request: a superseded load does not replace what is
+   * on screen, no longer holds readiness back, and its end does not clear the
+   * newer load's spinner. `work` receives the request to pass to
+   * `showDexDocument()`, which shows the data only while the request is the
+   * latest one.
+   *
+   * Loaders that do their own work before they have a DEX document (convert
+   * a ROOT file, unzip a picked file) wrap that work in this call.
+   *
+   * @param kind Which footer spinner the load shows.
+   * @param source What is loaded, when it has a name; a display remount does
+   *   not load the same configured source again. Undefined for a picked file.
+   * @param work The load; its result or error is passed through.
+   */
+  async runEventsLoad<T>(
+    kind: 'dex' | 'root',
+    source: EventsSourceId | string | undefined,
+    work: (request: EventsLoadRequest) => Promise<T>,
+  ): Promise<T> {
+    const generation = ++this.eventsGeneration;
+    const target: LoadTarget = {
+      key: source === undefined ? null : eventsSourceKey(source),
+      configKey: this.configuredEventsKey(),
+    };
+    this.eventsTarget = target;
+    this.eventsLoading.set(kind);
 
-      if ((data.events?.length ?? 0) > 0) {
-        // modelMs includes fetch/unzip/parse; those are broken out by the
-        // console.time lines of data-fetching.utils
-        this.showEntry(data.events[0], modelMs);
-        this.lastLoadedDexUrl = url;
-        return data;
-      } else {
-        console.warn('DataService.loadDexData() Received data had no entries');
-        console.log(data);
-        return null;
-      }
-    } finally {
+    // Readiness waits for the latest request only
+    this.releaseEventsReadiness?.();
+    this.batchStatus.beginEventLoad();
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
       this.batchStatus.endEventLoad();
+    };
+    this.releaseEventsReadiness = release;
+
+    const service = this;
+    const request: EventsLoadRequest = {
+      get isCurrent() { return generation === service.eventsGeneration; },
+    };
+    try {
+      return await work(request);
+    } catch (error) {
+      if (this.eventsTarget === target) this.eventsTarget = null;
+      throw error;
+    } finally {
+      release();
+      if (this.releaseEventsReadiness === release) this.releaseEventsReadiness = null;
+      if (generation === this.eventsGeneration) this.eventsLoading.set(null);
     }
+  }
+
+  /**
+   * Fetches a DEX file (json or zip) and shows its first event.
+   *
+   * @returns The document, also when a newer load superseded this one and it
+   *   was not shown.
+   * @throws Error with the reason: HTTP status, unreadable zip, not DEX,
+   *   unsupported DEX version (with the upgrade command), no events.
+   */
+  loadDexData(url: string): Promise<DataExchange> {
+    return this.runEventsLoad('dex', url, async request => {
+      const modelStart = performance.now();
+      const data = await this.dataService.fetchDex(url);
+      // modelMs includes fetch/unzip/parse; those are broken out by the
+      // console.time lines of data-fetching.utils
+      await this.showLoaded(data, request, performance.now() - modelStart);
+      return data;
+    });
   }
 
   /**
@@ -732,96 +995,84 @@ export class EventDisplayService {
    * local file or a byte-ranged URL without the app ever holding the file.
    *
    * @param dex A parsed DEX document.
-   * @param sourceUrl The URL it came from, when there is one. Recorded so a
-   *   later configured auto-load of the same URL is skipped; a local file has
-   *   no URL, so the marker is cleared and the auto-load stays free to run.
+   * @param source What it came from, when it has a name: recorded so a later
+   *   configured auto-load of the same source is skipped. A local file has no
+   *   name to compare and passes nothing.
+   * @param request The request from `runEventsLoad()` when the caller started
+   *   one; without it the document is a request of its own.
+   * @returns The document, also when a newer load superseded this one and it
+   *   was not shown.
+   * @throws Error when the object is not DEX 1.0 or holds no events.
    */
-  async showDexDocument(dex: unknown, sourceUrl?: string): Promise<DataExchange | null> {
-    this.lastLoadedDexUrl = null;
-    this.batchStatus.beginEventLoad();
-    await this.paintersReady;
-    try {
+  showDexDocument(dex: unknown, source?: EventsSourceId | string, request?: EventsLoadRequest): Promise<DataExchange> {
+    const show = async (current: EventsLoadRequest) => {
       const modelStart = performance.now();
-      const data = this.dataService.loadDexObject(dex);
-      const modelMs = performance.now() - modelStart;
-      if (data == null) return null;
-      if ((data.events?.length ?? 0) === 0) {
-        console.warn('EventDisplayService.showDexDocument() the document had no events');
-        return null;
-      }
-      this.showEntry(data.events[0], modelMs);
-      if (sourceUrl) this.lastLoadedDexUrl = sourceUrl;
+      const name = source === undefined ? undefined : (typeof source === 'string' ? source : source.url);
+      const data = this.dataService.parseDex(dex, name);
+      await this.showLoaded(data, current, performance.now() - modelStart);
       return data;
-    } finally {
-      this.batchStatus.endEventLoad();
-    }
+    };
+    return request ? show(request) : this.runEventsLoad('dex', source, show);
   }
 
   /**
-   * The shared "put this entry on screen" tail of every load path, with
+   * Converts ROOT events through the pyrobird convert endpoint and shows the
+   * first one. The server detects EDM4eic or EDM4hep, and rejects a range
+   * with any entry outside the file.
+   *
+   * @throws Error with the reason (HTTP status and the server's message).
+   */
+  loadRootData(url: string, eventRange: string = "0", collections?: string[]): Promise<DataExchange> {
+    return this.runEventsLoad('root', {url, entries: eventRange, collections}, async request => {
+      const modelStart = performance.now();
+      const data = await this.dataService.fetchRootConversion(url, eventRange, collections);
+      // modelMs includes the server conversion round trip
+      await this.showLoaded(data, request, performance.now() - modelStart);
+      return data;
+    });
+  }
+
+  /**
+   * The shared tail of every events load: waits for the lazy painters, then
+   * adopts the events and shows the first one, unless a newer load was
+   * requested meanwhile.
+   *
+   * @throws Error when the document holds no events.
+   */
+  private async showLoaded(data: DataExchange, request: EventsLoadRequest, modelMs: number): Promise<void> {
+    if ((data.events?.length ?? 0) === 0) {
+      throw new Error('The document holds no events');
+    }
+    await this.paintersReady;
+    if (!request.isCurrent) {
+      console.log('[eventDisplay]: A newer events load was requested; this result is not shown.');
+      return;
+    }
+    this.dataService.adoptEvents(data);
+    this.showEntry(data.events[0], modelMs);
+  }
+
+  /**
+   * Puts the first entry of a load on screen through presentEntry(), with
    * [load-timing] stage accounting: model adoption (measured by the caller),
-   * painter construction (setEntry), first paint, layer stamping. The finer
-   * grain inside these stages is logged by DataModelPainter and the painters.
+   * painter construction, paint, layers. The finer grain inside these stages
+   * is logged by DataModelPainter and the painters.
    */
   private showEntry(entry: Event, modelMs: number): void {
-    const paintersStart = performance.now();
-    this.painter.setEntry(entry);
+    const start = performance.now();
     this.eventTime.set(null);
-    const paintStart = performance.now();
-    this.painter.paint(this.eventTime());
-    const layersStart = performance.now();
-    this.stampEventLayers();
-    // The entry-change effect skips entries already set here (getEntry() ==
-    // event), so per-piece visibility must be applied on this path too —
-    // otherwise a piece shipped hidden (MCParticles) renders on first show
-    this.applyPieceVisibility();
-    const invalidateStart = performance.now();
-    this.three.invalidate();
+    this.presentEntry(entry);
     const end = performance.now();
-    const totalMs = modelMs + end - paintersStart;
+    const totalMs = modelMs + end - start;
     if (totalMs > 100) {
       console.log(`[load-timing] show entry total ${totalMs.toFixed(1)} ms: ` +
-        `model ${modelMs.toFixed(1)}, painters ${(paintStart - paintersStart).toFixed(1)}, ` +
-        `paint ${(layersStart - paintStart).toFixed(1)}, layers ${(invalidateStart - layersStart).toFixed(1)}, ` +
-        `invalidate ${(end - invalidateStart).toFixed(1)}`);
+        `model ${modelMs.toFixed(1)}, painters + paint + layers ${(end - start).toFixed(1)}`);
       // First frames after showing: the initial render compiles pipelines and
       // uploads buffers for every new object, a cost no stage above sees.
       // Two chained rAFs bracket one full frame of the render loop.
       requestAnimationFrame(() => requestAnimationFrame(() => {
         console.log(`[load-timing] first rendered frame after show: +${(performance.now() - end).toFixed(1)} ms`);
       }));
-    }
-  }
-
-  async loadRootData(url: string, eventRange: string = "0", collections?: string[]): Promise<DataExchange | null> {
-    this.lastLoadedRootUrl = null;
-    this.lastLoadedRootEventRange = null;
-    this.batchStatus.beginEventLoad();
-    await this.paintersReady;
-    try {
-      const modelStart = performance.now();
-      const data = await this.dataService.loadRootData(url, eventRange, collections);
-      const modelMs = performance.now() - modelStart;
-      if (data == null) {
-        console.warn(
-          'DataService.loadRootData() Received data is null or undefined'
-        );
-        return null;
-      }
-
-      if ((data.events?.length ?? 0) > 0) {
-        // modelMs includes the server conversion round trip
-        this.showEntry(data.events[0], modelMs);
-        this.lastLoadedRootUrl = url;
-        this.lastLoadedRootEventRange = eventRange;
-        return data;
-      } else {
-        console.warn('DataService.loadRootData() Received data had no entries');
-        console.log(data);
-        return null;
-      }
-    } finally {
-      this.batchStatus.endEventLoad();
     }
   }
 
@@ -866,8 +1117,7 @@ export class EventDisplayService {
         if (trackInfo.endTime > maxTime) maxTime = trackInfo.endTime;
       }
 
-      this.maxTime = maxTime;
-      this.minTime = minTime;
+      this.setTimeRange(minTime, maxTime);
 
       console.log(`Tracks: ${this.trackInfos.length}`);
       if (this.trackInfos && this.animateEventAfterLoad) {
@@ -910,8 +1160,10 @@ export class EventDisplayService {
     const views = options.views?.length ? options.views : [this.three.mainView];
 
     // ── Save original state ──
-    const origWidth = renderer.domElement.width;
-    const origHeight = renderer.domElement.height;
+    // The LOGICAL size (CSS pixels): setSize takes logical sizes and
+    // multiplies by the pixel ratio; the canvas width/height are already
+    // multiplied and would come back DPR-squared.
+    const origSize = renderer.getSize(new Vector2());
     const origPixelRatio = renderer.getPixelRatio();
     const origCameraPos = this.three.camera.position.clone();
     const origTarget = this.three.controls.target.clone();
@@ -1040,14 +1292,14 @@ export class EventDisplayService {
 
       // ── Phase 2: Time animation ──
       // Speed scales event-time per frame: speed=2 → 2x event-time per frame → half as many frames
-      const totalEventTime = this.maxTime - this.minTime;
-      const effectiveStep = eventTimeStep * this.animationSpeed;
+      const totalEventTime = this.maxTime() - this.minTime();
+      const effectiveStep = eventTimeStep * this.animationSpeed();
       const totalFrames = Math.ceil(totalEventTime / effectiveStep);
 
       for (let i = 0; i <= totalFrames; i++) {
         if (options.signal?.aborted) break;
 
-        const currentTime = Math.min(this.minTime + i * effectiveStep, this.maxTime);
+        const currentTime = Math.min(this.minTime() + i * effectiveStep, this.maxTime());
         this.eventTime.set(currentTime);
         // Paint NOW: signal effects flush asynchronously, and the capture
         // renders synchronously below — without the direct paint every frame
@@ -1078,8 +1330,10 @@ export class EventDisplayService {
     } finally {
       // ── Restore everything ──
       if (options.overrideResolution) {
-        renderer.setSize(origWidth, origHeight, false);
+        // Pixel ratio first: setPixelRatio re-applies the CURRENT logical
+        // size, so the logical size must come last.
         renderer.setPixelRatio(origPixelRatio);
+        renderer.setSize(origSize.x, origSize.y, false);
       }
       this.three.camera.position.copy(origCameraPos);
       this.three.controls.target.copy(origTarget);

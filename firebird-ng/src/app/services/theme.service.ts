@@ -2,8 +2,7 @@ import { Injectable, Inject, PLATFORM_ID, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ThreeService } from './three.service';
 import * as THREE from 'three';
-import {ConfigService} from "./config.service";
-import {ConfigProperty} from "../utils/config-property";
+import { ConfigProperty, ConfigService } from '@dexvis/app-features';
 
 export type Theme = 'light' | 'dark' | 'system';
 
@@ -105,12 +104,12 @@ export class ThemeService {
       this._htmlElement?.classList.remove('dark-theme');
     }
 
-    // Update the three.js scene background using ThreeService.
-    if (this.threeService?.scene) {
-      this.threeService.scene.background = appliedTheme === 'dark'
-        ? this.threeDarkBackground
-        : this.threeLightBackground;
-    }
+    // The canvas background follows the theme. ThreeService keeps the color
+    // when its scene does not exist yet (the theme applies at startup, before
+    // the display page creates the scene) and schedules a render otherwise.
+    this.threeService.setBackground(appliedTheme === 'dark'
+      ? this.threeDarkBackground
+      : this.threeLightBackground);
   }
 
   /**

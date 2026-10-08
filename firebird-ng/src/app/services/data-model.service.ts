@@ -1,5 +1,5 @@
 import {Injectable, linkedSignal, signal} from "@angular/core";
-import { Event, DataExchange } from "@firebird/core";
+import { Event, DataExchange } from "@dexvis/firebird-core";
 import { HttpClient } from "@angular/common/http";
 import { UrlService } from "./url.service";
 import { fetchTextFile, loadJSONFileEvents, loadZipFileEvents } from "../utils/data-fetching.utils";
@@ -7,10 +7,13 @@ import { fetchTextFile, loadJSONFileEvents, loadZipFileEvents } from "../utils/d
 /**
  * Service for loading and managing event/entry data in Firebird.
  *
- * This service encapsulates loading EDM4eic data (converted to DEX),
- * as well as loading existing Firebird DEX data from JSON or ZIP.
- * It stores a list of entries and the currently selected entry
- * as Angular signals.
+ * This service fetches ROOT events converted by the server and Firebird DEX
+ * data from JSON or ZIP, and stores the list of entries and the currently
+ * selected entry as Angular signals.
+ *
+ * Fetching and parsing never change the stored entries: `adoptEvents()` does,
+ * and EventDisplayService calls it only for the latest requested load, so a
+ * slow earlier load cannot replace a newer one.
  */
 @Injectable({
   providedIn: 'root'
@@ -60,60 +63,77 @@ export class DataModelService {
   }
 
   /**
-   * Loads EDM4eic data from a given URL by calling the Firebird convert endpoint,
-   * returning it in Firebird DEX format.
+   * Converts ROOT events through the pyrobird convert endpoint and parses the
+   * result. The server detects the data model (EDM4eic or EDM4hep) itself.
+   * Does not change the loaded entries; see `adoptEvents()`.
    *
-   * @param url - The original location of the EDM4eic ROOT file (or other source).
-   * @param entryNames - Comma-separated entry indices (default "0"). Passed to the converter service.
-   * @param collections - Collection groups to convert (server `collections` query
-   *   parameter, same names as `pyrobird convert --collections`). Empty means all.
-   * @returns A Promise that resolves to a DataExchange object or null if there's an error.
+   * @param url - Location of the ROOT file: a `root://` URL, an http(s) URL,
+   *   or a path the server serves.
+   * @param entryNames - Entry numbers as typed: '0', '0-4', '1,3'. The server
+   *   rejects the request when any of them is outside the file.
+   * @param collections - Collection groups to convert (server `collections`
+   *   query parameter, same names as `pyrobird convert --collections`).
+   *   Empty means all.
+   * @returns The parsed DEX document.
+   * @throws Error with the reason: no backend, HTTP status and server message,
+   *   not DEX, unsupported DEX version.
    */
-  async loadRootData(url: string, entryNames: string = "0", collections?: string[]): Promise<DataExchange | null> {
+  async fetchRootConversion(url: string, entryNames: string = "0", collections?: string[]): Promise<DataExchange> {
+    const finalUrl = this.urlService.resolveConvertUrl(url, "auto", entryNames, collections);
+    console.log(`[DataModelService.fetchRootConversion] Fetching: ${finalUrl}`);
+    const text = await fetchTextFile(finalUrl);
+    let dexData: unknown;
     try {
-      // Early exit if no URL is provided
-      if (!url) {
-        console.log("[DataModelService.loadEdm4EicData] No data source specified.");
-        return null;
-      }
-
-      // Let urlService build the final convert URL
-      let finalUrl = this.urlService.resolveConvertUrl(url, "edm4eic", entryNames, collections);
-      console.log(`[DataModelService.loadDexData] Fetching: ${finalUrl}`);
-
-      // Load the text from that URL
-      const jsonData = await fetchTextFile(finalUrl);
-
-      // Parse JSON
-      const dexData = JSON.parse(jsonData);
-
-      // Validate format
-      if (!this.isFirebirdDex(dexData)) {
-        console.error("[DataModelService.loadDexData] The JSON does not conform to Firebird DEX JSON format.");
-        return null;
-      }
-
-      // Build DataExchange structure
-      let data = DataExchange.fromDexObj(dexData);
-      console.log(data);
-
-      // Publish to the entries signal, same as loadDexData — the event
-      // selector and show-event command read events from here
-      this.adoptLoadedEvents(data);
-      return data;
-
+      dexData = JSON.parse(text);
     } catch (error) {
-      // Log errors
-      console.error(`[DataModelService.loadEdm4EicData] Failed to load data: ${error}`);
-      console.log("Default config will be used");
-    } finally {
-      // No final cleanup needed right now
+      throw new Error(`The server's conversion of '${url}' is not JSON: ${error instanceof Error ? error.message : error}`);
     }
-    return null;
+    return this.parseDex(dexData, url);
+  }
+
+  /**
+   * Fetches a Firebird DEX JSON or ZIP file and parses it. Does not change
+   * the loaded entries; see `adoptEvents()`.
+   *
+   * @param url - The URL of the .firebird.json or .zip file; `asset://` and
+   *   server-relative paths are resolved here.
+   * @returns The parsed DEX document.
+   * @throws Error with the reason: HTTP status, unreadable zip, not DEX,
+   *   unsupported DEX version (with the upgrade command).
+   */
+  async fetchDex(url: string): Promise<DataExchange> {
+    let finalUrl = url;
+    if (url.startsWith("asset://")) {
+      // 'asset://' becomes a relative 'assets/' path (no leading slash), so a
+      // deployment under a subdirectory such as /firebird keeps working
+      finalUrl = "assets/" + url.substring("asset://".length);
+    } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      finalUrl = this.urlService.resolveDownloadUrl(url);
+    }
+    console.log(`[DataModelService.fetchDex] Loading: ${finalUrl}`);
+    const dexData = finalUrl.endsWith("zip")
+      ? await loadZipFileEvents(finalUrl)
+      : await loadJSONFileEvents(finalUrl);
+    return this.parseDex(dexData, url);
+  }
+
+  /**
+   * Parses a DEX document that is already in memory.
+   *
+   * @param dexData - The parsed JSON object.
+   * @param sourceName - File name or URL, for the error message.
+   * @throws Error when the object is not a Firebird DEX document or has an
+   *   unsupported version.
+   */
+  parseDex(dexData: unknown, sourceName = 'the document'): DataExchange {
+    if (!this.isFirebirdDex(dexData)) {
+      throw new Error(`'${sourceName}' is not a Firebird DEX document (it lacks "type": "firebird-dex-json")`);
+    }
+    return DataExchange.fromDexObj(dexData);
   }
 
   /** Publishes loaded events to the signals and selects the first one. */
-  private adoptLoadedEvents(data: DataExchange): void {
+  adoptEvents(data: DataExchange): void {
     this.entries.set(data.events);
     if (this.entries().length > 0) {
       // Explicitly the first entry, not setNextEntry(): `currentEntry` is a
@@ -126,77 +146,7 @@ export class DataModelService {
   }
 
   /**
-   * Loads a Firebird DEX JSON or ZIP file from a specified URL.
-   *
-   * @param url - The URL of the .firebird.json or .zip file.
-   * @returns A Promise that resolves to a DataExchange object or null if there's an error.
-   */
-  async loadDexData(url: string): Promise<DataExchange | null> {
-    try {
-      // If no URL is provided, exit.
-      if (!url) {
-        console.log("[DataModelService.loadDexData] No data source specified.");
-        return null;
-      }
-
-      // Basic extension check (not strictly required)
-      if (
-        !url.endsWith("firebird.json") &&
-        !url.endsWith("firebird.json.zip") &&
-        !url.endsWith("firebird.zip")
-      ) {
-        console.log("[DataModelService.loadDexData] Wrong extension or file type.");
-      }
-
-      // Resolve local aliases or relative paths
-      let finalUrl = url;
-      if (url.startsWith("asset://")) {
-        // Transform 'asset://' URLs to 'assets/' paths. This removes the leading slash
-        // intentionally to support deployment in the /firebird subdirectory.
-        finalUrl = "assets/" + url.substring("asset://".length);
-      } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
-        finalUrl = this.urlService.resolveDownloadUrl(url);
-      }
-
-      let dexData = {};
-      console.log(`[DataModelService.loadDexData] Loading: ${finalUrl}`);
-
-      // Decide which loader to call based on file extension
-      if (finalUrl.endsWith("zip")) {
-        // Load from ZIP
-        dexData = await loadZipFileEvents(finalUrl);
-      } else {
-        // Load from raw JSON
-        dexData = await loadJSONFileEvents(finalUrl);
-      }
-
-      // Validate Firebird DEX structure
-      if (!this.isFirebirdDex(dexData)) {
-        console.error("[DataModelService.loadDexData] The JSON does not conform to Firebird DEX JSON format.");
-        return null;
-      }
-
-      console.log(`[DataModelService.loadDexData] Deserializing from DEX`);
-      let data = DataExchange.fromDexObj(dexData);
-      console.log(data);
-
-      // Update service signals with the newly loaded entries
-      this.adoptLoadedEvents(data);
-
-      return data;
-
-    } catch (error) {
-      console.error(`[DataModelService.loadDexData] Failed to load data: ${error}`);
-      console.log(`[DataModelService.loadDexData] Default config will be used`);
-    } finally {
-      // No final cleanup needed right now
-    }
-    return null;
-  }
-
-  /**
-   * Adopts a DEX document that is already in memory - converted in the browser
-   * rather than fetched, e.g. by the ROOT event converter.
+   * Parses and adopts a DEX document that is already in memory.
    *
    * @param dexData - A parsed Firebird DEX document.
    * @returns The DataExchange, or null when the object is not DEX.
@@ -206,8 +156,8 @@ export class DataModelService {
       console.error("[DataModelService.loadDexObject] The object does not conform to Firebird DEX JSON format.");
       return null;
     }
-    const data = DataExchange.fromDexObj(dexData);
-    this.adoptLoadedEvents(data);
+    const data = this.parseDex(dexData);
+    this.adoptEvents(data);
     return data;
   }
 

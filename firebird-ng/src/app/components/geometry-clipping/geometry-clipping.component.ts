@@ -1,22 +1,16 @@
 import {
   Component,
-  OnInit,
-  OnDestroy,
   ViewChild,
   TemplateRef,
   ElementRef,
   ViewContainerRef,
-  ChangeDetectorRef,
-  effect,
-  Signal,
-  ChangeDetectionStrategy
+  ChangeDetectionStrategy,
+  inject,
 } from '@angular/core';
 import {MatCheckbox, MatCheckboxChange} from '@angular/material/checkbox';
 import {MatSlideToggleChange} from '@angular/material/slide-toggle';
-import { toSignal } from '@angular/core/rxjs-interop';
 
-import { ThreeService } from '../../services/three.service';
-import { ConfigService } from '../../services/config.service';
+import { ConfigService } from '@dexvis/app-features';
 import {MatMenuItem} from "@angular/material/menu";
 import {MatSlider, MatSliderThumb} from "@angular/material/slider";
 
@@ -27,9 +21,22 @@ import {MatIcon} from "@angular/material/icon";
 import {MatTooltip} from "@angular/material/tooltip";
 import {FormsModule} from "@angular/forms";
 import {MatSlideToggle} from "@angular/material/slide-toggle";
+import {
+  CLIPPING_ENABLED_CONFIG,
+  CLIPPING_OPENING_ANGLE_CONFIG,
+  CLIPPING_START_ANGLE_CONFIG,
+  Z_CLIPPING_ENABLED_CONFIG,
+  Z_CLIPPING_FORWARD_CONFIG,
+  Z_CLIPPING_POSITION_CONFIG,
+} from '../../firebird/config-keys';
 
 
-
+/**
+ * Toolbar panel for the geometry clipping of the main view. A view and an
+ * editor of the clipping config keys only: ThreeService applies the keys to
+ * the scene, so a deep link, the server config or a saved value clips the
+ * same way with or without this panel on the page.
+ */
 @Component({
   selector: 'app-geometry-clipping',
   templateUrl: './geometry-clipping.component.html',
@@ -49,124 +56,66 @@ import {MatSlideToggle} from "@angular/material/slide-toggle";
     MatSlideToggle,
   ]
 })
-export class GeometryClippingComponent implements OnInit {
-  /** Local copies that reflect the config property values. */
+export class GeometryClippingComponent {
+  private readonly config = inject(ConfigService);
+  private readonly dialog = inject(MatDialog);
+  private readonly viewContainerRef = inject(ViewContainerRef);
 
-  clippingEnabled!: Signal<boolean>;
-  startAngle!: Signal<number>;
-  openingAngle!: Signal<number>;
-  zClippingEnabled!: Signal<boolean>;
-  zClippingPosition!: Signal<number>;
-  zClippingForward!: Signal<boolean>;
+  private readonly clippingEnabledProperty = this.config.declare(CLIPPING_ENABLED_CONFIG);
+  private readonly startAngleProperty = this.config.declare(CLIPPING_START_ANGLE_CONFIG);
+  private readonly openingAngleProperty = this.config.declare(CLIPPING_OPENING_ANGLE_CONFIG);
+  private readonly zClippingEnabledProperty = this.config.declare(Z_CLIPPING_ENABLED_CONFIG);
+  private readonly zClippingPositionProperty = this.config.declare(Z_CLIPPING_POSITION_CONFIG);
+  private readonly zClippingForwardProperty = this.config.declare(Z_CLIPPING_FORWARD_CONFIG);
+
+  // Signals of the config values: the dialog template reads them, and they
+  // follow changes from any source.
+  readonly clippingEnabled = this.clippingEnabledProperty.valueSignal;
+  readonly startAngle = this.startAngleProperty.valueSignal;
+  readonly openingAngle = this.openingAngleProperty.valueSignal;
+  readonly zClippingEnabled = this.zClippingEnabledProperty.valueSignal;
+  readonly zClippingPosition = this.zClippingPositionProperty.valueSignal;
+  readonly zClippingForward = this.zClippingForwardProperty.valueSignal;
 
   @ViewChild('openBtn', { read: ElementRef }) openBtn!: ElementRef;
   @ViewChild('dialogTemplate') dialogTemplate!: TemplateRef<any>;
   dialogRef: MatDialogRef<any> | null = null;
 
-  constructor(
-    private threeService: ThreeService,
-    private config: ConfigService,
-    private dialog: MatDialog,
-    private viewContainerRef: ViewContainerRef,
-    private cdr: ChangeDetectorRef
-  ) {
-
-        // Get configs
-    const configClippingEnabled = this.config.getConfigOrCreate<boolean>('clippingEnabled', true);
-    const configStartAngle = this.config.getConfigOrCreate<number>('clippingStartAngle', 0);
-    const configOpeningAngle = this.config.getConfigOrCreate<number>('clippingOpeningAngle', 180);
-    const configZClippingEnabled = this.config.getConfigOrCreate<boolean>('zClippingEnabled', false);
-    const configZClippingPosition = this.config.getConfigOrCreate<number>('zClippingPosition', 0);
-    const configZClippingForward = this.config.getConfigOrCreate<boolean>('zClippingForward', true);
-
-    this.clippingEnabled = toSignal(configClippingEnabled.subject, { requireSync: true });
-    this.startAngle = toSignal(configStartAngle.subject, { requireSync: true });
-    this.openingAngle = toSignal(configOpeningAngle.subject, { requireSync: true });
-    this.zClippingEnabled = toSignal(configZClippingEnabled.subject, { requireSync: true });
-    this.zClippingPosition = toSignal(configZClippingPosition.subject, { requireSync: true });
-    this.zClippingForward = toSignal(configZClippingForward.subject, { requireSync: true });
-
-    // Changes in enable/disable clipping
-    effect(() => {
-      this.threeService.enableClipping(this.clippingEnabled());
-      if(this.clippingEnabled()) {
-        this.threeService.setClippingAngle(this.startAngle(), this.openingAngle());
-      }
-    });
-
-    // changes in start or opening angles
-    effect(()=> {
-      this.threeService.setClippingAngle(this.startAngle(), this.openingAngle());
-    });
-
-    // Z clipping enable/disable
-    effect(() => {
-      this.threeService.enableZClipping(this.zClippingEnabled());
-      if (this.zClippingEnabled()) {
-        this.threeService.updateZClipping(this.zClippingPosition(), this.zClippingForward());
-      }
-    });
-
-    // Z clipping position or direction changes
-    effect(() => {
-      this.threeService.updateZClipping(this.zClippingPosition(), this.zClippingForward());
-    });
-
-  }
-
-  // In your ObjectClippingComponent ngOnInit, replace the getConfigOrThrow calls with:
-
-  ngOnInit(): void {
-
-
-  }
-
-  /**
-   * User toggles clipping in the UI checkbox.
-   */
+  /** User toggles wedge clipping. A runtime write: saved, and it ends a URL override. */
   toggleClipping(change: MatCheckboxChange): void {
-    // Update the config property. This automatically saves to localStorage
-    // and triggers the subscription above, which updates the ThreeService.
-    this.config.getConfigOrThrow<boolean>('clippingEnabled').value = change.checked;
+    this.clippingEnabledProperty.value = change.checked;
   }
 
-  /**
-   * User changes the start angle. Use the config property setter to persist and update the scene.
-   */
+  /** User changes the start angle. */
   changeStartClippingAngle(angle: number): void {
-    this.config.getConfigOrThrow<number>('clippingStartAngle').value = angle;
-  }
-
-  /**
-   * User changes the opening angle. Use the config property setter to persist and update the scene.
-   */
-  changeOpeningClippingAngle(angle: number): void {
-    this.config.getConfigOrThrow<number>('clippingOpeningAngle').value = angle;
-  }
-
-  /**
-   * User toggles Z clipping.
-   */
-  toggleZClipping(change: MatCheckboxChange): void {
-    this.config.getConfigOrThrow<boolean>('zClippingEnabled').value = change.checked;
-  }
-
-  /**
-   * User changes the Z clipping position.
-   */
-  changeZClippingPosition(z: number): void {
-    if (!isNaN(z)) {
-      this.config.getConfigOrThrow<number>('zClippingPosition').value = z;
+    if (!isNaN(angle)) {
+      this.startAngleProperty.value = angle;
     }
   }
 
-  /**
-   * User toggles Z clipping direction.
-   */
-  toggleZClippingDirection(change: MatSlideToggleChange): void {
-    this.config.getConfigOrThrow<boolean>('zClippingForward').value = change.checked;
+  /** User changes the opening angle. */
+  changeOpeningClippingAngle(angle: number): void {
+    if (!isNaN(angle)) {
+      this.openingAngleProperty.value = angle;
+    }
   }
 
+  /** User toggles Z clipping. */
+  toggleZClipping(change: MatCheckboxChange): void {
+    this.zClippingEnabledProperty.value = change.checked;
+  }
+
+  /** User changes the Z clipping position. */
+  changeZClippingPosition(z: number): void {
+    if (!isNaN(z)) {
+      this.zClippingPositionProperty.value = z;
+    }
+  }
+
+  /** User toggles the Z clipping direction. */
+  toggleZClippingDirection(change: MatSlideToggleChange): void {
+    this.zClippingForwardProperty.value = change.checked;
+  }
 
   openDialog(): void {
     if (this.dialogRef) {
@@ -194,35 +143,5 @@ export class GeometryClippingComponent implements OnInit {
     this.dialogRef.afterClosed().subscribe(() => {
       this.dialogRef = null;
     });
-  }
-
-
-  /**
-   * Updates angle value in real-time as any slider moves
-   * @param event The slider input event
-   * @param sliderType Identifier for which slider is being updated ('start' or 'opening')
-   */
-  onSliderInput(event: any, sliderType: 'start' | 'opening'): void {
-    // Extract the value safely from the event
-    let newValue: number | null = null;
-
-    // Try different ways to get the value based on Angular Material version
-    if (event && event.value !== undefined) {
-      newValue = event.value;
-    } else if (event && event.source && event.source.value !== undefined) {
-      newValue = event.source.value;
-    } else if (event && event.target && event.target.value !== undefined) {
-      newValue = Number(event.target.value);
-    }
-
-    // Only update if we got a valid number
-    if (newValue !== null && !isNaN(newValue)) {
-      // Update the appropriate property based on which slider was moved
-      if (sliderType === 'start') {
-        // this.startAngle..(newValue);
-      } else if (sliderType === 'opening') {
-        // this.openingAngle = newValue;
-      }
-    }
   }
 }

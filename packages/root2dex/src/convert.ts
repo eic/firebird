@@ -15,6 +15,7 @@ import {
   type Edm4eicCollection,
 } from './edm4eic';
 import { EDM4HEP_DEFAULT_COLLECTIONS, edm4hepEntryToDex, type Edm4hepOptions } from './edm4hep';
+import { parseEntryRanges, selectEntries, type EntryRange } from './entries';
 
 export interface ConvertOptions extends Omit<Edm4hepOptions, 'collections'> {
   /**
@@ -32,36 +33,17 @@ export interface ConvertOptions extends Omit<Edm4hepOptions, 'collections'> {
 /**
  * Parses entry numbers written as '3', '1-5', or '1,2-5,8' into a list of
  * integers. Arrays of numbers pass through.
+ *
+ * This expands without bounds; to convert from a file, validate with
+ * `parseEntryRanges()` and `selectEntries()` first, which reject oversized
+ * and out-of-range selections before expanding.
  */
 export function parseEntryNumbers(value: string | number | Iterable<number>): number[] {
   if (typeof value === 'number') return [Math.trunc(value)];
   if (typeof value !== 'string') return [...value].map(v => Math.trunc(v));
-
-  const parseInteger = (text: string): number => {
-    const trimmed = text.trim();
-    if (!/^[+-]?\d+$/.test(trimmed)) {
-      throw new Error(`Invalid entry format: '${value}'. Expected integers or ranges like '1-5'.`);
-    }
-    return Number(trimmed);
-  };
-
   const entries: number[] = [];
-  for (const part of value.split(',')) {
-    const text = part.trim();
-    if (!text) continue;
-    // A hyphen after the first character is a range separator; a leading one is a sign
-    const separator = text.indexOf('-', 1);
-    if (separator > 0) {
-      const start = parseInteger(text.slice(0, separator));
-      const end = parseInteger(text.slice(separator + 1));
-      if (start > end) throw new Error(`Invalid range '${text}': start must be <= end.`);
-      for (let i = start; i <= end; i++) entries.push(i);
-    } else {
-      entries.push(parseInteger(text));
-    }
-  }
-  if (entries.length === 0) {
-    throw new Error(`Invalid entry format: '${value}'. Expected integers or ranges like '1-5'.`);
+  for (const [start, end] of parseEntryRanges(value)) {
+    for (let entry = start; entry <= end; entry++) entries.push(entry);
   }
   return entries;
 }
@@ -143,7 +125,10 @@ export class Root2DexConverter {
 
 /**
  * Opens `source`, converts `entries` and returns the DEX document. Equivalent
- * to `pyrobird convert <file> -e <entries>`.
+ * to `pyrobird convert <file> -e <entries>`: a selection with any entry
+ * outside the file is rejected before anything is converted.
+ *
+ * @throws EntrySelectionError when an entry is outside the file.
  */
 export async function convertRootToDex(
   source: RootSource,
@@ -151,14 +136,8 @@ export async function convertRootToDex(
   options: ConvertOptions = {},
 ): Promise<DexDocument> {
   const converter = await Root2DexConverter.open(source, options);
-  const list = Array.isArray(entries) ? entries : parseEntryNumbers(entries);
-  for (const entry of list) {
-    if (entry > converter.entryCount - 1) {
-      throw new RangeError(
-        `Entries provided as: '${entries}' but entry index=${entry} is outside of ` +
-          `total num_entries=${converter.entryCount}`,
-      );
-    }
-  }
-  return converter.convert(list);
+  const ranges: EntryRange[] = typeof entries === 'string'
+    ? parseEntryRanges(entries)
+    : (typeof entries === 'number' ? [entries] : entries).map(entry => [Math.trunc(entry), Math.trunc(entry)] as const);
+  return converter.convert(selectEntries(ranges, converter.entryCount));
 }

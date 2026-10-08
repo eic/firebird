@@ -3,7 +3,7 @@
   "version": "1.0",
   "origin": {
     "source": "hand-written sample",
-    "by": "@firebird/example-extension"
+    "by": "@dexvis/firebird-example-extension"
   },
   "events": [
     {

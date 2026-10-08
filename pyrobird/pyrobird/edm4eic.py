@@ -6,6 +6,7 @@ import json
 import math
 
 from pyrobird.dex import make_dex, PIECE_VERSION
+from pyrobird.entries import parse_entry_ranges
 from pyrobird.mc_particles import (mc_particles_to_trajectories,
                                    DEFAULT_MC_STEP_TIME, DEFAULT_MC_MAX_POINTS)
 
@@ -76,6 +77,10 @@ def parse_entry_numbers(value):
     - A comma-separated list of integers or ranges, e.g., "1,2-5,8"
     - A list, tuple, or set of integers
 
+    The string grammar is `pyrobird.entries.parse_entry_ranges`. This function
+    expands every range, so validate untrusted input with
+    `pyrobird.entries.select_entries` instead.
+
     Args:
         value (str, list, tuple, set): Input representing the entry numbers.
 
@@ -85,39 +90,17 @@ def parse_entry_numbers(value):
     Raises:
         ValueError: If the input format is invalid or cannot be parsed into integers.
     """
-    try:
-        if isinstance(value, (list, tuple, set)):
-            # Handle list, tuple, or set of integers directly
+    if isinstance(value, (list, tuple, set)):
+        # Handle list, tuple, or set of integers directly
+        try:
             return [int(item) for item in value]
+        except ValueError:
+            raise ValueError(f"Invalid entry format: '{value}'. Expected integers or ranges like '1-5'.") from None
 
-        # Handle range, e.g., "1-5"
-        if '-' in value and ',' not in value:
-            start, end = map(int, value.split('-'))
-            if start > end:
-                raise ValueError(f"Invalid range '{value}': start must be <= end.")
-            return list(range(start, end + 1))
-
-        # Handle comma-separated list, e.g., "1,2,3" or "1,2-5,8"
-        elif ',' in value:
-            entries = []
-            for entry in value.split(','):
-                entry = entry.strip()
-                if '-' in entry:
-                    # Handle range inside comma-separated list
-                    start, end = map(int, entry.split('-'))
-                    if start > end:
-                        raise ValueError(f"Invalid range '{entry}': start must be <= end.")
-                    entries.extend(range(start, end + 1))
-                else:
-                    entries.append(int(entry))
-            return entries
-
-        # Handle single integer as string
-        else:
-            return [int(value)]
-
-    except ValueError as ve:
-        raise ValueError(f"Invalid entry format: '{value}'. Expected integers or ranges like '1-5'.")
+    entries = []
+    for start, end in parse_entry_ranges(value):
+        entries.extend(range(start, end + 1))
+    return entries
 
 
 def tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None):

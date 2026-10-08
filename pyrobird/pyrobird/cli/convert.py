@@ -1,27 +1,41 @@
 import logging
+import posixpath
+import re
+from urllib.parse import urlsplit
+
 import click
-from pyrobird.edm4eic import edm4eic_to_dex_dict, parse_entry_numbers
+from pyrobird.edm4eic import edm4eic_to_dex_dict
 from pyrobird.edm4hep import edm4hep_to_dex_dict, detect_file_type, DEFAULT_HIT_BOX_SIZE
+from pyrobird.entries import parse_entry_ranges, select_entries, EntrySelectionError
 from pyrobird.mc_particles import DEFAULT_MC_STEP_TIME, DEFAULT_MC_MAX_POINTS
 import os
 import json
 
+# A URL scheme has two or more characters; 'C://' is a Windows drive
+_URL_SCHEME = re.compile(r'^[A-Za-z][A-Za-z0-9+.-]+://')
+
 
 def guess_output_name(input_entry, output_extension='.firebird.json'):
     """
-    Processes the input_entry by removing any network protocol prefixes,
-    replacing or adding the specified output_extension.
+    Derives the output file name from an input file name or URL.
+
+    A local path keeps its directory, so the output lands next to the input:
+    'data/run.root' gives 'data/run.firebird.json'. A URL gives its file name
+    only, so the output lands in the current directory:
+    'root://host//dir/run.root' gives 'run.firebird.json'. The query and the
+    fragment of a URL are dropped.
 
     Parameters:
-    - input_entry (str): The input file name or path.
+    - input_entry (str): The input file name, path or URL.
     - output_extension (str): The extension to replace or append.
 
     Returns:
     - str: The processed file name with the correct extension.
     """
-    # Remove protocol if any (e.g., root://, http://)
-    while '://' in input_entry:
-        input_entry = input_entry.split('://', maxsplit=1)[1]
+    if _URL_SCHEME.match(input_entry):
+        parts = urlsplit(input_entry)
+        # The last path segment, or the host part for 'http://filename'
+        input_entry = posixpath.basename(parts.path.rstrip('/')) or parts.netloc.rsplit('@', 1)[-1]
 
     # Split the filename and extension
     base, ext = os.path.splitext(input_entry)
@@ -90,7 +104,8 @@ def convert(filename, output_file, entries_str, collections_str, input_type,
 
     If an output file name is not specified, it will be automatically generated
     by replacing or appending the `.firebird.json` extension to the input file
-    name.
+    name. For a URL input the file is written to the current directory under
+    the URL's file name.
 
     Use `-o -` or `--output -` to output the JSON data to stdout instead of a file.
     This allows the command to be used in pipelines.
@@ -116,6 +131,7 @@ def convert(filename, output_file, entries_str, collections_str, input_type,
     \b
         convert mydata.root
         convert mydata.root --output output.firebird.json
+        convert root://dtn-eic.jlab.org//volatile/eic/run.edm4eic.root -e 0-4
         convert mydata.root --output - | less
         convert mydata.root --collections=tracks
         convert sim.edm4hep.root -t edm4hep
@@ -129,25 +145,28 @@ def convert(filename, output_file, entries_str, collections_str, input_type,
         msg = f"File not found: '{filename}'"
         raise FileNotFoundError(msg)
 
+    # Parse use entries input; ranges stay unexpanded until checked against the file
+    entry_ranges = parse_entry_ranges(entries_str)
+
+    # Decide the output name before the conversion runs
+    if output_file is None:
+        output_file = guess_output_name(filename)
+
     file = uproot.open(filename)
     tree = file['events']
 
     num_entries = tree.num_entries
-
-    # Parse use entries input
-    entries = parse_entry_numbers(entries_str)
 
     # Parse collections string
     collections = None
     if collections_str:
         collections = [x.strip() for x in collections_str.split(',') if x.strip()]
 
-    # Do we have valid entries?
-    for entry_index in entries:
-        if entry_index > num_entries - 1:
-            err_msg = f"Entries provided as: '{entries_str}' " \
-                       f"but entry index={entry_index} is outside of total num_entries={num_entries}"
-            raise ValueError(err_msg)
+    # Every requested entry must exist in the file
+    try:
+        entries = select_entries(entry_ranges, num_entries)
+    except EntrySelectionError as ex:
+        raise EntrySelectionError(f"Entries provided as: '{entries_str}': {ex}") from None
 
     # Detect the file type if not given explicitly
     if input_type == "auto":
@@ -178,9 +197,6 @@ def convert(filename, output_file, entries_str, collections_str, input_type,
         # Output to stdout
         print(json_data)
     else:
-        # Determine the output file name if not provided
-        if output_file is None:
-            output_file = guess_output_name(filename)
         # Write the JSON data to the output file
         with open(output_file, 'w') as f:
             f.write(json_data)

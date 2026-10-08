@@ -39,6 +39,14 @@ export class ResourceSelectComponent implements OnInit {
   @Input() label: string = 'Select value';
 
   /**
+   * Sets the shown value without emitting `valueChange` — for a host that
+   * seeds the control from its own state and listens for user edits only
+   */
+  @Input() set selected(value: string | null | undefined) {
+    this.value.setValue(value ?? '', { emitEvent: false });
+  }
+
+  /**
    * Emitted every time value is changed by selecting or typing in
    */
   @Output() valueChange = new EventEmitter<string>();

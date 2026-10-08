@@ -5,10 +5,10 @@
  *              protocol aliasing for custom URL schemes.
  */
 
-import { Injectable, inject } from '@angular/core';
-import { ConfigService } from "./config.service";
-import { ServerConfigService } from "./server-config.service";
-import { URL_ALIASES } from "../firebird/tokens";
+import { Injectable, computed, inject } from '@angular/core';
+import { ConfigService, ServerConfigService, URL_ALIASES } from "@dexvis/app-features";
+import type { ServerConfig } from "./server-config";
+import { BACKEND_URL_CONFIG, BACKEND_USE_API_CONFIG } from "../firebird/config-keys";
 
 /** Marks a path as relative to the backend's working directory. */
 const LOCAL_PREFIX = 'local://';
@@ -63,55 +63,41 @@ const LOCAL_PREFIX = 'local://';
   providedIn: 'root'
 })
 export class UrlService {
+  private readonly serverConfigService = inject<ServerConfigService<ServerConfig>>(ServerConfigService);
+  private readonly config = inject(ConfigService);
 
-  private serverAddress: string = '';
-  private isBackendAvailable: boolean = false;
+  // The backend chosen on the config page ("Use specific backend", "Base API
+  // URL"). Declared here, by the code that reads them; the page binds to the
+  // same schemas.
+  private readonly useApi = this.config.declare(BACKEND_USE_API_CONFIG);
+  private readonly apiUrl = this.config.declare(BACKEND_URL_CONFIG);
+
+  /**
+   * True when a backend can serve files and conversions: pyrobird serves this
+   * page, or the user configured one (`server.useApi`).
+   */
+  readonly isBackendAvailable = computed(() =>
+    this.serverConfigService.configSignal().servedByPyrobird || this.useApi.valueSignal());
+
+  /**
+   * Base URL of that backend, without a trailing slash; '' when there is none.
+   * The serving pyrobird wins over a configured one.
+   */
+  readonly serverAddress = computed(() => {
+    const server = this.serverConfigService.configSignal();
+    if (server.servedByPyrobird) {
+      return server.apiBaseUrl;
+    }
+    if (this.useApi.valueSignal()) {
+      return this.apiUrl.valueSignal().trim().replace(/\/+$/, '');
+    }
+    return '';
+  });
 
   // Protocol aliases come from DI (`withUrlAlias()` features). The built-in
   // epic:// alias is registered in app.config the same way (first consumer).
   private readonly protocolAliases: { [key: string]: string } =
     Object.fromEntries((inject(URL_ALIASES, { optional: true }) ?? []).map(a => [a.prefix, a.base]));
-
-  constructor(
-    private userConfigService: ConfigService,
-    private serverConfigService: ServerConfigService
-  ) {
-    this.initializeConfig();
-  }
-
-  /**
-   * Initializes the service configuration and subscribes to changes in user and server configurations.
-   */
-  private initializeConfig() {
-    this.updateServerConfig();
-
-    // Subscribe to user configuration changes
-    this.userConfigService.getConfig<string>('localServerUrl')?.subject.subscribe(() => {
-      this.updateServerConfig();
-    });
-    this.userConfigService.getConfig<boolean>('localServerUseApi')?.subject.subscribe(() => {
-      this.updateServerConfig();
-    });
-  }
-
-  /**
-   * Updates the backend availability and server address based on current configurations.
-   */
-  private updateServerConfig() {
-    const servedByPyrobird = this.serverConfigService.config.servedByPyrobird;
-    const userUseApi = this.userConfigService.getConfig<boolean>('localServerUseApi')?.value ?? false;
-    const userServerUrl = this.userConfigService.getConfig<string>('localServerUrl')?.value ?? '';
-
-    this.isBackendAvailable = servedByPyrobird || userUseApi;
-
-    if (servedByPyrobird) {
-      this.serverAddress = this.serverConfigService.config.apiBaseUrl;
-    } else if (userUseApi) {
-      this.serverAddress = userServerUrl;
-    } else {
-      this.serverAddress = '';
-    }
-  }
 
   /**
    * Resolves protocol aliases in the URL.
@@ -176,8 +162,9 @@ export class UrlService {
       return inputUrl;
     } else {
       // Case 1.2: Use the download endpoint if available
-      if (this.isBackendAvailable && this.serverAddress) {
-        return `${this.serverAddress}/api/v1/download?f=${encodeURIComponent(inputUrl)}`;
+      const serverAddress = this.serverAddress();
+      if (this.isBackendAvailable() && serverAddress) {
+        return `${serverAddress}/api/v1/download?f=${encodeURIComponent(inputUrl)}`;
       } else {
         console.warn(
           `Backend is not available to fetch '${inputUrl}'. Server-side files ` +
@@ -202,12 +189,13 @@ export class UrlService {
   public resolveConvertUrl(inputUrl: string, fileType: string, entries: string, collections?: string[]): string {
     inputUrl = this.resolveProtocolAliases(inputUrl);
 
-    if (this.isBackendAvailable && this.serverAddress) {
+    const serverAddress = this.serverAddress();
+    if (this.isBackendAvailable() && serverAddress) {
       // `collections` matches `pyrobird convert --collections`; absent means all groups
       const collectionsParam = collections?.length
         ? `&collections=${encodeURIComponent(collections.join(','))}`
         : '';
-      return `${this.serverAddress}/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(inputUrl)}${collectionsParam}`;
+      return `${serverAddress}/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(inputUrl)}${collectionsParam}`;
     } else {
       const message = "Backend is not available to convert the file";
       console.warn(message);

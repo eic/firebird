@@ -11,6 +11,7 @@ import {
   EventPiecePainter,
   PainterConfigView,
   PiecePainterConstructor,
+  assertPainterKnobKeys,
 } from "./event-piece-painter";
 
 export enum DisplayMode
@@ -133,11 +134,14 @@ export class DataModelPainter {
    *
    * @param pieceType - The type of the piece for which the painter should be used.
    * @param painterClass - The user's custom EventPiecePainter subclass.
+   * @throws Error when the painter's meta declares a reserved knob key
+   *   (see `RESERVED_PAINTER_KNOB_KEYS`).
    */
   public registerPainter(pieceType: string, painterClass: PiecePainterConstructor): void {
     if (!pieceType || !painterClass) {
       throw new Error('Both pieceType and painterClass are required to register a custom painter.');
     }
+    assertPainterKnobKeys(painterClass);
     const list = this.piecePainterRegistry[pieceType] ??= [];
     if (!list.includes(painterClass)) {
       list.push(painterClass);

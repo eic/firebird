@@ -16,6 +16,7 @@ export type PiecePainterConstructor =
  * without painter code knowing any of those sources.
  */
 export interface PainterConfigDescriptor {
+  /** The knob name. Must not be one of `RESERVED_PAINTER_KNOB_KEYS`. */
   key: string;
   default: unknown;
   label?: string;
@@ -51,6 +52,32 @@ export interface PainterConfigView {
   value<T>(key: string): T;
   /** Signal of a declared knob, for reactive bindings. */
   signal<T>(key: string): Signal<T>;
+}
+
+/**
+ * Knob keys no painter may declare:
+ * - `visible` is the piece visibility toggle
+ *   (`painters.byPiece.<pieceName>.visible`). The display applies it to the
+ *   painter's root node; painter code never reads it.
+ * - `time` would share its storage key with the timestamp that the config
+ *   storage keeps beside the painter-selection key
+ *   (`painters.byPiece.<pieceName>` is stored with `painters.byPiece.<pieceName>.time`).
+ */
+export const RESERVED_PAINTER_KNOB_KEYS: readonly string[] = ['time', 'visible'];
+
+/**
+ * Throws when a painter's meta declares a reserved knob key. Painter
+ * registration calls it, so the mistake surfaces when the painter is
+ * registered instead of as a silently shared setting.
+ */
+export function assertPainterKnobKeys(painterClass: PiecePainterConstructor): void {
+  const meta = painterMetaOf(painterClass);
+  for (const descriptor of meta?.configs ?? []) {
+    if (RESERVED_PAINTER_KNOB_KEYS.includes(descriptor.key)) {
+      throw new Error(`Painter '${painterIdOf(painterClass)}' declares the knob '${descriptor.key}', ` +
+        `whose name is reserved (${RESERVED_PAINTER_KNOB_KEYS.join(', ')}). Rename the knob.`);
+    }
+  }
 }
 
 /** The `meta` declaration of a painter class, when it has one. */

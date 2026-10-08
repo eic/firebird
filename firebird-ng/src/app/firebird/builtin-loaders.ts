@@ -20,7 +20,8 @@
 import { Injectable, Injector, inject } from '@angular/core';
 // Deep import (initial-bundle file): loaders.ts is plain TS; the core barrel
 // would pull painter modules and with them three.js.
-import { matchesFileExtensions } from "@firebird/core/loaders";
+import { matchesFileExtensions } from "@dexvis/firebird-core/loaders";
+import { ROOT_COLLECTIONS_CONFIG, ROOT_EVENT_RANGE_CONFIG } from './config-keys';
 import type {
   DataExchange,
   DataLoaderMeta,
@@ -29,8 +30,8 @@ import type {
   FileContentProbe,
   GeometryDataLoader,
   LoadedGeometry,
-} from '@firebird/core';
-import { ConfigService } from '../services/config.service';
+} from '@dexvis/firebird-core';
+import { ConfigService } from '@dexvis/app-features';
 import type { EventDisplayService } from '../services/event-display.service';
 
 async function resolveEventDisplay(injector: Injector): Promise<EventDisplayService> {
@@ -78,16 +79,19 @@ export class DexEventLoader implements EventDataLoader {
     if (typeof source === 'string') {
       return display.loadDexData(source);
     }
-    // A picked/dropped file is read in place, never uploaded. Dynamic import:
-    // this class is in the initial bundle and the reader pulls JSZip.
-    const { readDexFile } = await import('../utils/data-fetching.utils');
-    const dex = await readDexFile(source);
-    return display.showDexDocument(dex);
+    // A picked/dropped file is read in place, never uploaded. The request
+    // starts before the read, so a newer load requested meanwhile wins.
+    return display.runEventsLoad('dex', undefined, async request => {
+      // Dynamic import: this class is in the initial bundle and the reader pulls JSZip
+      const { readDexFile } = await import('../utils/data-fetching.utils');
+      const dex = await readDexFile(source);
+      return display.showDexDocument(dex, undefined, request);
+    });
   }
 }
 
 /**
- * EDM4eic / EDM4hep ROOT files converted IN THE BROWSER by @firebird/root2dex.
+ * EDM4eic / EDM4hep ROOT files converted IN THE BROWSER by @dexvis/root2dex.
  *
  * Claims what the browser can byte-range itself: http(s) and asset URLs, and
  * files the user picked or dropped. Everything else with a `.root` name -
@@ -126,36 +130,43 @@ export class Root2DexEventLoader implements EventDataLoader {
   }
 
   async loadEvents(source: DataSource): Promise<DataExchange | null> {
-    const entries = this.config.getConfigOrCreate<string>('events.rootEventRange', '0').value || '0';
-    const collections = parseCollectionsConfig(
-      this.config.getConfigOrCreate<string>('events.rootCollections', '').value || '');
-    const { RootFileService } = await import('../services/root-file.service');
-    const rootFiles = this.injector.get(RootFileService);
+    const entries = this.config.declare(ROOT_EVENT_RANGE_CONFIG).value || ROOT_EVENT_RANGE_CONFIG.default;
+    const collections = parseCollectionsConfig(this.config.declare(ROOT_COLLECTIONS_CONFIG).value || '');
     const display = await resolveEventDisplay(this.injector);
-
-    await rootFiles.open(source);
-    const converted = await rootFiles.convert(entries, collections);
-    for (const warning of converted.warnings) {
-      console.warn(`[root2dex] ${warning}`);
-    }
     // Only a URL is worth remembering as "already loaded"; a picked file is not
-    return display.showDexDocument(
-      converted.dex,
-      typeof source === 'string' ? source : undefined,
-    );
+    const sourceId = typeof source === 'string' ? { url: source, entries, collections } : undefined;
+
+    // The request starts before the conversion, so readiness covers it and a
+    // newer load requested meanwhile wins
+    return display.runEventsLoad('root', sourceId, async request => {
+      const { RootFileService } = await import('../services/root-file.service');
+      // A handle of its own: the data selector's picker keeps its file open
+      // on another handle, and an overlapping load opens its own
+      const rootFile = this.injector.get(RootFileService).createHandle();
+      try {
+        await rootFile.open(source);
+        const converted = await rootFile.convert(entries, collections);
+        for (const warning of converted.warnings) {
+          console.warn(`[root2dex] ${warning}`);
+        }
+        return await display.showDexDocument(converted.dex, sourceId, request);
+      } finally {
+        rootFile.close();
+      }
+    });
   }
 }
 
 /**
- * EDM4eic ROOT files converted server-side through the pyrobird convert
- * endpoint. This is the path for XRootD (`root://`) sources: pyrobird opens
- * them remotely and converts, exactly as before.
+ * EDM4eic / EDM4hep ROOT files converted server-side through the pyrobird
+ * convert endpoint, which detects the data model itself. This is the path for
+ * XRootD (`root://`) sources: pyrobird opens them remotely and converts.
  */
 @Injectable()
 export class Edm4eicEventLoader implements EventDataLoader {
   readonly meta: DataLoaderMeta = {
     id: 'edm4eic-root',
-    label: 'EDM4eic ROOT file (server conversion)',
+    label: 'EDM4eic/EDM4hep ROOT file (server conversion)',
     fileExtensions: ['.root'],
     urlSchemes: ['root://'],
   };
@@ -169,9 +180,8 @@ export class Edm4eicEventLoader implements EventDataLoader {
   }
 
   async loadEvents(source: DataSource): Promise<DataExchange | null> {
-    const eventRange = this.config.getConfig<string>('events.rootEventRange')?.value || '0';
-    const collections = parseCollectionsConfig(
-      this.config.getConfigOrCreate<string>('events.rootCollections', '').value || '');
+    const eventRange = this.config.declare(ROOT_EVENT_RANGE_CONFIG).value || ROOT_EVENT_RANGE_CONFIG.default;
+    const collections = parseCollectionsConfig(this.config.declare(ROOT_COLLECTIONS_CONFIG).value || '');
     const display = await resolveEventDisplay(this.injector);
     return display.loadRootData(source as string, eventRange, collections);
   }

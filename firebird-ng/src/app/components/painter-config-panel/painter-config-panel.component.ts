@@ -16,7 +16,7 @@ import {
   PiecePainterConstructor,
   painterIdOf,
   painterMetaOf,
-} from '@firebird/core';
+} from '@dexvis/firebird-core';
 import { DataModelService } from '../../services/data-model.service';
 import { EventDisplayService } from '../../services/event-display.service';
 import { PainterConfigService } from '../../services/painter-config.service';
@@ -96,7 +96,7 @@ export class PainterConfigPanelComponent {
   private knobProperties = computed(() => {
     const piece = this.piece();
     const painterClass = this.selectedPainterClass();
-    if (!piece || !painterClass) return new Map<string, import('../../utils/config-property').ConfigProperty<unknown>>();
+    if (!piece || !painterClass) return new Map<string, import('@dexvis/app-features').ConfigProperty<unknown>>();
     return this.painterConfig.knobProperties(piece, painterClass);
   });
 

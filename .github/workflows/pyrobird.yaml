@@ -3,17 +3,24 @@ name: Backend Pyrobird Tests
 on:
   push:
     branches:
-      - main
+      - '**'
   pull_request:
     branches:
       - main
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']  # Python versions matrix
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    defaults:
+      run:
+        working-directory: ./pyrobird
 
     steps:
       - name: Check out the repository
@@ -24,17 +31,13 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest
-          cd pyrobird
-          python -m pip install .[test] 
-          # Add any other dependencies your project requires
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        # --locked fails when pyrobird/uv.lock disagrees with pyproject.toml.
+        # The `test` extra holds pytest and jsonschema (the DEX schema tests).
+        run: uv sync --locked --extra test --python ${{ matrix.python-version }}
 
       - name: Run unit tests
-        run: |
-          pytest ./pyrobird/tests/unit_tests
-          
-          
+        run: uv run --no-sync python -m pytest ./tests/unit_tests

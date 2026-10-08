@@ -1,5 +1,5 @@
 {
-  "name": "@firebird/root2dex",
+  "name": "@dexvis/root2dex",
   "version": "0.0.1",
   "description": "Converts EDM4eic / EDM4hep podio ROOT files to Firebird DEX using the JSROOT API. Plain worker-safe TypeScript; reads only the bytes of the requested event.",
   "private": true,
@@ -8,7 +8,8 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./entries": "./src/entries.ts"
   },
   "scripts": {
     "test": "vitest run"
@@ -17,8 +18,9 @@
     "jsroot": ">=7.11.0"
   },
   "devDependencies": {
-    "jsroot": "7.11.1",
-    "typescript": "^5.8.3",
-    "vitest": "^4.0.18"
+    "@types/node": "^26.6.4",
+    "jsroot": "7.11.2",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
   }
 }

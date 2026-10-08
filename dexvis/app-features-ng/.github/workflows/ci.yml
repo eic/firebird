@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      # No lockfile is committed yet: switch to `npm ci` (and `cache: npm`
+      # above) once package-lock.json is in the repository.
+      - run: npm install
+
+      - run: npm test
+
+      - run: npm run build
+
+      - name: Check the packed package
+        working-directory: dist/dexvis/app-features
+        run: npm pack --dry-run

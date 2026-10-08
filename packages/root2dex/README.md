@@ -1,4 +1,4 @@
-# @firebird/root2dex
+# @dexvis/root2dex
 
 Converts EDM4eic / EDM4hep podio ROOT files to Firebird DEX, in the browser or
 in node, through the JSROOT API.
@@ -8,7 +8,7 @@ the same entries the two produce the same DEX document, value for value —
 `src/parity.spec.ts` pins that against reference documents written by pyrobird.
 
 ```ts
-import { Root2DexConverter } from '@firebird/root2dex';
+import { Root2DexConverter } from '@dexvis/root2dex';
 
 const converter = await Root2DexConverter.open(file);   // File, URL, path, or byte-range source
 console.log(converter.model, converter.entryCount);      // 'edm4eic' | 'edm4hep', number of events
@@ -76,7 +76,7 @@ The data model is detected from the branch types — files carrying both win as
 ## Tests
 
 ```bash
-npm test -w @firebird/root2dex
+npm test -w @dexvis/root2dex
 ```
 
 The specs read pyrobird's test ROOT files from `pyrobird/tests/unit_tests/data`

@@ -9,7 +9,6 @@ import {ThreeService} from "../../services/three.service";
 import {SelectionService} from "../../services/selection.service";
 import * as THREE from 'three';
 import {MatTooltip} from "@angular/material/tooltip";
-import {NgIf} from "@angular/common";
 
 @Component({
   selector: 'app-object-raycast',
@@ -20,7 +19,6 @@ import {NgIf} from "@angular/common";
     MatCheckbox,
     MatTooltip,
     MatIconButton,
-    NgIf
   ],
   templateUrl: './object-raycast.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,25 +30,23 @@ export class ObjectRaycastComponent implements OnDestroy {
   @ViewChild('raycastDialogTmpl') raycastDialogTmpl!: TemplateRef<any>;
   dialogRef: MatDialogRef<any> | null = null;
 
-  /** UI state */
+  // UI state. Signals: the checkboxes live in the dialog, which renders this
+  // component's template in another view; a plain field changed there would
+  // never reach the overlay below in this component's own view.
+  readonly coordsEnabled = signal(false);
+  readonly distanceEnabled = signal(false);
 
-  coordsEnabled    = false;
-  distanceEnabled  = false;
-
-  // signals: updates arrive from native canvas listeners via ThreeService,
-  // which schedule no change detection under zoneless
-  coordsText   = signal('');
-  distanceText = signal('');
+  // Signals as well: updates arrive from native canvas listeners via
+  // ThreeService, which schedule no change detection under zoneless.
+  readonly coordsText = signal('');
+  readonly distanceText = signal('');
 
   private coordsSub?: Subscription;
   private distSub?: Subscription;
   private distLine?: THREE.Line;
 
-
-  /** internals */
-  private firstPoint: THREE.Vector3 | null = null;
-  private clickSub?: Subscription;
-  private hoverSub?: Subscription;
+  /** True while this component holds ThreeService's measure mode on. */
+  private measuring = false;
 
   constructor(
     private dialog: MatDialog,
@@ -94,23 +90,28 @@ export class ObjectRaycastComponent implements OnDestroy {
 
 
   toggleShowCoords(e: MatCheckboxChange): void {
-    this.coordsEnabled = e.checked;
+    this.coordsEnabled.set(e.checked);
     this.updateSubscriptions();
     this.updateRaycastActivation();
   }
 
   toggleShowDistance(e: MatCheckboxChange): void {
-    this.distanceEnabled = e.checked;
-    this.three.measureMode = e.checked;
-    if (!e.checked) this.firstPoint = null;
+    this.distanceEnabled.set(e.checked);
+    this.setMeasureMode(e.checked);
     this.updateSubscriptions();
     this.updateRaycastActivation();
+  }
+
+  /** Measure mode turns clicks into distance points, so click-to-select pauses while it is on. */
+  private setMeasureMode(on: boolean): void {
+    this.measuring = on;
+    this.three.measureMode = on;
   }
 
   /* ---------- central switch ---------- */
   /** Ensures ThreeService raycast state matches UI needs */
   private updateRaycastActivation(): void {
-    const needRaycast =  this.coordsEnabled || this.distanceEnabled;
+    const needRaycast = this.coordsEnabled() || this.distanceEnabled();
     const isOn        = this.three.isRaycastEnabledState();
     if (needRaycast && !isOn) this.three.toggleRaycast();
     if (!needRaycast && isOn) this.three.toggleRaycast();
@@ -120,18 +121,18 @@ export class ObjectRaycastComponent implements OnDestroy {
   private updateSubscriptions(): void {
 
     /* XYZ overlay */
-    if (this.coordsEnabled && !this.coordsSub) {
+    if (this.coordsEnabled() && !this.coordsSub) {
       this.coordsSub = this.three.pointHovered.subscribe(pt => {
         this.coordsText.set(`X:${pt.x.toFixed(2)}  Y:${pt.y.toFixed(2)}  Z:${pt.z.toFixed(2)}`);
       });
-    } else if (!this.coordsEnabled && this.coordsSub) {
+    } else if (!this.coordsEnabled() && this.coordsSub) {
       this.coordsSub.unsubscribe();
       this.coordsSub = undefined;
       this.coordsText.set('');
     }
 
     /* distance overlay */
-    if (this.distanceEnabled && !this.distSub) {
+    if (this.distanceEnabled() && !this.distSub) {
       this.distSub = this.three.distanceReady.subscribe(({ p1, p2, dist }) => {
         this.distanceText.set(`${dist.toFixed(2)} units`);
 
@@ -144,26 +145,47 @@ export class ObjectRaycastComponent implements OnDestroy {
         } else {
           (this.distLine.geometry as THREE.BufferGeometry).setFromPoints([p1, p2]);
         }
+        this.three.invalidate();
       });
-    } else if (!this.distanceEnabled && this.distSub) {
+    } else if (!this.distanceEnabled() && this.distSub) {
       this.distSub.unsubscribe();
       this.distSub = undefined;
       this.distanceText.set('');
-
-      // remove helper line
-      if (this.distLine) {
-        this.three.sceneHelpers.remove(this.distLine);
-        this.distLine.geometry.dispose();
-        (this.distLine.material as THREE.Material).dispose();
-        this.distLine = undefined!;
-      }
+      this.removeDistanceLine();
     }
 
   }
 
+  private removeDistanceLine(): void {
+    if (!this.distLine) return;
+    this.three.sceneHelpers.remove(this.distLine);
+    this.distLine.geometry.dispose();
+    (this.distLine.material as THREE.Material).dispose();
+    this.distLine = undefined;
+    this.three.invalidate();
+  }
+
   /* ---------- cleanup ---------- */
+  /**
+   * ThreeService outlives display pages: leaving the page must hand back
+   * everything this component switched on there. Otherwise measure mode
+   * stays on (click-to-select stops working on the next visit), hover
+   * picking keeps running, and the distance line stays in the scene.
+   */
   ngOnDestroy(): void {
-    this.hoverSub?.unsubscribe();
-    this.clickSub?.unsubscribe();
+    this.dialogRef?.close();
+    // The page holds two instances (desktop and mobile toolbars): only the
+    // one that switched hover picking on switches it off.
+    const holdsRaycast = this.coordsEnabled() || this.distanceEnabled();
+    this.coordsEnabled.set(false);
+    this.distanceEnabled.set(false);
+    if (this.measuring) {
+      this.setMeasureMode(false);
+    }
+    this.updateSubscriptions();
+    if (holdsRaycast) {
+      this.updateRaycastActivation();
+    }
+    this.removeDistanceLine();
   }
 }

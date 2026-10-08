@@ -13,7 +13,7 @@ import type {
   EventDataLoader,
   FileContentProbe,
   GeometryDataLoader,
-} from '@firebird/core';
+} from '@dexvis/firebird-core';
 import { EVENT_LOADERS, GEOMETRY_LOADERS } from '../firebird/tokens';
 import { FileOpenRouterService } from './file-open-router.service';
 import { RootFileService } from './root-file.service';

@@ -146,7 +146,7 @@ pyrobird/pyrobird/server/static/assets/
 
 pyrobird/pyrobird/server/static/
 
-pyrobird/uv.lock
+# pyrobird/uv.lock is committed: CI installs with `uv sync --locked`
 
 firebird-ng/.claude/settings.local.json
 

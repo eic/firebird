@@ -7,7 +7,8 @@ import { routes } from './app.routes';
 import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideFirebird, withUrlAlias, withDefaultGeometry } from './firebird';
 import { withFirebirdBuiltins } from './firebird/with-firebird-builtins';
-import { withExampleCherenkov } from '@firebird/example-extension';
+import { withExampleCherenkov } from '@dexvis/firebird-example-extension';
+import { withEpicDataCatalog } from './epic/epic-data-catalog';
 
 // The app assembles Firebird through the same composition API an external
 // experiment uses: provideFirebird(features). Built-in factories, painters,
@@ -21,7 +22,10 @@ export const appConfig: ApplicationConfig = {
     provideFirebird(
       withFirebirdBuiltins(),
       withUrlAlias('epic://', 'https://eic.github.io/epic/artifacts/'),
-      withDefaultGeometry('https://eic.github.io/epic/artifacts/tgeo/epic_craterlake.root'),
+      // The same URL the ePIC catalog's full-detector entries use, so a fresh
+      // install shows that preset as the active one
+      withDefaultGeometry('https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root'),
+      withEpicDataCatalog(),
       withExampleCherenkov(),
     ),
   ],

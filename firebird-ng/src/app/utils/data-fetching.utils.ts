@@ -1,136 +1,133 @@
-
 import JSZip from 'jszip';
 
 /**
- * Read a zip file and return its contents as an object.
- * @param file The file or array buffer to be read.
- * @returns Map with file paths in zip as keys and the files'
- * string contents as values.
+ * True for zip member names that can hold a DEX document: `.json` files that
+ * are not directories, not dot-files (`._events.json`, `.DS_Store`), and not
+ * inside the `__MACOSX/` folder that the macOS archiver adds.
  */
-export async function readZipFile(file: File | ArrayBuffer) {
-  const archive = new JSZip();
-  const filesWithData = new Map<string, string>();
-
-  await archive.loadAsync(file);
-  for (const filePath in archive.files) {
-    const fileData = await archive.file(filePath)?.async('string');
-    if(fileData) {
-      filesWithData.set(filePath, fileData);
-    }
-  }
-
-  return filesWithData;
+export function isDexZipMember(name: string): boolean {
+  if (name.endsWith('/')) return false;
+  const parts = name.split('/');
+  if (parts.includes('__MACOSX')) return false;
+  const baseName = parts[parts.length - 1];
+  if (!baseName || baseName.startsWith('.')) return false;
+  return baseName.toLowerCase().endsWith('.json');
 }
 
 /**
- * Reads a DEX document from a picked/dropped file: a .json file, or a .zip
- * whose .json members are merged into one object (the same rule the URL zip
- * path uses). The file is read in place, never uploaded.
+ * Reads the DEX document of a zip archive: the first `.json` member in archive
+ * order that `isDexZipMember()` accepts, the member `pyrobird` reads too. Names
+ * are filtered from the central directory first, so only that one member is
+ * inflated.
+ *
+ * @param data The archive bytes, or a picked file.
+ * @param sourceName The file name or URL, for error messages.
+ * @returns The parsed JSON of the member.
+ */
+export async function readDexZip(data: Blob | ArrayBuffer, sourceName: string): Promise<unknown> {
+  let archive: JSZip;
+  try {
+    archive = await JSZip.loadAsync(data);
+  } catch (error) {
+    const head = await new Blob([data]).slice(0, 64).text();
+    throw new Error(`'${sourceName}' is not a readable zip archive${htmlHint(head)}: ${errorText(error)}`);
+  }
+  const member = Object.values(archive.files).find(file => !file.dir && isDexZipMember(file.name));
+  if (!member) {
+    throw new Error(`'${sourceName}' holds no .json member`);
+  }
+  const timing = `readDexZip: inflating and parsing '${member.name}'`;
+  console.time(timing);
+  try {
+    return JSON.parse(await member.async('string'));
+  } finally {
+    console.timeEnd(timing);
+  }
+}
+
+/**
+ * Reads a DEX document from a picked or dropped file: a `.json` file, or a
+ * `.zip` read with `readDexZip()`. The file is read in place, never uploaded.
  */
 export async function readDexFile(file: File): Promise<unknown> {
   if (file.name.toLowerCase().endsWith('.zip')) {
-    const filesWithData = await readZipFile(file);
-    const dexObject = {};
-    for (const [name, text] of filesWithData) {
-      if (name.endsWith('.json')) Object.assign(dexObject, JSON.parse(text));
-    }
-    return dexObject;
+    return readDexZip(file, file.name);
   }
   return JSON.parse(await file.text());
 }
 
-export async function fetchTextFile(fileURL: string): Promise<string> {
-  // Load file here!
-  try{
-    const loadingTimeMessage = `${fetchTextFile.name}: fetching ${fileURL}`;
-    console.time(loadingTimeMessage);
-    const response = await fetch(fileURL);
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    const fileText = await response.text();
-    console.timeEnd(loadingTimeMessage);
-    return fileText;
+/**
+ * Builds the error for a failed HTTP response: status, status text and, when
+ * the body is a JSON object with an `error` field (pyrobird's convert
+ * endpoint answers that way), the server's reason.
+ */
+export async function httpError(response: Response, url: string): Promise<Error> {
+  let reason = '';
+  try {
+    const body = JSON.parse(await response.text());
+    if (body && typeof body.error === 'string') reason = `: ${body.error}`;
+  } catch {
+    // Not a JSON body (an HTML error page, for example): status only
   }
-  catch (error) {
-    console.error(`Error fetching ${fileURL}: ${error}`);
-    throw error;
-  }
+  const status = `HTTP ${response.status}${response.statusText ? ' ' + response.statusText : ''}`;
+  return new Error(`${status}${reason} (${url})`);
 }
 
+export async function fetchTextFile(fileURL: string): Promise<string> {
+  const timing = `${fetchTextFile.name}: fetching ${fileURL}`;
+  console.time(timing);
+  try {
+    const response = await fetch(fileURL);
+    if (!response.ok) throw await httpError(response, fileURL);
+    return await response.text();
+  } finally {
+    console.timeEnd(timing);
+  }
+}
 
 export async function fetchBinaryFile(fileURL: string): Promise<ArrayBuffer> {
-  // Load file here!
-  try{
-    const loadingTimeMessage = `${fetchBinaryFile.name}: fetching ${fileURL}`;
-    console.time(loadingTimeMessage);
-    const fileBuffer = await (await fetch(fileURL)).arrayBuffer();
-    console.timeEnd(loadingTimeMessage);
-    return fileBuffer;
-  }
-  catch (error) {
-    console.error(`Error fetching ${fileURL}: ${error}`);
-    throw error;
-  }
-}
-
-
-/**
- * Handle zip containing event data files.
- * @param fileURL URL to the zip file.
- * @returns An empty promise. ;(
- */
-export async function loadZipFileEvents(fileURL: string) {
-
-  const fileBuffer = await fetchBinaryFile(fileURL);
-
-  let filesWithData: Map<string, string>;
-  // Using a try catch block to catch any errors in Promises
+  const timing = `${fetchBinaryFile.name}: fetching ${fileURL}`;
+  console.time(timing);
   try {
-    console.time('loadZipFileEvents: reading zip contents');
-    filesWithData = await readZipFile(fileBuffer);
-    console.timeEnd('loadZipFileEvents: reading zip contents');
-  } catch (error) {
-    console.error('Error while reading zip', fileURL, fileBuffer, error);
-    throw error;
+    const response = await fetch(fileURL);
+    if (!response.ok) throw await httpError(response, fileURL);
+    return await response.arrayBuffer();
+  } finally {
+    console.timeEnd(timing);
   }
-
-  const allEventsObject = {};
-  // JSON event data
-  for(let [fileName, fileData] of filesWithData) {
-    if(!fileName.endsWith('.json')) continue;     // We need only JSon!
-
-    const parsingProfileMessage = `${loadZipFileEvents.name}: parsing JSON from '${fileName}'`
-    console.time(parsingProfileMessage);
-    console.profile(parsingProfileMessage);
-    Object.assign(allEventsObject, JSON.parse(fileData));
-    console.timeEnd(parsingProfileMessage);
-    console.profileEnd(parsingProfileMessage);
-  }
-
-  return allEventsObject;
 }
 
+/** Fetches a zipped DEX document and reads it with `readDexZip()`. */
+export async function loadZipFileEvents(fileURL: string): Promise<unknown> {
+  const buffer = await fetchBinaryFile(fileURL);
+  return readDexZip(buffer, fileURL);
+}
 
+/** Fetches a DEX JSON document and parses it. */
+export async function loadJSONFileEvents(fileURL: string): Promise<unknown> {
+  const text = await fetchTextFile(fileURL);
+  const timing = `${loadJSONFileEvents.name}: parsing JSON from '${fileURL}'`;
+  console.time(timing);
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`'${fileURL}' is not JSON${htmlHint(text)}: ${errorText(error)}`);
+  } finally {
+    console.timeEnd(timing);
+  }
+}
 
 /**
- * Handle zip containing event data files.
- * @param fileURL URL to the zip file.
- * @returns An empty promise. ;(
+ * A note for content that is an HTML page: a single-page-app server (pyrobird,
+ * a static host with a fallback route) answers a missing file with its index
+ * page and status 200.
  */
-export async function loadJSONFileEvents(fileURL: string) {
+function htmlHint(text: string): string {
+  return /^\s*</.test(text.slice(0, 64))
+    ? ' (the server sent an HTML page instead; the file is probably missing)'
+    : '';
+}
 
-  const fileText = await fetchTextFile(fileURL);
-
-  const allEventsObject = {};
-  // JSON event data
-
-  const parsingProfileMessage = `${loadJSONFileEvents.name}: parsing JSON from '${fileURL}'`
-  console.time(parsingProfileMessage);
-  console.profile(parsingProfileMessage);
-  Object.assign(allEventsObject, JSON.parse(fileText));
-  console.timeEnd(parsingProfileMessage);
-  console.profileEnd(parsingProfileMessage);
-
-  return allEventsObject;
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

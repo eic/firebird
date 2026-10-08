@@ -1,0 +1,43 @@
+<div class="tab-block">
+  <firebird-source-picker
+    label="Geometry"
+    placeholder="Geometry URL (.root)"
+    accept=".root"
+    hint="A ROOT TGeo file; it stays on your computer"
+    [options]="geometryOptions()"
+    [value]="geometry()"
+    [resyncToken]="geometryResync()"
+    (valueChange)="onGeometryChange($event)">
+  </firebird-source-picker>
+
+  <label class="optimize">
+    <input type="checkbox" [checked]="optimize()" (change)="toggleOptimize()"/>
+    <span>Optimize geometry</span>
+    <span class="optimize-hint">drop glue layers, single straws, ASICs and other fine parts (faster to load and draw)</span>
+  </label>
+
+  <firebird-source-picker
+    label="Events"
+    placeholder="Events URL (.firebird.json/.zip or .root)"
+    accept=".root,.json,.zip"
+    hint="A DEX file, or an EDM4eic/EDM4hep ROOT file converted for the events you ask for"
+    [options]="eventOptions()"
+    [value]="events()"
+    [resyncToken]="eventsResync()"
+    (valueChange)="onEventsChange($event)">
+  </firebird-source-picker>
+
+  @if (eventsIsRoot()) {
+    <firebird-root-event-picker
+      [source]="$any(events())"
+      [eventRange]="eventRange()"
+      [collections]="collections()"
+      (eventRangeChange)="onEventRangeChange($event)"
+      (collectionsChange)="onCollectionsChange($event)">
+    </firebird-root-event-picker>
+  }
+
+  @if (note(); as message) {
+    <div class="status note"><mat-icon>info_outline</mat-icon><span>{{ message }}</span></div>
+  }
+</div>

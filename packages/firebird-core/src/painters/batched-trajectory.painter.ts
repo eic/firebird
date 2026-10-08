@@ -76,7 +76,6 @@ export class BatchedTrajectoryPainter extends EventPiecePainter {
   private timeIndex = -1;
   /** Momentum ceiling of the piece, for the momentum color scale. */
   private maxMomentum = 0;
-  private highlightedTrack: number | null = null;
 
   constructor(parentNode: Object3D, piece: EventPiece, config?: PainterConfigView) {
     super(parentNode, piece, config);
@@ -306,18 +305,21 @@ export class BatchedTrajectoryPainter extends EventPiecePainter {
       batch.material.linewidth = lineWidth;
       batch.material.needsUpdate = true;
     }
-    // A restyle repainted the highlight color away, same as the per-track painter
-    this.highlightedTrack = null;
+    // A restyle repaints highlighted tracks in their normal color, same as
+    // the per-track painter.
   }
 
+  /**
+   * Draws one track in the highlight color. Highlights are independent:
+   * other highlighted tracks stay highlighted (the selection and the
+   * hovered track show together).
+   */
   override highlightEntity(entityIndex: number): void {
-    if (this.highlightedTrack !== null) this.unhighlightEntity(this.highlightedTrack);
     const scratch = new Color().setHex(this.trackColorHighlight);
     for (const batch of this.batches) {
       this.colorTrackSegments(batch, entityIndex, scratch);
       this.uploadColors(batch);
     }
-    this.highlightedTrack = entityIndex;
   }
 
   override unhighlightEntity(entityIndex: number): void {
@@ -332,7 +334,6 @@ export class BatchedTrajectoryPainter extends EventPiecePainter {
       this.colorTrackSegments(batch, entityIndex, color);
       this.uploadColors(batch);
     }
-    if (this.highlightedTrack === entityIndex) this.highlightedTrack = null;
   }
 
   /**

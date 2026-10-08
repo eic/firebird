@@ -1,5 +1,11 @@
 import {Injectable, signal, WritableSignal} from '@angular/core';
-import {ConfigService} from "./config.service";
+import {ConfigProperty, ConfigService} from '@dexvis/app-features';
+import {
+  GEOMETRY_CUT_LIST_CONFIG,
+  GEOMETRY_FAST_MATERIAL_CONFIG,
+  GEOMETRY_ROOT_FILTER_CONFIG,
+  GEOMETRY_THEME_CONFIG,
+} from '../firebird/config-keys';
 import {Subdetector, DetectorThreeRuleSet, ThreeGeometryProcessor, getColorOrDefault} from '@dexvis/threejs-tree-editor';
 import {Color, DoubleSide, MeshLambertMaterial, NormalBlending, Object3D, ObjectLoader, Plane} from "three";
 import {UrlService} from "./url.service";
@@ -10,7 +16,6 @@ import {cadColorRules} from "../theme/cad-geometry-ruleset";
 import {monoColorRules} from "../theme/mono-geometry-ruleset";
 import {cool2NoOutlineColorRules} from "../theme/cool2no-geometry-ruleset";
 
-import {ConfigProperty} from "../utils/config-property";
 import {prettify, PrettifyOptions} from "../utils/eic-geometry-prettifier";
 
 import type {
@@ -50,10 +55,11 @@ export type GeometryProgressCallback = (stage: string, progress: number) => void
 })
 export class GeometryService {
 
-  geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
-  geometryCutListName = new ConfigProperty('geometry.cutListName', "off");
-  geometryThemeName = new ConfigProperty('geometry.themeName', "cool2");
-  geometryRootFilterName = new ConfigProperty('geometry.rootFilterName', "default");
+  // Pipeline options from the config page (keys and defaults: config-keys.ts)
+  geometryFastAndUgly: ConfigProperty<boolean>;
+  geometryCutListName: ConfigProperty<string>;
+  geometryThemeName: ConfigProperty<string>;
+  geometryRootFilterName: ConfigProperty<string>;
 
   /** Collection of subdetectors */
   public subdetectors: Subdetector[] = [];
@@ -146,12 +152,12 @@ export class GeometryService {
       ["Magnets_Q3eR_assembly_59", GROUP_MAGNETS],
     ]);
 
-    // addConfig returns the canonical instance for the key (another service
-    // may have registered it first) — always keep the returned reference.
-    this.geometryFastAndUgly = this.config.addConfig(this.geometryFastAndUgly);
-    this.geometryCutListName = this.config.addConfig(this.geometryCutListName);
-    this.geometryThemeName = this.config.addConfig(this.geometryThemeName);
-    this.geometryRootFilterName = this.config.addConfig(this.geometryRootFilterName);
+    // declare returns the canonical instance for the key (the config page or
+    // the data selector may have declared it first) — keep the returned reference.
+    this.geometryFastAndUgly = this.config.declare(GEOMETRY_FAST_MATERIAL_CONFIG);
+    this.geometryCutListName = this.config.declare(GEOMETRY_CUT_LIST_CONFIG);
+    this.geometryThemeName = this.config.declare(GEOMETRY_THEME_CONFIG);
+    this.geometryRootFilterName = this.config.declare(GEOMETRY_ROOT_FILTER_CONFIG);
 
     this.initWorker();
   }
@@ -470,13 +476,13 @@ export class GeometryService {
     console.log(`[GeometryService]: Geometry theme name is set to '${geoTheme}'`);
 
     if(geoTheme === "cool2") {
-      this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
+      await this.threeGeometryProcessor.processRuleSets(cool2ColorRules, this.subdetectors);
     } else if(geoTheme === "cool2no") {
-      this.threeGeometryProcessor.processRuleSets(cool2NoOutlineColorRules, this.subdetectors);
+      await this.threeGeometryProcessor.processRuleSets(cool2NoOutlineColorRules, this.subdetectors);
     } else if(geoTheme === "cad") {
-      this.threeGeometryProcessor.processRuleSets(cadColorRules, this.subdetectors);
+      await this.threeGeometryProcessor.processRuleSets(cadColorRules, this.subdetectors);
     } else if(geoTheme === "grey") {
-      this.threeGeometryProcessor.processRuleSets(monoColorRules, this.subdetectors);
+      await this.threeGeometryProcessor.processRuleSets(monoColorRules, this.subdetectors);
     }
 
     // Apply prettification (reflective materials, environment maps) if not in fast mode

@@ -12,6 +12,10 @@ class MockStorage {
         this.storage.set(key, value);
     }
 
+    removeItem(key: string): void {
+        this.storage.delete(key);
+    }
+
     clear(): void {
         this.storage.clear();
     }
@@ -110,51 +114,66 @@ describe('ConfigProperty', () => {
             expect(prop.value).toBe('default');
         });
 
-        it('should persist default value to storage', () => {
+        it('should remove the stored value and timestamp instead of writing the default', () => {
             const prop = new ConfigProperty('testKey', 'default', undefined, undefined, mockStorage);
-            prop.setValue('changed');
+            prop.setValue('changed', 1000);
             expect(mockStorage.getItem('testKey')).toBe('changed');
 
             prop.setDefault();
-            expect(mockStorage.getItem('testKey')).toBe('default');
+            expect(mockStorage.getItem('testKey')).toBeNull();
+            expect(mockStorage.getItem('testKey.time')).toBeNull();
+            expect(prop.getTimestamp()).toBeNull();
+            expect(prop.hasStoredValue()).toBe(false);
         });
 
-        it('should update timestamp when setting default', () => {
+        it('should fall back to the server value, which a written default would have hidden', () => {
             const prop = new ConfigProperty('testKey', 'default', undefined, undefined, mockStorage);
+            prop.setServerValue('server');
+            prop.setValue('changed');
 
-            // Set a value with an old timestamp
-            const oldTime = 1000;
-            prop.setValue('changed', oldTime);
-            expect(prop.getTimestamp()).toBe(oldTime);
-
-            // setDefault should update the timestamp to current time
-            const beforeReset = Date.now();
             prop.setDefault();
-            const afterReset = Date.now();
-
-            const newTimestamp = prop.getTimestamp();
-            expect(newTimestamp).not.toBeNull();
-            expect(newTimestamp!).toBeGreaterThanOrEqual(beforeReset);
-            expect(newTimestamp!).toBeLessThanOrEqual(afterReset);
+            expect(prop.value).toBe('server');
         });
 
-        it('should allow subsequent setValue after setDefault respects timestamp logic', () => {
+        it('should let a feature default set after the reset apply', () => {
             const prop = new ConfigProperty('testKey', 'default', undefined, undefined, mockStorage);
-
-            // Set value with old timestamp
-            prop.setValue('old', 1000);
-
-            // Reset to default (gets current timestamp)
+            prop.setValue('changed');
             prop.setDefault();
-            const resetTimestamp = prop.getTimestamp();
 
-            // Try to set with older timestamp - should be rejected
-            prop.setValue('older', 500);
+            prop.overrideDefault('pack-default');
+            expect(prop.value).toBe('pack-default');
+        });
+
+        it('should end a URL session override', () => {
+            const prop = new ConfigProperty('testKey', 'default', undefined, undefined, mockStorage);
+            prop.setSessionValue('from-url');
+            prop.setDefault();
+            expect(prop.hasSessionOverride).toBe(false);
             expect(prop.value).toBe('default');
+        });
 
-            // Set with newer timestamp - should succeed
-            prop.setValue('newer', resetTimestamp! + 1000);
-            expect(prop.value).toBe('newer');
+        it('should accept any later write, the stored timestamp being gone', () => {
+            const prop = new ConfigProperty('testKey', 'default', undefined, undefined, mockStorage);
+            prop.setValue('old', 5000);
+            prop.setDefault();
+
+            prop.setValue('older', 500);
+            expect(prop.value).toBe('older');
+        });
+
+        it('should write the fallback value when the storage cannot remove items', () => {
+            const store = new Map<string, string>();
+            const legacyStorage = {
+                getItem: (key: string) => store.get(key) ?? null,
+                setItem: (key: string, value: string) => { store.set(key, value); },
+            };
+            const prop = new ConfigProperty('testKey', 'default', undefined, undefined, legacyStorage);
+            prop.setServerValue('server');
+            prop.setValue('changed');
+
+            prop.setDefault();
+            expect(prop.value).toBe('server');
+            expect(store.get('testKey')).toBe('server');
         });
 
         it('should call saveCallback when setting default', () => {
@@ -176,6 +195,64 @@ describe('ConfigProperty', () => {
             prop.setDefault();
 
             expect(values).toContain('default');
+        });
+    });
+
+    describe('clearStored', () => {
+        it('should drop only the stored layer and keep a URL override', () => {
+            const prop = new ConfigProperty('testKey', 'default', undefined, undefined, mockStorage);
+            prop.setValue('stored');
+            prop.setSessionValue('from-url');
+
+            prop.clearStored();
+            expect(mockStorage.getItem('testKey')).toBeNull();
+            expect(prop.value).toBe('from-url');
+        });
+
+        it('should warn and keep the value when the storage cannot remove items', () => {
+            const store = new Map<string, string>();
+            const legacyStorage = {
+                getItem: (key: string) => store.get(key) ?? null,
+                setItem: (key: string, value: string) => { store.set(key, value); },
+            };
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const prop = new ConfigProperty('testKey', 'default', undefined, undefined, legacyStorage);
+            prop.setValue('stored');
+
+            prop.clearStored();
+            expect(prop.value).toBe('stored');
+            expect(warn).toHaveBeenCalled();
+            warn.mockRestore();
+        });
+    });
+
+    describe('redeclare', () => {
+        it('should re-read stored, server and URL values with the new type and validator', () => {
+            mockStorage.setItem('testKey', '42');
+            const prop = new ConfigProperty<unknown>('testKey', 'sample', undefined, undefined, mockStorage);
+            prop.setServerValue('7');
+            expect(prop.value).toBe('42'); // read as text while the sample is a string
+
+            prop.redeclare(0, (value: unknown) => typeof value === 'number' && value < 100);
+            expect(prop.value).toBe(42);
+            prop.clearStored();
+            expect(prop.value).toBe(7);
+        });
+
+        it('should drop layer values the new validator rejects', () => {
+            const prop = new ConfigProperty<string>('testKey', '', undefined, undefined, mockStorage);
+            prop.setSessionValue('blob:https://host/123');
+            prop.redeclare('', (value: string) => !value.startsWith('blob:'));
+            expect(prop.hasSessionOverride).toBe(false);
+            expect(prop.value).toBe('');
+        });
+
+        it('should keep a feature default over the new code default', () => {
+            const prop = new ConfigProperty<unknown>('testKey', 'sample', undefined, undefined, mockStorage);
+            prop.overrideDefault('5');
+            prop.redeclare(1);
+            expect(prop.value).toBe(5);
+            expect(prop.codeDefault).toBe(1);
         });
     });
 

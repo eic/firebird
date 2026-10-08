@@ -1,0 +1,53 @@
+@use './shared';
+
+.data-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tab-strip {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, rgba(128, 128, 128, 0.3));
+}
+
+.tab {
+  padding: 6px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  opacity: 0.75;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &.active {
+    opacity: 1;
+    font-weight: 500;
+    border-bottom-color: var(--mat-sys-primary, #4bac84);
+  }
+}
+
+.tab-body {
+  min-height: 60px;
+}
+
+.status {
+  @include shared.status;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.apply-btn {
+  min-width: 96px;
+}

@@ -164,6 +164,7 @@ export class SceneTreeComponent implements OnInit {
         node.visible = true;
       }
     }
+    this.threeService.invalidate();
   }
 
 
@@ -200,6 +201,7 @@ export class SceneTreeComponent implements OnInit {
         child.material = this.geometryHighlightMaterial;
       }
     });
+    this.threeService.invalidate();
   }
 
   public unhighlightNode(node: Object3D): void {
@@ -209,6 +211,7 @@ export class SceneTreeComponent implements OnInit {
         delete child.userData['origMaterial'];
       }
     });
+    this.threeService.invalidate();
   }
 
 
@@ -268,6 +271,7 @@ export class SceneTreeComponent implements OnInit {
         obj3d.userData['highlightFunction']();
       }
     });
+    this.threeService.invalidate();
   }
 
   public unhighlightTrack(node: Object3D): void {
@@ -276,5 +280,6 @@ export class SceneTreeComponent implements OnInit {
         obj3d.userData['unhighlightFunction']();
       }
     });
+    this.threeService.invalidate();
   }
 }

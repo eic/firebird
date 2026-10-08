@@ -10,6 +10,7 @@ export * from './model/default-piece-init';
 
 // Loader contracts (implementations are contributed via DI in the Angular layer)
 export * from './loaders';
+export * from './data-catalog';
 
 // Painters (time-aware rendering of event data into a three.js scene)
 export * from './painters/event-piece-painter';

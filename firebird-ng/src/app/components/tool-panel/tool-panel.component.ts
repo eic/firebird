@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIcon } from '@angular/material/icon';
 import { ViewOptionsComponent } from '../view-options/view-options.component';
 import { ThreeService } from '../../services/three.service';
-import { ConfigService } from '../../services/config.service';
+import { ConfigService } from '@dexvis/app-features';
 import {MatIconButton} from "@angular/material/button";
 import {MatTooltip} from "@angular/material/tooltip";
 import * as THREE from 'three';

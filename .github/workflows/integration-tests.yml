@@ -3,10 +3,13 @@ name: Integration Tests Workflow
 on:
   push:
     branches:
-      - main
+      - '**'
   pull_request:
     branches:
       - main
+
+permissions:
+  contents: read
 
 jobs:
   integration-tests:
@@ -32,32 +35,26 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: .nvmrc
+          cache: npm
 
-
-      - name: Debug info before build
+      - name: Install frontend dependencies
+        # npm workspaces: one lockfile at the repo root
         run: |
           npm --version
           node --version
-          # npm workspaces: install once at the repo root
-          npm install
-          cd firebird-ng
-          npm run build
+          npm ci
 
-      - name: Install the project
-        run: |
-          cd pyrobird
-          uv sync --extra=dev --dev
-          uv run ../build.py full
+      - name: Install pyrobird
+        working-directory: ./pyrobird
+        run: uv sync --locked --extra dev --python ${{ matrix.python-version }}
 
-      # - name: Install Python dependencies and Build Frontend
-      #   run: |
-      #     cd pyrobird
-      #     python -m pip install -e .[dev,batch]
-      #     cd ..
-      #     python build.py full
+      - name: Build frontend and package
+        # notests: one ng build, copied into pyrobird, then the python package.
+        # The unit suites run in frontend.yaml and pyrobird.yaml.
+        working-directory: ./pyrobird
+        run: uv run --no-sync python ../build.py notests
 
       - name: Run integration tests
-        run: |
-          cd pyrobird
-          uv run tests/integration_tests/run_integration_tests.py
+        working-directory: ./pyrobird
+        run: uv run --no-sync python tests/integration_tests/run_integration_tests.py

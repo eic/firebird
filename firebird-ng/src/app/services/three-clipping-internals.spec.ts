@@ -8,14 +8,15 @@
  * group chain changes (an outer clipping group toggled on or off), so a
  * toggle that returns to a previously-seen count shape would reuse a shader
  * bound to an orphaned array whose view-space values are never re-projected
- * again — the cut freezes to the camera. Firebird's answer is to drop the
- * renderer's cached render objects AND built node states on every clipping
- * STRUCTURE change (see three.service.ts).
+ * again — the cut freezes to the camera. Firebird's answer is to dispose the
+ * clipped geometry's materials on every clipping STRUCTURE change, which
+ * releases their render objects and, through three's reference counting,
+ * the built node states (see dropClippingShaderState in three.service.ts).
  *
  * These tests assert that three still behaves that way. If a three upgrade
  * makes the "replaces arrays" test fail, the upstream defect is likely fixed
- * — re-evaluate whether dropClippingShaderState() still needs to clear the
- * node builder cache.
+ * — re-evaluate whether dropClippingShaderState() still needs to evict the
+ * node states.
  *
  * The `three/src/...` import below is TEST-ONLY and deliberate: the class is
  * not exported from `three/webgpu`, and this spec never runs in the browser
@@ -67,7 +68,7 @@ describe('three ClippingContext internals (pinned)', () => {
     expect(wedgeCtxUnderZ).toBe(wedgeCtx); // one context per group, whatever the parent
     expect(wedgeCtx.intersectionPlanes).not.toBe(intersection);
     // If this starts failing (arrays kept stable), three fixed the defect:
-    // re-evaluate dropClippingShaderState()'s node-cache eviction.
+    // re-evaluate dropClippingShaderState()'s eviction.
   });
 
   it('re-projects plane VALUES into the current arrays on every update call (per-view value swaps)', () => {
@@ -91,11 +92,14 @@ describe('three ClippingContext internals (pinned)', () => {
     expect(held[0].w).not.toBe(before);
   });
 
-  it('cache key encodes plane COUNTS only — sibling groups with equal shapes collide', () => {
-    // This is why ClippedGeometrySlice uses a (1 intersection : 0 union)
-    // shape the main clipping chain can never produce: two groups with the
-    // same shape share one built shader state bound to ONE group's array,
-    // and the other group would clip with the wrong planes.
+  it('cache key carries the context id — sibling groups with equal shapes no longer collide', () => {
+    // Through three r185 the key was plane COUNTS only ("0:1"), so two
+    // sibling groups with the same shape shared one built shader state bound
+    // to ONE group's plane array, and the other group clipped with the wrong
+    // planes. three r186 prefixes the context id ("<id>:0:1"), which gives
+    // every group its own state. ClippedGeometrySlice keeps its distinct
+    // (1 intersection : 0 union) shape as a guard: if the two keys below
+    // become equal again, that distinct shape is load-bearing once more.
     const root = new ClippingContext() as AnyCtx;
     root.updateGlobal(SCENE, makeCamera());
 
@@ -103,12 +107,14 @@ describe('three ClippingContext internals (pinned)', () => {
     const groupB = makeGroup([new Plane(new Vector3(1, 0, 0), 500)], false);
     const ctxA = root.getGroupContext(groupA);
     const ctxB = root.getGroupContext(groupB);
+    const countShape = (key: string) => key.split(':').slice(-2).join(':');
 
     expect(ctxA).not.toBe(ctxB);
-    expect(ctxA.cacheKey).toBe(ctxB.cacheKey); // "0:1" === "0:1" — the landmine
+    expect(countShape(ctxA.cacheKey)).toBe(countShape(ctxB.cacheKey)); // same shape "0:1"
+    expect(ctxA.cacheKey).not.toBe(ctxB.cacheKey); // distinct keys since r186
 
-    // The slice's intersection-mode single plane has a distinct shape:
+    // The slice's intersection-mode single plane still has a distinct shape:
     const sliceLike = makeGroup([new Plane(new Vector3(0, -1, 0), 0)], true);
-    expect(root.getGroupContext(sliceLike).cacheKey).not.toBe(ctxA.cacheKey);
+    expect(countShape(root.getGroupContext(sliceLike).cacheKey)).not.toBe(countShape(ctxA.cacheKey));
   });
 });

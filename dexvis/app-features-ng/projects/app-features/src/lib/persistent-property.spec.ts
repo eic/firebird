@@ -254,10 +254,11 @@ describe('ConfigProperty', () => {
             const consoleSpy = vi.spyOn(console, 'error');
             const config = new ConfigProperty('test', 'default', undefined, undefined, mockStorageInterface);
 
-            // Should still allow updates when timestamp is corrupted
+            // Should still allow updates when timestamp is corrupted. An
+            // unparsable timestamp reads as "no timestamp", which is not an error.
             config.setValue('newValue', 1000);
             expect(config.value).toBe('newValue');
-            expect(consoleSpy).toHaveBeenCalled();
+            expect(consoleSpy).not.toHaveBeenCalled();
         });
 
         it('should handle missing storage gracefully', () => {

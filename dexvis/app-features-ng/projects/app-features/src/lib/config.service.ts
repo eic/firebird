@@ -1,5 +1,11 @@
-import { Injectable } from '@angular/core';
-import {ConfigProperty, ConfigPropertyMeta} from '../utils/config-property';
+import { Injectable, inject } from '@angular/core';
+import {
+  ConfigProperty,
+  ConfigPropertyMeta,
+  LocalStoragePropertyStorage,
+  PersistentPropertyStorage,
+} from './config-property';
+import { CONFIG_STORAGE_OPTIONS, type ConfigStorageOptions } from './tokens';
 
 export interface ConfigSnapshot {
   configs: {
@@ -27,18 +33,35 @@ export interface ConfigSchema<T> extends ConfigPropertyMeta {
  * loads at app init; components declare their configs in constructors), so
  * server/URL/feature-default values for not-yet-declared keys are kept pending
  * and applied at declaration time.
+ *
+ * Declare each key once, from one shared schema. The first declaration
+ * decides the default and the validator; in development builds a later
+ * declaration that disagrees logs a warning. A placeholder (see
+ * `getConfigOrPlaceholder()`) is the exception: the first real declaration
+ * replaces its provisional default.
  */
 @Injectable({
   providedIn: 'root',
+  useFactory: () => new ConfigService(inject(CONFIG_STORAGE_OPTIONS, { optional: true }) ?? {}),
 })
 export class ConfigService {
 
   public configsByName: Map<string, ConfigProperty<any>> = new Map();
 
+  /** Where the properties this service creates persist their values. */
+  readonly storage: PersistentPropertyStorage;
+
   /** Values that arrived before their key was declared, per layer. */
   private pendingServerValues = new Map<string, unknown>();
   private pendingSessionValues = new Map<string, unknown>();
   private pendingFeatureDefaults = new Map<string, unknown>();
+
+  /** Keys registered by getConfigOrPlaceholder() and not declared since. */
+  private placeholders = new Set<string>();
+
+  constructor(options: ConfigStorageOptions = {}) {
+    this.storage = new LocalStoragePropertyStorage(options.prefix ?? '');
+  }
 
   // Generic getter with type safety
 
@@ -46,12 +69,39 @@ export class ConfigService {
     return this.configsByName.get(key) as ConfigProperty<T> | undefined;
   }
 
+  /**
+   * Returns the property for `key`, declaring it with the default `value`
+   * when the key is new. Same rules as `declare()`.
+   */
   public getConfigOrCreate<T>(key: string, value: T): ConfigProperty<T> {
-    let property = this.configsByName.get(key);
-    if (!property) {
-      property = this.createConfig(key, value);
+    const existing = this.configsByName.get(key) as ConfigProperty<T> | undefined;
+    if (existing) {
+      return this.reconcile(existing, value, undefined);
     }
-    return property as ConfigProperty<T>;
+    return this.register(new ConfigProperty<T>(key, value, undefined, undefined, this.storage));
+  }
+
+  /**
+   * Returns the property for `key`; when no code declared the key yet,
+   * registers a PLACEHOLDER whose provisional default is `sample`. Use it
+   * where a value arrives for a key that the code that owns it may not have
+   * declared yet, such as a `set-config` command. The first real declaration
+   * (`declare()`, `addConfig()`, `getConfigOrCreate()`, `createConfig()`)
+   * replaces the placeholder's default and validator and re-reads the other
+   * layers with the declared type.
+   */
+  public getConfigOrPlaceholder<T>(key: string, sample: T): ConfigProperty<T> {
+    const existing = this.configsByName.get(key) as ConfigProperty<T> | undefined;
+    if (existing) {
+      return existing;
+    }
+    this.placeholders.add(key);
+    return this.register(new ConfigProperty<T>(key, sample, undefined, undefined, this.storage));
+  }
+
+  /** True when code declared `key`; false for unknown keys and placeholders. */
+  public isDeclared(key: string): boolean {
+    return this.configsByName.has(key) && !this.placeholders.has(key);
   }
 
   // Generic getter that throws if property doesn't exist
@@ -70,19 +120,16 @@ export class ConfigService {
    * `this.myConfig = configService.addConfig(new ConfigProperty(...))`.
    */
   public addConfig<T>(property: ConfigProperty<T>): ConfigProperty<T> {
-    const existing = this.configsByName.get(property.key);
+    const existing = this.configsByName.get(property.key) as ConfigProperty<T> | undefined;
     if (existing) {
-      return existing as ConfigProperty<T>;
+      return this.reconcile(existing, property.codeDefault, property.validator);
     }
-    this.configsByName.set(property.key, property);
-    this.applyPendingLayers(property);
-    return property;
+    return this.register(property);
   }
 
-    // Register a property
+  // Register a property
   public createConfig<T>(key: string, value: T): ConfigProperty<T> {
-    const config = new ConfigProperty(key, value);
-    return this.addConfig(config);
+    return this.getConfigOrCreate(key, value);
   }
 
   /**
@@ -91,13 +138,50 @@ export class ConfigService {
    * This is the entry point extensions use for their own configs.
    */
   public declare<T>(schema: ConfigSchema<T>): ConfigProperty<T> {
-    let property = this.getConfig<T>(schema.key);
-    if (!property) {
-      property = this.addConfig(new ConfigProperty<T>(schema.key, schema.default, undefined, schema.validator));
-    }
+    const existing = this.getConfig<T>(schema.key);
+    const property = existing
+      ? this.reconcile(existing, schema.default, schema.validator)
+      : this.register(new ConfigProperty<T>(schema.key, schema.default, undefined, schema.validator, this.storage));
     const { key, default: _default, validator, ...meta } = schema;
     property.meta = { ...property.meta, ...meta };
     return property;
+  }
+
+  /** Adds a new property and applies the layers that waited for its key. */
+  private register<T>(property: ConfigProperty<T>): ConfigProperty<T> {
+    this.configsByName.set(property.key, property);
+    this.applyPendingLayers(property);
+    return property;
+  }
+
+  /**
+   * A declaration for a key that already has a property: upgrades a
+   * placeholder; otherwise keeps the first declaration and, in development
+   * builds, warns when this one disagrees with it.
+   */
+  private reconcile<T>(
+    existing: ConfigProperty<T>,
+    defaultValue: T,
+    validator: ((value: T) => boolean) | undefined,
+  ): ConfigProperty<T> {
+    if (this.placeholders.delete(existing.key)) {
+      existing.redeclare(defaultValue, validator);
+      return existing;
+    }
+    if (typeof ngDevMode !== 'undefined' && ngDevMode) {
+      const problems: string[] = [];
+      if (!sameValue(existing.codeDefault, defaultValue)) {
+        problems.push(`default ${describe(defaultValue)} (in effect: ${describe(existing.codeDefault)})`);
+      }
+      if (validator && !sameFunction(existing.validator, validator)) {
+        problems.push(existing.validator ? 'a different validator' : 'a validator (in effect: none)');
+      }
+      if (problems.length > 0) {
+        console.warn(`[ConfigService] Key '${existing.key}' is declared again with ${problems.join(' and ')}. ` +
+          'The first declaration stays in effect; declare the key once and share its schema.');
+      }
+    }
+    return existing;
   }
 
   /** Applies layered values that arrived before this key was declared. */
@@ -117,7 +201,7 @@ export class ConfigService {
     }
   }
 
-  /** SERVER layer entry point (config.jsonc / pyrobird values). */
+  /** SERVER layer entry point (config.jsonc served by the backend). */
   public applyServerValue(key: string, value: unknown): void {
     const property = this.configsByName.get(key);
     if (property) {
@@ -150,7 +234,9 @@ export class ConfigService {
   }
 
   /**
-   * Loads default values for all registered configs
+   * Resets every registered key: removes stored values and URL overrides, so
+   * each value falls back to its server value or default (see
+   * `ConfigProperty.setDefault()`).
    */
   public loadDefaults(): void {
     this.configsByName.forEach((config) => {
@@ -159,7 +245,7 @@ export class ConfigService {
   }
 
   /**
-   * Loads default values for configs whose keys start with the specified prefix
+   * Resets the keys that start with `prefix`, like `loadDefaults()`.
    * @param prefix The prefix to filter config keys by (e.g., "ui" for all UI-related configs)
    */
   public loadDefaultsFor(prefix: string): void {
@@ -224,7 +310,28 @@ export class ConfigService {
     const timestamp = config.getTimestamp();
     return timestamp !== null ? timestamp : undefined;
   }
+}
 
-  constructor() {
+/** True for equal primitives and for objects with equal JSON. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
+
+/** True for the same function, or two functions with the same source (inline arrows). */
+function sameFunction(a: Function | undefined, b: Function | undefined): boolean {
+  return a === b || (!!a && !!b && a.toString() === b.toString());
+}
+
+function describe(value: unknown): string {
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
   }
 }

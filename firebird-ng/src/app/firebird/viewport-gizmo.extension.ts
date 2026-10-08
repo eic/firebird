@@ -19,7 +19,7 @@ import { ViewportGizmo } from '@dexvis/viewport-gizmo';
 import type { OrthographicCamera, PerspectiveCamera } from 'three';
 
 import type { RenderView, ViewOverlay } from '../services/render-view';
-import { CommandBusService } from './command-bus.service';
+import { CommandBusService } from '@dexvis/app-features';
 import type { SceneContext, ThreeExtension } from './three-extension';
 
 @Injectable()

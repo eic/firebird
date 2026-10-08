@@ -1,5 +1,6 @@
 /**
- * @firebird/example-extension — the whole public surface is one function.
+ * @dexvis/firebird-example-extension — the whole public surface is one
+ * function.
  *
  * This package is the template for experiment extensions: a custom event
  * piece (model, worker-safe), its painter (lazily loaded, three.js), and a
@@ -22,7 +23,7 @@ import {
   firebirdFeatures,
   withEventPiece,
   withLazyPainter,
-} from '@firebird/ng';
+} from '@dexvis/firebird-ng';
 import { CherenkovRingPiece, CherenkovRingPieceFactory } from './cherenkov-ring.piece';
 import { ringStyle } from './ring-style';
 

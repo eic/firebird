@@ -1,5 +1,5 @@
 {
-  "name": "@firebird/example-extension",
+  "name": "@dexvis/firebird-example-extension",
   "version": "0.0.1",
   "description": "Example Firebird extension package: a custom event group (Cherenkov rings), its painter, and a config - registered through the public provideFirebird() API. Template for experiment extensions.",
   "private": true,

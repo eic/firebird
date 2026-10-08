@@ -4,12 +4,12 @@ import {
   AfterViewInit,
   Input,
   ViewChild, OnDestroy, TemplateRef, ElementRef, signal, effect,
-  ChangeDetectionStrategy
+  ChangeDetectionStrategy, DestroyRef, inject
 } from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 
 import {ALL_GROUPS, GeometryService} from '../../services/geometry.service';
 import {GameControllerService} from '../../services/game-controller.service';
-import {ConfigService} from '../../services/config.service';
 
 import {SceneTreeComponent} from '../../components/scene-tree/scene-tree.component';
 import {ModelTreeComponent} from '../../components/model-tree/model-tree.component';
@@ -19,7 +19,6 @@ import {EventSelectorComponent} from '../../components/event-selector/event-sele
 import {GeometryClippingComponent} from '../../components/geometry-clipping/geometry-clipping.component';
 import {OpenEventComponent} from '../../components/open-event/open-event.component';
 
-import {MatSnackBar} from '@angular/material/snack-bar';
 import {MatIcon} from '@angular/material/icon';
 import { MatIconButton} from '@angular/material/button';
 import {MatTooltip} from '@angular/material/tooltip';
@@ -27,7 +26,6 @@ import {MatTooltip} from '@angular/material/tooltip';
 import {PerfStatsComponent} from "../../components/perf-stats/perf-stats.component";
 import {EventDisplayService} from "../../services/event-display.service";
 import {EventTimeControlComponent} from "../../components/event-time-control/event-time-control.component";
-import {ServerConfigService} from "../../services/server-config.service";
 import {LegendWindowComponent} from "../../components/legend-window/legend-window.component";
 import {PainterConfigPanelComponent} from "../../components/painter-config-panel/painter-config-panel.component";
 import {ObjectRaycastComponent} from "../../components/object-raycast/object-raycast.component";
@@ -35,8 +33,6 @@ import {MatProgressSpinner} from "@angular/material/progress-spinner";
 import {SceneExportComponent} from "../../components/scene-export/scene-export";
 import {AnimationSettingsComponent} from "../../components/animation-settings/animation-settings.component";
 import GUI from 'lil-gui';
-import {ConfigProperty} from "../../utils/config-property";
-import {CommandBusService} from "../../firebird/command-bus.service";
 import {DataModelService} from "../../services/data-model.service";
 import {RecordingMenuComponent} from "../../components/recording-menu/recording-menu.component";
 
@@ -102,15 +98,6 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(SceneTreeComponent)
   geometryTreeComponent: SceneTreeComponent | null | undefined;
 
-  // Empty default on purpose: the app-level default arrives through
-  // withDefaultGeometry() in app.config (feature-defaults tier).
-  geometryUrl = new ConfigProperty('geometry.selectedGeometry', '');
-  geometryFastAndUgly = new ConfigProperty('geometry.FastDefaultMaterial', false);
-  geometryCutListName = new ConfigProperty('geometry.cutListName', "off");
-  dexJsonEventSource = new ConfigProperty('events.dexEventsSource', '');
-  rootEventSource = new ConfigProperty('events.rootEventSource', '');
-  rootEventRange = new ConfigProperty('events.rootEventRange', '0-5');
-
   message = "";
 
   loaded: boolean = false;
@@ -135,29 +122,20 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   get loadingEdm() { return this.eventDisplay.loadingEdm; }
   get loadingGeometry() { return this.eventDisplay.loadingGeometry; }
 
-  // lil GUI for right panel
-  lilGui = new GUI();
+  /** Camera debug panel (lil-gui), built once the scene exists and destroyed with the page. */
+  private lilGui?: GUI;
   showGui = false;
+
+  /** Set in ngOnDestroy: setup that resumes after an await checks it and stops. */
+  private destroyed = false;
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor(
     private controller: GameControllerService,
-    private snackBar: MatSnackBar,
     public  eventDisplay: EventDisplayService,
-    private config: ConfigService,
-    private serverConfig: ServerConfigService,
     public  geomService: GeometryService,
-    private commandBus: CommandBusService,
     private dataService: DataModelService,
   ) {
-    // addConfig returns the canonical instance for the key — keep the
-    // returned reference so all writers/readers share one property.
-    this.geometryUrl = config.addConfig(this.geometryUrl);
-    this.geometryFastAndUgly = config.addConfig(this.geometryFastAndUgly);
-    this.geometryCutListName = config.addConfig(this.geometryCutListName);
-    this.dexJsonEventSource = config.addConfig(this.dexJsonEventSource);
-    this.rootEventSource = config.addConfig(this.rootEventSource);
-    this.rootEventRange = config.addConfig(this.rootEventRange);
-
     // Scene-tree debug view refresh on data arrival. Signal-driven so it
     // also covers command-driven loads (?dex=/?geometry=), which the old
     // per-load callbacks missed.
@@ -173,7 +151,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   ngOnInit() {
-    this.controller.buttonY.onPress.subscribe((value) => {
+    // The controller service is a root singleton: the subscription ends with
+    // the page, or every visit would add one.
+    this.controller.buttonY.onPress.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
       if (value) {
         // TODO this.cycleGeometry();
       }
@@ -185,8 +165,13 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   async ngAfterViewInit(): Promise<void> {
 
     // Initialize the ThreeService scene/camera/renderer/controls
-    // Must happen in ngAfterViewInit so the DOM container #eventDisplay exists
-    await this.eventDisplay.initThree('eventDisplay');
+    // Must happen in ngAfterViewInit so the DOM container #eventDisplay exists.
+    // False: the page went away (or another display page attached) while
+    // the renderer initialized, so nothing below may run.
+    const attached = await this.eventDisplay.initThree('eventDisplay');
+    if (!attached || this.destroyed) {
+      return;
+    }
 
     // One mechanism for every resize source (pane toggle, pane drag, window):
     // observe the central pane container. Debounced because pane dragging
@@ -200,31 +185,35 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Config-driven auto-load + the queued startup commands (?dex=&event=N,
     // server startupCommands, batch) — one shared path with the quad view.
+    // Failures reach the user through EventDisplayService.reportError().
     if (this.isAutoLoadOnInit) {
-      this.eventDisplay.autoLoadAndRunStartup(message => this.showError(message));
+      this.eventDisplay.autoLoadAndRunStartup();
     } else {
-      void this.commandBus.runStartupCommands();
+      void this.eventDisplay.runStartupCommands();
     }
 
-    // Init gui
-    this.lilGui.add(this, 'cameraToCenter').name('Camera to center');
-    this.lilGui.add(this, 'cameraToFarForward').name('Camera to Far Forward');
-    this.lilGui.add(this, 'makeScreenshot').name('Make Screenshot');
+    // Camera debug panel. It sits in document.body and its .listen()
+    // controllers poll every animation frame, so ngOnDestroy destroys it.
+    const gui = new GUI();
+    this.lilGui = gui;
+    gui.add(this, 'cameraToCenter').name('Camera to center');
+    gui.add(this, 'cameraToFarForward').name('Camera to Far Forward');
+    gui.add(this, 'makeScreenshot').name('Make Screenshot');
 
-    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').name('Camera x[mm]').decimals(2).listen();
-    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'y').name('Camera y[mm]').decimals(2).listen();
-    this.lilGui.add(this.eventDisplay.three.perspectiveCamera.position, 'z').name('Camera z[mm]').decimals(2).listen();
+    gui.add(this.eventDisplay.three.perspectiveCamera.position, 'x').name('Camera x[mm]').decimals(2).listen();
+    gui.add(this.eventDisplay.three.perspectiveCamera.position, 'y').name('Camera y[mm]').decimals(2).listen();
+    gui.add(this.eventDisplay.three.perspectiveCamera.position, 'z').name('Camera z[mm]').decimals(2).listen();
 
-    this.lilGui.add(this.eventDisplay.three.controls.target, 'x').name("Pivot x[mm]").decimals(1).listen();
-    this.lilGui.add(this.eventDisplay.three.controls.target, 'y').name("Pivot y[mm]").decimals(1).listen();
-    this.lilGui.add(this.eventDisplay.three.controls.target, 'z').name("Pivot z[mm]").decimals(1).listen();
+    gui.add(this.eventDisplay.three.controls.target, 'x').name("Pivot x[mm]").decimals(1).listen();
+    gui.add(this.eventDisplay.three.controls.target, 'y').name("Pivot y[mm]").decimals(1).listen();
+    gui.add(this.eventDisplay.three.controls.target, 'z').name("Pivot z[mm]").decimals(1).listen();
 
-    this.lilGui.add(this.eventDisplay.three, "showBVHDebug");
+    gui.add(this.eventDisplay.three, "showBVHDebug");
 
     // GUI settings
-    this.lilGui.domElement.style.top = '64px';
-    this.lilGui.domElement.style.right = '120px';
-    this.lilGui.domElement.style.display = 'none';
+    gui.domElement.style.top = '64px';
+    gui.domElement.style.right = '120px';
+    gui.domElement.style.display = this.showGui ? 'block' : 'none';
 
     // Recording lives in the toolbar (app-recording-menu), not in this
     // debug GUI.
@@ -239,18 +228,15 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
     this.rightPaneOpen.update(v => !v);
   }
 
-  showError(message: string) {
-    this.snackBar.open(message, 'Dismiss', {
-      duration: 7000, // Auto-dismiss after X ms
-      // verticalPosition: 'top', // Place at the top of the screen
-      panelClass: ['error-snackbar']
-    });
-  }
-
-
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.lilGui?.destroy();
+    this.lilGui = undefined;
+    this.eventDisplay.detachDataSelection();
     this.resizeObserver?.disconnect();
     clearTimeout(this.resizeDebounce);
+    // No page shows the canvas until the next display page attaches it.
+    this.eventDisplay.three.detach();
   }
 
 
@@ -277,12 +263,9 @@ export class MainDisplayComponent implements OnInit, AfterViewInit, OnDestroy {
   toggleCameraControls() {
     this.showGui = !this.showGui;
 
-    // Toggle GUI visibility
-    const guiElement = this.lilGui.domElement;
-    if (this.showGui) {
-      guiElement.style.display = 'block';
-    } else {
-      guiElement.style.display = 'none';
+    // Toggle GUI visibility (the panel exists once the scene initialized)
+    if (this.lilGui) {
+      this.lilGui.domElement.style.display = this.showGui ? 'block' : 'none';
     }
   }
 

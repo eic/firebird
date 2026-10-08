@@ -11,7 +11,7 @@
 import type { Type } from '@angular/core';
 import type * as THREE from 'three';
 import type { WebGPURenderer, ClippingGroup } from 'three/webgpu';
-import type { Event as FbEvent } from '@firebird/core';
+import type { Event as FbEvent } from '@dexvis/firebird-core';
 import type { RenderView, RenderViewOptions } from '../services/render-view';
 import type { ClippedGeometrySlice } from '../services/geometry-slice';
 
@@ -34,7 +34,14 @@ export interface SceneContext {
   /** The active camera (perspective or orthographic). */
   camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   renderer: WebGPURenderer;
-  /** Attach input listeners here; do not query the DOM for the canvas. */
+  /**
+   * The shared canvas every view draws into. Do not attach pointer input
+   * here: on multi-view pages the view containers sit above the canvas and
+   * receive the events, so the canvas gets none. Listen on a view's
+   * `container` instead (`mainView.container` for the display), and move
+   * the listeners when the view changes containers on page switches
+   * (`ViewOverlay.onViewContainerChange` reports it).
+   */
   canvas: HTMLCanvasElement;
   /**
    * The render views sharing this scene. Live list: multi-view pages add and
@@ -100,11 +107,20 @@ export interface FrameContext {
 export interface ThreeExtension {
   /** Called once, after the async ThreeService.init completed. */
   onSceneInit?(ctx: SceneContext): void;
-  /** Called every frame before rendering. Keep it cheap. */
+  /**
+   * Called before rendering, on every frame that renders. Keep it cheap. If
+   * it throws, the error is logged and this extension's onFrame is not
+   * called again; rendering and the other extensions continue.
+   */
   onFrame?(ctx: FrameContext): void;
   /** Called when a new event (entry) was loaded and painted. */
   onEventLoaded?(event: FbEvent): void;
-  /** Guaranteed cleanup on display teardown. Remove listeners and objects here. */
+  /**
+   * Called once at application teardown, when the root injector destroys
+   * the rendering service. The scene and the extension outlive display
+   * pages: leaving /display does not call this, and returning does not call
+   * onSceneInit again. Remove listeners and objects here.
+   */
   onDispose?(): void;
 }
 

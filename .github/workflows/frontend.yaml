@@ -3,57 +3,60 @@ name: Frontend CI Workflow
 on:
   push:
     branches:
-      - '*'
+      - '**'
   pull_request:
     branches:
-      - master
+      - main
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  test-and-build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./firebird-ng
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: false
+          # The dexvis packages are submodules and npm workspace members
           submodules: recursive
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: .nvmrc
+          cache: npm
 
       - name: Install Dependencies
-        # npm workspaces: single lockfile at the repo root
-        working-directory: .
-        run: npm install
+        # npm workspaces: one lockfile at the repo root; `npm ci` fails when it
+        # disagrees with any workspace manifest
+        run: npm ci
 
-      - name: Run Tests
-        run: npm run test:headless
+      # One step per workspace suite. build.py's FRONTEND_PACKAGE_WORKSPACES
+      # lists the same packages; every `test` script runs once and exits.
+      - name: Test firebird-ng
+        run: npm run test:headless --workspace=firebird-ng
 
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./firebird-ng
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: false
-          submodules: recursive
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+      - name: Test @dexvis/app-features
+        run: npm test -w @dexvis/app-features
 
-      - name: Install Dependencies
-        # npm workspaces: single lockfile at the repo root
-        working-directory: .
-        run: npm install
+      - name: Test @dexvis/firebird-core
+        run: npm test -w @dexvis/firebird-core
+
+      - name: Test @dexvis/root2dex
+        run: npm test -w @dexvis/root2dex
+
+      - name: Test @dexvis/threejs-tree-editor
+        run: npm test -w @dexvis/threejs-tree-editor
+
+      - name: Test @dexvis/root-geo-tree-editor
+        run: npm test -w @dexvis/root-geo-tree-editor
+
+      - name: Test @dexvis/viewport-gizmo
+        run: npm test -w @dexvis/viewport-gizmo
 
       - name: Build
+        working-directory: ./firebird-ng
         run: npm run build
 
       - name: Upload Artifacts

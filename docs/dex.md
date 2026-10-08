@@ -180,7 +180,7 @@ frontend animates partial tracks over time.
 
 ## TypeScript event model
 
-The frontend mirrors the format with typed classes in `@firebird/core`
+The frontend mirrors the format with typed classes in `@dexvis/firebird-core`
 (plain TypeScript, worker-safe, no Angular):
 
 - **DataExchange** — the whole document; `DataExchange.fromDexObj(obj)`

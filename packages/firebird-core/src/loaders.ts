@@ -94,7 +94,10 @@ export interface GeometryDataLoader extends DataLoaderBase {
 
 /**
  * Opens event data from a URL, path, or local file, producing a DataExchange
- * (the parsed DEX event container). Returns null on failure.
+ * (the parsed DEX event container). When the source cannot be loaded, reject
+ * with the reason (HTTP status, unsupported DEX version, entries outside the
+ * file): the display shows it to the user. A null result is reported as a
+ * failure without a reason.
  */
 export interface EventDataLoader extends DataLoaderBase {
   loadEvents(source: DataSource): Promise<DataExchange | null>;

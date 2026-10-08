@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  OnDestroy,
   TemplateRef,
   ViewChild,
   signal,
@@ -41,7 +42,7 @@ import { RenderView } from '../../services/render-view';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./recording-menu.component.scss'],
 })
-export class RecordingMenuComponent {
+export class RecordingMenuComponent implements OnDestroy {
   @ViewChild('openBtn', { read: ElementRef }) openBtn!: ElementRef;
   @ViewChild('dialogTemplate') dialogTemplate!: TemplateRef<unknown>;
   dialogRef: MatDialogRef<unknown> | null = null;
@@ -49,6 +50,7 @@ export class RecordingMenuComponent {
   // ── Live webm recording ──
   liveRecording = signal(false);
   private mediaRecorder?: MediaRecorder;
+  private liveStream?: MediaStream;
   private recordedBlobs: Blob[] = [];
 
   // ── Offline frame capture ──
@@ -135,11 +137,13 @@ export class RecordingMenuComponent {
       }
     }
     if (!recorder) {
+      stream.getTracks().forEach(track => track.stop());
       this.snackBar.open('MediaRecorder is not supported by this browser.', 'OK', { duration: 5000 });
       return;
     }
 
     this.mediaRecorder = recorder;
+    this.liveStream = stream;
     recorder.ondataavailable = event => {
       if (event.data && event.data.size > 0) {
         this.recordedBlobs.push(event.data);
@@ -150,8 +154,24 @@ export class RecordingMenuComponent {
   }
 
   stopLiveRecording(): void {
-    this.mediaRecorder?.stop();
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
+    // The canvas capture track keeps sampling the canvas until stopped.
+    this.liveStream?.getTracks().forEach(track => track.stop());
+    this.liveStream = undefined;
     this.liveRecording.set(false);
+  }
+
+  /**
+   * Leaving the page ends any recording: the canvas outlives the page, so a
+   * running MediaRecorder or frame capture would otherwise keep going with
+   * no control left to stop it.
+   */
+  ngOnDestroy(): void {
+    this.stopLiveRecording();
+    this.offlineAbort?.abort();
+    this.dialogRef?.close();
   }
 
   downloadLiveRecording(): void {

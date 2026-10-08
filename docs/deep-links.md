@@ -33,13 +33,77 @@ Quad-view settings (usable as `config.<key>=` overrides): cut positions
 
 Notes:
 
+- What a link loads stays on screen when you go to **Configure** and back to
+  the display: the configured default geometry or events load again only after
+  you change that setting or apply a choice in the data selector.
 - File URLs can be absolute (`https://...`, `epic://...`) or relative. Relative
   paths resolve through the pyrobird server's download endpoint, so
   `dex=subdir/events.firebird.zip` opens a file under the server's
   `--work-path`. `local://subdir/events.firebird.zip` is the same thing
   spelled explicitly.
-- Encode special characters in values: `#` in a color becomes `%23`, so
-  `config.examples.cherenkov.ringColor=%23ff4d00`.
+- Percent-encode every value that is not a plain word or a plain URL; see
+  [Percent-encode values](#percent-encode-values).
+
+## Percent-encode values
+
+The browser decodes the query string before Firebird reads it, so characters
+with a meaning in a query string must be percent-encoded inside a value:
+
+| Character | Encoded | What happens without encoding |
+|---|---|---|
+| `&` | `%26` | Ends the value; the rest becomes another parameter. |
+| `+` | `%2B` | Turns into a space. |
+| `#` | `%23` | Ends the query; everything after it is dropped. |
+| `%` | `%25` | Starts an escape sequence. |
+| `=` | `%3D` | Usually survives, but encode it for safety. |
+| space | `%20` | Not a valid URL character. |
+
+`:` and `/` may stay as they are, so a plain `https://host/file.zip` value
+needs no encoding.
+
+Signed and tokened download URLs always need encoding. A presigned S3 URL
+carries its own query string:
+
+```
+https://bucket.s3.amazonaws.com/run1.firebird.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA%2F20261005%2Fus-east-1&X-Amz-Signature=3f2a
+```
+
+Pasted into `dex=` as is, the first `&` ends the value and Firebird requests
+`run1.firebird.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256` without a signature.
+Encode the whole URL instead:
+
+```
+/display?dex=https%3A%2F%2Fbucket.s3.amazonaws.com%2Frun1.firebird.zip%3FX-Amz-Algorithm%3DAWS4-HMAC-SHA256%26X-Amz-Credential%3DAKIA%252F20261005%252Fus-east-1%26X-Amz-Signature%3D3f2a&event=2
+```
+
+Encode values with your language's URL encoder, not by hand:
+
+```js
+const link = `/display?dex=${encodeURIComponent(presignedUrl)}&event=2`;
+```
+
+```python
+from urllib.parse import quote
+link = f"/display?dex={quote(presigned_url, safe='')}&event=2"
+```
+
+In code that builds links for Firebird, `buildDeepLink()` (exported by
+`@dexvis/firebird-ng`) encodes every value and checks the `cmd=` grammar:
+
+```ts
+import { buildDeepLink } from '@dexvis/firebird-ng';
+
+const link = buildDeepLink('https://seeeic.org/display', {
+  params: { dex: presignedUrl, event: 2 },
+  config: { 'geometry.themeName': 'cad' },
+  commands: ['camera-preset:farforward'],
+});
+```
+
+One limit cannot be encoded away: `cmd=` items are split on `;` after the
+browser decoded the query, so a command argument cannot contain `;`, not
+even as `%3B`. Pass such a value through `dex=` or `geometry=`, which take
+the whole value. `buildDeepLink()` rejects a `;` inside a command argument.
 
 ## Session-scoped settings: `config.<key>=`
 
@@ -64,6 +128,7 @@ config.geometry.FastDefaultMaterial=true # fast opaque materials (faster on weak
 config.events.rootEventRange=0-5         # which entries to convert from .root event files
 config.events.rootCollections=tracker_hits,mc_particles  # which collection groups to convert (empty = all)
 config.painters.byPiece.MCParticles.visible=true  # show the MC particle lines (hidden by default)
+config.catalog.url=https://host/catalog.json      # add a remote data catalog to the data selector
 ```
 
 ## Commands: `cmd=`
@@ -76,8 +141,10 @@ in order — use commands. The grammar is `type:argument`, joined by `;`:
 ```
 
 The shorthands `dex=`, `geometry=` and `event=` are convenience forms of the
-`open-dex`, `open-geometry` and `show-event` commands. The command reference
-and how commands execute is described in [Command Bus](/command-bus).
+`open-dex`, `open-geometry` and `show-event` commands: `dex=X` does what
+`cmd=open-dex:X` does. They run before the `cmd=` list, in the order
+`geometry`, `dex`, `event`. The command reference and how commands execute
+is described in [Command Bus](/command-bus).
 
 ## Worked examples
 

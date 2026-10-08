@@ -41,34 +41,44 @@ You can also manually specify a different directory using the `--work-path` opti
 ```bash
 # Serve from the current directory (default)
 # (assuming you are in the firebird_data directory)
-pyrobird serve
+pyrobird serve --allow-cors
 
 # OR serve from a specific directory
-pyrobird serve --work-path=/firebird_data
+pyrobird serve --allow-cors --work-path=/firebird_data
 ```
 
 You should see output indicating the server is running, usually on port `5454`.
+
+`--allow-cors` lets a Firebird page served from another address (the hosted
+display, or a development server on port 4200) call this server. You can
+leave it out when you open Firebird from pyrobird itself at
+`http://localhost:5454`: the page then uses the server it came from, and
+you can skip the backend settings in the next section.
 
 > **Note on Security:** By default, `pyrobird` only allows access to files in the directory specified by `--work-path`. This is a security feature to prevent accidental exposure of your system files.
 
 ## 4. Open Firebird and Load Local Files
 
-1.  Open Firebird in your browser (e.g., [https://eic.github.io/firebird](https://eic.github.io/firebird) or your local development version).
+1.  Open Firebird in your browser (e.g., [https://seeeic.org](https://seeeic.org) or your local development version).
 2.  Click **Configure** in the top menu.
 3.  Scroll down to **Server API Configuration**.
 4.  Toggle **"Use specific backend"** to **ON**.
 5.  Ensure the URL is set to `http://localhost:5454` (this is the default).
-6.  In the **Geometry** section, enter:
+    Under **Backend Details**, **Backend in use** now shows this address.
+    The browser may ask whether the page may access devices on your local
+    network; allow it.
+6.  Scroll back up to **Select Geometry and Events** and open the **Manual** tab.
+7.  In the **Geometry** field, enter:
     ```
     local://epic_craterlake.root
     ```
-7.  In the **Event Source: JSON** section, enter:
+8.  In the **Events** field, enter:
     ```
     local://py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip
     ```
     *(Tip: You can use the full filename you downloaded)*
 
-8.  Click **DISPLAY**.
+9.  Click **Display**.
 
 You should now see the detector and events loaded from your local machine!
 

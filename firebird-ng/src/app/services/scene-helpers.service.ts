@@ -3,12 +3,14 @@ import * as THREE from 'three';
 import { ThreeService } from './three.service';
 
 /**
- * A simple service that keeps references to "helper" objects:
+ * Keeps references to "helper" objects and toggles or moves them:
  * - Axis lines
  * - EtaPhi grids
  * - Cartesian grids
  * - 3D points picking
- * And exposes methods to toggle them on/off or move them.
+ * Every setter that changes what the scene shows schedules a render
+ * (`ThreeService.invalidate()`): the on-demand render loop draws nothing
+ * new without one.
  */
 @Injectable({ providedIn: 'root' })
 export class SceneHelpersService {
@@ -28,6 +30,7 @@ export class SceneHelpersService {
   setShowAxis(show: boolean) {
     if (this.threeService.axesHelper) {
       this.threeService.axesHelper.visible = show;
+      this.threeService.invalidate();
     }
   }
 
@@ -50,6 +53,7 @@ export class SceneHelpersService {
       this.threeService.sceneHelpers.add(this.cartesianGridGroup);
     }
     this.cartesianGridGroup.visible = show;
+    this.threeService.invalidate();
   }
 
   /**
@@ -64,6 +68,7 @@ export class SceneHelpersService {
       this.threeService.sceneHelpers.add(this.etaPhiGroup);
     }
     this.etaPhiGroup.visible = show;
+    this.threeService.invalidate();
   }
 
   /**
@@ -137,6 +142,7 @@ export class SceneHelpersService {
       this.threeService.sceneHelpers.add(this.labelsGroup);
     }
     this.labelsGroup.visible = show;
+    this.threeService.invalidate();
   }
 
   /**
@@ -220,6 +226,7 @@ export class SceneHelpersService {
   translateCartesianGrid(shift: THREE.Vector3) {
     if (this.cartesianGridGroup) {
       this.cartesianGridGroup.position.add(shift);
+      this.threeService.invalidate();
     }
   }
 
@@ -231,5 +238,6 @@ export class SceneHelpersService {
     this.threeService.camera.position.copy(cameraPos);
     this.threeService.controls.target.copy(targetPos);
     this.threeService.controls.update();
+    this.threeService.invalidate();
   }
 }

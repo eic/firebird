@@ -5,9 +5,8 @@ import {
   PiecePainterConstructor,
   painterIdOf,
   painterMetaOf,
-} from '@firebird/core';
-import { ConfigService } from './config.service';
-import { ConfigProperty } from '../utils/config-property';
+} from '@dexvis/firebird-core';
+import { ConfigProperty, ConfigService } from '@dexvis/app-features';
 
 /**
  * Binds painter metadata to the config system.
@@ -23,7 +22,7 @@ import { ConfigProperty } from '../utils/config-property';
  *
  * Painter instances read the knobs through a `PainterConfigView` — a plain
  * object over the declared properties, so painter code stays worker-safe
- * (`@firebird/core` never sees DI).
+ * (`@dexvis/firebird-core` never sees DI).
  */
 @Injectable({
   providedIn: 'root',
@@ -45,11 +44,13 @@ export class PainterConfigService {
 
   /**
    * Declares (or returns) the piece visibility property. 'visible' is a
-   * RESERVED knob name: it lives under the painter knob namespace so the
-   * normal config precedence applies (a pack ships a piece hidden via
+   * RESERVED knob name (`RESERVED_PAINTER_KNOB_KEYS` in
+   * `@dexvis/firebird-core`; painter registration rejects a painter that
+   * declares it): it lives under the painter knob namespace so the normal
+   * config precedence applies (a pack ships a piece hidden via
    * `withConfigDefaults`, a deep link or the panel overrides), but it is
    * applied to the painter's root node by EventDisplayService, not read by
-   * painter code — painter meta must not declare a knob named 'visible'.
+   * painter code.
    */
   visibilityProperty(pieceName: string): ConfigProperty<boolean> {
     return this.config.declare<boolean>({

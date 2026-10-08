@@ -86,6 +86,25 @@ describe('BatchedTrajectoryPainter', () => {
     expect([...restored].map(v => v.toFixed(5))).toEqual([...before].map(v => v.toFixed(5)));
   });
 
+  it('keeps one highlight when another track is highlighted (selection plus hover)', () => {
+    const painter = new BatchedTrajectoryPainter(mockParentNode, piece);
+    const solid = (painter as any).batches.find((b: any) => !b.dashed);
+    const segmentOf = (track: number) => [...solid.trackIds].indexOf(track);
+    const rgb = (track: number) => [...solid.colors.slice(segmentOf(track) * 6, segmentOf(track) * 6 + 3)]
+      .map((v: number) => v.toFixed(5));
+    const electronBefore = rgb(0);
+
+    painter.highlightEntity(2); // selected
+    const protonHighlighted = rgb(2);
+    painter.highlightEntity(0); // hovered
+    expect(rgb(2)).toEqual(protonHighlighted);
+    expect(rgb(0)).toEqual(protonHighlighted);
+
+    painter.unhighlightEntity(0); // hover ends, selection stays
+    expect(rgb(2)).toEqual(protonHighlighted);
+    expect(rgb(0)).toEqual(electronBefore);
+  });
+
   it('disposes both batch objects', () => {
     const painter = new BatchedTrajectoryPainter(mockParentNode, piece);
     painter.dispose();

@@ -2,7 +2,8 @@ import { Injectable } from '@angular/core';
 import * as THREE from "three";
 import {BehaviorSubject, Observable, Subject} from "rxjs";
 import {ThreeService} from "./three.service";
-import {ConfigService} from "./config.service";
+import { ConfigService } from '@dexvis/app-features';
+import { USE_CONTROLLER_CONFIG } from '../firebird/config-keys';
 
 
 export enum GamepadButtonIndexes {
@@ -219,8 +220,9 @@ export class GameControllerService {
     private three: ThreeService,
     private localStorageService: ConfigService
   ) {
-    // Check if controller should be enabled on initialization
-    this.isControllerEnabled = this.localStorageService.getConfig<boolean>('useController')?.value ?? false;
+    // The config page's "Use controller" toggle writes this key.
+    const useController = this.localStorageService.declare(USE_CONTROLLER_CONFIG);
+    this.isControllerEnabled = useController.value;
 
     // Create the callback reference
     this.frameCallbackRef = () => { this.animationLoopHandler(); };
@@ -231,8 +233,8 @@ export class GameControllerService {
       console.log('[GameController] Controller enabled on initialization');
     }
 
-    // Subscribe to changes in the use controller setting
-    this.localStorageService.getConfig<boolean>('useController')?.changes$.subscribe((enabled) => {
+    // Subscribe to changes in the use controller setting (root singleton: lives with the app)
+    useController.changes$.subscribe((enabled) => {
       this.setControllerEnabled(enabled);
     });
 

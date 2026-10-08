@@ -10,12 +10,14 @@ The working template is the `packages/firebird-example-extension` package in
 the repository: a custom event data type (Cherenkov rings), its painter, and a
 config key, installable with one line.
 
+> **Note:** Earlier versions used the `@firebird/` scope; replace `@firebird/ng`, `@firebird/core`, `@firebird/root2dex` and `@firebird/example-extension` with `@dexvis/firebird-ng`, `@dexvis/firebird-core`, `@dexvis/root2dex` and `@dexvis/firebird-example-extension`.
+
 ## Composing an application
 
 ```ts
 // app.config.ts
-import { provideFirebird, withFirebirdBuiltins, withUrlAlias } from '@firebird/ng';
-import { withExampleCherenkov } from '@firebird/example-extension';
+import { provideFirebird, withFirebirdBuiltins, withUrlAlias } from '@dexvis/firebird-ng';
+import { withExampleCherenkov } from '@dexvis/firebird-example-extension';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -59,6 +61,16 @@ export function withMyExperiment(): FirebirdFeature {
 | `withUrlAlias(prefix, base)` | A URL scheme alias, e.g. `epic://` | |
 | `withConfigDefaults({key: value})` | Setting defaults (lowest priority tier) | A pack configures, never locks — every other source overrides |
 | `withDefaultGeometry(url)` | The detector geometry loaded when nothing else selects one | Sugar for `withConfigDefaults({'geometry.selectedGeometry': url})` |
+| `withDataCatalog({entries, facets, ...})` | Datasets the data selector offers: presets, physics tags, URL lists | Several contributions merge; see below |
+| `withDataSelectorTab({id, label, load})` | A tab of the data selector control | `load` is a dynamic import; the component reads and writes `DataSelectionService.draft` |
+| `withUrlShorthand(param, commandType)` | A URL query shorthand: `?param=X` runs what `?cmd=commandType:X` runs | Firebird's own `dex`, `geometry` and `event` are shorthands |
+
+`withCommandHandler`, `withUrlAlias`, `withConfigDefaults` and
+`withUrlShorthand` come from the generic
+[`@dexvis/app-features`](https://github.com/dexvis/app-features-ng) package,
+together with the feature type (`FirebirdFeature` is its `AppFeature`), the
+config registry and the command bus. `@dexvis/firebird-ng` re-exports them;
+import everything from `@dexvis/firebird-ng`.
 
 ## Painter or ThreeExtension?
 
@@ -80,14 +92,15 @@ command bus, and is registered with `withLazyThreeExtension` inside
 @Injectable()
 export class HoverInfoExtension implements ThreeExtension {
   onSceneInit(ctx: SceneContext): void {
-    // scene, cameras, renderer, canvas are ready; attach listeners to ctx.canvas
+    // scene, cameras, renderer, views are ready; listen for pointer input
+    // on ctx.mainView.container (not ctx.canvas)
   }
   onFrame(ctx: FrameContext): void {
-    // every frame, before rendering; keep cheap, no allocation
+    // every rendered frame, before rendering; keep cheap, no allocation
   }
   onEventLoaded(event: Event): void {}
   onDispose(): void {
-    // guaranteed on teardown; remove listeners and objects
+    // once, at application teardown; remove listeners and objects
   }
 }
 ```
@@ -95,6 +108,9 @@ export class HoverInfoExtension implements ThreeExtension {
 - `onSceneInit` fires strictly AFTER the renderer's async initialization —
   extensions never see a half-initialized scene, and never need "defer until
   ready" logic of their own.
+- `onEventLoaded` fires once for every event that becomes the painted one:
+  the first event of each load, and each switch to another event. It runs
+  after the event is painted.
 - Rendering rules: state changes travel through signals/effects — never poll
   application state inside `onFrame`. After mutating anything renderable, call
   `ctx.invalidate()` — the next animation frame renders. The render loop is
@@ -107,6 +123,18 @@ export class HoverInfoExtension implements ThreeExtension {
   `deltaTime` is the time since the previous rendered frame.
 - Do not start your own requestAnimationFrame chain against the scene; use
   `onFrame`.
+- Hooks are isolated: an `onFrame` that throws is logged and not called
+  again, and the render loop and the other extensions continue. An
+  exception from `onSceneInit`, `onEventLoaded` or `onDispose` is logged.
+- Lifetime: the scene and the extensions are application-scoped. Leaving
+  `/display` stops the render loop and keeps the scene; returning re-attaches
+  the canvas and does not call `onSceneInit` again. `onDispose` runs once,
+  at application teardown.
+- Pointer input: listen on a view's `container` (`ctx.mainView.container`),
+  not on `ctx.canvas`. On multi-view pages the view containers sit above the
+  shared canvas, so the canvas receives no pointer events. A view can move to
+  another container on page switches; an overlay's `onViewContainerChange`
+  reports it.
 
 ## Render views and overlays
 
@@ -177,6 +205,11 @@ export class MyPainter extends EventPiecePainter {
 - Knobs are config keys too (`painters.byPiece.<pieceName>.<key>`), so the
   same precedence and scriptability apply. The right-pane painter panel
   auto-renders the knobs from the meta; there is no per-painter UI code.
+- The knob names `visible` and `time` are reserved
+  (`RESERVED_PAINTER_KNOB_KEYS`): `visible` is the piece visibility toggle the
+  display applies, and `time` would share a storage key with the painter
+  selection's timestamp. Registering a painter that declares either throws,
+  and the display reports the painter as not registered.
 - In contexts without a config system (web workers, scripts), painters run on
   the declared defaults.
 
@@ -189,6 +222,68 @@ painters call `registerEntityObject(index, object)` while building, and piece
 types override `entityLabel(i)` / `entityRefs(i)` so entities get meaningful
 labels and navigable reference links (a ring links to its trajectory, for
 example).
+
+## Data catalog and the data selector
+
+The data selector is the control behind the **folder** button of the display
+and the first card of the config page. It has three built-in tabs: **Presets**
+(named datasets), **Physics** (pick by tags: process, beam, ...), and
+**Manual** (geometry and events by URL or from a local file). The first two
+list catalog content and hide themselves when no catalog is contributed, so
+an installation without a catalog shows Manual only.
+
+A catalog is plain data. Contribute it from a pack:
+
+```ts
+withDataCatalog({
+  facets: [
+    { key: 'process', label: 'Process', values: {
+        'dis-nc': { label: 'DIS NC', description: 'Deep inelastic scattering, neutral current.', link: 'https://...' } } },
+    { key: 'beam', label: 'Beam', values: { '10x100': { label: '10 × 100' } } },
+  ],
+  entries: [
+    {
+      name: 'DIS NC 10x100',
+      description: 'Pythia 8, 5 events.',
+      geometry: 'epic://tgeo/epic_craterlake.root',
+      events: 'https://host/nc_10x100.firebird.zip',
+      tags: { process: 'dis-nc', beam: '10x100' },
+    },
+  ],
+  geometrySources: ['epic://tgeo/epic_ip6.root'],   // extra URLs for the Manual drop-down
+})
+```
+
+The same object can come from the server (`dataCatalog` in `config.jsonc`,
+which pyrobird passes through) or from a remote JSON file named by the
+`catalog.url` setting. All sources merge in that order; facets with the same
+key merge their value maps.
+
+Entry fields: `geometry` absent keeps the loaded geometry (event-only
+datasets); `events` absent shows no events (a geometry-only preset).
+`eventRange` and `collections` apply when `events` is a ROOT file.
+
+Tabs come from DI too. To add one:
+
+```ts
+withDataSelectorTab({
+  id: 'campaigns', label: 'Campaigns', order: 15,
+  load: () => import('./campaigns-tab.component').then(m => m.CampaignsTabComponent),
+})
+```
+
+The tab component has no inputs. It injects `DataSelectionService`, shows
+whatever it wants, and calls `updateDraft({ geometry, events, eventRange, collections })`
+with what the user chose. The host owns the Show/Cancel buttons and applies
+the draft through one path: the selection is written to the config keys
+(`geometry.selectedGeometry`, `events.dexEventsSource` or
+`events.rootEventSource`, `events.rootEventRange`, `events.rootCollections`),
+and a live display reloads from them, the same load it runs at startup. The
+config page has no display: it writes the keys and navigates to `/display`.
+
+Local files the user picked are not persisted (a blob URL dies with the page):
+they wait in the selection service and the display's next load consumes them.
+After a reload the last URL loads again.
 
 ## Settings for extensions
 

@@ -3,13 +3,13 @@
  * three.js objects, time-aware (rings appear at their production time), with
  * a config-driven ring color.
  *
- * A painter is a @firebird/core citizen too: it paints without DI, so it can
- * run in web workers. The ring color follows a config key through the shared
- * ringStyle object, wired by the pack's initializer (see index.ts).
+ * A painter is a @dexvis/firebird-core citizen too: it paints without DI, so
+ * it can run in web workers. The ring color follows a config key through the
+ * shared ringStyle object, wired by the pack's initializer (see index.ts).
  */
 
 import { BufferGeometry, Color, Group, Line, LineBasicMaterial, Object3D, Vector3 } from 'three';
-import { EventPiece, EventPiecePainter } from '@firebird/core';
+import { EventPiece, EventPiecePainter } from '@dexvis/firebird-core';
 import { CherenkovRingPiece } from './cherenkov-ring.piece';
 import { ringStyle } from './ring-style';
 

@@ -28,12 +28,14 @@ import type { WebGPURenderer } from 'three/webgpu';
 import { BehaviorSubject } from 'rxjs';
 import type { ClippedGeometrySlice } from './geometry-slice';
 import { EVENT_DATA_LAYER } from './geometry-slice';
+import { runIsolated } from './render-loop';
 
 /**
  * Something drawn on top of a view after its scene render — an orientation
  * cube, axes, 2D annotations. Overlays render into the shared canvas and are
- * responsible for their own viewport handling (see `RenderView.viewportOf`
- * for backend-aware rectangle math).
+ * responsible for their own viewport handling (`RenderView.viewportRect`
+ * gives the view's rectangle, ready for `renderer.setViewport`). A render
+ * that throws removes the overlay.
  */
 export interface ViewOverlay {
   /** Called every frame, after the view's scene render. */
@@ -85,11 +87,11 @@ export interface RenderViewOptions {
   tracksOnTop?: boolean;
 }
 
-/** Viewport rectangle in CSS pixels, plus the backend-aware y for three.js calls. */
+/** Viewport rectangle in CSS pixels, top-left origin, as three's WebGPURenderer takes it. */
 export interface ViewportRect {
   /** Left edge relative to the canvas. */
   x: number;
-  /** Y to pass to `renderer.setViewport`/`setScissor` (origin differs per backend). */
+  /** Top edge relative to the canvas; pass to `renderer.setViewport`/`setScissor` as is. */
   y: number;
   width: number;
   height: number;
@@ -277,12 +279,14 @@ export class RenderView {
     } else {
       const rect = this.container.getBoundingClientRect();
       const canvasRect = canvas.getBoundingClientRect();
-      const x = rect.left - canvasRect.left;
-      const yTop = rect.top - canvasRect.top;
-      // WebGL's viewport origin is bottom-left, WebGPU's is top-left.
-      const isWebGPU = (this.renderer as { isWebGPURenderer?: boolean }).isWebGPURenderer === true;
-      const y = isWebGPU ? yTop : canvas.clientHeight - (yTop + rect.height);
-      this.viewport = { x, y, width: rect.width, height: rect.height };
+      // WebGPURenderer takes a top-left viewport origin on both backends:
+      // its WebGL2 fallback flips y itself, so flipping here would flip twice.
+      this.viewport = {
+        x: rect.left - canvasRect.left,
+        y: rect.top - canvasRect.top,
+        width: rect.width,
+        height: rect.height,
+      };
     }
 
     this.viewSize = { width, height };
@@ -418,10 +422,16 @@ export class RenderView {
     this.camera.layers.mask = savedMask;
   }
 
-  /** Runs the overlay renders (the loop calls this after the scene render). */
+  /**
+   * Runs the overlay renders (the loop calls this after the scene render).
+   * An overlay whose render throws is logged and removed, so one broken
+   * overlay cannot stop the render loop.
+   */
   renderOverlays(): void {
-    for (const overlay of this.overlays) {
-      overlay.render(this);
+    const failed = runIsolated(this.overlays, overlay => overlay.render(this),
+      (overlay, error) => console.error(`[RenderView ${this.name}] Overlay render failed; removing it:`, overlay, error));
+    for (const overlay of failed) {
+      this.removeOverlay(overlay);
     }
   }
 

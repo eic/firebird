@@ -12,9 +12,9 @@
   <!-- The Slider -->
   <mat-slider
     class="tslider"
-    [min]="eventDisplayService.minTime"
-    [max]="eventDisplayService.maxTime"
-    [step]="eventDisplayService.animationSpeed"
+    [min]="eventDisplayService.minTime()"
+    [max]="eventDisplayService.maxTime()"
+    [step]="eventDisplayService.animationSpeed()"
 
   >
     <input
@@ -26,7 +26,7 @@
 
   <!-- Max Time (right label) -->
   <div class="time-label">
-    {{ eventDisplayService.maxTime | number:'1.0-0' }} [ns]
+    {{ eventDisplayService.maxTime() | number:'1.0-0' }} [ns]
   </div>
 </div>
 

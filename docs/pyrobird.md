@@ -34,7 +34,7 @@ python -m pip install --editable .[test,batch]
 Running with Gunicorn (development mode)
 
 ```bash
-gunicorn --bind 0.0.0.0:5454 pyrobird.server:flask_app --log-level debug --capture-output
+gunicorn --bind 127.0.0.1:5454 pyrobird.server:flask_app --log-level debug --capture-output
 ```
 
 
@@ -94,8 +94,11 @@ has access to files in your current directory or a directory provided via `--wor
 |----------------------------|-------|---------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `--allow-any-file`         |       | Flag    | `False` | Allow unrestricted access to download files in the system. When enabled, the server allows downloads of all files which the running user has access to. **Use with caution**: It is considered dangerous in production environments.            |
 | `--allow-cors`             |       | Flag    | `False` | Enable CORS for downloaded files. This option should be used if you need to support web applications from different domains accessing the files, such as serving your server from a central Firebird server.                                       |
-| `--disable-files`          |       | Flag    | `False` | Disable all file downloads from the server. This option will prevent any file from being downloaded, enhancing security by restricting file access.                                                                                              |
+| `--disable-files`          |       | Flag    | `False` | Disable all file access: local downloads and conversions, and conversions of remote `http://`, `https://` and `root://` files.                                                                                                                  |
 | `--work-path TEXT`         |       | String  | `CWD`   | Set the base directory path for file downloads. Defaults to the current working directory. Use this option to specify where the server should look for files when handling download requests.                                                       |
+| `--remote-hosts TEXT`      |       | String  | empty   | Comma-separated host names that remote conversions may read from. An entry that starts with a dot, such as `.jlab.org`, also matches its subdomains. Empty allows any host.                                                                     |
+| `--host TEXT`              |       | String  | `127.0.0.1` | Address to listen on. Defaults to `127.0.0.1`, or `0.0.0.0` inside Docker and Kubernetes containers. Apptainer and Singularity keep `127.0.0.1`.                                                                                         |
+| `--port INTEGER`           |       | Integer | `5454`  | Port to listen on.                                                                                                                                                                                                                            |
 | `--startup-commands TEXT`  |       | String  | none    | Commands the frontend runs once the display is ready, `type:arg` items separated by `;`. Example: `open-dex:file.firebird.zip;show-event:2`. See the [Command Bus](/command-bus) page.                                                          |
 
 
@@ -109,6 +112,20 @@ has access to files in your current directory or a directory provided via `--wor
 > Just think `/etc/passwd` will be accessible through  `localhost:port/api/v1/download?f=/etc/passwd`
 >
 > So security wise, it is better to use `--work-path` than `--allow-any-file`
+
+#### Bind address
+
+By default the server listens on `127.0.0.1`, so only this machine can reach it.
+Inside Docker and Kubernetes containers it listens on `0.0.0.0`, because the container
+has its own network and loopback is not reachable from the host. Apptainer and
+Singularity (for example, eic-shell) share the host network, so the server keeps
+`127.0.0.1` there and the browser on the host reaches it directly.
+
+Whenever the server listens on an address that other machines can reach, it prints a
+warning with the work path. Pass `--host 127.0.0.1` to serve this machine only, or
+`--host 0.0.0.0` to accept connections from other machines.
+
+The server has no shutdown endpoint: stop it with Ctrl+C or by ending the process.
 
 
 - Start server with default settings, Firebird works with files in current directory:
@@ -191,15 +208,30 @@ pyrobird screenshot
 ```
 
 This command will:
-1. Start a local Firebird server on `http://localhost:5454`
-2. Wait until the display reports ready: geometry loaded, event data loaded,
-   startup commands executed (the frontend publishes this as
-   `window.firebird.ready` — see [Command Bus](/command-bus))
-3. Capture a full-page screenshot
-4. Save it to `screenshots/screenshot.png`
-5. Automatically shut down the server
+1. Start its own Firebird server on `127.0.0.1` and a free port (`--port` sets a
+   fixed one); a server that already runs on port 5454 is neither used nor stopped
+2. Open `--url` in headless Chromium: a path such as `/display?dex=...`, or a
+   localhost URL on port 5454 or without a port, is pointed at that server with
+   its path and query kept; any other URL, such as `ng serve` on
+   `localhost:4200`, is captured as given
+3. Wait until the display reports ready (geometry loaded, event data loaded,
+   startup commands executed) or reports an error; the frontend publishes both
+   on `window.firebird`, see [Command Bus](/command-bus)
+4. Capture a full-page screenshot and save it to `screenshots/screenshot.png`
+5. Stop the server and exit with a code that says whether the capture shows a
+   finished display
 
 Screenshots are saved in a `screenshots/` directory with automatic numbering to prevent overwrites.
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | The display reported ready without errors. |
+| `1` | The server, the browser or the capture failed (for example, `--port` is in use, or the frontend is not built into pyrobird). |
+| `2` | The display never reported ready within `--ready-timeout`. The screenshot is still saved. |
+| `3` | The display reported errors in `window.firebird.errors`, for example a missing data file. The screenshot is still saved and the errors are printed. |
+
+Check the exit code in scripts: a capture with code 2 may show a partly
+loaded display.
 
 ### Command Options
 
@@ -207,9 +239,10 @@ The screenshot command accepts several options to customize its behavior:
 
 | Option                     | Type     | Default                 | Description                                                                                                   |
 |----------------------------|----------|-------------------------|---------------------------------------------------------------------------------------------------------------|
-| `--url TEXT`               | String   | `http://localhost:5454` | URL to take the screenshot of. Deep links work here — see [Deep Links](/deep-links).                           |
+| `--url TEXT`               | String   | `/`                     | Page to capture: a path such as `/display?dex=...` (served by the command's own server) or a full URL. Deep links work here, see [Deep Links](/deep-links). |
+| `--port INT`               | Integer  | `0`                     | Port of the command's own server; `0` picks a free port. The command fails with exit code 1 if the port is in use. |
 | `--commands TEXT`          | String   | none                    | Commands the display runs before the capture, `type:arg` items separated by `;`. Example: `open-dex:file.firebird.zip;show-event:2;camera-preset:farforward`. |
-| `--ready-timeout INT`      | Integer  | `120`                   | Seconds to wait for the display to report ready (geometry loaded, commands done). On timeout a warning is printed and the capture falls back to a short fixed wait. |
+| `--ready-timeout INT`      | Integer  | `120`                   | Seconds to wait for the display to report ready (geometry loaded, commands done). On timeout a warning is printed, the capture falls back to a short fixed wait, and the command exits with code 2. |
 | `--output-path TEXT`       | String   | `screenshot.png`        | Base filename for the screenshot. Will be saved in `screenshots/` directory with auto-numbering if file exists. |
 | `--work-path TEXT`         | String   | Current directory       | Set the base directory path for file downloads. Files in Firebird will be loaded relative to this path.        |
 | `--unsecure-files`         | Boolean  | `False`                 | Allow unrestricted file downloads. Use with caution - see security notes in the serve section.                 |
@@ -241,7 +274,7 @@ selects the event. Relative file paths resolve under `--work-path`:
 
 ```bash
 pyrobird screenshot --work-path=/path/to/data \
-                    --url "http://localhost:5454/display?dex=mydata.firebird.zip&event=5" \
+                    --url "/display?dex=mydata.firebird.zip&event=5" \
                     --output-path event_5.png
 ```
 
@@ -269,12 +302,14 @@ DATA_PATH="/path/to/data"
 DATA_FILE="myevents.firebird.zip"
 
 for event in {0..9}; do
-    pyrobird screenshot \
+    if pyrobird screenshot \
         --work-path="$DATA_PATH" \
-        --url "http://localhost:5454/display?dex=$DATA_FILE&event=$event" \
-        --output-path "event_${event}.png"
-
-    echo "Captured screenshot for event $event"
+        --url "/display?dex=$DATA_FILE&event=$event" \
+        --output-path "event_${event}.png"; then
+        echo "Captured screenshot for event $event"
+    else
+        echo "Event $event: pyrobird screenshot exited with $?" >&2
+    fi
 done
 ```
 
@@ -302,12 +337,12 @@ The screenshot functionality uses the following default settings:
 - **Viewport Size**: 1920x1080 pixels (Full HD)
 - **Page Mode**: Full page screenshot (captures entire scrollable content)
 - **Wait Strategy**: after the page loads, the capture waits until the display
-  reports `window.firebird.ready === true` — geometry loaded, event data
-  loaded, startup commands executed. Control the limit with `--ready-timeout`
-  (default 120 s). If the flag never appears (an old frontend build, or a URL
-  that is not the display page), a warning is printed and the capture falls
-  back to a short fixed wait — a capture after that warning may show a
-  partially loaded display.
+  reports `window.firebird.ready === true` (geometry loaded, event data
+  loaded, startup commands executed) or a non-empty `window.firebird.errors`.
+  Control the limit with `--ready-timeout` (default 120 s). If neither appears
+  (an old frontend build, or a URL that is not the display page), a warning is
+  printed, the capture falls back to a short fixed wait, and the command exits
+  with code 2: the capture may show a partially loaded display.
 - **Browser**: Headless Chromium
 
 ### Output Directory Structure
@@ -341,25 +376,27 @@ python -m playwright install chromium
 
 #### Server Won't Start
 
-If the Flask server fails to start, check if port 5454 is already in use:
+The command picks a free port by default. With `--port`, it exits with code 1
+when that port is in use; find the process that holds it:
 
 ```bash
 # On Linux/Mac
-lsof -i :5454
-
-# Kill the process if needed
-kill -9 <PID>
+lsof -i :<port>
 ```
+
+If the command reports that the server does not serve the frontend, the
+frontend build is missing from the pyrobird package (a source checkout needs
+`python build.py build_ng` and `python build.py cp_ng`).
 
 #### Screenshots Are Black or Incomplete
 
 If screenshots appear black or don't show the expected content:
 
-1. Check the command output for the ready/warning line. "Display reported
-   ready" means geometry and events finished loading before the capture; a
-   timeout warning means the capture fell back to a fixed wait and the display
-   was probably still loading — raise `--ready-timeout`, or check why loading
-   never finishes.
+1. Check the exit code and the ready/warning line. Exit code 0 and "Display
+   reported ready" mean geometry and events finished loading before the
+   capture; exit code 2 means the capture fell back to a fixed wait and the
+   display was probably still loading: raise `--ready-timeout`, or check why
+   loading never finishes. Exit code 3 prints the display's error messages.
 2. Try opening the same URL manually in a browser first to verify it works.
 3. Check that your data files are accessible from the `--work-path` directory.
 
@@ -382,9 +419,9 @@ from pyrobird.cli.screenshot import capture_screenshot, get_screenshot_path
 output_path = get_screenshot_path("my_event.png")
 
 # Capture screenshot (requires server to be running)
-capture_screenshot("http://localhost:5454/display?dex=data.firebird.zip&event=5", output_path)
+state = capture_screenshot("http://localhost:5454/display?dex=data.firebird.zip&event=5", output_path)
 
-print(f"Screenshot saved to {output_path}")
+print(f"Screenshot saved to {output_path}; ready={state.ready}, errors={state.errors}")
 ```
 
 > **Note**: When using programmatically, you need to manage the Flask server lifecycle yourself.
@@ -411,10 +448,22 @@ This is technical explanation of what is under the hood of the server part
 - **CORS Support**: Enable Cross-Origin Resource Sharing for specified routes.
 
 ### Configuration Options
-- **DOWNLOAD_PATH**: `str[getcwd()]`, Specifies the directory from which files can be downloaded when using relative paths.
-- **PYROBIRD_DOWNLOAD_IS_DISABLED**: `bool[False]` If set to `True`, all download functionalities are disabled.
-- **PYROBIRD_DOWNLOAD_IS_UNRESTRICTED**: `bool[False]`, allows unrestricted access to download any file, including sensitive ones.
-- **CORS_IS_ALLOWED**: `bool[False]`, If set to `True`, enables Cross-Origin Resource Sharing (CORS) for download routes.
+
+Set these keys in the Flask config, for example in a WSGI file through
+`configure_flask_app({...})`. `pyrobird serve` also reads the ones that have a
+command line option from environment variables of the same name.
+Boolean keys accept `True`/`False` or the strings `"true"`, `"1"`, `"false"`, `"0"`.
+
+- **PYROBIRD_DOWNLOAD_PATH**: `str[getcwd()]`, the work path. Relative file names resolve against it, and in restricted mode every local file must lie inside it once symlinks are resolved (`--work-path`).
+- **PYROBIRD_DOWNLOAD_IS_DISABLED**: `bool[False]`, disables all file access: downloads, local conversions and remote conversions (`--disable-files`).
+- **PYROBIRD_DOWNLOAD_IS_UNRESTRICTED**: `bool[False]`, allows unrestricted access to download any file, including sensitive ones (`--allow-any-file`).
+- **PYROBIRD_CORS_IS_ALLOWED**: `bool[False]`, enables Cross-Origin Resource Sharing (CORS) for the API and config routes (`--allow-cors`). Read from the environment at import time as well.
+- **PYROBIRD_REMOTE_HOSTS**: `str or list[empty]`, host names that remote conversions may read from (`--remote-hosts`). An entry that starts with a dot also matches subdomains. The check covers the requested URL; HTTP and XRootD redirects are followed.
+- **PYROBIRD_CONVERT_MAX_ENTRIES**: `int[1000]`, the most entries one convert request may name.
+- **PYROBIRD_API_BASE_URL**: `str[empty]`, the API base URL that the frontend uses (`--api-url`). Empty means the URL the browser used to reach the server.
+- **PYROBIRD_FIREBIRD_CONFIG_PATH**: `str[empty]`, a `config.jsonc` to serve instead of the one bundled with the frontend (`--config`).
+- **PYROBIRD_USER_CONFIGS**: `dict[empty]`, frontend config values (`{"key": value}`) merged over the `userConfigs` map of `config.jsonc`. A JSON object string also works.
+- **PYROBIRD_STARTUP_COMMANDS**: `str or list[empty]`, commands the frontend runs once the display is ready (`--startup-commands`).
 
 
 
@@ -439,11 +488,11 @@ Allows users to download specified files. The download can be restricted based o
 #### **Parameters**
 
 - **Query Parameters**:
-  - `filename` (optional): The name or path of the file to download.
-  - `f` (optional): An alternative parameter for the filename.
+    - `filename` (optional): The name or path of the file to download.
+    - `f` (optional): An alternative parameter for the filename.
 
 - **Path Parameters**:
-  - `filename` (optional): The path of the file to download.
+    - `filename` (optional): The path of the file to download.
 
 **Note**: You can provide the filename either as a query parameter or as part of the URL path.
 
@@ -463,36 +512,47 @@ Allows users to download specified files. The download can be restricted based o
 
 #### **Security Considerations**
 
-- **Access Control**: Ensure that `DOWNLOAD_ALLOW_UNRESTRICTED` is set appropriately to prevent unauthorized access.
-- **Path Traversal**: The server sanitizes file paths to prevent directory traversal attacks.
+- **Access Control**: Keep `PYROBIRD_DOWNLOAD_IS_UNRESTRICTED` off unless one trusted user runs the server.
+- **Path Traversal**: In restricted mode a file must resolve, symlinks included, to a path inside
+  `PYROBIRD_DOWNLOAD_PATH`. The check compares whole path components, so `/data/work-secret` is not
+  inside `/data/work`.
 
 ---
 
-### Open EDM4eic Event
+### Convert EDM4eic or EDM4hep Events
 
 #### **Endpoint**
 
 ```
-GET /api/v1/convert/edm4eic/<int:event_number>
-GET /api/v1/convert/edm4eic/<int:event_number>/<path:filename>
+GET /api/v1/convert/<file_type>/<entries>
+GET /api/v1/convert/<file_type>/<entries>/<path:filename>
 ```
 
 #### **Description**
 
-Processes an EDM4eic file to extract a specific event and returns the event data in JSON format. Supports both local and remote files.
+Converts entries of an EDM4eic or EDM4hep ROOT file to Firebird DEX and returns it as JSON.
+Supports local files and remote `http://`, `https://` and `root://` files.
+
+A local file passes the same access check as a download. A remote file needs file access
+enabled (no `--disable-files`) and, when `PYROBIRD_REMOTE_HOSTS` is set, a host from that list.
+
+Every requested entry must exist in the file. Otherwise the request fails with `400` and the
+error lists the missing entries, the same rule the in-browser converter applies. A request may
+name at most `PYROBIRD_CONVERT_MAX_ENTRIES` entries (default 1000).
 
 #### **Parameters**
 
 - **Path Parameters**:
-  - `event_number` (required): The number of the event to extract.
-  - `filename` (optional): The path or URL of the EDM4eic file.
+    - `file_type` (required): `auto` (detect from branch types), `edm4eic` or `edm4hep`.
+    - `entries` (required): Entries to convert: `3`, `1-5` or `1,2-5,8`.
+    - `filename` (optional): The path or URL of the ROOT file.
 
 - **Query Parameters**:
-  - `filename` (optional): The name or path of the file to process.
-  - `f` (optional): An alternative parameter for the filename.
-  - `collections` (or `c`, optional): Comma-separated collection groups to
-    convert, same values as `pyrobird convert --collections`
-    (e.g. `tracker_hits,tracks,mc_particles`). Empty means all groups.
+    - `filename` (optional): The name or path of the file to process.
+    - `f` (optional): An alternative parameter for the filename.
+    - `collections` (or `c`, optional): Comma-separated collection groups to
+      convert, same values as `pyrobird convert --collections`
+      (e.g. `tracker_hits,tracks,mc_particles`). Empty means all groups.
 
 **Note**: You can provide the filename either as a query parameter or as part of the URL path.
 
@@ -520,7 +580,12 @@ GET /assets/config.jsonc
 
 #### **Description**
 
-Serves the asset configuration file (`config.jsonc`) with additional server information injected dynamically.
+Serves the asset configuration file (`config.jsonc`) with additional server information injected dynamically:
+`apiBaseUrl` (the URL the browser used, unless `PYROBIRD_API_BASE_URL` is set), `serverHost`, `serverPort`,
+`servedByPyrobird`, and `userConfigs` merged with `PYROBIRD_USER_CONFIGS`.
+
+A missing file under `/assets/` returns `404`. Other unknown paths return the frontend's
+`index.html`, so the frontend's routes load directly.
 
 #### **Usage**
 
@@ -530,9 +595,14 @@ curl "http://localhost:5454/assets/config.jsonc"
 
 ### Publishing
 
+Check the packages before an upload: the wheel must hold the frontend and the sample data,
+and stay under PyPI's 100 MiB file limit.
+
 ```bash
-hatch build
-hatch publish
+pip install --upgrade build twine
+python -m build                      # or: uv build
+python scripts/check_dist.py dist/   # exits with 1 when a check fails
+python -m twine upload dist/*
 
 # You will have to setup your pip authentication key
 ```

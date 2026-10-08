@@ -1,0 +1,37 @@
+<div class="data-selector">
+  <div class="tab-strip" role="tablist">
+    @for (tab of visibleTabs(); track tab.id) {
+      <button type="button"
+              role="tab"
+              class="tab"
+              [class.active]="tab.id === activeTabId()"
+              [attr.aria-selected]="tab.id === activeTabId()"
+              (click)="selectTab(tab.id)">
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  <div class="tab-body">
+    @if (tabComponent(); as component) {
+      <ng-container *ngComponentOutlet="component"></ng-container>
+    } @else if (tabError(); as message) {
+      <div class="status error"><mat-icon>error_outline</mat-icon><span>{{ message }}</span></div>
+    } @else if (visibleTabs().length === 0) {
+      <div class="status note">No data selector tabs are registered.</div>
+    }
+  </div>
+
+  @if (catalog.remoteError(); as message) {
+    <div class="status warning"><mat-icon>warning_amber</mat-icon><span>{{ message }}</span></div>
+  }
+
+  <div class="actions">
+    @if (showCancel()) {
+      <button type="button" mat-button (click)="cancel()">Cancel</button>
+    }
+    <button type="button" mat-raised-button class="apply-btn" [disabled]="!applyEnabled()" (click)="apply()">
+      {{ applyLabel() }}
+    </button>
+  </div>
+</div>

@@ -2,7 +2,7 @@ import {Component, OnInit, OnDestroy, ViewChild, TemplateRef, ViewContainerRef, 
 
 
 import { ThreeService } from '../../services/three.service';
-import { ConfigService } from '../../services/config.service';
+import { ConfigService } from '@dexvis/app-features';
 
 
 import {MatIconButton} from "@angular/material/button";

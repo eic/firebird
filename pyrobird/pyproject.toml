@@ -48,7 +48,10 @@ fbd = "pyrobird.cli:cli_app"
 pyrobird = "pyrobird.cli:cli_app"
 
 # --- Setuptools configuration ---
-# Package data is declared explicitly (MANIFEST.in is not used).
+# Package data is declared explicitly below. MANIFEST.in still decides what the
+# sdist holds, and `uv build` builds the wheel from the sdist, so a file that
+# MANIFEST.in excludes never reaches the wheel: keep the two in sync and check
+# a build with `python scripts/check_dist.py dist/`.
 # The server/static directory contains the Angular frontend build output
 # and is included as data files, not as Python packages.
 

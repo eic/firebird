@@ -5,27 +5,37 @@ or from a URL, and show its events — no server, no conversion step, no upload.
 
 ## Using the panel
 
-1. Press the **folder** button in the top bar. A panel drops down.
-2. Give it a file: drop a `.root` or `.firebird.json`/`.firebird.zip` file on
-   the panel, click the drop zone to pick one, or paste a `https://` URL.
-3. Firebird looks inside and decides what the file is:
-   - a **detector geometry** loads immediately;
-   - a **DEX event file** loads all its events immediately — pick one in the
-     toolbar event selector;
-   - a **ROOT event file** reports its data model (`edm4eic` or `edm4hep`) and
-     how many events it holds, and offers the event picker.
-4. For a ROOT file, type which events you want and press **Show**.
+1. Press the **folder** button in the top bar. The data selector drops down,
+   open on the **Manual** tab (or on **Presets** when a preset is loaded).
+2. In the **Events** field, pick **Upload** and drop a `.root` file on the
+   zone (or click it to choose one), or stay on **Select** and paste a
+   `https://` URL. The **Geometry** field works the same way for a TGeo file.
+3. Firebird looks inside every `.root` file: a detector geometry dropped into
+   the Events field moves to the Geometry field, with a note.
+4. A ROOT event file reports its data model (`edm4eic` or `edm4hep`) and how
+   many events it holds, and shows the **Events** range and **Convert**
+   group inputs under the field.
+5. Type which events you want and press **Show**.
 
-The **Events** box takes a single number, a list, or a range — `3`, `0,2,4-5`,
-`10-19`. Everything you ask for lands in the event selector in the toolbar, so
-the usual next/previous controls step through them. Asking again is fast: the
-file stays open.
+The **Events** range takes a single number, a list, or a range — `3`,
+`0,2,4-5`, `10-19`. Everything you ask for lands in the event selector in the
+toolbar, so the usual next/previous controls step through them. A range that
+names an event the file does not hold is rejected as a whole, with a message
+that lists the missing events, and one request converts at most 1000 events.
+pyrobird applies the same rules to the files it converts.
 
 The **Convert** checkboxes choose which collection groups the conversion
 produces — tracker hits, tracks, MC particles. They list what the opened
 file's data model offers, and all groups start on. Unchecking a group leaves
 it out of the converted event; press **Show** again to re-convert with a
 different choice.
+
+A DEX file (`.firebird.json`, `.firebird.zip`) loads all its events when you
+press **Show**; there is nothing to pick.
+
+The other tabs of the same panel, **Presets** and **Physics**, offer the
+datasets the installation lists; see the [data catalog](/extensions#data-catalog-and-the-data-selector)
+for how those lists are made.
 
 ## Deep links
 

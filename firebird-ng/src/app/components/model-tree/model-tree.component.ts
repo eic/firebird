@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 
-import { EntityRefLink, EventPiece } from '@firebird/core';
+import { EntityRefLink, EventPiece } from '@dexvis/firebird-core';
 import { DataModelService } from '../../services/data-model.service';
 import { PainterConfigService } from '../../services/painter-config.service';
 import { SelectionService } from '../../services/selection.service';
@@ -32,7 +32,8 @@ const ENTITY_PAGE = 200;
  * (`entityLabel` / `entityRefs`), so extension piece types appear here
  * without this component knowing them. Clicking an entity selects it through
  * SelectionService (highlighting it in 3D); a 3D click selects here in
- * return. Reference links navigate to the referenced entity.
+ * return. Clicking the selected entity again, or the clear button of the
+ * selection bar, deselects. Reference links navigate to the referenced entity.
  */
 @Component({
   selector: 'app-model-tree',
@@ -67,12 +68,17 @@ export class ModelTreeComponent {
 
     // Reveal the selection when it arrives from elsewhere (3D click):
     // expand the piece, make sure the row is within the display limit,
-    // then scroll it into view.
+    // then scroll it into view. Only the selection is tracked: the reveal
+    // reads and writes `expanded` and `limits`, and tracking them would
+    // re-run it on every expand, collapse and "more", so the selected piece
+    // could not be collapsed and the list would jump back to the selection.
     effect(() => {
       const selected = this.selection.selection();
       if (!selected) return;
-      this.expandPiece(selected.pieceName);
-      this.ensureVisible(selected.pieceName, selected.entityIndex);
+      untracked(() => {
+        this.expandPiece(selected.pieceName);
+        this.ensureVisible(selected.pieceName, selected.entityIndex);
+      });
       setTimeout(() => {
         document.getElementById(this.rowId(selected.pieceName, selected.entityIndex))
           ?.scrollIntoView({ block: 'nearest' });
@@ -156,11 +162,20 @@ export class ModelTreeComponent {
     return `model-tree-${pieceName}-${entityIndex}`.replace(/\s+/g, '_');
   }
 
+  /** Selects the entity; clicking the selected entity again clears the selection. */
   selectEntity(pieceName: string, entityIndex: number): void {
-    this.selection.select({ pieceName, entityIndex });
+    if (this.selection.isSelected(pieceName, entityIndex)) {
+      this.selection.clear();
+    } else {
+      this.selection.select({ pieceName, entityIndex });
+    }
+  }
+
+  clearSelection(): void {
+    this.selection.clear();
   }
 
   followRef(ref: EntityRefLink): void {
-    this.selectEntity(ref.targetPiece, ref.targetIndex);
+    this.selection.select({ pieceName: ref.targetPiece, entityIndex: ref.targetIndex });
   }
 }

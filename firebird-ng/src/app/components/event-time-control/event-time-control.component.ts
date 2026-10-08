@@ -27,8 +27,6 @@ import {MatDialog, MatDialogClose, MatDialogRef} from "@angular/material/dialog"
 })
 export class EventTimeControlComponent {
 
-  animationSpeed: number = 1.0;
-
   @ViewChild('openBtn', { read: ElementRef })
   openBtn!: ElementRef;
 
@@ -38,8 +36,12 @@ export class EventTimeControlComponent {
   dialogRef: MatDialogRef<any> | null = null;
 
 
-  customStartTime = this.eventDisplayService.minTime;
-  customEndTime = this.eventDisplayService.maxTime;
+  // Dialog form fields. Read and written only inside the dialog template
+  // (the dialog's own view), and refreshed from the service on every open:
+  // an event load changes the range after this component was created.
+  customStartTime = 0;
+  customEndTime = 0;
+  animationSpeed = 1.0;
 
   constructor(public eventDisplayService: EventDisplayService,
               private dialog: MatDialog)
@@ -50,7 +52,7 @@ export class EventTimeControlComponent {
   public shownTime: Signal<number> = computed(()=>{
     const edTime = this.eventDisplayService.eventTime();
     if(edTime === null || edTime === undefined) {
-      return this.eventDisplayService.minTime;
+      return this.eventDisplayService.minTime();
     }
     return edTime;
   })
@@ -81,10 +83,14 @@ export class EventTimeControlComponent {
 
 
   openDialog(): void {
-  if (this.dialogRef) {
-    this.dialogRef.close();
-    return;
-  }
+    if (this.dialogRef) {
+      this.dialogRef.close();
+      return;
+    }
+
+    this.customStartTime = this.eventDisplayService.minTime();
+    this.customEndTime = this.eventDisplayService.maxTime();
+    this.animationSpeed = this.eventDisplayService.animationSpeed();
 
     const rect = this.openBtn.nativeElement.getBoundingClientRect();
     const dialogWidth =  this.dialogTemplate?.elementRef.nativeElement.offsetWidth || 320;
@@ -107,10 +113,15 @@ export class EventTimeControlComponent {
     });
   }
 
+  /**
+   * Applies the dialog's range and step. They go to service signals: the
+   * slider and the range label live in this component's own view, which an
+   * event inside the dialog does not mark for check (the dialog renders the
+   * template elsewhere), but a signal read there does.
+   */
   applyCustomTimeRange(): void {
-    this.eventDisplayService.minTime = this.customStartTime;
-    this.eventDisplayService.maxTime = this.customEndTime;
-    this.eventDisplayService.animationSpeed = this.animationSpeed;
+    this.eventDisplayService.setTimeRange(this.customStartTime, this.customEndTime);
+    this.eventDisplayService.setAnimationSpeed(this.animationSpeed);
     this.dialogRef?.close();
   }
 }

@@ -6,15 +6,15 @@
  */
 
 // Deep imports on purpose: this file is in the INITIAL bundle, and the
-// @firebird/core barrel re-exports painters whose modules pull three.js.
+// @dexvis/firebird-core barrel re-exports painters whose modules pull three.js.
 // The model modules here are plain TS with no three dependency.
-import { BoxHitPiece, BoxHitPieceFactory } from '@firebird/core/model/box-hit.piece';
-import { PointTrajectoryPiece, PointTrajectoryPieceFactory } from '@firebird/core/model/point-trajectory.piece';
+import { BoxHitPiece, BoxHitPieceFactory } from '@dexvis/firebird-core/model/box-hit.piece';
+import { PointTrajectoryPiece, PointTrajectoryPieceFactory } from '@dexvis/firebird-core/model/point-trajectory.piece';
+import { withCommandHandler, withConfigDefaults } from '@dexvis/app-features';
 import {
   FirebirdFeature,
   firebirdFeatures,
-  withCommandHandler,
-  withConfigDefaults,
+  withDataSelectorTab,
   withEventPiece,
   withEventLoader,
   withGeometryLoader,
@@ -44,13 +44,13 @@ export function withFirebirdBuiltins(): FirebirdFeature {
     // Painters: data -> visuals. Lazy: painter classes pull three.js material
     // code, which must stay out of the initial bundle (the display route
     // chunk shares the same modules, so nothing loads twice).
-    withLazyPainter(BoxHitPiece.type, () => import('@firebird/core').then(m => m.BoxHitSimplePainter)),
+    withLazyPainter(BoxHitPiece.type, () => import('@dexvis/firebird-core').then(m => m.BoxHitSimplePainter)),
     // Registration order matters: the per-track painter stays the default,
     // the batched one (2 draw calls for the whole piece — for huge pieces
     // like MCParticles background frames) is the selectable alternative:
     // painters.byPiece.<name> = trajectory-lines-batched
-    withLazyPainter(PointTrajectoryPiece.type, () => import('@firebird/core').then(m => m.TrajectoryPainter)),
-    withLazyPainter(PointTrajectoryPiece.type, () => import('@firebird/core').then(m => m.BatchedTrajectoryPainter)),
+    withLazyPainter(PointTrajectoryPiece.type, () => import('@dexvis/firebird-core').then(m => m.TrajectoryPainter)),
+    withLazyPainter(PointTrajectoryPiece.type, () => import('@dexvis/firebird-core').then(m => m.BatchedTrajectoryPainter)),
 
     // IO: file formats and URL schemes
     withGeometryLoader(RootGeometryLoader),
@@ -74,6 +74,22 @@ export function withFirebirdBuiltins(): FirebirdFeature {
     withLazyThreeExtension(() =>
       import('./viewport-gizmo.extension').then(m => m.ViewportGizmoExtension)
     ),
+
+    // Data selector tabs. Presets and Physics list catalog content and hide
+    // themselves when no catalog is contributed; Manual (URL/file pick) always
+    // shows. Lazy: tab UI must stay out of the initial bundle.
+    withDataSelectorTab({
+      id: 'presets', label: 'Presets', order: 10,
+      load: () => import('../components/data-selector/presets-tab.component').then(m => m.PresetsTabComponent),
+    }),
+    withDataSelectorTab({
+      id: 'physics', label: 'Physics', order: 20,
+      load: () => import('../components/data-selector/physics-tab.component').then(m => m.PhysicsTabComponent),
+    }),
+    withDataSelectorTab({
+      id: 'manual', label: 'Manual', order: 30, needsCatalog: false,
+      load: () => import('../components/data-selector/manual-tab.component').then(m => m.ManualTabComponent),
+    }),
 
     // MCParticles straight lines convert by default but start hidden: every
     // particle of the event is a lot of lines, so the user opts in per piece

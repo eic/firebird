@@ -1,5 +1,5 @@
 /**
- * @firebird/root2dex - converts EDM4eic / EDM4hep podio ROOT files to Firebird
+ * @dexvis/root2dex - converts EDM4eic / EDM4hep podio ROOT files to Firebird
  * DEX in the browser (or node), using the JSROOT API.
  *
  * The conversion mirrors pyrobird's `pyrobird convert`: the same input entry
@@ -18,5 +18,6 @@ export * from './podio-file';
 export * from './edm4eic';
 export * from './edm4hep';
 export * from './mc-particles';
+export * from './entries';
 export * from './convert';
 export * from './byte-range-source';

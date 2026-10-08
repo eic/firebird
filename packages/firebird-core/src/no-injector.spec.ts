@@ -2,11 +2,17 @@
  * firebird-core must work with no Angular injector and no bootstrap - the
  * geometry-loader web worker runs this code, and workers have no DI (event
  * parsing is expected to move off the main thread the same way). This spec
- * is the enforced form of that constraint: it parses
- * a DEX file and paints it into a bare three.js Scene using only core
- * classes. If an @Injectable, token, or HttpClient sneaks into core, this
- * spec is where it breaks.
+ * is the enforced form of that constraint, in two parts:
+ * - it parses a DEX file and paints it into a bare three.js Scene using only
+ *   core classes, so a dependency that needs an injector at run time fails;
+ * - it scans every non-spec source file for Angular DI and component APIs
+ *   (InjectionToken, Injectable, inject(), HttpClient, component decorators),
+ *   so a statically present token fails even when no code path runs it.
+ * Angular signals (`signal`, `Signal`, `computed`) stay allowed: they work
+ * without an injector.
  */
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { Scene } from 'three';
 import { DataExchange, DataModelPainter, initPieceFactories, registerDefaultPainters } from './index';
 
@@ -72,5 +78,67 @@ describe('firebird-core without an injector', () => {
 
     // Time filtering runs without any framework machinery either.
     painter.paint(1.5);
+  });
+});
+
+// Angular APIs that need an injector or a compiled component, with the name
+// the scan reports for each.
+const FORBIDDEN_APIS: ReadonlyArray<readonly [string, RegExp]> = [
+  ['InjectionToken', /\bInjectionToken\b/],
+  ['Injectable', /\bInjectable\b/],
+  ['inject()', /\binject\s*\(/],
+  ['HttpClient', /\bHttpClient\b/],
+  ['component decorator', /@(?:Component|Directive|Pipe|NgModule)\s*\(/],
+];
+
+/** Removes comments, so prose that names a forbidden API does not count. Keeps `://` in URLs. */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
+/** Names of the forbidden APIs that a TypeScript source uses outside comments. */
+function findForbiddenApis(source: string): string[] {
+  const code = stripComments(source);
+  return FORBIDDEN_APIS.filter(([, pattern]) => pattern.test(code)).map(([name]) => name);
+}
+
+/** Every non-spec .ts file under `dir`, recursively. */
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return sourceFiles(path);
+    }
+    return entry.name.endsWith('.ts') && !entry.name.endsWith('.spec.ts') ? [path] : [];
+  });
+}
+
+describe('firebird-core source scan', () => {
+  // vitest defines __dirname for spec modules; the jsdom environment's
+  // import.meta.url is not a file: URL.
+  const srcDir = __dirname;
+  const files = sourceFiles(srcDir);
+
+  it('finds the package sources', () => {
+    // Guards against a vacuous pass when the directory walk finds nothing.
+    expect(files.length).toBeGreaterThan(10);
+    expect(files.map(file => relative(srcDir, file))).toContain('index.ts');
+  });
+
+  it('uses no Angular DI, HttpClient or component API', () => {
+    const offenders = files.flatMap(file =>
+      findForbiddenApis(readFileSync(file, 'utf8')).map(api => `${relative(srcDir, file)}: ${api}`));
+    expect(offenders).toEqual([]);
+  });
+
+  it('detects each forbidden API and allows signals and comments', () => {
+    expect(findForbiddenApis("import { InjectionToken } from '@angular/core';")).toEqual(['InjectionToken']);
+    expect(findForbiddenApis("@Injectable({ providedIn: 'root' }) export class S {}")).toEqual(['Injectable']);
+    expect(findForbiddenApis('const http = inject(HttpClient);')).toEqual(['inject()', 'HttpClient']);
+    expect(findForbiddenApis('@Component({ template: "" }) export class C {}')).toEqual(['component decorator']);
+    expect(findForbiddenApis("import { Signal, computed, signal } from '@angular/core';")).toEqual([]);
+    expect(findForbiddenApis('// @Injectable, inject(), HttpClient\n/* InjectionToken */')).toEqual([]);
+    expect(findForbiddenApis("const url = 'https://example.org'; const t = new InjectionToken('t');"))
+      .toEqual(['InjectionToken']);
   });
 });

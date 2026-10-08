@@ -646,8 +646,8 @@ pattern('BeamPipe_assembly/v_upstream_coating/Left');  // false
 // Clear skip flags before processing
 clearGeometryEditingFlags(root: Object3D): void
 
-// Apply a single rule to a node
-editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule): void
+// Apply a single rule to a node (async: mesh simplification awaits three's SimplifyModifier)
+editThreeNodeContent(node: Object3D, rule: EditThreeNodeRule): Promise<void>
 
 // Check if node was already processed
 isAlreadyProcessed(obj: Object3D): boolean
@@ -660,11 +660,11 @@ isInProcessedBranch(obj: Object3D): boolean
 
 ```typescript
 class ThreeGeometryProcessor {
-  // Apply rulesets to detectors
+  // Apply rulesets to detectors; await the result before rendering the geometry
   processRuleSets(
     ruleSets: DetectorThreeRuleSet[],
     detectors: Subdetector[]
-  ): void
+  ): Promise<void>
 }
 ```
 

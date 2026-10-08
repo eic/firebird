@@ -17,7 +17,7 @@ import { Subscription } from 'rxjs';
 
 import { EventDisplayService } from '../../services/event-display.service';
 import { ThreeService } from '../../services/three.service';
-import { ConfigService } from '../../services/config.service';
+import { ConfigService } from '@dexvis/app-features';
 import { RenderView } from '../../services/render-view';
 import { GEOMETRY_SLICE_LAYER } from '../../services/geometry-slice';
 import { FirebirdShellComponent } from '../../components/firebird-shell/firebird-shell.component';
@@ -86,6 +86,9 @@ export class SplitWindowComponent implements AfterViewInit, OnDestroy {
   private gui?: GUI;
   private configSubscriptions: Subscription[] = [];
 
+  /** Set in ngOnDestroy: setup that resumes after an await checks it and stops. */
+  private destroyed = false;
+
   constructor(
     public eventDisplay: EventDisplayService,
     private three: ThreeService,
@@ -101,7 +104,13 @@ export class SplitWindowComponent implements AfterViewInit, OnDestroy {
     // First visit initializes the scene into the page host; a revisit
     // re-attaches the existing canvas. Either way the canvas ends up filling
     // the host, behind the view cells.
-    await this.eventDisplay.initThree(this.host.nativeElement);
+    const attached = await this.eventDisplay.initThree(this.host.nativeElement);
+    // The page went away (or another display page attached) while the
+    // renderer initialized: adding views now would leave them, and the
+    // geometry slice, behind after ngOnDestroy already ran.
+    if (!attached || this.destroyed) {
+      return;
+    }
     this.three.setMainViewContainer(this.cellMain.nativeElement);
 
     // The projection views' geometry copy. Empty until geometry loads —
@@ -160,10 +169,13 @@ export class SplitWindowComponent implements AfterViewInit, OnDestroy {
 
     // Same auto-load path as the display page: configured geometry/events,
     // minus whatever queued startup commands carry, then the command queue.
-    this.eventDisplay.autoLoadAndRunStartup(message => console.error(`[split-window] ${message}`));
+    // Failures reach the user through EventDisplayService.reportError().
+    this.eventDisplay.autoLoadAndRunStartup();
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.eventDisplay.detachDataSelection();
     this.resizeObserver?.disconnect();
     for (const subscription of this.configSubscriptions) {
       subscription.unsubscribe();
@@ -177,6 +189,8 @@ export class SplitWindowComponent implements AfterViewInit, OnDestroy {
     this.addedViews = [];
     // Restores single-copy layer routing for the display page.
     this.three.removeGeometrySlice();
+    // No page shows the canvas until the next display page attaches it.
+    this.three.detach();
   }
 
   private layout(): void {

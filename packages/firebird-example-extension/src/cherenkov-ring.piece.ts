@@ -3,8 +3,8 @@
  * of (Cherenkov rings from a RICH detector) arrives in DEX and is decoded
  * into a typed EventPiece.
  *
- * This file is a @firebird/core citizen: plain TS, worker-safe, no Angular.
- * Only the registration lines (see index.ts) are Angular.
+ * This file is a @dexvis/firebird-core citizen: plain TS, worker-safe, no
+ * Angular. Only the registration lines (see index.ts) are Angular.
  *
  * The DEX v1 piece is columnar — parallel arrays, ring id == array index:
  *
@@ -27,8 +27,8 @@
  */
 
 // Deep import on purpose: the factory is registered from app.config (initial
-// bundle), and the @firebird/core barrel re-exports painter modules that pull
-// three.js. The model module is plain TS.
+// bundle), and the @dexvis/firebird-core barrel re-exports painter modules that
+// pull three.js. The model module is plain TS.
 import {
   EntityRefLink,
   EventPiece,
@@ -36,7 +36,7 @@ import {
   readPieceCount,
   readNumberColumn,
   readOptionalNumberColumn,
-} from '@firebird/core/model/event-piece';
+} from '@dexvis/firebird-core/model/event-piece';
 
 export class CherenkovRingPiece extends EventPiece {
   /** Namespaced type string: reverse-dns-lite prefix prevents collisions

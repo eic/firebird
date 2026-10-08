@@ -1,18 +1,14 @@
 # Created by: Dmitry Romanov, 2024
 # This file is part of Firebird Event Display and is licensed under the LGPLv3.
 # See the LICENSE file in the project root for full license information.
-import yaml
 import os
-import click
-from rich import inspect
-import fnmatch
-from importlib import resources
-from pyrobird.cern_root import ensure_pyroot_importable, tgeo_delete_node, tgeo_process_file
-
 import logging
 from importlib import resources
-import yaml
+
 import click
+import yaml
+
+from pyrobird.cern_root import tgeo_info, tgeo_process_file
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -55,139 +51,51 @@ def _load_rules(rule_file):
 
     return rules_data
 
+
 @click.group()
 @click.pass_context
 def geo(ctx):
     """
-    Operations with geometry
+    Inspect and edit CERN ROOT TGeo geometry files. Requires PyROOT.
     """
 
     if ctx.invoked_subcommand is None:
         print("No command was specified")
 
 
-
 @click.command()
+@click.option('-d', '--max-depth', 'max_depth', type=int, default=2, show_default=True,
+              help='Print node paths down to this level (1 is the daughters of the top volume). '
+                   '0 prints the summary only.')
 @click.argument('file_name')
-@click.pass_context
-def info(ctx, file_name):
+def info(file_name, max_depth):
     """
-    Shows information about geometry in file,
-    Requires CERN ROOT geometry file name
+    Print the node tree of a TGeo geometry file.
+
+    Prints the top volume, the node count, and the level and path of each
+    node down to --max-depth. The file is not modified. Requires PyROOT.
     """
-    context = ctx.obj
     print(f"Geometry info for: '{file_name}'")
-
-    ensure_pyroot_importable()
-    import ROOT
-
-    # TGeoManager::Import("rootgeom.root");
-    #
-    # TGeoIterator iter(gGeoManager->GetMasterVolume());
-    #
-    # TGeoNode *node;
-    #
-    # while ((node = iter.Next())) {
-    # // printf("Name %s\n", node->GetName());
-    # node->GetVolume()->ResetAttBit(TGeoAtt::kVisOnScreen);
-    # }
-    #
-    # gGeoManager->Export("rootgeom2.root");
-
-    import ROOT
-    from ROOT import TGeoManager, TGeoIterator, TGeoAtt, TString
-
-    #ROOT.gErrorIgnoreLevel = ROOT.kFatal
-
-    gGeoManager = TGeoManager.Import(file_name)
-
-    iter = TGeoIterator(gGeoManager.GetMasterVolume())
-
-    node = iter.Next()
-    while node is not None:
-
-        full_path = TString()
-        iter.GetPath(full_path)
-        full_path = str(full_path)
-        # break
-        print(full_path.count('/'), full_path)
-        pattern = '*/DIRC*/DIRCModule_0*'
-        if fnmatch.fnmatch(full_path, pattern):
-            tgeo_delete_node(node)
-            print(full_path)
-            #break
-
-
-        # inspect(iter, methods=True)
-        #break
-        # node.GetVolume().ResetAttBit(TGeoAtt.kVisOnScreen)
-
-        node = iter.Next()
-
-    gGeoManager.CleanGarbage()
-    gGeoManager.CloseGeometry()
-    output_file_name = file_name[:-4] + "new.root"
-    print(f"Output file name: {output_file_name}")
-    gGeoManager.Export(output_file_name)
-
-    #
-    # print("ROOT imported")
-    # root_file = ROOT.TFile(file_name)
-    # root_file.ls()
-    # geometries = {}
-    # for key in root_file.GetListOfKeys():
-    #     obj_class_name = key.GetClassName()
-    #     name = key.GetName()
-    #     if obj_class_name in ["TGeoManager"]:
-    #
-    #         geometries[str(key.GetName())] = root_file.Get(name)
-    #
-    # inspect(geometries)
-
-    # with TFile.Open("pyroot005_file_1.root", "recreate") as f:
-    #     histo_2 = ROOT.TH1F("histo_2", "histo_2", 10, 0, 10)
-    #     # Inside the context, the current directory is the open file
-    #     print("Current directory: '{}'.\n".format(ROOT.gDirectory.GetName()))
-    #     # And the created histogram is automatically attached to the file
-    #     print("Histogram '{}' is attached to: '{}'.\n".format(histo_2.GetName(), histo_2.GetDirectory().GetName()))
-    #     # Before exiting the context, objects can be written to the file
-    #     f.WriteObject(histo_2, "my_histogram")
-    #
-    # # When the TFile.Close method is called, the current directory is automatically
-    # # set again to ROOT.gROOT. Objects that were attached to the file inside the
-    # # context are automatically deleted and made 'None' when the file is closed.
-    # print("Status after the first TFile context manager:")
-    # print(" Current directory: '{}'.".format(ROOT.gDirectory.GetName()))
-    # print(" Accessing 'histo_2' gives: '{}'.\n".format(histo_2))
-
-
-    # #inspect(key, methods=True)
-    # class_info = ROOT.gROOT.GetClass(key.GetClassName())
-    #
-    # print(class_info)
-    # print(key.GetClassName())
-
-
-
-
-    #inspect(root_file, methods=True)
-    #geo_man = root_file.Get("Default")
-    #inspect(my_list, methods=True)
+    tgeo_info(file_name, max_depth=max_depth, echo=print)
 
 
 @click.command()
-@click.option('-r', '--rules', 'rule_file', required=False, help='Path to the JSON rules file.')
-@click.option('-o', '--output', 'output_file', required=False, help='Output file path.')
+@click.option('-r', '--rules', 'rule_file', required=False,
+              help="Path to the YAML rules file. Defaults to the bundled EIC central detector rules.")
+@click.option('-o', '--output', 'output_file', required=False,
+              help="Output file path. Defaults to <input>.edit.root.")
 @click.argument('input_file')
 def process(input_file, output_file, rule_file):
     """
-    Shows information about geometry in file,
-    Requires CERN ROOT geometry file name
+    Remove nodes from a TGeo geometry file and save the result.
+
+    The rules file holds a 'nodeRemoveList' of node path patterns in fnmatch
+    syntax, such as '*/DIRC_??'. Each pattern removes the first node whose
+    path matches it. Requires PyROOT.
     """
 
     # (!) The main logic of this command lives in:
     #     pyrobird.cern_root.tgeo_process_file
-
 
     # Load rules file
     rules_data = _load_rules(rule_file)
@@ -207,7 +115,8 @@ def process(input_file, output_file, rule_file):
         raise KeyError("The key 'nodeRemoveList' is missing from the loaded rules data.")
 
     # Do the processing
-    tgeo_process_file(input_file, output_file, rules_data["nodeRemoveList"], logger)
+    removed = tgeo_process_file(input_file, output_file, rules_data["nodeRemoveList"], logger)
+    logger.info(f"Removed {len(removed)} node(s); saved {output_file}")
 
 
 geo.add_command(info)

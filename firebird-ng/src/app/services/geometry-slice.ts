@@ -61,11 +61,12 @@ export class ClippedGeometrySlice {
     // Intersection mode with a single plane clips exactly like union mode,
     // but gives this group the (1 intersection : 0 union) plane-count shape —
     // one the main clipping chain can never produce (the wedge is always 2
-    // planes, Z clipping is always union). Distinct count shapes between
-    // clipping groups are load-bearing: the renderer caches built shader
-    // states by plane counts only, so two groups with the same shape would
-    // share one shader bound to ONE group's plane array, and the other group
-    // would silently clip with the wrong planes.
+    // planes, Z clipping is always union). Through three r185 the renderer
+    // cached built shader states by plane counts only, so two groups with the
+    // same shape shared one shader bound to ONE group's plane array, and the
+    // other group silently clipped with the wrong planes. Since r186 the
+    // cache key also carries the clipping context id; the distinct shape
+    // stays as a guard (pinned by three-clipping-internals.spec.ts).
     this.group.clipIntersection = true;
     this.group.clippingPlanes = [this.plane];
     this.group.enabled = true;

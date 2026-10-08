@@ -69,7 +69,6 @@
         <input
           matSliderThumb
           [value]="openingAngle()"
-          (input)="onSliderInput($event, 'opening')"
           (valueChange)="changeOpeningClippingAngle($event)"
         />
       </mat-slider>
@@ -117,7 +116,6 @@
         <input
           matSliderThumb
           [value]="startAngle()"
-          (input)="onSliderInput($event, 'start')"
           (valueChange)="changeStartClippingAngle($event)"
         />
       </mat-slider>

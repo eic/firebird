@@ -5,9 +5,8 @@
  */
 
 import { Injectable, Injector, inject } from '@angular/core';
-import { CommandHandler, FbCommand } from './command-bus.service';
+import { AppCommand, CommandHandler, ConfigService, coerceConfigValue } from '@dexvis/app-features';
 import { GEOMETRY_LOADERS, EVENT_LOADERS } from './tokens';
-import { ConfigService } from '../services/config.service';
 
 // Handlers live in the initial bundle (referenced from app.config), so the
 // display-stack services (three.js and friends) are resolved through DYNAMIC
@@ -29,11 +28,11 @@ export class OpenGeometryCommandHandler implements CommandHandler {
   readonly type = 'open-geometry';
   private loaders = inject(GEOMETRY_LOADERS, { optional: true }) ?? [];
 
-  fromUrlArg(arg: string): FbCommand {
+  fromUrlArg(arg: string): AppCommand {
     return { type: this.type, url: arg };
   }
 
-  async execute(command: FbCommand): Promise<void> {
+  async execute(command: AppCommand): Promise<void> {
     const url = command['url'] as string;
     if (!url) throw new Error(`open-geometry: 'url' argument is required`);
     const loader = this.loaders.find(l => l.canLoad(url));
@@ -51,11 +50,11 @@ export class OpenDexCommandHandler implements CommandHandler {
   readonly type = 'open-dex';
   private loaders = inject(EVENT_LOADERS, { optional: true }) ?? [];
 
-  fromUrlArg(arg: string): FbCommand {
+  fromUrlArg(arg: string): AppCommand {
     return { type: this.type, url: arg };
   }
 
-  async execute(command: FbCommand): Promise<void> {
+  async execute(command: AppCommand): Promise<void> {
     const url = command['url'] as string;
     if (!url) throw new Error(`open-dex: 'url' argument is required`);
     const loader = this.loaders.find(l => l.canLoad(url));
@@ -76,11 +75,11 @@ export class ShowEventCommandHandler implements CommandHandler {
   readonly type = 'show-event';
   private injector = inject(Injector);
 
-  fromUrlArg(arg: string): FbCommand {
+  fromUrlArg(arg: string): AppCommand {
     return { type: this.type, index: parseInt(arg, 10) };
   }
 
-  async execute(command: FbCommand): Promise<void> {
+  async execute(command: AppCommand): Promise<void> {
     const index = Number(command['index']);
     if (isNaN(index)) throw new Error(`show-event: numeric 'index' argument is required`);
 
@@ -104,19 +103,22 @@ export class ShowEventCommandHandler implements CommandHandler {
  * `set-config` — set a config value: `{ type, key, value }` / `?cmd=set-config:key=value`.
  * URL/server/batch sources apply as SESSION values (never persisted — a link
  * or script cannot poison saved user preferences); ui/code sources persist.
+ * A ui/code write to a key no code declared yet goes to a placeholder: the
+ * owning code's later declaration still sets the key's default, type and
+ * validator, and reads the written value with them.
  */
 @Injectable()
 export class SetConfigCommandHandler implements CommandHandler {
   readonly type = 'set-config';
   private config = inject(ConfigService);
 
-  fromUrlArg(arg: string): FbCommand {
+  fromUrlArg(arg: string): AppCommand {
     const eq = arg.indexOf('=');
     if (eq < 0) return { type: this.type, key: arg, value: '' };
     return { type: this.type, key: arg.substring(0, eq), value: arg.substring(eq + 1) };
   }
 
-  execute(command: FbCommand): void {
+  execute(command: AppCommand): void {
     const key = command['key'] as string;
     if (!key) throw new Error(`set-config: 'key' argument is required`);
     const value = command['value'];
@@ -124,8 +126,9 @@ export class SetConfigCommandHandler implements CommandHandler {
     if (transient) {
       this.config.applySessionValue(key, value);
     } else {
-      const property = this.config.getConfigOrCreate(key, value);
-      property.setValue(value);
+      const property = this.config.getConfigOrPlaceholder(key, value);
+      // Text from a URL-style argument becomes the declared type ('7' -> 7)
+      property.setValue(coerceConfigValue(value, property.codeDefault));
     }
   }
 }
@@ -160,11 +163,11 @@ export class CameraPresetCommandHandler implements CommandHandler {
     'farforward': { position: [8000, 7500, 40000], target: [0, 0, 30000], up: [0, 1, 0] },
   };
 
-  fromUrlArg(arg: string): FbCommand {
+  fromUrlArg(arg: string): AppCommand {
     return { type: this.type, name: arg };
   }
 
-  async execute(command: FbCommand): Promise<void> {
+  async execute(command: AppCommand): Promise<void> {
     const name = command['name'] as string;
     const preset = this.presets[name];
     if (!preset) {

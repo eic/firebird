@@ -1,5 +1,7 @@
 import signal
+import socket
 import subprocess
+import sys
 import time
 import os
 import urllib
@@ -7,10 +9,19 @@ import urllib.request
 import urllib.error
 
 
+def _test_port():
+    """PYROBIRD_TEST_PORT, or a port that is free right now."""
+    if os.environ.get("PYROBIRD_TEST_PORT"):
+        return int(os.environ["PYROBIRD_TEST_PORT"])
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
 def test_pyrobird_serve_runs_and_responds():
-    port = 5461
+    port = _test_port()
     proc = subprocess.Popen(
-        ["pyrobird", "serve", "--port", str(port)],
+        [sys.executable, "-m", "pyrobird.cli", "serve", "--port", str(port)],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         env=os.environ.copy(),

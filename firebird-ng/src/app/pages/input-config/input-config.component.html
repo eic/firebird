@@ -5,92 +5,16 @@
       <mat-card class="config-card">
         <mat-card-title>Select Geometry and Events</mat-card-title>
         <mat-card-content>
-          <div class="section">
-            <h3>Examples:</h3>
-            <p>Select example configuration preset</p>
-            <firebird-resource-select
-              #premadeGeometry
-              [options]="quickLinkTitles"
-              label="Premade configurations"
-              (valueChange)="onPresetChange($event)">
-            </firebird-resource-select>
-          </div>
-
-          <div class="section">
-            <h3>Geometry</h3>
-            <p>Select or type in your url for the geometry</p>
-            <firebird-resource-select
-              #geometrySelect
-              [options]="geometryOptions"
-              label="Geometry source">
-            </firebird-resource-select>
-
-            <div class="upload-row">
-              <input
-                #geometryFileInput
-                type="file"
-                accept=".root"
-                hidden
-                (change)="onGeometryFileSelected($event)">
-              <button type="button" mat-stroked-button (click)="triggerGeometryFilePicker()">
-                Upload local .root file
-              </button>
-              <span *ngIf="uploadedGeometryName" class="upload-filename">
-                {{ uploadedGeometryName }}
-                <button type="button" mat-icon-button
-                        aria-label="Clear uploaded file"
-                        (click)="clearUploadedGeometry()">
-                  &times;
-                </button>
-              </span>
-            </div>
-          </div>
-
-          <div class="section">
-            <h3>Event Source: JSON</h3>
-            <firebird-resource-select
-              #dexJsonSelect
-              [options]="trajectoryOptions"
-              label="Load events from JSON files. Such files can be generated with 'pyrobird convert', merge or other tools">
-            </firebird-resource-select>
-          </div>
-
-          <div class="section">
-            <h3>EDM4EIC Event Source:</h3>
-            <p>Select file with EDM4EIC data</p>
-            <firebird-resource-select
-              #edm4eicSelect
-              [options]="edm4eicOptions"
-              label="Load EDM4EIC .root Edm4Eic (this operation requires backend to be running)">
-            </firebird-resource-select>
-            <p>Event range to load (e.g. "0", "0,1,2", "0-5").
-              It is recommended to load 1-10 events at a time. Not more!
-            </p>
-            <mat-form-field appearance="fill" class="full-width">
-              <input matInput type="text" placeholder="0-5" [formControl]="rootEventRange">
-            </mat-form-field>
-            <p>Collection groups to convert. A group the opened file does not have is skipped.</p>
-            <div class="conversion-groups">
-              @for (group of conversionGroups; track group.key) {
-                <label class="conversion-group-checkbox">
-                  <input type="checkbox"
-                         [checked]="isConversionGroupOn(group.key)"
-                         (change)="toggleConversionGroup(group.key)"/>
-                  <span>{{ group.label }}</span>
-                </label>
-              }
-            </div>
-          </div>
+          <p>Pick a preset, choose a physics case by its tags, or point Firebird at your own geometry and event files.
+            The choice is saved in this browser and loads when the display opens.</p>
+          <firebird-data-selector
+            applyLabel="Display"
+            [requireChanges]="false"
+            [showCancel]="false"
+            (applied)="onDataApplied()">
+          </firebird-data-selector>
         </mat-card-content>
-
-        <div class="action-buttons">
-          <button type="button" mat-raised-button [routerLink]="['/display']">DISPLAY</button>
-        </div>
-
       </mat-card>
-
-
-
 
       <mat-card class="config-card">
       <mat-card-title>Configure Geometry Pipeline</mat-card-title>
@@ -212,6 +136,10 @@
             <tr>
               <td>API Base URL</td>
               <td>{{ firebirdConfig.apiBaseUrl }}</td>
+            </tr>
+            <tr>
+              <td>Backend in use</td>
+              <td>{{ urlService.serverAddress() || 'None (static frontend)' }}</td>
             </tr>
             <tr>
               <td>Log Level</td>

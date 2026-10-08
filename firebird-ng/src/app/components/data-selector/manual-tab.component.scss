@@ -1,0 +1,28 @@
+@use './shared';
+
+.tab-block {
+  @include shared.tab-block;
+}
+
+.optimize {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+
+  input {
+    accent-color: var(--mat-sys-primary, #4bac84);
+    cursor: pointer;
+  }
+}
+
+.optimize-hint {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.status {
+  @include shared.status;
+}

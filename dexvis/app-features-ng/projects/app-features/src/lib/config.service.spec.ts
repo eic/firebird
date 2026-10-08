@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { ConfigService, ConfigSnapshot } from './config.service';
-import { ConfigProperty } from '../utils/config-property';
+import { ConfigProperty } from './config-property';
 
 // Mock storage for testing
 class MockStorage {

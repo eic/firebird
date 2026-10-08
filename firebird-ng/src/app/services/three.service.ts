@@ -7,62 +7,62 @@ import {
   AmbientLight,
   PointLight,
   SpotLight,
-  Frustum,
-  Matrix4,
-  Camera,
-  Scene, Mesh
 } from 'three';
-import { WebGPURenderer, ClippingGroup, NodeMaterial } from 'three/webgpu';
+import { WebGPURenderer, ClippingGroup } from 'three/webgpu';
 import {PerfService} from "./perf.service";
-import {BehaviorSubject, Subject} from "rxjs";
-
-/**
- * Workaround for a three.js (r183) clipping bug with classic materials.
- *
- * For non-node materials (MeshLambertMaterial etc.) the renderer builds a
- * TEMPORARY NodeMaterial for every shader build (NodeLibrary.fromMaterial) and
- * NodeMaterial.setupHardwareClipping stores its `hardwareClipping = true`
- * decision on that temporary. At draw time RenderObject.hardwareClippingPlanes
- * reads the flag from the ORIGINAL material, finds it unset, and never enables
- * the GPU clip distances — so union-mode clipping planes
- * (ClippingGroup.clipIntersection = false: the wedge >= 180 deg and the Z
- * plane) silently do not clip, while intersection-mode planes (fragment-shader
- * path, the pie wedge < 180 deg) work.
- *
- * Worse, ClippingNode reads `builder.material.hardwareClipping` — the CLASSIC
- * material again — where the flag is `undefined`; its fragment-shader
- * union-plane loop is guarded by `hardwareClipping === false`, so with
- * `undefined` the loop is skipped too and union planes are dropped from both
- * paths. (The intersection-plane loop has no such guard, which is why wedge
- * clipping below 180 degrees worked all along.)
- *
- * The patch (a) disables the hardware-clipping shortcut, forcing union planes
- * through the same fragment-shader path on WebGPU and the WebGL2 fallback,
- * and (b) defaults `hardwareClipping` to `false` on every classic material so
- * the guard sees a real boolean. Remove when three resolves node materials
- * consistently for classic materials.
- */
-let hardwareClippingPatched = false;
-function patchThreeHardwareClippingBug(): void {
-  if (hardwareClippingPatched) return;
-  hardwareClippingPatched = true;
-  (NodeMaterial.prototype as unknown as { setupHardwareClipping: (builder: unknown) => void }).setupHardwareClipping =
-    function (this: { hardwareClipping: boolean }) { this.hardwareClipping = false; };
-  (THREE.Material.prototype as unknown as { hardwareClipping: boolean }).hardwareClipping = false;
-}
-
-import {
-  acceleratedRaycast,
-  computeBoundsTree,
-  disposeBoundsTree, MeshBVH, MeshBVHHelper
-} from 'three-mesh-bvh';
+import {BehaviorSubject, Subject, combineLatest} from "rxjs";
+import { MeshBVHHelper } from 'three-mesh-bvh';
 
 import {THREE_EXTENSIONS, LAZY_THREE_EXTENSIONS} from '../firebird/tokens';
 import type {ThreeExtension, SceneContext, FrameContext} from '../firebird/three-extension';
-import type {Event as FbEvent} from '@firebird/core';
+import type {Event as FbEvent} from '@dexvis/firebird-core';
 import {RenderView, RenderViewOptions} from './render-view';
 import {ClippedGeometrySlice, GEOMETRY_MAIN_LAYER, EVENT_DATA_LAYER} from './geometry-slice';
-import {ConfigService} from './config.service';
+import { ConfigService } from '@dexvis/app-features';
+import {
+  CLIPPING_ENABLED_CONFIG,
+  CLIPPING_OPENING_ANGLE_CONFIG,
+  CLIPPING_START_ANGLE_CONFIG,
+  Z_CLIPPING_ENABLED_CONFIG,
+  Z_CLIPPING_FORWARD_CONFIG,
+  Z_CLIPPING_POSITION_CONFIG,
+} from '../firebird/config-keys';
+import { useFragmentShaderClipping } from './three-clipping-patch';
+import { runIsolated, shouldRenderFrame } from './render-loop';
+import {
+  ClipPlaneSets,
+  buildPickingBvh,
+  clipPlaneSetsOf,
+  collectBvhCandidates,
+  intersectVisible,
+  isClickGesture,
+  isPointClipped,
+  setWedgePlanes,
+  useAcceleratedRaycast,
+} from './picking';
+
+/** A scene object under the pointer, with the raycast hit that found it. */
+export interface PickedObject {
+  track: THREE.Object3D;
+  point: THREE.Vector3;
+  intersection: THREE.Intersection;
+}
+
+/**
+ * Runs `callback` when the browser is idle. Where requestIdleCallback is
+ * missing, runs it soon with a deadline that expires one frame (16 ms) after
+ * the callback starts.
+ */
+function whenIdle(callback: (deadline: { timeRemaining(): number }) => void): void {
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(callback, { timeout: 1000 });
+  } else {
+    setTimeout(() => {
+      const start = performance.now();
+      callback({ timeRemaining: () => Math.max(0, 16 - (performance.now() - start)) });
+    }, 1);
+  }
+}
 
 
 
@@ -145,6 +145,15 @@ export class ThreeService implements OnDestroy {
   private animationFrameId: number | null = null;
   private shouldRender = false;
 
+  /** The first init()'s scene creation; later and concurrent calls await it. */
+  private initPromise: Promise<void> | null = null;
+  /**
+   * Bumped by every init() and detach(). An init() whose number is no
+   * longer current when its awaits resolve skips attaching the canvas and
+   * starting the loop: a later init() or a detach() owns the display state.
+   */
+  private attachGeneration = 0;
+
   /**
    * Render scheduling (config key `rendering.mode`). On-demand is the
    * default: the RAF loop keeps ticking, but scene renders happen only when
@@ -158,8 +167,14 @@ export class ThreeService implements OnDestroy {
   /** Frames that actually rendered (idle gates and the perf box read this). */
   public renderedFrameCount = 0;
 
-  /** Callbacks to run each frame before rendering. */
+  /** Callbacks run after every rendered frame (see addFrameCallback). */
   private frameCallbacks: Array<() => void> = [];
+
+  /** Extensions whose onFrame threw: their onFrame is not called again. */
+  private disabledFrameHooks = new WeakSet<ThreeExtension>();
+
+  /** Scene background; ThemeService sets it, init() applies it. */
+  private readonly background = new THREE.Color(0x3f3f3f);
 
   private clipIntersection: boolean = false;
 
@@ -187,30 +202,52 @@ export class ThreeService implements OnDestroy {
   private pointLight!: PointLight; // Optional
   private spotLight!: SpotLight; // Optional
 
-  /** BVH wizard */
+  /** Adds a MeshBVHHelper to each mesh whose picking BVH gets built (debug GUI toggle). */
   public showBVHDebug: boolean = false;
 
-   // Raycasting properties
+  /** Geometry meshes waiting for their picking BVH (built in idle time after a load). */
+  private bvhQueue: THREE.Mesh[] = [];
+  private bvhBuildScheduled = false;
+
+  /** Hover picking (opt-in through toggleRaycast). Click selection is always on. */
   private isRaycastEnabled = false;
 
   /** Pointer handlers installed per view, kept so views can be removed cleanly. */
   private viewPointerHandlers = new Map<RenderView, {
     move: (event: PointerEvent) => void;
+    leave: (event: PointerEvent) => void;
     down: (event: PointerEvent) => void;
+    up: (event: PointerEvent) => void;
+    cancel: (event: PointerEvent) => void;
     dblclick: (event: MouseEvent) => void;
   }>();
 
+  /**
+   * Hover highlight of detector geometry: the hovered mesh shows this one
+   * shared material while its own is parked in hoveredMeshMaterial. Event
+   * data is never highlighted here — its hover goes out through
+   * `trackHovered`, and SelectionService routes it to the owning painter.
+   */
+  private readonly hoverMaterial = new THREE.MeshLambertMaterial({
+    color: 0xffe082,
+    emissive: 0x403010,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.85,
+  });
+  private hoveredMesh: THREE.Mesh | null = null;
+  private hoveredMeshMaterial: THREE.Material | THREE.Material[] | null = null;
+  /** True while the last hover pick hit event data (a null still has to go out when it ends). */
+  private hoveringEventData = false;
 
-  // Track hover indicator
-  // private hoverPoint: THREE.Mesh | null = null;
-
-  // Track highlighted object for raycast feedback
-  private highlightedObject: THREE.Object3D | null = null;
-  private originalMaterials = new Map<THREE.Object3D, THREE.Material | THREE.Material[]>();
-
-  // Events
-  public trackHovered = new Subject<{track: THREE.Object3D, point: THREE.Vector3}>();
-  public trackClicked = new Subject<{track: THREE.Object3D, point: THREE.Vector3, intersection: THREE.Intersection}>();
+  /**
+   * Event data under the pointer (hover picking only), or null when the
+   * pointer left it. SelectionService turns this into the painter's entity
+   * highlight.
+   */
+  public trackHovered = new Subject<PickedObject | null>();
+  /** A click (press and release without dragging) picked this object. */
+  public trackClicked = new Subject<PickedObject>();
 
   // Raw hit point every frame (hover)
   public pointHovered = new Subject<THREE.Vector3>();
@@ -228,67 +265,25 @@ export class ThreeService implements OnDestroy {
   private hoverTimeout: number | null = null;
   private measurementPoints: THREE.Mesh[] = [];
 
-  private frustumCuller = {
-    frustum: new Frustum(),
-    projScreenMatrix: new Matrix4(),
-
-    updateFrustum(camera: Camera): void {
-      this.projScreenMatrix.multiplyMatrices(
-        camera.projectionMatrix,
-        camera.matrixWorldInverse
-      );
-      this.frustum.setFromProjectionMatrix(this.projScreenMatrix);
-    },
-
-    cullMeshes(scene: Scene, camera: Camera): void {
-      this.updateFrustum(camera);
-
-      scene.traverse((object:any) => {
-        if (object!=null && (object as any).isMesh) {
-          // First check if object has bounds
-          if (!object.geometry.boundingBox) {
-            object.geometry.computeBoundingBox();
-          }
-
-          // For objects with BVH
-          if (object.geometry.boundsTree) {
-            // Use BVH for efficient culling
-            const visible = object.geometry.boundsTree.shapecast({
-              intersectsBounds: (box: THREE.Box3) => {
-                return this.frustum.intersectsBox(box);
-              }
-            });
-            console.log("Shapecast!");
-            object.visible = visible ?? true;
-          } else {
-            // Fallback to standard bounding box check
-            const box = new THREE.Box3().setFromObject(object);
-            object.visible = this.frustum.intersectsBox(box);
-          }
-        }
-      });
-    }
-  };
-
 
   constructor(
     private ngZone: NgZone,
     private perfService: PerfService) {
-    // Empty constructor – initialization happens in init()
-
-     // Apply mesh-bvh acceleration to improve raycasting performance
-    THREE.Mesh.prototype.raycast = acceleratedRaycast;
-    THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
-    THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+    // Initialization happens in init()
   }
 
   /**
-   * Initializes the Three.js scene, camera, renderer, controls, and lights.
-   * Must be called before any other method.
-   * @param container A string representing the ID of the HTML element,
-   *                  or the actual HTMLElement where the renderer will attach.
+   * Attaches the display to a container: the first call creates the scene,
+   * renderer, main view and lights; later calls move the existing canvas and
+   * main view into the new container (page revisits). Either way the render
+   * loop runs afterwards. Concurrent calls are safe: they share the one
+   * scene creation, and only the most recent call attaches.
+   *
+   * @param container The ID of the HTML element, or the element itself.
+   * @returns True when this call attached the display; false when a later
+   *          init() or a detach() superseded it while it waited.
    */
-  async init(container: string | HTMLElement): Promise<void> {
+  async init(container: string | HTMLElement): Promise<boolean> {
 
     let containerElement: HTMLElement;
 
@@ -303,18 +298,61 @@ export class ThreeService implements OnDestroy {
       containerElement = container;
     }
 
-    // If already initialized once, warn but still re-attach the canvas.
-    if (this.initialized) {
-      console.warn('ThreeService has already been initialized. Re-attaching renderer...');
-      this.attachRenderer(containerElement);
-      return;
+    const generation = ++this.attachGeneration;
+    const creates = this.initPromise === null;
+    if (creates) {
+      this.initPromise = this.createScene(containerElement);
+    }
+    try {
+      await this.initPromise;
+    } catch (error) {
+      // A failed creation must not poison later attempts.
+      if (creates) this.initPromise = null;
+      throw error;
     }
 
+    if (generation !== this.attachGeneration) {
+      return false;
+    }
+    // The creating call already placed the canvas and main view.
+    if (!creates) {
+      this.attachRenderer(containerElement);
+    }
+    this.startRendering();
+    return true;
+  }
+
+  /**
+   * Detaches the display: the page that hosted the canvas went away, so the
+   * render loop stops (nothing would show its frames). The scene, views and
+   * extensions stay; the next init() re-attaches the canvas and restarts
+   * the loop. Display pages call this from ngOnDestroy.
+   */
+  detach(): void {
+    this.attachGeneration++;
+    this.stopRendering();
+    this.endHover();
+  }
+
+  /**
+   * Sets the scene background color (the theme's canvas color). Applies at
+   * once when the scene exists, otherwise when init() creates it.
+   */
+  setBackground(color: THREE.ColorRepresentation): void {
+    this.background.set(color);
+    if (this.scene) {
+      this.scene.background = this.background;
+      this.invalidate();
+    }
+  }
+
+  /** The one-time creation behind init(): scene, renderer, main view, lights, extensions. */
+  private async createScene(containerElement: HTMLElement): Promise<void> {
     this.containerElement = containerElement;
 
     // 1) Create scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x3f3f3f); // Dark grey background
+    this.scene.background = this.background;
 
     // Z clipping group (union mode) wraps the geometry group
     this.zClippingGroup = new ClippingGroup();
@@ -340,11 +378,13 @@ export class ThreeService implements OnDestroy {
     this.scene.add(this.sceneHelpers);
 
     // Create renderer (WebGPU with automatic WebGL2 fallback)
-    patchThreeHardwareClippingBug();
+    useFragmentShaderClipping();
     this.renderer = new WebGPURenderer({ antialias: true , logarithmicDepthBuffer: true, stencil:true});
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // WebGPURenderer dropped PCFSoftShadowMap in three r186 and falls back to
+    // PCFShadowMap with a warning on the first render; request it directly.
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     await this.renderer.init();
 
     // Append renderer to the container
@@ -382,7 +422,13 @@ export class ThreeService implements OnDestroy {
       modeProperty.subject.subscribe(applyMode); // root-singleton lifetime
     }
 
-    // Apply any clipping state that was set by Angular effects before init completed
+    // Geometry clipping of the main chain follows its config keys, whatever
+    // sets them: the toolbar's clipping panel, a deep link
+    // (?config.clippingEnabled=...), the server config or a saved value.
+    // Bound here, not in the toolbar, so pages without the toolbar clip too.
+    if (this.configService) {
+      this.bindClippingConfig(this.configService);
+    }
     this.updateClippingGroups();
 
     // ----------- POST INIT ------------------
@@ -392,24 +438,43 @@ export class ThreeService implements OnDestroy {
     const height = this.containerElement.clientHeight;
     this.setSize(width, height);
 
-
-    // Initialize the hover point
-    // this.initHoverPoint();
-
-    // Set up new raycasting handlers
+    // Pointer picking per view (hover, click selection, measurement)
     this.setupRaycasting();
-
-    // Compute BVH for all existing meshes for fast raycasting
-    this.setupBVH();
-
-    // Start rendering
-    this.startRendering();
 
     // Extension lifecycle: onSceneInit fires strictly AFTER the async renderer
     // init resolved — extensions never see a half-initialized scene. Lazy
-    // extensions load after that, off the critical path.
+    // extensions load after that, off the critical path. init() starts the
+    // render loop once this creation resolved.
     this.initExtensions();
     void this.activateLazyExtensions();
+  }
+
+  /**
+   * Applies the clipping config keys to the wedge and Z clipping groups now
+   * and on every change. The subscriptions live as long as this root service.
+   */
+  private bindClippingConfig(config: ConfigService): void {
+    const wedge = [
+      config.declare(CLIPPING_ENABLED_CONFIG),
+      config.declare(CLIPPING_START_ANGLE_CONFIG),
+      config.declare(CLIPPING_OPENING_ANGLE_CONFIG),
+    ] as const;
+    combineLatest([wedge[0].changes$, wedge[1].changes$, wedge[2].changes$])
+      .subscribe(([enabled, startAngle, openingAngle]) => {
+        this.setClippingAngle(startAngle, openingAngle);
+        this.enableClipping(enabled);
+      });
+
+    const z = [
+      config.declare(Z_CLIPPING_ENABLED_CONFIG),
+      config.declare(Z_CLIPPING_POSITION_CONFIG),
+      config.declare(Z_CLIPPING_FORWARD_CONFIG),
+    ] as const;
+    combineLatest([z[0].changes$, z[1].changes$, z[2].changes$])
+      .subscribe(([enabled, position, forward]) => {
+        this.updateZClipping(position, forward);
+        this.enableZClipping(enabled);
+      });
   }
 
   /** Builds the extension contexts and runs onSceneInit for eager extensions. */
@@ -446,13 +511,9 @@ export class ThreeService implements OnDestroy {
       get camera() { return service.camera; },
       invalidate,
     };
-    for (const extension of this.extensions) {
-      try {
-        extension.onSceneInit?.(this.sceneContext);
-      } catch (error) {
-        console.error('[ThreeService] Extension onSceneInit failed:', extension, error);
-      }
-    }
+    const context = this.sceneContext;
+    runIsolated(this.extensions, extension => extension.onSceneInit?.(context),
+      (extension, error) => console.error('[ThreeService] Extension onSceneInit failed:', extension, error));
   }
 
   /**
@@ -480,13 +541,8 @@ export class ThreeService implements OnDestroy {
 
   /** Forwards a newly loaded event to extensions (called by EventDisplayService). */
   notifyEventLoaded(event: FbEvent): void {
-    for (const extension of this.extensions) {
-      try {
-        extension.onEventLoaded?.(event);
-      } catch (error) {
-        console.error('[ThreeService] Extension onEventLoaded failed:', extension, error);
-      }
-    }
+    runIsolated(this.extensions, extension => extension.onEventLoaded?.(event),
+      (extension, error) => console.error('[ThreeService] Extension onEventLoaded failed:', extension, error));
     this.invalidate();
   }
 
@@ -586,6 +642,8 @@ export class ThreeService implements OnDestroy {
     this.mainView.perspectiveCamera.layers.enable(GEOMETRY_MAIN_LAYER);
     this.mainView.orthographicCamera.layers.enable(GEOMETRY_MAIN_LAYER);
     this.geometrySlice = slice;
+    // Copies do not inherit the per-mesh accelerated raycast of the originals.
+    useAcceleratedRaycast(slice.group);
     // A previous slice's shader states (same plane-count shape) would be
     // bound to its orphaned plane array — force rebuilds against this one.
     this.dropClippingShaderState();
@@ -593,12 +651,31 @@ export class ThreeService implements OnDestroy {
     return slice;
   }
 
-  /** Rebuilds the slice spine from the current geometry content (after loads). */
+  /**
+   * Rebuilds the slice spine from the current geometry content (after
+   * loads). Always schedules a render, slice or not: callers use it as the
+   * "geometry content changed" notification.
+   */
   rebuildGeometrySlice(): void {
-    if (!this.geometrySlice) return;
-    this.geometrySlice.rebuild(this.sceneGeometry);
-    this.dropClippingShaderState();
+    if (this.geometrySlice) {
+      this.geometrySlice.rebuild(this.sceneGeometry);
+      useAcceleratedRaycast(this.geometrySlice.group);
+      this.dropClippingShaderState();
+    }
     this.invalidate();
+  }
+
+  /**
+   * Call after the content under `sceneGeometry` changed (a geometry load
+   * added or replaced it). Rebuilds the projection views' geometry copy when
+   * one exists, queues the picking BVH builds, and schedules a render — the
+   * on-demand loop draws nothing new without that.
+   */
+  geometryChanged(): void {
+    this.clearHoverHighlight();
+    useAcceleratedRaycast(this.sceneGeometry);
+    this.rebuildGeometrySlice();
+    this.scheduleGeometryBvh();
   }
 
   /** Removes the geometry slice and restores single-copy layer routing. */
@@ -609,20 +686,6 @@ export class ThreeService implements OnDestroy {
     this.geometrySlice = null;
     this.dropClippingShaderState();
     this.invalidate();
-  }
-
-  /**
-   * When You Do Want to Recreate the Entire Scene
-   * If sometimes you genuinely need to start fresh (e.g. user changed geometry drastically)
-   */
-  public reset(): void {
-    this.stopRendering();
-    // remove old scene from memory
-    // e.g. dispose geometries, empty the scene, etc.
-    this.renderer.domElement.parentNode?.removeChild(this.renderer.domElement);
-
-    this.initialized = false;
-    // next time `init` is called, it will do full creation again.
   }
 
 
@@ -697,17 +760,18 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * Starts the rendering loop.
+   * Starts the rendering loop. Does nothing when it already runs. init()
+   * starts it; call this only to resume after an explicit stopRendering().
    */
   startRendering(): void {
     this.ensureInitialized('startRendering');
 
     if (this.animationFrameId !== null) {
-      console.warn('[ThreeService]: Rendering loop is already running.');
       return;
     }
 
     this.shouldRender = true;
+    this.renderRequested = true;
     this.ngZone.runOutsideAngular(() => {
       this.renderLoop();
     });
@@ -764,8 +828,7 @@ export class ThreeService implements OnDestroy {
         view.controls.update();
       }
 
-      const anythingDirty = this.renderRequested || this.views.some(view => view.dirty);
-      const rendering = this.continuousMode || anythingDirty;
+      const rendering = shouldRenderFrame(this.continuousMode, this.renderRequested, this.views);
 
       if (rendering) {
         // Profiling start
@@ -773,11 +836,20 @@ export class ThreeService implements OnDestroy {
 
         // Extension onFrame hooks run before rendering. Keep them cheap:
         // animation only, no state polling (state changes travel through
-        // signals). deltaTime = ms since the previous RENDERED frame.
-        if (this.frameContext && this.extensions.length > 0) {
-          this.frameContext.deltaTime = this.lastFrameStartTime ? frameStartTime - this.lastFrameStartTime : 0;
-          for (const extension of this.extensions) {
-            extension.onFrame?.(this.frameContext);
+        // signals). deltaTime = ms since the previous RENDERED frame. A hook
+        // that throws is logged and not called again; the loop goes on.
+        const frameContext = this.frameContext;
+        if (frameContext && this.extensions.length > 0) {
+          frameContext.deltaTime = this.lastFrameStartTime ? frameStartTime - this.lastFrameStartTime : 0;
+          const failed = runIsolated(this.extensions,
+            extension => {
+              if (extension.onFrame && !this.disabledFrameHooks.has(extension)) {
+                extension.onFrame(frameContext);
+              }
+            },
+            (extension, error) => console.error('[ThreeService] Extension onFrame failed; disabling its onFrame:', extension, error));
+          for (const extension of failed) {
+            this.disabledFrameHooks.add(extension);
           }
         }
         this.lastFrameStartTime = frameStartTime;
@@ -819,9 +891,12 @@ export class ThreeService implements OnDestroy {
         this.renderedFrameCount++;
 
         // Frame callbacks (tween advancement etc.) run on rendered frames;
-        // an active animation re-invalidates, sustaining its own chain.
-        for (const cb of this.frameCallbacks) {
-          cb();
+        // an active animation re-invalidates, sustaining its own chain. A
+        // callback that throws is logged and removed; the loop goes on.
+        const failedCallbacks = runIsolated(this.frameCallbacks, callback => callback(),
+          (callback, error) => console.error('[ThreeService] Frame callback failed; removing it:', callback, error));
+        for (const callback of failedCallbacks) {
+          this.removeFrameCallback(callback);
         }
 
         this.profileEndFunc?.();
@@ -831,15 +906,19 @@ export class ThreeService implements OnDestroy {
       // idle on-demand display correctly reads 0 (shown as "idle").
       this.perfService.updateStats(this.renderer, frameStartTime, rendering, this.continuousMode);
     } catch (error) {
+      // Hooks and callbacks are isolated above; what lands here is a
+      // renderer failure, which would repeat on every frame.
       console.error('(!!!) ThreeService Render Loop Error:', error);
       this.stopRendering();
     }
   }
 
   /**
-   * Adds a callback to be executed each frame before rendering.
-   * Prevents duplicate callbacks.
-   * @param callback Function to execute each frame.
+   * Adds a callback that runs after every RENDERED frame (under on-demand
+   * scheduling, idle frames skip it; an animation re-invalidates from its
+   * callback to keep frames coming). Prevents duplicate callbacks. A
+   * callback that throws is logged and removed.
+   * @param callback Function to execute each rendered frame.
    */
   addFrameCallback(callback: () => void): void {
     if (!this.frameCallbacks.includes(callback)) {
@@ -898,21 +977,7 @@ export class ThreeService implements OnDestroy {
    * @param openingAngleDeg The opening angle in degrees.
    */
   setClippingAngle(startAngleDeg: number, openingAngleDeg: number): void {
-    const planeA = this.clipPlanes[0];
-    const planeB = this.clipPlanes[1];
-
-    this.clipIntersection = openingAngleDeg < 180;
-    const startAngle = (startAngleDeg * Math.PI) / 180;
-    const openingAngle = (openingAngleDeg * Math.PI) / 180;
-
-    const quatA = new THREE.Quaternion();
-    quatA.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle);
-    planeA.normal.set(0, -1, 0).applyQuaternion(quatA);
-
-    const quatB = new THREE.Quaternion();
-    quatB.setFromAxisAngle(new THREE.Vector3(0, 0, 1), startAngle + openingAngle);
-    planeB.normal.set(0, 1, 0).applyQuaternion(quatB);
-
+    this.clipIntersection = setWedgePlanes(this.clipPlanes[0], this.clipPlanes[1], startAngleDeg, openingAngleDeg);
     this.updateClippingGroups();
   }
 
@@ -960,17 +1025,10 @@ export class ThreeService implements OnDestroy {
     this.zClippingGroup.clippingPlanes = this.zClippingEnabled ? [this.zClipPlane] : [];
     this.zClippingGroup.enabled = this.zClippingEnabled;
 
-    // three.js (r183) does not reliably rebuild shaders when the SET of
-    // clipping planes changes (plane positions are fine — they are uniforms):
-    // RenderObjects.get short-circuits on material.version before consuming
-    // the one-shot clippingNeedsUpdate getter, so a pipeline compiled without
-    // planes keeps rendering unclipped after planes appear (and vice versa).
-    // Dropping the cached render objects forces a rebuild against the current
-    // clipping structure; built shader states stay cached by key, so toggling
-    // back and forth does not recompile. Reusing those cached states across
-    // toggles is only correct because the clipping-plane arrays keep their
-    // identity — see patchThreeClippingContextArrayStability. Only runs when
-    // the structure — enabled flags, plane count, intersection mode —
+    // three.js does not reliably rebuild shaders when the SET of clipping
+    // planes changes (plane positions are fine — they are uniforms); see
+    // dropClippingShaderState for the two defects. The eviction runs only
+    // when the structure — enabled flags, plane count, intersection mode —
     // changes, never while a slider drags plane positions around.
     const structure = `${this.sceneGeometry.enabled}:${this.sceneGeometry.clipIntersection}:${this.sceneGeometry.clippingPlanes.length}:${this.zClippingEnabled}`;
     if (structure !== this.lastClippingStructure) {
@@ -981,12 +1039,12 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * Drops the renderer's cached render objects AND built node states so the
-   * next frame rebuilds them against the current clipping structure. Called
-   * whenever the SET of active clipping planes changes (never for plane
-   * position updates — those are uniforms).
+   * Makes the next frame rebuild every clipped object's render state against
+   * the current clipping structure. Called whenever the SET of active
+   * clipping planes changes (never for plane position updates — those are
+   * uniforms).
    *
-   * Both caches must go, for two different three.js (r183–r185) defects:
+   * Two three.js defects make the rebuild necessary:
    *
    * - Render objects: RenderObjects.get short-circuits on material.version
    *   before consuming the one-shot clippingNeedsUpdate getter, so a pipeline
@@ -995,29 +1053,42 @@ export class ThreeService implements OnDestroy {
    * - Node states: built shaders bind clipping planes to the ARRAY INSTANCE
    *   their ClippingContext held at build time, but ClippingContext.update()
    *   REPLACES its arrays whenever the parent group chain changes (e.g. an
-   *   outer clipping group toggled). The state cache is keyed by plane
-   *   COUNTS, so a toggle that returns to a previously-seen count would reuse
-   *   a shader bound to the ORPHANED array — whose view-space plane values
-   *   nobody re-projects, leaving the cut frozen to the camera (orbit moves
-   *   the cut, zoom clips deeper). Evicting the states forces a rebuild that
-   *   captures the live arrays. GPU programs are NOT recompiled on the way
-   *   back: Pipelines caches programs by generated shader source, and equal
-   *   clipping structure generates equal source — the rebuild cost is CPU
-   *   node-graph work only, on a rare user action.
+   *   outer clipping group toggled). A toggle that returns to a
+   *   previously-seen plane-count shape would reuse a shader bound to the
+   *   ORPHANED array — whose view-space plane values nobody re-projects,
+   *   leaving the cut frozen to the camera (orbit moves the cut, zoom clips
+   *   deeper).
    *
-   * three-clipping-internals.spec.ts pins the array-replacement behavior;
-   * if a three upgrade makes it fail, re-evaluate whether this is still
-   * needed.
+   * The eviction disposes the materials of the clipped subtrees (the
+   * original geometry and the slice copy share them). Every render object
+   * built for a material listens to its 'dispose' event and releases itself
+   * through the renderer's reference counting: pipeline, bindings and node
+   * state usage drop, and a node state whose last user went away leaves the
+   * cache. Disposing a material keeps it usable; the next frame builds fresh
+   * render objects and node states that capture the live plane arrays.
+   * Objects outside the clipping chain (event data, helpers) keep theirs.
+   *
+   * three-clipping-internals.spec.ts pins the array-replacement behavior.
+   * Without this eviction the cut stays frozen to the camera after a toggle;
+   * with it, repeated toggles keep the render-object count flat.
    */
   private dropClippingShaderState(): void {
-    const internals = this.renderer as unknown as {
-      _objects?: { dispose(): void };
-      _nodes?: { nodeBuilderCache?: Map<unknown, unknown> };
+    // A hovered mesh shows the shared hover material; restore its own first
+    // so the eviction reaches the material it renders with afterwards.
+    this.clearHoverHighlight();
+    const materials = new Set<THREE.Material>();
+    const collect = (object: THREE.Object3D) => {
+      const material = (object as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      if (Array.isArray(material)) {
+        for (const entry of material) materials.add(entry);
+      } else if (material) {
+        materials.add(material);
+      }
     };
-    internals._objects?.dispose();
-    internals._nodes?.nodeBuilderCache?.clear();
-    if (!internals._objects || !internals._nodes?.nodeBuilderCache) {
-      console.warn('[ThreeService] Renderer clipping caches not found — clipping toggles may show stale cuts (three internals moved?).');
+    this.zClippingGroup?.traverse(collect);
+    this.geometrySlice?.group.traverse(collect);
+    for (const material of materials) {
+      material.dispose();
     }
   }
 
@@ -1054,25 +1125,25 @@ export class ThreeService implements OnDestroy {
   }
 
   /**
-   * Cleans up resources when the service is destroyed.
+   * Application teardown (the root injector is destroyed): extensions get
+   * onDispose, then views, listeners, BVHs and the renderer go away. Display
+   * pages unmounting do not reach this; they call detach().
    */
   ngOnDestroy(): void {
-    for (const extension of this.extensions) {
-      try {
-        extension.onDispose?.();
-      } catch (error) {
-        console.error('[ThreeService] Extension onDispose failed:', extension, error);
-      }
-    }
-    this.clearHighlight();
+    runIsolated(this.extensions, extension => extension.onDispose?.(),
+      (extension, error) => console.error('[ThreeService] Extension onDispose failed:', extension, error));
+    this.clearHoverHighlight();
     this.stopRendering();
     this.cleanupEventListeners();
     for (const view of this.views) {
       view.dispose();
     }
     this.views = [];
+    this.bvhQueue = [];
     if(this.sceneGeometry) this.cleanupBVH(this.sceneGeometry);
     if(this.sceneEvent) this.cleanupBVH(this.sceneEvent);
+    this.hoverMaterial.dispose();
+    this.renderer?.dispose();
   }
 
 
@@ -1088,116 +1159,105 @@ export class ThreeService implements OnDestroy {
     console.log('Textures in memory:', info.memory.textures);
     console.log('Pipelines:', (info as any).pipelines?.length);
   }
-  // /**
-  //  * Initialize the hover point indicator
-  //  */
-  // private initHoverPoint(): void {
-  //   const sphereGeom = new THREE.SphereGeometry(6, 16, 16);
-  //   const sphereMat = new THREE.MeshBasicMaterial({
-  //     color: 0xff0000,
-  //     transparent: true,
-  //     opacity: 0.8,
-  //     depthTest: false,
-  //     depthWrite: false
-  //   });
-  //
-  //   this.hoverPoint = new THREE.Mesh(sphereGeom, sphereMat);
-  //   this.hoverPoint.visible = false;
-  //   this.hoverPoint.name = "HoverPoint";
-  //   this.hoverPoint.renderOrder = 999;
-  //   this.sceneHelpers.add(this.hoverPoint);
-  // }
+
+  // -------------------------------------------------------------------------
+  // Hover highlight
+  // -------------------------------------------------------------------------
 
   /**
-   * Highlight an object by making its material brighter
+   * Shows the shared hover material on a geometry mesh. The mesh's own
+   * material is parked and comes back in clearHoverHighlight; nothing is
+   * cloned, so knob restyles and selection highlights keep acting on the
+   * real material.
    */
-  private highlightObject(object: THREE.Object3D): void {
-    if (this.highlightedObject === object) return;
-
-    // Clear previous highlight
-    this.clearHighlight();
-
-    if (object instanceof THREE.Mesh && object.material) {
-      this.highlightedObject = object;
-
-      // Store original material(s)
-      this.originalMaterials.set(object, object.material);
-
-      // Create highlighted version
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      const highlightedMaterials = materials.map(mat => {
-        const highlightMat = mat.clone();
-
-        // Make material brighter by increasing emissive
-        if ('emissive' in highlightMat) {
-          highlightMat.emissive.setHex(0x444444); // Add subtle glow
-        }
-
-        // Increase overall brightness for materials that support it
-        if ('color' in highlightMat && highlightMat.color) {
-          highlightMat.color.multiplyScalar(1.5); // Make 50% brighter
-        }
-
-        highlightMat.needsUpdate = true;
-        return highlightMat;
-      });
-
-      object.material = Array.isArray(object.material) ? highlightedMaterials : highlightedMaterials[0];
-      this.invalidate();
-    }
+  private highlightGeometryMesh(mesh: THREE.Mesh): void {
+    if (this.hoveredMesh === mesh) return;
+    this.clearHoverHighlight();
+    this.hoveredMesh = mesh;
+    this.hoveredMeshMaterial = mesh.material;
+    mesh.material = this.hoverMaterial;
+    this.invalidate();
   }
 
   /**
-   * Clear the current highlight
+   * Restores the hovered geometry mesh's own material. Call before
+   * disposing or replacing geometry that may be under the pointer.
    */
-  private clearHighlight(): void {
-    if (this.highlightedObject && this.originalMaterials.has(this.highlightedObject)) {
-      const original = this.originalMaterials.get(this.highlightedObject);
-      if (this.highlightedObject instanceof THREE.Mesh && original) {
-        this.highlightedObject.material = original;
-      }
-      this.originalMaterials.delete(this.highlightedObject);
-      this.highlightedObject = null;
-      this.invalidate();
+  clearHoverHighlight(): void {
+    const mesh = this.hoveredMesh;
+    if (!mesh) return;
+    if (this.hoveredMeshMaterial) {
+      mesh.material = this.hoveredMeshMaterial;
     }
+    this.hoveredMesh = null;
+    this.hoveredMeshMaterial = null;
+    this.invalidate();
+  }
+
+  /** Ends any hover: geometry highlight off, and event-data hover reported as left. */
+  private endHover(): void {
+    if (this.hoverTimeout) {
+      clearTimeout(this.hoverTimeout);
+      this.hoverTimeout = null;
+    }
+    this.clearHoverHighlight();
+    if (this.hoveringEventData) {
+      this.hoveringEventData = false;
+      this.trackHovered.next(null);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Picking
+  // -------------------------------------------------------------------------
+
+  /**
+   * The clipping planes that hide geometry in `view`. A view with its own
+   * cut renders the slice copy, clipped by its plane alone; every other view
+   * renders the original geometry under the main chain (Z group around the
+   * wedge group).
+   */
+  private clipPlanesFor(view: RenderView): ClipPlaneSets {
+    if (view.geometrySlice && view.clipPlane) {
+      return clipPlaneSetsOf([{
+        enabled: view.geometrySlice.group.enabled,
+        clipIntersection: view.geometrySlice.group.clipIntersection,
+        clippingPlanes: [view.clipPlane],
+      }]);
+    }
+    return clipPlaneSetsOf([this.zClippingGroup, this.sceneGeometry]);
+  }
+
+  /** The geometry subtree `view` renders: the slice copy for views with their own cut. */
+  private geometryRootFor(view: RenderView): THREE.Object3D {
+    return view.geometrySlice && view.clipPlane ? view.geometrySlice.group : this.sceneGeometry;
   }
 
   /**
-   * Helper to check if a point is clipped by active clipping planes
+   * Casts from the view camera through the pointer: event data first, then
+   * geometry. Invisible subtrees (hidden pieces, hidden detector parts) are
+   * skipped. The clip test applies to GEOMETRY hits only — event data is
+   * never clipped visually (sceneEvent sits outside the clipping groups),
+   * so it stays pickable everywhere it is drawn.
    */
-  private isPointClipped(point: THREE.Vector3): boolean {
-    if (!this.angularClippingEnabled && !this.zClippingEnabled) {
-      return false;
-    }
+  private pick(view: RenderView, event: { clientX: number; clientY: number }): { hit: THREE.Intersection; isEventData: boolean } | null {
+    const raycaster = view.raycasterFromEvent(event);
+    if (!raycaster) return null;
+    raycaster.firstHitOnly = false;
 
-    // Check Z clipping plane (global, always union mode)
-    if (this.zClippingEnabled && this.zClipPlane.distanceToPoint(point) < 0) {
-      return true;
-    }
+    const isPickable = (hit: THREE.Intersection) => {
+      const name = hit.object.name;
+      return !name.includes('Helper') && !name.startsWith('MeasurePoint_');
+    };
 
-    // Check angular clipping planes
-    if (this.angularClippingEnabled && this.clipPlanes.length > 0) {
-      for (const plane of this.clipPlanes) {
-        const distance = plane.distanceToPoint(point);
-        if (distance < 0) {
-          return true;
-        }
-      }
-    }
-    return false;
+    const eventHit = intersectVisible(raycaster, [this.sceneEvent]).find(isPickable);
+    if (eventHit) return { hit: eventHit, isEventData: true };
+
+    const planes = this.clipPlanesFor(view);
+    const geometryHit = intersectVisible(raycaster, [this.geometryRootFor(view)])
+      .find(hit => isPickable(hit) && !isPointClipped(hit.point, planes));
+    return geometryHit ? { hit: geometryHit, isEventData: false } : null;
   }
-
-  /**
-   * Filter intersections based on clipping planes
-   */
-  private filterClippedIntersections(intersections: THREE.Intersection[]): THREE.Intersection[] {
-    if ((!this.angularClippingEnabled && !this.zClippingEnabled) || this.clipPlanes.length === 0) {
-      return intersections;
-    }
-
-    return intersections.filter(intersection => !this.isPointClipped(intersection.point));
-  }
-
 
   /**
    * Sets up the raycasting functionality with proper clipping support.
@@ -1213,108 +1273,78 @@ export class ThreeService implements OnDestroy {
   private installRaycastHandlers(view: RenderView): void {
     if (this.viewPointerHandlers.has(view)) return;
 
-    const buildBVHIfNeeded = (obj: any) => {
-      // Ensure normals and bounding boxes are accurate for small details
-
-      if (obj.isMesh && obj.geometry && !obj.geometry.boundsTree) {
-        let mesh = obj as THREE.Mesh;
-        if (!mesh.geometry.attributes['normal']) mesh.geometry.computeVertexNormals();
-
-        // @ts-ignore
-        obj.geometry.computeBoundsTree?.({maxLeafTris: 1});  // Better precision for small details
-
-
-        if (this.showBVHDebug && mesh.geometry.boundsTree) {
-          // Create the helper
-          const helper = new MeshBVHHelper(mesh);
-
-          // Optional: Style it so it isn't too overwhelming
-          // (MeshBVHHelper creates a LineBasicMaterial)
-          // if (helper['material'] && helper['material'] instanceof THREE.Material) {
-          //    helper['material'].opacity = 0.5;
-          //    helper['material'].transparent = true;
-          //    // helper.depth = 10; // Uncomment to limit how deep down the tree to visualize
-          //    // helper.color.setHex(0xff0000);
-          // }
-          console.log(helper);
-
-          // Add to the mesh itself so it transforms (moves/rotates) with the object
-          mesh.add(helper);
-        }
-      }
-    };
-
-    // Casts from the view camera through the pointer: event data first, then
-    // geometry. The clipping filter applies to GEOMETRY hits only — event
-    // data is never clipped visually (sceneEvent sits outside the clipping
-    // groups), so it must stay pickable everywhere it is drawn.
-    const pick = (event: { clientX: number; clientY: number }): THREE.Intersection | null => {
-      const raycaster = view.raycasterFromEvent(event);
-      if (!raycaster) return null;
-      raycaster.firstHitOnly = false;
-
-      const hitsEvt = raycaster.intersectObjects(this.sceneEvent.children, true);
-      if (hitsEvt.length > 0) return hitsEvt[0];
-
-      const hitsGeo = raycaster.intersectObjects(this.sceneGeometry.children, true);
-      const filteredGeoHits = this.filterClippedIntersections(hitsGeo);
-      return filteredGeoHits.length > 0 ? filteredGeoHits[0] : null;
-    };
-
-    //  Throttled hover handling to improve performance
+    // Hover: throttled, opt-in (toggleRaycast). The latest pointer position
+    // wins when the throttle window closes.
+    let lastMove: PointerEvent | null = null;
     const onPointerMove = (event: PointerEvent) => {
       if (!this.isRaycastEnabled || this.measureMode) {
-        this.clearHighlight();
+        this.endHover();
         return;
       }
+      // A pressed button means an orbit or pan is in progress.
+      if (event.buttons !== 0) return;
 
-      //  Throttle hover events
+      lastMove = event;
       if (this.hoverTimeout) return;
 
       this.hoverTimeout = window.setTimeout(() => {
         this.hoverTimeout = null;
+        if (!lastMove) return;
+        const picked = this.pick(view, lastMove);
 
-        this.sceneEvent.traverse(buildBVHIfNeeded);
-        this.sceneGeometry.traverse(buildBVHIfNeeded);
-
-        const intersection = pick(event);
-
-        if (intersection && intersection.object.name &&
-          !intersection.object.name.includes('Helper') &&
-          !intersection.object.name.startsWith('MeasurePoint_') &&
-          intersection.object.visible) {
-
-          this.highlightObject(intersection.object);
-          this.trackHovered.next({ track: intersection.object, point: intersection.point.clone() });
-          console.log('[raycast] HOVER', intersection.object.name, intersection.point);
-
-          this.ngZone.run(() => {
-            this.pointHovered.next(intersection.point.clone());
-          });
+        if (picked?.isEventData) {
+          this.clearHoverHighlight();
+          this.hoveringEventData = true;
+          const { hit } = picked;
+          this.trackHovered.next({ track: hit.object, point: hit.point.clone(), intersection: hit });
         } else {
-          this.clearHighlight();
+          if (this.hoveringEventData) {
+            this.hoveringEventData = false;
+            this.trackHovered.next(null);
+          }
+          const mesh = picked?.hit.object as THREE.Mesh | undefined;
+          if (mesh?.isMesh) {
+            this.highlightGeometryMesh(mesh);
+          } else {
+            this.clearHoverHighlight();
+          }
+        }
+
+        if (picked) {
+          const point = picked.hit.point.clone();
+          this.ngZone.run(() => this.pointHovered.next(point));
         }
       }, 16); // ~60fps throttling
     };
 
-    //  Single click for selection only (no measurement, no preventDefault so
-    //  OrbitControls keep working). Selection picking is always on — one
-    //  raycast per click; only hover tracking is gated behind the raycast
-    //  toggle (it costs a throttled raycast per pointer move).
+    const onPointerLeave = () => {
+      lastMove = null;
+      this.endHover();
+    };
+
+    // Selection: a click (press and release without dragging) picks.
+    // Selecting on the press would select whatever lies under the pointer
+    // when an orbit starts. No preventDefault: OrbitControls keep working.
+    let press: { pointerId: number; clientX: number; clientY: number } | null = null;
     const onPointerDown = (event: PointerEvent) => {
-      if (this.measureMode) return;
+      press = event.button === 0 && !this.measureMode
+        ? { pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY }
+        : null;
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      const start = press;
+      press = null;
+      if (!start || event.pointerId !== start.pointerId || event.button !== 0 || this.measureMode) return;
+      if (!isClickGesture(start, event)) return;
 
-      // Only handle left mouse button
-      if (event.button !== 0) return;
-
-      const selected = pick(event);
-
-      if (selected && selected.object.visible && selected.object.name &&
-        selected.object.name !== 'HoverPoint' &&
-        !selected.object.name.startsWith('MeasurePoint_')) {
-        this.trackClicked.next({ track: selected.object, point: selected.point.clone(), intersection: selected });
-        console.log('[raycast] SELECTED', selected.object.name, selected.point);
+      const picked = this.pick(view, event);
+      if (picked) {
+        const { hit } = picked;
+        this.trackClicked.next({ track: hit.object, point: hit.point.clone(), intersection: hit });
       }
+    };
+    const onPointerCancel = () => {
+      press = null;
     };
 
     //  Double-click handler for distance measurement
@@ -1324,11 +1354,9 @@ export class ThreeService implements OnDestroy {
       event.preventDefault();
       event.stopPropagation();
 
-      const picked = pick(event);
+      const picked = this.pick(view, event)?.hit;
 
-      if (picked && picked.object.visible &&
-        picked.object.name !== 'HoverPoint' &&
-        !picked.object.name.startsWith('MeasurePoint_')) {
+      if (picked) {
         const pt = picked.point.clone();
 
         if (!this.firstMeasurePoint) {
@@ -1357,10 +1385,20 @@ export class ThreeService implements OnDestroy {
     // Listeners live on the view container: canvas events bubble to it in the
     // single-view page, and in multi-view pages the containers sit above the
     // canvas and receive the events directly.
-    const handlers = { move: onPointerMove, down: onPointerDown, dblclick: onDoubleClick };
+    const handlers = {
+      move: onPointerMove,
+      leave: onPointerLeave,
+      down: onPointerDown,
+      up: onPointerUp,
+      cancel: onPointerCancel,
+      dblclick: onDoubleClick,
+    };
     this.viewPointerHandlers.set(view, handlers);
     view.container.addEventListener('pointermove', handlers.move, false);
+    view.container.addEventListener('pointerleave', handlers.leave, false);
     view.container.addEventListener('pointerdown', handlers.down, false);
+    view.container.addEventListener('pointerup', handlers.up, false);
+    view.container.addEventListener('pointercancel', handlers.cancel, false);
     view.container.addEventListener('dblclick', handlers.dblclick, false);
   }
 
@@ -1370,7 +1408,10 @@ export class ThreeService implements OnDestroy {
     if (!handlers) return;
     this.viewPointerHandlers.delete(view);
     view.container.removeEventListener('pointermove', handlers.move, false);
+    view.container.removeEventListener('pointerleave', handlers.leave, false);
     view.container.removeEventListener('pointerdown', handlers.down, false);
+    view.container.removeEventListener('pointerup', handlers.up, false);
+    view.container.removeEventListener('pointercancel', handlers.cancel, false);
     view.container.removeEventListener('dblclick', handlers.dblclick, false);
   }
 
@@ -1429,39 +1470,65 @@ export class ThreeService implements OnDestroy {
     }
   }
 
-  setupBVH(): void {
-    const processMesh = (mesh: THREE.Mesh) => {
-      if (mesh.geometry && !mesh.geometry.boundsTree) {
-        // @ts-ignore
-        mesh.geometry.computeBoundsTree({
-          maxLeafTris: 10,
-          strategy: 0
-        });
-      }
-    };
+  // -------------------------------------------------------------------------
+  // Picking BVHs
+  // -------------------------------------------------------------------------
 
-    this.sceneGeometry.traverse((object) => {
-      if ((object as any).isMesh) {
-        processMesh(object as Mesh);
-      }
-    });
-
-    this.sceneEvent.traverse((object) => {
-      if ((object as any).isMesh) {
-        processMesh(object as Mesh);
-      }
-    });
+  /**
+   * Queues a picking BVH for every geometry mesh and builds them in idle
+   * time, a few meshes per idle period, so a load never blocks the page for
+   * the whole detector at once. Until a mesh's BVH exists, picking falls
+   * back to three's raycast for it. A new load replaces the queue.
+   */
+  private scheduleGeometryBvh(): void {
+    this.bvhQueue = collectBvhCandidates(this.sceneGeometry);
+    if (this.bvhBuildScheduled || this.bvhQueue.length === 0) return;
+    this.bvhBuildScheduled = true;
+    whenIdle(deadline => this.buildQueuedBvh(deadline));
   }
 
-  cleanupBVH(object: THREE.Object3D): void {
+  private buildQueuedBvh(deadline: { timeRemaining(): number }): void {
+    const start = performance.now();
+    let built = 0;
+    // At least one mesh per idle period, then as many as the period allows.
+    do {
+      const mesh = this.bvhQueue.shift();
+      if (!mesh) break;
+      // A newer load may have removed it while it waited.
+      if (!this.isUnderGeometry(mesh)) continue;
+      if (buildPickingBvh(mesh)) built++;
+      if (this.showBVHDebug && mesh.geometry.boundsTree) {
+        mesh.add(new MeshBVHHelper(mesh));
+        this.invalidate();
+      }
+    } while (this.bvhQueue.length > 0 && deadline.timeRemaining() > 2);
 
-    if (object instanceof THREE.Mesh && object.geometry && object.geometry.boundsTree) {
-      // @ts-ignore
-      object.geometry.disposeBoundsTree();
+    const elapsed = performance.now() - start;
+    if (elapsed > 50) {
+      console.log(`[ThreeService] Picking BVH: ${built} built in ${elapsed.toFixed(0)} ms, ${this.bvhQueue.length} queued`);
     }
-    if(object.children != null) {
-      object.children.forEach(child => this.cleanupBVH(child));
+    if (this.bvhQueue.length > 0) {
+      whenIdle(next => this.buildQueuedBvh(next));
+    } else {
+      this.bvhBuildScheduled = false;
     }
+  }
+
+  private isUnderGeometry(object: THREE.Object3D): boolean {
+    for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+      if (node === this.sceneGeometry) return true;
+    }
+    return false;
+  }
+
+  /** Drops the picking BVHs of a subtree (they are rebuilt by the next geometryChanged()). */
+  cleanupBVH(object: THREE.Object3D): void {
+    object.traverse(child => {
+      const geometry = (child as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+      if (geometry?.boundsTree) {
+        geometry.boundsTree = undefined;
+      }
+    });
   }
 
   //  Enhanced toggle methods
@@ -1470,7 +1537,7 @@ export class ThreeService implements OnDestroy {
     console.log(`Raycast is now ${this.isRaycastEnabled ? 'ENABLED' : 'DISABLED'}`);
 
     if (!this.isRaycastEnabled) {
-      this.clearHighlight();
+      this.endHover();
       //  Reset measurement when disabling raycast
       this.resetMeasurement();
     }
