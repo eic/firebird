@@ -25,10 +25,10 @@ mkdir -p firebird_data
 cd firebird_data
 
 # Download Geometry (ROOT file)
-wget https://github.com/eic/firebird/raw/main/firebird-ng/src/assets/data/epic_craterlake.root
+wget https://seeeic.org/g/epic/artifacts/tgeo/epic_craterlake.root
 
 # Download Events (DEX 1.0, zipped)
-wget https://github.com/eic/firebird/raw/main/firebird-ng/src/assets/data/py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip
+wget https://seeeic.org/d/py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.v1.firebird.zip
 ```
 
 ## 3. Start the Server
@@ -72,7 +72,7 @@ you can skip the backend settings in the next section.
     ```
 8.  In the **Events** field, enter:
     ```
-    local://py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip
+    local://py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.v1.firebird.zip
     ```
     *(Tip: You can use the full filename you downloaded)*
 

@@ -4,9 +4,8 @@
  * the ePIC pack shows the Manual tab only, or contributes its own
  * `withDataCatalog()`.
  *
- * Remote files live under https://seeeic.org/d/ (DEX 1.0, `.v1.firebird.zip`).
- * The `asset://` entries resolve only in the Firebird app, which bundles
- * those samples.
+ * Event files live under https://seeeic.org/d/ (DEX 1.0, `.v1.firebird.zip`),
+ * so the catalog works in any app that installs the pack.
  *
  * Tags come from the file names (`py8dis-nc_10x100_minq2-1000_...`): process,
  * beam energies, the minimum Q2 of the generator cut, and whether the file
@@ -109,14 +108,14 @@ export const EPIC_DATA_CATALOG: DataCatalog = {
     pythiaDis('dis-nc', '5x41', '100', `${DATA}/py8dis-nc_5x41_minq2-100_minp-250mev_nevt-5.v1.firebird.zip`),
     pythiaDis('dis-nc', '10x100', '1000', `${DATA}/reco_py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.v1.firebird.zip`, 'reco', TRACKING_ONLY),
     pythiaDis('dis-nc', '10x100', '1000', `${DATA}/comb_py8dis-nc_10x100_minq2-1000_minp-250mev_nevt-5.v1.firebird.zip`, 'sim+reco', TRACKING_ONLY),
-    pythiaDis('dis-cc', '5x41', '1', 'asset://data/py8_dis-cc_5x41_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip'),
-    pythiaDis('dis-cc', '5x41', '100', 'asset://data/py8_dis-cc_5x41_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip'),
-    pythiaDis('dis-cc', '10x100', '1', 'asset://data/py8_dis-cc_10x100_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip'),
-    pythiaDis('dis-cc', '10x100', '100', 'asset://data/py8_dis-cc_10x100_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip'),
-    pythiaDis('dis-cc', '10x100', '1000', 'asset://data/py8_dis-cc_10x100_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip'),
-    pythiaDis('dis-cc', '18x275', '1', 'asset://data/py8_dis-cc_18x275_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip'),
-    pythiaDis('dis-cc', '18x275', '100', 'asset://data/py8_dis-cc_18x275_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip'),
-    pythiaDis('dis-cc', '18x275', '1000', 'asset://data/py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip'),
+    pythiaDis('dis-cc', '5x41', '1', `${DATA}/py8_dis-cc_5x41_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip`),
+    pythiaDis('dis-cc', '5x41', '100', `${DATA}/py8_dis-cc_5x41_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip`),
+    pythiaDis('dis-cc', '10x100', '1', `${DATA}/py8_dis-cc_10x100_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip`),
+    pythiaDis('dis-cc', '10x100', '100', `${DATA}/py8_dis-cc_10x100_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip`),
+    pythiaDis('dis-cc', '10x100', '1000', `${DATA}/py8_dis-cc_10x100_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip`),
+    pythiaDis('dis-cc', '18x275', '1', `${DATA}/py8_dis-cc_18x275_minq2-1_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip`),
+    pythiaDis('dis-cc', '18x275', '100', `${DATA}/py8_dis-cc_18x275_minq2-100_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip`),
+    pythiaDis('dis-cc', '18x275', '1000', `${DATA}/py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip`),
     {
       name: 'Event + beam background 10x100 (large file)',
       description: 'A DIS event with electron and hadron beam-gas background overlaid. Tens of thousands of particles: expect a long load.',
@@ -128,7 +127,7 @@ export const EPIC_DATA_CATALOG: DataCatalog = {
       name: 'DIRC optical photons',
       description: 'Cherenkov photons inside the DIRC bars.',
       geometry: `${TGEO}/epic_dirc_only.root`,
-      events: 'asset://data/dirc_optical.v1.firebird.zip',
+      events: `${DATA}/dirc_optical.v1.firebird.zip`,
       tags: { process: 'dirc-optical', data: 'sim' },
     },
   ],
@@ -140,7 +139,7 @@ export const EPIC_DATA_CATALOG: DataCatalog = {
     'epic_tof_endcap_only', 'epic_tof_only', 'epic_vertex_only', 'epic_zdc_lyso_sipm', 'epic_zdc_sipm_on_tile_only',
   ].map(name => `${TGEO}/${name}.root`),
   eventSources: [
-    'asset://data/rec_dis_18x275_fdex-v0.4.edm4eic.v1.firebird.zip',
+    `${DATA}/rec_dis_18x275_fdex-v0.4.edm4eic.v1.firebird.zip`,
   ],
 };
 

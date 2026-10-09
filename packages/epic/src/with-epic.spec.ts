@@ -131,16 +131,15 @@ describe('withEpic', () => {
     expect(await TestBed.inject(COLLISION_INTRO)()).toBe(EpicCollisionIntro);
   });
 
-  it('offers the ePIC datasets: remote samples as DEX 1.0 files on seeeic.org/d, bundled samples as assets', async () => {
+  it('offers the ePIC datasets as DEX 1.0 files on seeeic.org/d', async () => {
     await bootEpic();
     const [catalog] = TestBed.inject(DATA_CATALOGS);
-    const eventUrls = (catalog.entries ?? []).map(entry => entry.events).filter((url): url is string => !!url);
-    const remote = eventUrls.filter(url => url.startsWith('https://'));
-    expect(remote.length).toBe(8);
-    for (const url of remote) {
+    const entryUrls = (catalog.entries ?? []).map(entry => entry.events).filter((url): url is string => !!url);
+    const eventUrls = [...entryUrls, ...(catalog.eventSources ?? [])];
+    expect(eventUrls.length).toBe(18);
+    for (const url of eventUrls) {
       expect(url).toMatch(/^https:\/\/seeeic\.org\/d\/[\w.-]+\.v1\.firebird\.zip$/);
     }
-    expect(eventUrls.filter(url => url.startsWith('asset://')).length).toBe(9);
     expect(catalog.entries?.[0]).toEqual(expect.objectContaining({ geometry: CRATERLAKE }));
   });
 
