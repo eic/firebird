@@ -71,11 +71,18 @@ disagrees with any workspace manifest.
 
 - TypeScript stays on 6.0.x in every workspace: `@angular/compiler-cli`,
   `@angular/build` and `ng-packagr` 22.2 all peer `typescript >=6.0 <6.1`, so
-  TypeScript 7 waits until Angular widens that range. The tsup builds
-  (`viewport-gizmo`, `root-geo-tree-editor`) also block it: tsup injects
-  `baseUrl`, which TypeScript 6 accepts only with the
-  `dts.compilerOptions.ignoreDeprecations: "6.0"` opt-out in `tsup.config.ts`
-  and TypeScript 7 removes.
+  TypeScript 7 waits until Angular widens that range.
+- Every publishable plain-TypeScript package builds with **tsdown** from one
+  shared `tsdown.config.ts` (today `viewport-gizmo`, `root-geo-tree-editor`,
+  `threejs-tree-editor`; `firebird-core` and `root2dex` join when they become
+  publishable): ES modules only, `dist/index.js` plus one bundled
+  `dist/index.d.ts`, `exports` = `{ types, default }`. Sources keep
+  extensionless relative imports like the rest of the monorepo; bundling is
+  what makes the output valid in Node, and the bundled `.d.ts` has no
+  relative imports, so consumers on `moduleResolution: nodenext` get working
+  types. Keep `platform: 'neutral'` in the config: tsdown's default
+  `'node'` switches the output to `.mjs`/`.d.mts`. The Angular libraries
+  (`app-shell-ng`, `app-features-ng`) build with ng-packagr.
 - Vitest 5 turns `clearMocks` on by default: every test starts with empty spy
   call history, so assert only on calls the test itself triggers.
 - `jsroot` and `jsdom` track latest via root `package.json` `overrides`.
@@ -751,7 +758,7 @@ Restrictive defaults prevent unauthorized file access:
 
 ### Backend Testing
 - **Framework:** pytest
-- **CI:** GitHub Actions (Python 3.9-3.12), installed with `uv sync --locked` from the committed `pyrobird/uv.lock` (`uv lock` after any `pyproject.toml` dependency change)
+- **CI:** GitHub Actions (Python 3.10-3.14), installed with `uv sync --locked` from the committed `pyrobird/uv.lock` (`uv lock` after any `pyproject.toml` dependency change)
 - Run tests: `pytest ./tests/unit_tests`
 - Debug: `pytest -x --pdb`
 
@@ -777,7 +784,7 @@ Restrictive defaults prevent unauthorized file access:
 
 - **frontend.yaml** - `npm ci`, every workspace suite (app, app-features, core, root2dex, tte, rgte, gizmo), production build; no deployment
 - **docs.yaml** - Build and deploy VitePress documentation to GitHub Pages
-- **pyrobird.yaml** - pyrobird unit tests (incl. the DEX schema tests) on Python 3.9-3.12
+- **pyrobird.yaml** - pyrobird unit tests (incl. the DEX schema tests) on Python 3.10-3.14
 - **integration-tests.yml** - `build.py notests` (one frontend build, copied into pyrobird, python package) + the server integration test
 
 frontend, pyrobird and integration workflows run on pushes to every branch and

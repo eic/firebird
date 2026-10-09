@@ -7,7 +7,7 @@ This tutorial explains how to run the Firebird backend (**Pyrobird**) on your lo
 
 ## 1. Install Pyrobird
 
-Pyrobird is a Python package that serves as the backend for Firebird. You need Python 3.8 or newer.
+Pyrobird is a Python package that serves as the backend for Firebird. You need Python 3.10 or newer.
 
 Open your terminal and install it via pip:
 
