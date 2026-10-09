@@ -17,9 +17,7 @@ python -m pip install --upgrade pyrobird
 
 ## 2. Download Example Data
 
-Let's download some example files to test your local setup. We'll use the `epic_craterlake` geometry and a sample collision event.
-
-Create a directory for your data and download the files:
+To test the local setup, download the `epic_craterlake` geometry and a file of sample collision events into a directory of their own:
 
 ```bash
 # Create a directory
@@ -29,8 +27,8 @@ cd firebird_data
 # Download Geometry (ROOT file)
 wget https://github.com/eic/firebird/raw/main/firebird-ng/src/assets/data/epic_craterlake.root
 
-# Download Events (Firebird ZIP format)
-wget https://github.com/eic/firebird/raw/main/firebird-ng/src/assets/data/py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip
+# Download Events (DEX 1.0, zipped)
+wget https://github.com/eic/firebird/raw/main/firebird-ng/src/assets/data/py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip
 ```
 
 ## 3. Start the Server
@@ -44,7 +42,7 @@ You can also manually specify a different directory using the `--work-path` opti
 pyrobird serve --allow-cors
 
 # OR serve from a specific directory
-pyrobird serve --allow-cors --work-path=/firebird_data
+pyrobird serve --allow-cors --work-path=/path/to/firebird_data
 ```
 
 You should see output indicating the server is running, usually on port `5454`.
@@ -59,7 +57,7 @@ you can skip the backend settings in the next section.
 
 ## 4. Open Firebird and Load Local Files
 
-1.  Open Firebird in your browser (e.g., [https://seeeic.org](https://seeeic.org) or your local development version).
+1.  Open Firebird in your browser: the hosted display at [https://seeeic.org](https://seeeic.org), or a development server.
 2.  Click **Configure** in the top menu.
 3.  Scroll down to **Server API Configuration**.
 4.  Toggle **"Use specific backend"** to **ON**.
@@ -74,7 +72,7 @@ you can skip the backend settings in the next section.
     ```
 8.  In the **Events** field, enter:
     ```
-    local://py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v0.4.firebird.zip
+    local://py8_dis-cc_18x275_minq2-1000_minp-150mev_vtxcut-5m_nevt-5.v1.firebird.zip
     ```
     *(Tip: You can use the full filename you downloaded)*
 
@@ -90,7 +88,7 @@ Firebird and Pyrobird work together to support various file formats:
 - **ROOT Files (`.root`)**: Standard ROOT geometry files (TGeo). This is the primary format for detector geometry.
 
 ### Events
-- **DEX (JSON)**: The native ["Display Event Exchange"](../dex) format. It's a JSON-based format optimized for web display.
+- **DEX (JSON)**: The native [Firebird Data Exchange](../dex) format, JSON designed for web display.
 - **Zipped DEX (`.zip`)**: A compressed archive containing DEX JSON files. This is efficient for sharing multiple events and large datasets.
 - **EDM4EIC (`.root`)**: The standard data model for the EIC. Pyrobird can automatically convert these files to DEX format on-the-fly when you request them.
 
@@ -101,4 +99,4 @@ Firebird and Pyrobird work together to support various file formats:
 Now that you have a local setup, you can explore more advanced topics:
 
 - **[Generating Trajectories](../dd4hep-plugin)**: Learn how to use the DD4Hep plugin to generate true particle trajectories from your simulations.
-- **[DEX Format](../dex)**: Learn about the Firebird Display Event Exchange format for event data.
+- **[DEX Format](../dex)**: Learn about the Firebird Data Exchange format for event data.

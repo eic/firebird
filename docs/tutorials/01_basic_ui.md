@@ -138,7 +138,7 @@ Click the **DISPLAY** button to return to the main view with your selected data 
 
 ### Performance Considerations
 
-... here we have a lot of updates, check firebird-ng/src/app/pages/input-config for details ...
+... here we have a lot of updates, check packages/firebird-ng/display/src/lib/pages/input-config for details ...
 
 In the bottom-left corner, you'll see performance statistics (FPS, triangles, etc.). If performance is slow:
 
