@@ -505,9 +505,13 @@ Here's a complete example showing the processing flow:
 }
 ```
 
-## Built-in Color Palette
+## The Geometry Color Palette
 
-Firebird provides a curated color palette in `cool3-geometry-ruleset.ts`:
+Theme rule sets take their colors from a palette of named constants,
+`@dexvis/firebird-ng/geometry-palette`
+(`import { STEEL_BLUE } from '@dexvis/firebird-ng/geometry-palette'`).
+The ePIC pack's `cool2` theme uses it, and the `/palette` page shows every
+color as a swatch:
 
 ### Cool Colors (Light/Pastel)
 | Constant | Hex | Use Case |
@@ -539,7 +543,7 @@ Firebird provides a curated color palette in `cool3-geometry-ruleset.ts`:
 
 ### Color Scheme Philosophy
 
-The COOL3 theme follows detector-type conventions:
+The `cool2` theme follows detector-type conventions:
 
 | Detector Type | Color Family | Examples |
 |---------------|--------------|----------|
@@ -555,15 +559,15 @@ The COOL3 theme follows detector-type conventions:
 
 To create a custom theme:
 
-1. **Create a new file** in `src/app/theme/`:
+1. **Create a new file** in your experiment pack:
 
 ```typescript
 // my-theme-geometry-ruleset.ts
 import * as THREE from "three";
+import { STEEL_BLUE } from "@dexvis/firebird-ng/geometry-palette";   // named colors from the palette above
 
-// Define your colors
+// Or define your own colors
 export const MY_PRIMARY = 0x3498DB;
-export const MY_SECONDARY = 0x2ECC71;
 
 // Export your ruleset
 export const myThemeRules = [
@@ -573,11 +577,24 @@ export const myThemeRules = [
       { color: MY_PRIMARY, merge: true, outline: true }
     ]
   },
+  {
+    name: "MyBeamPipe*",
+    rules: [
+      { color: STEEL_BLUE, merge: true, outline: false }
+    ]
+  },
   // ... more rules
 ];
 ```
 
-2. **Register the theme** in the geometry processor or configuration.
+2. **Register the theme** in your pack, and make it the pack's default if
+   you want (the config page lists every registered theme):
+
+```typescript
+withGeometryTheme({ id: 'my-theme', label: 'My theme',
+  load: () => import('./my-theme-geometry-ruleset').then(m => m.myThemeRules) }),
+withConfigDefaults({ 'geometry.themeName': 'my-theme' }),
+```
 
 ## Performance Considerations
 

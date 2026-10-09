@@ -39,7 +39,8 @@ colon, so URLs with colons survive: `open-dex:https://host/file.zip`.
 | `open-dex`      | `url`                | `open-dex:<url>`               | Load event data. DEX json/zip and `.root` (server conversion) are chosen the same registry-driven way. |
 | `show-event`    | `index` (number)     | `show-event:2`                 | Select event by index. Waits up to 30 s for events to finish loading first. |
 | `set-config`    | `key`, `value`       | `set-config:key=value`         | Set a configuration value. From `url`/`server`/`batch` sources the value is session-scoped (not persisted); from `ui`/`code` it is saved normally, converted to the key's type (`'7'` becomes `7` for a numeric key). A key that no code declared yet keeps the value until the declaration arrives, which then sets the key's default and type. |
-| `camera-preset` | `name`               | `camera-preset:top`            | Move the camera to a named preset. Face views `front`, `back`, `left`, `right`, `top`, `bottom` keep the current orbit target and distance; `home` resets to the default top view; `center` and `farforward` are fixed poses. |
+| `camera-preset` | `name`               | `camera-preset:top`            | Move the camera to a named preset (`withCameraPreset()`). Face views `front`, `back`, `left`, `right`, `top`, `bottom` keep the current orbit target and distance; `home` is the start view (the top view framing the geometry, or the view a pack pinned). The flagship's ePIC pack adds the fixed poses `center` and `farforward`. |
+| `animate-collision` | none             | `animate-collision`            | Play the collision intro (`withCollisionIntro()`), then the event's time animation from the start. Without an intro, the time animation starts at once. |
 
 The URL shorthands `?dex=`, `?geometry=`, `?event=` expand to `open-dex`,
 `open-geometry`, `show-event`: `?dex=X` queues the same command as
@@ -148,7 +149,6 @@ export class FocusDetectorCommandHandler implements CommandHandler {
 ```ts
 // app.config.ts
 provideFirebird(
-  withFirebirdBuiltins(),
   withCommandHandler(FocusDetectorCommandHandler),
 )
 ```

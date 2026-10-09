@@ -156,6 +156,18 @@ pyrobird upgrade old.firebird.json new.firebird.json # one-shot DEX 0.04 -> 1.0
 pyrobird upgrade events.firebird.zip
 ```
 
+Every command that writes DEX (`convert`, `merge`, `smooth`, `upgrade`) writes
+compact JSON, and a zip archive holding it when the output name ends in `.zip`.
+`merge` and `smooth` read `.json` files or `.zip` archives holding one; a DEX
+0.04 input fails with the `pyrobird upgrade` command to run first.
+
+`pyrobird smooth` sorts each trajectory by time, cuts it where it leaves the
+detector volumes, and fills time gaps longer than two steps (`--step-time`,
+default 0.2 ns). It finds the `x`, `y`, `z` and `t` point columns by name. Long
+gaps multiply the point count, so the command refuses a result above
+`--max-points` (default 5,000,000 points, about 430 MB of JSON) before it
+builds it; `--max-points 0` turns the check off.
+
 `pyrobird convert` collection groups (`-c`/`--collections`, empty = all):
 
 - `tracker_hits` — hit collections as box hits (both models)
@@ -213,7 +225,10 @@ This command will:
 2. Open `--url` in headless Chromium: a path such as `/display?dex=...`, or a
    localhost URL on port 5454 or without a port, is pointed at that server with
    its path and query kept; any other URL, such as `ng serve` on
-   `localhost:4200`, is captured as given
+   `localhost:4200` or https://seeeic.org, is captured as given, and the
+   command then starts no server (step 1 is skipped, no built frontend is
+   needed, and `--commands` is ignored: put the commands into the URL's `cmd`
+   parameter)
 3. Wait until the display reports ready (geometry loaded, event data loaded,
    startup commands executed) or reports an error; the frontend publishes both
    on `window.firebird`, see [Command Bus](/command-bus)
@@ -536,9 +551,11 @@ Supports local files and remote `http://`, `https://` and `root://` files.
 A local file passes the same access check as a download. A remote file needs file access
 enabled (no `--disable-files`) and, when `PYROBIRD_REMOTE_HOSTS` is set, a host from that list.
 
-Every requested entry must exist in the file. Otherwise the request fails with `400` and the
-error lists the missing entries, the same rule the in-browser converter applies. A request may
-name at most `PYROBIRD_CONVERT_MAX_ENTRIES` entries (default 1000).
+Requested entries the file does not hold are skipped, and the server logs one warning that lists
+them. A request with no entry in the file fails with `400`, and the error names the file's entry
+count. The in-browser converter applies the same rules. A request may name at most
+`PYROBIRD_CONVERT_MAX_ENTRIES` entries (default 1000), counted as requested: `0-1999` fails even on a
+10-entry file.
 
 #### **Parameters**
 

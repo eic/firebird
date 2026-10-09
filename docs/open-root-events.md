@@ -19,10 +19,12 @@ or from a URL, and show its events — no server, no conversion step, no upload.
 
 The **Events** range takes a single number, a list, or a range — `3`,
 `0,2,4-5`, `10-19`. Everything you ask for lands in the event selector in the
-toolbar, so the usual next/previous controls step through them. A range that
-names an event the file does not hold is rejected as a whole, with a message
-that lists the missing events, and one request converts at most 1000 events.
-pyrobird applies the same rules to the files it converts.
+toolbar, so the usual next/previous controls step through them. Events the
+file does not hold are skipped, and one warning in the browser console lists
+them: `0-99` on a 10-event file converts events 0-9. A range with no event in
+the file fails with a message that names the file's event count. One request
+may name at most 1000 events. pyrobird applies the same rules to the files it
+converts and logs the warning on the server.
 
 The **Convert** checkboxes choose which collection groups the conversion
 produces — tracker hits, tracks, MC particles. They list what the opened
@@ -88,10 +90,13 @@ the same whether the file went through the Python CLI or through the browser:
   trajectories with their track parameters.
 - **EDM4hep** — every `SimTrackerHitData` collection becomes a box-hit piece
   with a fixed box size (simulation hits carry no errors), plus MC-truth
-  trajectories that connect each particle's hits in time order. Cherenkov and
-  PID collections are shown as hits but left out of the trajectories: their
-  photon hits are attributed to the charged particle that emitted them and
-  would draw zigzags across the photosensors.
+  trajectories that connect each particle's hits in time order. The
+  collections listed in `config.events.trajectoryExcludedCollections` show as
+  hits but stay out of the trajectories. List the Cherenkov and PID
+  collections there: their photon hits are attributed to the charged particle
+  that emitted them and draw zigzags across the photosensors. The ePIC pack
+  lists `DIRCBarHits`, `DRICHHits` and `PFRICHHits`, the same list pyrobird
+  excludes by default.
 - **MC particles** (both models) — every particle of the `MCParticles`
   collection becomes a straight line from its vertex to its endpoint, with
   points on a fixed time grid so the time animation reveals each line at the

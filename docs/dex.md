@@ -205,14 +205,13 @@ extension system:
 
 ```ts
 provideFirebird(
-  withFirebirdBuiltins(),
   withEventPiece(MyPieceFactory),
   withLazyPainter(MyPiece.type, () => import('./my.painter').then(m => m.MyPainter)),
 )
 ```
 
 The package `packages/firebird-example-extension` in the repository is a
-complete working template (custom piece type, painter, config key, sample
+complete working template (custom piece type, painter with a color knob, sample
 file). See [Extension System](/extensions) for the registration API and
 bundle rules. In contexts without Angular (web workers, scripts), register
 factories explicitly with `registerEventPieceFactory()`.

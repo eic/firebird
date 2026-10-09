@@ -26,7 +26,7 @@ Quad-view settings (usable as `config.<key>=` overrides): cut positions
 | Parameter        | Example                                    | Action                                                                 |
 |------------------|--------------------------------------------|------------------------------------------------------------------------|
 | `dex=<url>`      | `dex=https://host/events.firebird.zip`     | Load event data. Accepts DEX `.firebird.json` / `.zip`, or `.root` files (converted server-side when a pyrobird backend is available). |
-| `geometry=<url>` | `geometry=epic://epic_craterlake.root`     | Load detector geometry instead of the configured default.              |
+| `geometry=<url>` | `geometry=epic://tgeo/epic_craterlake.root` | Load detector geometry instead of the configured default.              |
 | `event=<N>`      | `event=2`                                  | Select event number `N` (0-based) after the data loads.                |
 | `config.<key>=<value>` | `config.geometry.themeName=cad`      | Override a setting for this browser session only (see below).          |
 | `cmd=<list>`     | `cmd=camera-preset:farforward`             | Run commands, `type:arg` items separated by `;` (see [Command Bus](/command-bus)). |
@@ -123,10 +123,11 @@ code defaults < server config.jsonc < saved browser settings < URL config.* < ch
 Examples of useful keys:
 
 ```
-config.geometry.themeName=cad            # geometry color theme: cool2, cool2no, cad, grey
+config.geometry.themeName=cad            # geometry theme: grey or off; the ePIC pack adds cool2, cool2no, cad
 config.geometry.FastDefaultMaterial=true # fast opaque materials (faster on weak GPUs)
 config.events.rootEventRange=0-5         # which entries to convert from .root event files
 config.events.rootCollections=tracker_hits,mc_particles  # which collection groups to convert (empty = all)
+config.events.trajectoryExcludedCollections=DRICHHits   # EDM4hep hit collections kept out of MC-truth trajectories (empty = none)
 config.painters.byPiece.MCParticles.visible=true  # show the MC particle lines (hidden by default)
 config.catalog.url=https://host/catalog.json      # add a remote data catalog to the data selector
 ```
@@ -158,13 +159,13 @@ Open the bundled example data with a different geometry and a far-forward
 camera:
 
 ```
-/display?dex=asset://data/example-cherenkov.firebird.json&geometry=epic://epic_ip6.root&cmd=camera-preset:farforward
+/display?dex=asset://data/example-cherenkov.firebird.json&geometry=epic://tgeo/epic_ip6.root&cmd=camera-preset:farforward
 ```
 
 Recolor the example extension's rings for this session:
 
 ```
-/display?dex=asset://data/example-cherenkov.firebird.json&event=2&config.examples.cherenkov.ringColor=%23ff4d00
+/display?dex=asset://data/example-cherenkov.firebird.json&event=2&config.painters.byPiece.ExampleRings.ringColor=%23ff4d00
 ```
 
 ## Deep links in batch mode
