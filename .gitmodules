@@ -10,3 +10,6 @@
 [submodule "dexvis/viewport-gizmo"]
 	path = dexvis/viewport-gizmo
 	url = https://github.com/dexvis/viewport-gizmo.git
+[submodule "dexvis/app-features-ng"]
+	path = dexvis/app-features-ng
+	url = https://github.com/dexvis/app-features-ng.git

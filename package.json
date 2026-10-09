@@ -1,6 +1,6 @@
 {
   "name": "firebird-monorepo",
-  "version": "2026.08.0",
+  "version": "2026.10.0-beta.1",
   "private": true,
   "description": "Firebird event display monorepo: Angular frontend, dexvis packages, Python backend (pyrobird), DD4Hep plugin",
   "workspaces": [
