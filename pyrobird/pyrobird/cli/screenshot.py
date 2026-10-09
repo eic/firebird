@@ -195,33 +195,47 @@ def server_origin(server):
     return f"http://{SERVER_HOST}:{server.server_port}"
 
 
-def resolve_capture_url(url, origin):
-    """Points `url` at the server the command started.
-
-    A path such as '/display?dex=...', or a URL on localhost, 127.0.0.1,
-    [::1] or 0.0.0.0 with port 5454 or no port, keeps its path, query and
-    fragment and gets `origin` as scheme, host and port. Any other URL, such
-    as a development server on localhost:4200, is returned unchanged.
-    """
+def with_scheme(url):
+    """Adds 'http://' to a URL without a scheme, such as 'localhost:5454/display'; keeps paths as they are."""
     if '://' not in url and not url.startswith('/'):
-        # 'localhost:5454/display' carries no scheme
-        url = 'http://' + url
-    parts = urlsplit(url)
-    if not parts.netloc:
-        path = parts.path if parts.path.startswith('/') else '/' + parts.path
-        return urlunsplit(urlsplit(origin)[:2] + (path, parts.query, parts.fragment))
+        return 'http://' + url
+    return url
 
+
+def targets_started_server(url):
+    """Whether `url` names the server the command starts.
+
+    True for a path such as '/display?dex=...' and for a URL on localhost,
+    127.0.0.1, [::1] or 0.0.0.0 with port 5454 or no port. Any other URL,
+    such as a development server on localhost:4200 or a public deployment,
+    names a server that already runs.
+    """
+    parts = urlsplit(with_scheme(url))
+    if not parts.netloc:
+        return True
     host = parts.hostname or ''
     try:
         port = parts.port
     except ValueError:
         port = None
     is_local = is_loopback_host(host) or host in ('0.0.0.0', '::')
-    if is_local and port in (None, LEGACY_PORT):
-        origin_parts = urlsplit(origin)
-        return urlunsplit((origin_parts.scheme, origin_parts.netloc, parts.path or '/', parts.query, parts.fragment))
+    return is_local and port in (None, LEGACY_PORT)
 
-    return url
+
+def resolve_capture_url(url, origin):
+    """Points `url` at the server the command started.
+
+    A URL that names that server (see `targets_started_server`) keeps its
+    path, query and fragment and gets `origin` as scheme, host and port. Any
+    other URL is returned unchanged.
+    """
+    url = with_scheme(url)
+    if not targets_started_server(url):
+        return url
+    parts = urlsplit(url)
+    origin_parts = urlsplit(origin)
+    path = parts.path if parts.path.startswith('/') else '/' + parts.path
+    return urlunsplit((origin_parts.scheme, origin_parts.netloc, path, parts.query, parts.fragment))
 
 
 def wait_server_serves_frontend(origin, attempts=10):
@@ -257,10 +271,11 @@ def exit_code_for(state):
 @click.option('--output-path', default='screenshot.png',
               help='Base filename for the screenshot (will be saved in screenshots/ with auto-numbering)')
 @click.option('--url', default='/', show_default=True,
-              help="Page to capture. The command serves the frontend itself on 127.0.0.1, so a path "
-                   "such as '/display?dex=...', or a localhost URL on port 5454 or without a port, "
-                   "is pointed at that server: the path and query are kept. Other URLs, such as a "
-                   "development server on localhost:4200, are captured as given.")
+              help="Page to capture. For a path such as '/display?dex=...', or a localhost URL on port "
+                   "5454 or without a port, the command serves the frontend itself on 127.0.0.1 and "
+                   "points the URL at that server: the path and query are kept. Other URLs, such as a "
+                   "development server on localhost:4200 or a public deployment, are captured as given "
+                   "and the command starts no server, so it needs no built frontend.")
 @click.option('--port', default=0, type=int, show_default=True,
               help='Port for the server the command starts; 0 picks a free port. '
                    'The command fails if the port is in use.')
@@ -275,7 +290,8 @@ def screenshot(ctx, unsecure_files, allow_cors, disable_download, work_path, out
                ready_timeout):
     """
     Start the Flask server, take a screenshot of the specified URL using Playwright,
-    and then shut down the server.
+    and then shut down the server. A URL on another server is captured without
+    starting one.
 
     The capture waits for the display's readiness flags (window.firebird.ready):
     geometry loaded, startup commands executed, no loads in flight.
@@ -290,26 +306,34 @@ def screenshot(ctx, unsecure_files, allow_cors, disable_download, work_path, out
       2  the display never reported ready (the screenshot is still saved)
       3  the display reported errors in window.firebird.errors (the screenshot is still saved)
     """
-    from pyrobird.cli.serve import make_server_config
+    # A page on a server that already runs needs no local frontend: the command serves nothing
+    server = None
+    if targets_started_server(url):
+        from pyrobird.cli.serve import make_server_config
 
-    config = make_server_config(
-        unsecure_files=unsecure_files,
-        allow_cors=allow_cors,
-        disable_download=disable_download,
-        work_path=work_path,
-        startup_commands=commands)
+        config = make_server_config(
+            unsecure_files=unsecure_files,
+            allow_cors=allow_cors,
+            disable_download=disable_download,
+            work_path=work_path,
+            startup_commands=commands)
 
-    server = start_server(config, port=port)
-    origin = server_origin(server)
-    print(f"Serving the frontend on {origin}")
+        server = start_server(config, port=port)
+        origin = server_origin(server)
+        print(f"Serving the frontend on {origin}")
+    else:
+        print("The URL names a server that already runs: the command starts no server")
+        if commands:
+            print("WARNING: --commands is ignored: startup commands reach only the server this command starts. "
+                  "To run them, add them to the URL's cmd parameter: 'cmd=type:arg;type:arg'.")
 
     try:
-        if not wait_server_serves_frontend(origin):
-            raise click.ClickException(f"The server on {origin} does not serve the frontend")
-
-        capture_url = resolve_capture_url(url, origin)
-        if not capture_url.startswith(origin):
-            print(f"Capturing {capture_url} as given; the server this command started is not used")
+        if server is not None:
+            if not wait_server_serves_frontend(origin):
+                raise click.ClickException(f"The server on {origin} does not serve the frontend")
+            capture_url = resolve_capture_url(url, origin)
+        else:
+            capture_url = with_scheme(url)
 
         # Get the next available screenshot path
         final_output_path = get_screenshot_path(output_path)
@@ -322,8 +346,9 @@ def screenshot(ctx, unsecure_files, allow_cors, disable_download, work_path, out
             raise click.ClickException(f"The capture of {capture_url} failed: {ex}")
         print(f"Screenshot saved to {final_output_path}")
     finally:
-        server.shutdown()
-        server.server_close()
+        if server is not None:
+            server.shutdown()
+            server.server_close()
 
     for error in state.errors:
         print(f"Display error: {error}")

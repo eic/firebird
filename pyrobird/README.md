@@ -263,9 +263,11 @@ Supports local files and remote `http://`, `https://` and `root://` files.
 A local file passes the same access check as a download. A remote file needs file access
 enabled (no `--disable-files`) and, when `PYROBIRD_REMOTE_HOSTS` is set, a host from that list.
 
-Every requested entry must exist in the file. Otherwise the request fails with `400` and the
-error lists the missing entries, the same rule the in-browser converter applies. A request may
-name at most `PYROBIRD_CONVERT_MAX_ENTRIES` entries (default 1000).
+Requested entries the file does not hold are skipped, and the server logs one warning that lists
+them. A request with no entry in the file fails with `400`, and the error names the file's entry
+count. The in-browser converter applies the same rules. A request may name at most
+`PYROBIRD_CONVERT_MAX_ENTRIES` entries (default 1000), counted as requested: `0-1999` fails even on a
+10-entry file.
 
 #### **Parameters**
 
@@ -330,7 +332,8 @@ The command serves the frontend itself on `127.0.0.1` and a free port (`--port` 
 opens the page in headless Chromium, waits until `window.firebird.ready` is true, saves the image in
 `screenshots/` and stops the server. A path `--url`, or a localhost URL on port 5454 or without a port,
 is pointed at that server with its path and query kept; other URLs, such as a development server on
-`localhost:4200`, are captured as given. `--ready-timeout` sets the wait in seconds.
+`localhost:4200` or https://seeeic.org, are captured as given without starting a server, so they need no
+built frontend. `--ready-timeout` sets the wait in seconds.
 
 The exit code tells whether the capture shows a finished display:
 
@@ -343,8 +346,8 @@ The exit code tells whether the capture shows a finished display:
 
 ### Publishing
 
-Check the packages before an upload: the wheel must hold the frontend and the sample data,
-and stay under PyPI's 100 MiB file limit.
+Check the packages before an upload: the wheel must hold the frontend, the sample data, the license
+and the frontend's third-party license notices, and stay under PyPI's 100 MiB file limit.
 
 ```bash
 pip install --upgrade build twine
@@ -354,3 +357,9 @@ python -m twine upload dist/*
 
 # You will have to setup your pip authentication key
 ```
+
+## License
+
+GPL-3.0-or-later (`LICENSE`). The wheel also ships the license notices of the npm packages bundled
+into the frontend: `pyrobird/server/static/3rdpartylicenses.txt`, which `python build.py cp_ng`
+copies from the production build.

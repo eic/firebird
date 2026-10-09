@@ -26,9 +26,9 @@
  * is a plain array lookup — no id maps.
  */
 
-// Deep import on purpose: the factory is registered from app.config (initial
-// bundle), and the @dexvis/firebird-core barrel re-exports painter modules that
-// pull three.js. The model module is plain TS.
+// The /model subpath on purpose: the factory is registered from app.config
+// (initial bundle), and the @dexvis/firebird-core root re-exports painter
+// modules that pull three.js. The model imports no three.js.
 import {
   EntityRefLink,
   EventPiece,
@@ -36,7 +36,7 @@ import {
   readPieceCount,
   readNumberColumn,
   readOptionalNumberColumn,
-} from '@dexvis/firebird-core/model/event-piece';
+} from '@dexvis/firebird-core/model';
 
 export class CherenkovRingPiece extends EventPiece {
   /** Namespaced type string: reverse-dns-lite prefix prevents collisions

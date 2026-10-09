@@ -1,6 +1,6 @@
 // shell-example.component.ts
 import {ChangeDetectionStrategy, Component, input, ViewChild} from '@angular/core';
-import { FirebirdShellComponent } from '../../components/firebird-shell/firebird-shell.component';
+import { FirebirdShellComponent } from '@dexvis/firebird-ng/display';
 import {MatButton} from "@angular/material/button";
 import {MatFormField, MatLabel} from "@angular/material/form-field";
 import { MatFormFieldModule } from '@angular/material/form-field';

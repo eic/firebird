@@ -1,10 +1,11 @@
 import json
 import os
 import tempfile
+import zipfile
 import pytest
 from click.testing import CliRunner
 from pyrobird.cli.merge import merge, merge_event_pieces, create_merged_header
-from pyrobird.dex_utils import is_valid_dex_file
+from pyrobird.dex_utils import is_valid_dex_file, read_dex_json
 
 
 def box_hit_piece(name, pos, dim):
@@ -486,3 +487,29 @@ def test_merge_event_pieces():
     for piece in merged_event["pieces"]:
         if piece["name"] == "piece1":
             assert piece["data"] == [10, 11, 12]  # From event2, not event1
+
+
+def test_zip_output_is_a_zip_archive_of_compact_json(temp_dex_files, tmp_path):
+    """An output name ending in .zip writes an archive that pyrobird and the frontend read back."""
+    output = str(tmp_path / "merged.firebird.zip")
+    result = CliRunner().invoke(merge, [temp_dex_files["file1"], temp_dex_files["file2"], "-o", output])
+
+    assert result.exit_code == 0, result.output
+    assert zipfile.is_zipfile(output)
+    with zipfile.ZipFile(output) as archive:
+        assert archive.namelist() == ["merged.firebird.json"]
+        text = archive.read("merged.firebird.json").decode()
+    assert "\n" not in text
+    assert len(read_dex_json(output)["events"]) == 3
+
+
+def test_dex_004_input_names_the_upgrade(temp_dex_files, tmp_path):
+    old_path = tmp_path / "old.firebird.json"
+    old_path.write_text(json.dumps({
+        "type": "firebird-dex-json", "version": "0.04",
+        "events": [{"id": "event_0", "groups": []}],
+    }))
+    result = CliRunner().invoke(merge, [temp_dex_files["file1"], str(old_path)])
+
+    assert result.exit_code != 0
+    assert f"Convert it once with: pyrobird upgrade {old_path}" in result.output

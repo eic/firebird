@@ -16,15 +16,17 @@ Firebird serves research, debugging/QC, and educational purposes.
 
 This is a **monorepo** with **npm workspaces** (root `package.json` lists the members; run `npm install` at the repo root, not inside a member):
 
-- **firebird-ng/** - Angular 22 frontend (TypeScript, Three.js WebGPU, signals, zoneless)
+- **firebird-ng/** - the Firebird application (Angular 22, zoneless): `app.config.ts` (composition), `app.routes.ts`, the app component, the developer pages (playground, shell example, palette), the two worker entry modules (`src/app/workers/`), assets. App-level specs only.
+- **packages/firebird-ng/** - `@dexvis/firebird-ng`: the Angular library (ng-packagr) everything else of the frontend lives in. Entries: `.` (`src/`: `provideFirebird()`, the built-ins, built-in loaders and command handlers, `firebirdRoutes()`; part of the initial bundle), `/api` (`api/`: tokens, `with*()` features, ThreeExtension and render view contracts, config keys, the light services; the root re-exports it), `/display` (`display/`: pages, `<firebird-display>`, components, display services; lazy only, it pulls three.js and Material), `/workers/geometry` and `/workers/root-file` (worker code; the app's worker entries call `runGeometryWorker(self)` / `runRootFileWorker(self)`), `/geometry-palette`. The root reaches `/display` only through `import()`; ng-packagr rejects entry cycles even through `import()`, which is why `/api` is an entry of its own. Specs run under the Angular unit-test builder (`angular.json` in the package). The monorepo consumes it from source through tsconfig paths (one path per entry).
 - **packages/firebird-core/** - `@dexvis/firebird-core`: worker-safe plain TS (event model, DEX io, painters). No Angular injector, no bootstrap; the web workers run this code. Enforced by `packages/firebird-core/src/no-injector.spec.ts`.
+- **packages/epic/** - `@dexvis/firebird-epic`: the ePIC experiment pack, `withEpic(options)` (the `epic://` alias, data catalog, TGeo rules and cut lists, geometry themes and post-processors, camera views and limits, collision intro and its toolbar button). Options are config defaults. An Angular library (ng-packagr into `packages/epic/dist`, one entry; its lazy rule sets, themes and post-processors become chunks of that entry). Its specs boot `provideFirebird()` in TestBed under plain vitest (JIT, `src/test-setup.ts`).
 - **packages/root2dex/** - `@dexvis/root2dex`: EDM4eic/EDM4hep podio ROOT -> DEX through the JSROOT API, the TypeScript twin of `pyrobird convert`. Plain worker-safe TS; reads only the baskets of the requested entry, so multi-GB files never load into the browser. Parity with pyrobird is pinned value-for-value by `src/parity.spec.ts` against reference documents in `packages/root2dex/test-data/`.
 - **dexvis/** - git submodules of the generic [github.com/dexvis](https://github.com/dexvis) packages, wired into the workspaces so `@dexvis/*` imports resolve to the submodule sources (tsconfig `paths`):
   - `root-geo-tree-editor` -> `@dexvis/root-geo-tree-editor` (TGeo walk/find/edit)
   - `threejs-tree-editor` -> `@dexvis/threejs-tree-editor` (three tree edit/merge/outline, geometry processor)
-  - `app-shell-ng` -> `@dexvis/shell` (app chrome: shell layout + theming); Firebird wraps it in `components/firebird-shell/`
-  - `viewport-gizmo` -> `@dexvis/viewport-gizmo` (camera navigation cube; fork of three-viewport-gizmo — cube-only, WebGPU fixes, configurable HENP view orientations, roll/home buttons); Firebird binds it in `firebird/viewport-gizmo.extension.ts`
-  - `app-features-ng` -> `@dexvis/app-features` (app composition machinery: feature composition, layered `ConfigService`/`ConfigProperty`, server config loading, command bus, URL startup parsing); a plain directory until it becomes a repo + submodule; `provideFirebird()` wraps its `provideAppFeatures()` and `@dexvis/firebird-ng` re-exports it
+  - `app-shell-ng` -> `@dexvis/shell` (app chrome: shell layout + theming); Firebird wraps it in `display/src/lib/components/firebird-shell/` of `packages/firebird-ng`
+  - `viewport-gizmo` -> `@dexvis/viewport-gizmo` (camera navigation cube; fork of three-viewport-gizmo — cube-only, WebGPU fixes, configurable HENP view orientations, roll/home buttons); Firebird binds it in `display/src/lib/extensions/viewport-gizmo.extension.ts` of `packages/firebird-ng`
+  - `app-features-ng` -> `@dexvis/app-features` (app composition machinery: feature composition, layered `ConfigService`/`ConfigProperty`, server config loading, command bus, URL startup parsing); `provideFirebird()` wraps its `provideAppFeatures()` and `@dexvis/firebird-ng` re-exports it
 - **pyrobird/** - Python Flask backend (file server, ROOT conversion)
 - **dd4hep-plugin/** - C++ Geant4/DD4Hep plugin (trajectory extraction during simulation)
 
@@ -47,17 +49,33 @@ npm run serve                  # http://localhost:4200
 
 # Testing (Vitest via the Angular unit-test builder)
 npm test                       # Interactive tests
-npm run test:headless          # CI mode
+npm run test:headless          # CI mode (app-level specs)
+npm test -w @dexvis/firebird-ng           # The library's suite (Angular unit-test builder, from repo root)
 npm test -w @dexvis/firebird-core         # Core package tests (from repo root)
 npm test -w @dexvis/root2dex              # ROOT -> DEX converter tests (pyrobird parity)
+npm test -w @dexvis/firebird-epic         # ePIC pack (withEpic composition, options as defaults)
+npm test -w @dexvis/firebird-example-extension  # The extension template's suite
 npm test -w @dexvis/threejs-tree-editor   # Dexvis submodule tests (from repo root)
-# Every workspace `test` script runs once and exits (`vitest run`); build.py and
-# CI call them in sequence, so a bare `vitest` (watch mode) would hang both.
+# Every workspace `test` script runs once and exits (`vitest run`, `ng test
+# --watch=false`); build.py and CI call them in sequence, so a watching runner
+# would hang both.
 
 # Building
 npm run build                 # Production build
 npm run build:ghpages         # GitHub Pages deployment
 npm run build:watch           # Watch mode for development
+
+# The library and the ePIC pack (ng-packagr, into packages/firebird-ng/dist and
+# packages/epic/dist): compile against the BUILT dependencies, so build them
+# first, in this order (from repo root; .github/workflows/frontend.yaml runs
+# the same sequence)
+for w in root-geo-tree-editor threejs-tree-editor viewport-gizmo root2dex firebird-core app-features; do
+  npm run build -w @dexvis/$w
+done
+(cd dexvis/app-shell-ng && npx ng build app-shell)
+npm run build -w @dexvis/firebird-ng
+npm run build -w @dexvis/firebird-epic
+(cd packages/firebird-ng/dist && npm pack --dry-run)   # what the tarball holds
 
 # Generate components (Angular CLI)
 ng generate component component-name
@@ -73,16 +91,23 @@ disagrees with any workspace manifest.
   `@angular/build` and `ng-packagr` 22.2 all peer `typescript >=6.0 <6.1`, so
   TypeScript 7 waits until Angular widens that range.
 - Every publishable plain-TypeScript package builds with **tsdown** from one
-  shared `tsdown.config.ts` (today `viewport-gizmo`, `root-geo-tree-editor`,
-  `threejs-tree-editor`; `firebird-core` and `root2dex` join when they become
-  publishable): ES modules only, `dist/index.js` plus one bundled
-  `dist/index.d.ts`, `exports` = `{ types, default }`. Sources keep
-  extensionless relative imports like the rest of the monorepo; bundling is
-  what makes the output valid in Node, and the bundled `.d.ts` has no
-  relative imports, so consumers on `moduleResolution: nodenext` get working
-  types. Keep `platform: 'neutral'` in the config: tsdown's default
-  `'node'` switches the output to `.mjs`/`.d.mts`. The Angular libraries
-  (`app-shell-ng`, `app-features-ng`) build with ng-packagr.
+  shared `tsdown.config.ts`, byte-identical in `viewport-gizmo`,
+  `root-geo-tree-editor`, `threejs-tree-editor`, `firebird-core` and
+  `root2dex`: ES modules only, `exports` = `{ types, default }`, one
+  bundled `.d.ts` per entry. The config reads its entries from the
+  package's own `exports` map (`./dist/<path>.js` builds from
+  `src/<path>.ts`), so a package adds a subpath in `package.json` alone;
+  code shared between entries lands in chunks, which tsdown imports with
+  `.js` extensions. Sources keep extensionless relative imports like the
+  rest of the monorepo; bundling is what makes the output valid in Node and
+  for consumers on `moduleResolution: nodenext`. Keep `platform: 'neutral'`
+  in the config: tsdown's default `'node'` switches the output to
+  `.mjs`/`.d.mts`. Inside the monorepo every package is consumed from
+  source (tsconfig `paths`, vitest aliases), never from `dist`. The Angular
+  libraries (`app-shell-ng`, `app-features-ng`, `packages/firebird-ng`,
+  `packages/epic`) build with ng-packagr and publish from their `dist`;
+  ng-packagr copies the `LICENSE` and `README.md` beside `ng-package.json`
+  into it.
 - Vitest 5 turns `clearMocks` on by default: every test starts with empty spy
   call history, so assert only on calls the test itself triggers.
 - `jsroot` and `jsdom` track latest via root `package.json` `overrides`.
@@ -174,7 +199,7 @@ Itemized steps, to build and deploy the frontend into pyrobird only:
 
 ```bash
 python build.py build_ng         # ng production build
-python build.py cp_ng            # copy dist into pyrobird/pyrobird/server/static
+python build.py cp_ng            # copy dist (browser/ + 3rdpartylicenses.txt) into pyrobird/pyrobird/server/static
 ```
 
 ## Running and Verifying Changes
@@ -186,9 +211,12 @@ alone.
 ### Level 1: test suites (no browser)
 
 ```bash
-npm run test:headless --workspace=firebird-ng   # Angular app (vitest)
+npm run test:headless --workspace=firebird-ng   # Angular app (vitest; app-level specs)
+npm test -w @dexvis/firebird-ng                 # the Angular library (most frontend specs)
 npm test -w @dexvis/firebird-core               # core package
 npm test -w @dexvis/root2dex                    # ROOT -> DEX converter (pyrobird parity)
+npm test -w @dexvis/firebird-epic               # ePIC pack
+npm test -w @dexvis/firebird-example-extension  # extension template (piece + painter knob)
 npm test -w @dexvis/threejs-tree-editor
 npm test -w @dexvis/root-geo-tree-editor
 npm test -w @dexvis/viewport-gizmo
@@ -213,7 +241,8 @@ cd /tmp   # screenshots land in ./screenshots/ with auto-numbering
 
 The command starts its own server on 127.0.0.1 and a free port (`--port` fixes
 it; a path or `localhost:5454` `--url` is pointed at it, path and query
-kept), waits for `window.firebird.ready === true`
+kept; any other `--url` is captured without a server, so it needs no built
+frontend), waits for `window.firebird.ready === true`
 (geometry loaded, events loaded, startup commands executed — set by the app's
 BatchStatusService), captures, and shuts the server down. `--ready-timeout N`
 (default 120 s) controls the wait; on timeout it falls back to a fixed sleep,
@@ -349,23 +378,39 @@ timeout. Render-on-demand + recording gates: `space/phase5/check_on_demand.py`,
   `ng build --stats-json`. Since Angular 22.2 the CLI "Initial total" counts
   every chunk main statically imports (index.html modulepreloads them) plus
   styles; 22.1 printed main + styles only (~208 kB) while the browser fetched
-  the same chunks. Current figure (2026-10): Initial total 400.94 kB raw /
-  110.25 kB transfer = main-*.js 157 kB + static-import closure 8 files /
-  385 kB (`space/phase6/bundle_closure.py`) + styles 16 kB, no three.js. The
+  the same chunks. Current figure (2026-10): Initial total 407.08 kB raw /
+  109.04 kB transfer = main-*.js 212 kB + static-import closure 3 files /
+  391 kB (`space/phase6/bundle_closure.py`) + styles 16 kB, no three.js. The
+  split between main and the shared chunks moves with chunk assignment (main
+  grew from 162 kB when the library moved out of the app, the closure did
+  not): gate on the closure. The
   `initial` budget in `firebird-ng/angular.json` warns above 480 kB and fails
   the build above 600 kB: pulling three.js core (475 kB) or WebGPU (565 kB)
   into the closure is a build error (the barrel import measured 1.52 MB).
   Raise the budget only with a stated reason.
-  Initial-bundle files import `@dexvis/firebird-core` through its subpaths
-  (`/data-catalog`, `/loaders`); the barrel re-exports the painters, which
-  pull in three.js core + WebGPU (about 1.1 MB).
+  Initial-bundle files import `@dexvis/firebird-core` through its named
+  subpaths (`/model`, `/loaders`, `/data-catalog`); the root re-exports the
+  painters, which pull in three.js core + WebGPU (about 1.1 MB). Packages
+  export named subpaths only, never file paths; the tsconfig `paths` of the
+  app and the packs list each one.
   Trap: a module statically imported by an initial-bundle file carries its
   FULL used-export set into main — Material's inputs import
   `@angular/forms/signals`, so an
   eagerly-routed Material form page drags Signal Forms machinery into main
   the moment any lazy page starts using it.
 - **`localStorage is not defined` in specs**: the test jsdom lacks it; a
-  polyfill lives in `firebird-ng/src/test-setup.ts` — do not remove it.
+  polyfill lives in `packages/firebird-ng/src/test-setup.ts` (and the app's
+  `firebird-ng/src/test-setup.ts`) — do not remove it.
+- **A spec times out waiting on a command or loader that imports
+  `@dexvis/firebird-ng/display`**: the first dynamic import of the display
+  entry in a test run loads its chunk, which takes longer than a few
+  `setTimeout(0)` ticks. Import the entry once in `beforeAll` (see
+  event-display.service.spec.ts).
+- **`ROOT geometry ... add withWorkers` / `No ROOT file worker`**: the app
+  registered no worker factories. The worker entry modules must be the
+  app's own files (`new Worker(new URL('./x.worker', import.meta.url))`
+  literally in app code): Angular bundles workers only for TypeScript sources
+  of the app, never inside a prebuilt library.
 - **Every console line appears twice in captured logs**: artifact of CDP-based
   console capture (browser-pane tools attach duplicate listeners) — the page
   logs each line once. When exact counts matter, instrument in-page: patch
@@ -383,6 +428,11 @@ Backend serves for:
 
 
 ### Frontend Architecture (firebird-ng)
+
+The services, components and pages below live in the library
+`packages/firebird-ng` (`display/src/lib/services/`, `components/`, `pages/`;
+the light services data-selection, data-catalog and url in
+`api/src/lib/services/`). The application `firebird-ng/` composes them.
 
 The Angular application is **zoneless** (no zone.js; `provideZonelessChangeDetection()`)
 with **OnPush on every component**. State that a template reads must be a signal
@@ -435,21 +485,29 @@ It uses a **service-oriented architecture** with clear separation of concerns:
     (main view), 2 slice copy (projection views), 3 event data (all views;
     lights carry it too so tracks-on-top passes collect identical light sets)
 
-- **root-file.service.ts** - The app's ROOT-file facility, over
-  `workers/root-file.worker.ts`: `probe()` reports a file's top-level keys with
+- **root-file.service.ts** - The app's ROOT-file facility, over the ROOT
+  file worker (`workers/root-file/` of the library, started through the
+  app's `withWorkers()` factory): `probe()` reports a file's top-level keys with
   their ROOT class names (neutral facts, no interpretation); `createHandle()`
   gives a client its own open file (`open()`/`convert()` delegate to
   `@dexvis/root2dex`), so the data selector's picker and the display's loads
   never replace each other's file. Files are never uploaded or fully read -
-  only the baskets of the requested entries. Results reach the display via
-  `EventDisplayService.showDexDocument()`.
+  only the baskets of the requested entries. `Root2DexEventLoader` returns the
+  converted `DataExchange`; the display shows it.
 
-- **Event loads** (event-display.service.ts) - every load is a request from
-  the moment it is asked for (`runEventsLoad()`): the latest REQUESTED load
-  is shown, readiness and spinners follow it, and a remount of a display page
-  keeps what a deep link, command or picked file showed until the configured
-  source changes. Failures carry their reason to `reportError()`: snackbar
-  (MessageService), console, and `window.firebird.errors`.
+- **Loads and hosts** (event-display.service.ts) - `openGeometry(source)` /
+  `openEvents(source)` are the one load path (config keys, picked files, the
+  data selector, the open-geometry/open-dex commands): the first registered
+  loader whose `canLoad()` claims the source returns an `Object3D` (scaled by
+  its `millimetersPerUnit`) or a `DataExchange`, and the service alone shows
+  it. A newer load aborts the older one's `LoaderContext.signal`; the older
+  resolves null. The latest REQUESTED load is shown, readiness and spinners
+  follow it. `attach(host)` (what `<firebird-display>` calls) puts the canvas
+  into a host, follows its size, loads the configured sources and runs the
+  startup commands, and returns the disposer; a remount keeps what a deep
+  link, command or picked file showed until the configured source changes.
+  Failures carry their reason to `reportError()`: snackbar (MessageService),
+  console, and `window.firebird.errors`.
 
 - **file-open-router.service.ts** - Decides WHICH registered loader opens a
   picked/dropped/typed source, and holds no format knowledge itself. `.root` is
@@ -473,8 +531,9 @@ It uses a **service-oriented architecture** with clear separation of concerns:
   loses the name that selects the loader): they wait in the service and the next
   `loadFromConfig` consumes them. The catalog merges `withDataCatalog()` packs,
   config.jsonc `dataCatalog`, and a remote `catalog.url` (fetched on first panel
-  open). ePIC's datasets live in `src/app/epic/epic-data-catalog.ts`, not in
-  the builtins; without a catalog only the Manual tab shows.
+  open). ePIC's datasets live in the ePIC pack
+  (`packages/epic/src/epic-data-catalog.ts`); without a catalog only the
+  Manual tab shows.
 
 - **selection.service.ts** - The one selection: `(pieceName, entityIndex)`
   - 3D click → painter-stamped object resolves to its entity (`entityRefOf`);
@@ -513,29 +572,83 @@ named block of typed entity data inside an event):
   and `registerDefaultPainters(painter)` explicitly; the Angular app registers
   the same classes through DI (see the extension system below).
 
-#### Extension system (`@dexvis/firebird-ng` = `firebird-ng/src/app/firebird/`)
+#### Extension system (`@dexvis/firebird-ng` = `packages/firebird-ng/`)
 
 The app is assembled with `provideFirebird(...features)` in `app.config.ts` —
-the same composition API an external experiment uses. One contribution per
-`with*()` call; packs compose with `firebirdFeatures()`:
+the same composition API an external experiment uses. `provideFirebird()`
+installs Firebird's built-ins itself (`withFirebirdBuiltins()`, named
+sub-features with feature ids such as `firebird.navigation-cube`; drop one
+with `withoutFeatures('<id>')`). One contribution per `with*()` call; packs
+compose with `firebirdPack(id, ...)` (or `firebirdFeatures()` without an id):
 
 ```ts
 provideFirebird(
-  withFirebirdBuiltins(),                       // Firebird's own factories/painters/loaders/commands
-  withUrlAlias('epic://', 'https://eic.github.io/epic/artifacts/'),
+  withAppVersion(version),                      // the release the logo menu shows
+  withWorkers({ geometry: () => new Worker(...), rootFile: () => new Worker(...) }),  // the app's worker entries
+  withEpic({ geometry: '...' }),                // the ePIC pack, @dexvis/firebird-epic (packages/epic)
   withExampleCherenkov(),                       // an out-of-tree pack (packages/firebird-example-extension)
 )
 ```
+
+The routes come from `firebirdRoutes()` (display, split-window, config; each
+`loadComponent` from `@dexvis/firebird-ng/display`). A page of one's own
+places `<firebird-display>` (attaches the display to its element).
 
 Registration surfaces: `withEventPiece` (DEX decoders), `withPainter` /
 `withLazyPainter` (data → visuals), `withThreeExtension` /
 `withLazyThreeExtension` (machinery hooks: onSceneInit after async init,
 onFrame, onEventLoaded, onDispose), `withGeometryLoader` / `withEventLoader`
-(file formats, registry-selected by `canLoad()`), `withCommandHandler`
+(file formats, registry-selected by `canLoad()`; a loader RETURNS data,
+`Object3D` or `DataExchange`, and rejects with the reason; it gets a
+`LoaderContext {resolveUrl, signal}`), `withCommandHandler`
 (command bus), `withConfigDefaults`, `withDataCatalog` (datasets for the data
 selector: presets, physics tags, URL lists; merged with config.jsonc
 `dataCatalog` and a remote `catalog.url`), `withDataSelectorTab` (a tab of
-the data selector, lazy component).
+the data selector, lazy component), `withRootGeometryRules` (pre-build TGeo
+edit rules and cut lists: DATA posted to the geometry worker, which cannot
+import pack code), `withGeometryTheme`, `withGeometryPostProcessor`
+(main-thread, async allowed, runs after the geometry is in the scene and
+scaled), `withCameraPreset` / `withCameraLimits` (unpinned limits and the
+`home` view derive from the geometry bounding sphere), `withCollisionIntro`
+(played live and in offline recordings), `withToolbarAction` (time-toolbar
+button dispatching a command).
+
+**Precedence, one rule for every registry** (documented in
+`api/src/lib/tokens.ts`): registration order (built-ins first); a later
+contribution with the same id replaces the earlier one IN PLACE; where one
+entry is picked among several, the earliest wins (first claiming loader,
+first registered painter = default, by registration order whatever order the
+lazy chunks arrive in). Ids: feature ids, `DataLoaderMeta.id`,
+`CommandHandler.type`, factory `type`, `PainterMeta.id`, tab/theme/
+post-processor/toolbar-action `id`, camera preset `name`. Read loaders through
+`injectEventLoaders()`/`injectGeometryLoaders()`, which apply the id rule the raw tokens skip.
+A removed or replaced pack takes everything inside it along, including its
+replacements and removals of features elsewhere (compose() in
+`dexvis/app-features-ng/.../features.ts` resolves this to a fixed point).
+The built-ins (server config defaults and URL shorthands included) are a
+defaults pack: replacing a part by id draws no warning. Development builds
+warn on one feature id from two packs with different content and on one
+piece type with two factories.
+
+**ePIC knowledge stays out of generic code.** Everything ePIC (geometry rules
+and cut lists, the cool2/cool2no/cad themes, the dRICH prettifier, the
+detector arranger, the `home`/`center`/`farforward` camera views and the
+pinned camera limits, the beam collision intro and its toolbar button, the
+`epic://` alias, the data catalog) lives in `packages/epic`
+(`@dexvis/firebird-epic`) and reaches the app only through `withEpic()` in
+`app.config.ts`. Generic defaults: `geometry.themeName` and
+`geometry.rootFilterName` are `off`. The named theme colors are generic
+(`@dexvis/firebird-ng/geometry-palette`, a subpath so that they stay out of
+the initial bundle). Check with
+`grep -rniE 'epic|dirc|drich|pfrich|mrich|ecal|hcal|solenoid|lfhcal|lumi|zdc|farforward|craterlake'`
+over packages/ (without packages/epic), dexvis/ and firebird-ng/src (without
+app.config.ts and assets/): the hits left are root2dex's test data and
+specs, comments that point at the pack, and substrings of other words
+(`saveCallback`, `onFilePicked`). Experiment knowledge that generic code needs
+arrives as config: the ePIC pack sets `events.trajectoryExcludedCollections`
+(the Cherenkov collections the browser conversion keeps out of MC-truth
+trajectories; root2dex excludes nothing by default, pyrobird keeps its own
+list).
 
 **Loader claiming is two-stage.** `canLoad(source)` decides from the source
 alone (extension, scheme) and `source` is a `DataSource` — a URL/path OR a
@@ -545,7 +658,7 @@ is ambiguous — `.root` holds geometry OR events — the optional
 knowledge in the loader, never in the control that opened the file.
 
 **Which converter runs for a `.root` event source** is registration order in
-`with-firebird-builtins.ts`: `Root2DexEventLoader` is asked first and claims
+`src/lib/with-firebird-builtins.ts`: `Root2DexEventLoader` is asked first and claims
 only what the browser can byte-range itself (http/https/asset URLs, picked
 files); `root://` XRootD URLs and pyrobird-served paths fall through to
 `Edm4eicEventLoader`, which keeps using pyrobird's convert endpoint. Do not
@@ -569,20 +682,21 @@ EventDisplayService and toggled by the eye in the model tree. Config
 properties must not be DECLARED during template evaluation or computed() —
 the first declare applies pending layer values (signal writes) and throws
 NG0600; wrap creation in `untracked()` (see model-tree.component.ts). Author guide with the rendering and
-bundle rules: `firebird-ng/src/app/firebird/README.md`. Template package:
+bundle rules: `packages/firebird-ng/README.md`. Template package:
 `packages/firebird-example-extension/`.
 
 **Bundle rule:** anything referenced from `app.config.ts` lands in the initial
 bundle — heavy classes (painters, display services) must be reached via
-`withLazyPainter` / dynamic imports. Eager wiring of the display stack doubles
-the initial bundle; see `firebird-ng/src/app/firebird/builtin-loaders.ts` for
-the pattern.
+`withLazyPainter` / dynamic imports of `@dexvis/firebird-ng/display`. Never
+import `/display` statically from the package root, `/api` or any code
+app.config.ts reaches: that puts three.js into the initial bundle. See
+`packages/firebird-ng/src/lib/builtin-loaders.ts` for the pattern.
 
 **Config precedence:** `defaults < server config.jsonc < localStorage <
 URL ?config.key=value < runtime`; URL values are session-scoped, never
 persisted. One canonical `ConfigProperty` per key — always keep the reference
 returned by `ConfigService.addConfig()/declare()`. Declare each key from ONE
-schema object (Firebird's: `firebird/config-keys.ts`); in dev builds a
+schema object (Firebird's: `api/src/lib/config-keys.ts`); in dev builds a
 disagreeing re-declaration logs `[ConfigService] Key ... declared again`.
 `setDefault()` removes the saved value (it does not write the default).
 
@@ -597,9 +711,10 @@ Painters render event data to Three.js objects using **time-aware rendering**
 (all in `packages/firebird-core/src/painters/`):
 
 - `data-model-painter.ts` - Main orchestrator (filters by time range)
-- `trajectory.painter.ts` - Particle tracks with smooth splines
-- `box-hit.painter.ts` - Individual tracker hits
-- `step-track.painter.ts` - Geant4 step-by-step trajectories
+- `trajectory.painter.ts` - Particle tracks, one line per track (default)
+- `batched-trajectory.painter.ts` - Particle tracks in two draw calls per piece (selectable)
+- `box-hit-simple.painter.ts` - Tracker hits, one box mesh per hit
+- `event-piece-painter.ts` - Base class; its `dispose()` frees the painter node's whole subtree
 
 The system uses Angular signals for reactive time updates that automatically propagate through the painter hierarchy.
 
@@ -751,7 +866,7 @@ Restrictive defaults prevent unauthorized file access:
 ## Testing Infrastructure
 
 ### Frontend Testing
-- **Framework:** Vitest 5 (Angular `unit-test` builder); `@dexvis/firebird-core` and the dexvis packages run plain Vitest
+- **Framework:** Vitest 5. The app and the library `@dexvis/firebird-ng` run it through the Angular `unit-test` builder (AOT: the library's components use `templateUrl`, its services constructor injection); `@dexvis/firebird-core`, the packs and the dexvis packages run plain Vitest
 - **CI:** GitHub Actions on every push to any branch and on PRs to main; one job runs every workspace suite, then the production build
 - Run tests: `npm test` or `npm run test:headless` (app); `npm test -w <workspace>` for each package (list above)
 - `packages/firebird-core/src/no-injector.spec.ts` paints an event with no injector AND scans core's sources for `InjectionToken`, `Injectable`, `inject(`, `HttpClient` and component decorators (signals stay allowed)
@@ -776,13 +891,13 @@ Restrictive defaults prevent unauthorized file access:
 - **Components:** Standalone Angular components (Angular 22), `ChangeDetectionStrategy.OnPush`
 - **Reactive programming:** Angular signals first (zoneless); RxJS where streams fit better
 - **Worker-safe core:** code in `packages/firebird-core` must never use `@Injectable`, tokens, `HttpClient`, or components
-- **Bundle size:** `initial` budget 480 kB warning, 600 kB error (raw; currently ~401 kB)
+- **Bundle size:** `initial` budget 480 kB warning, 600 kB error (raw; currently ~407 kB)
 
 ## CI/CD and Deployment
 
 ### GitHub Actions Workflows
 
-- **frontend.yaml** - `npm ci`, every workspace suite (app, app-features, core, root2dex, tte, rgte, gizmo), production build; no deployment
+- **frontend.yaml** - `npm ci`, every workspace suite (app, library, app-features, core, root2dex, ePIC pack, example extension, tte, rgte, gizmo), the library's ng-packagr build (dependencies first), production build; no deployment
 - **docs.yaml** - Build and deploy VitePress documentation to GitHub Pages
 - **pyrobird.yaml** - pyrobird unit tests (incl. the DEX schema tests) on Python 3.10-3.14
 - **integration-tests.yml** - `build.py notests` (one frontend build, copied into pyrobird, python package) + the server integration test
@@ -831,7 +946,8 @@ pyrobird convert simulation.edm4hep.root -o output.json
 
 - `firebird-ng/angular.json` - Angular build configuration, bundle size limits
 - `firebird-ng/package.json` - Dependencies, npm scripts
-- `firebird-ng/tsconfig.json` - TypeScript compiler settings (strict mode)
+- `firebird-ng/tsconfig.json` - TypeScript compiler settings (strict mode); one `paths` entry per library entry
+- `packages/firebird-ng/ng-package.json` (+ one per entry directory), `angular.json` (test target), `tsconfig.lib.json` (compiles against the BUILT dependencies) - the library
 - `pyrobird/pyproject.toml` - Python packaging, dependencies, metadata
 - `dd4hep-plugin/CMakeLists.txt` - C++ build system, DD4Hep/Geant4 integration
 - `.github/workflows/` - CI/CD pipeline definitions
@@ -845,7 +961,8 @@ pyrobird convert simulation.edm4hep.root -o output.json
 4. **Geometry merging** - Merge similar geometry for reduced draw calls
 5. **Time-based filtering** - Painters only render objects in current time range
 6. **Web Workers** - Geometry loading happens in a worker thread
-   (geometry-loader.worker.ts). DEX event parsing runs on the main thread.
+   (`workers/geometry/` of the library, started by the app's `withWorkers()`
+   factory). DEX event parsing runs on the main thread.
 
 ## Common Development Scenarios
 

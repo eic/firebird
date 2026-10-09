@@ -12,6 +12,8 @@ description = "pyrobird is a python backend for Firebird HENP event display"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
+# A copy of the repository's LICENSE: the sdist and the wheel are built from this directory
+license-files = ["LICENSE"]
 authors = [
   { name = "Dmitry Romanov", email = "romanovda@gmail.com" }
 ]

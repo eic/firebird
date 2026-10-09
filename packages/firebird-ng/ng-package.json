@@ -1,0 +1,17 @@
+{
+  "$schema": "../../node_modules/ng-packagr/ng-package.schema.json",
+  "dest": "dist",
+  "lib": {
+    "entryFile": "src/public-api.ts"
+  },
+  "allowedNonPeerDependencies": [
+    "@dexvis/root-geo-tree-editor",
+    "@dexvis/root2dex",
+    "@dexvis/threejs-tree-editor",
+    "@dexvis/viewport-gizmo",
+    "@tweenjs/tween.js",
+    "jszip",
+    "lil-gui",
+    "three-mesh-bvh"
+  ]
+}

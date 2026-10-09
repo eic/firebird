@@ -7,7 +7,9 @@ from click.testing import CliRunner
 from pyrobird.cli.convert import convert  # Import your convert function
 import os
 import json
+import zipfile
 from pyrobird.cli.convert import guess_output_name
+from pyrobird.dex_utils import read_dex_json
 
 # Assuming the small ROOT file is named 'test_data.root' and is placed in the 'tests' directory
 TEST_ROOT_FILE = os.path.join(os.path.dirname(__file__), 'data', 'reco_2024-09_craterlake_2evt.edm4eic.root')
@@ -79,17 +81,20 @@ def test_convert_invalid_entry(runner, work_dir):
     result = runner.invoke(convert, [test_root_file, '--output', '-', '-e', '1000'])
 
     assert result.exit_code == 1, f"Command failed with exit code {result.exit_code}"
-    # The output should be the JSON data
     assert isinstance(result.exception, ValueError)
     assert "Event 1000 is out of range: the file holds 2 events (0..1)" in str(result.exception)
 
 
-def test_convert_huge_entry_range_is_not_expanded(runner, work_dir):
-    """An out-of-range selection is rejected from its bounds, without building the entry list."""
-    result = runner.invoke(convert, ['test_data.root', '--output', '-', '-e', '0-1000000000000'])
+def test_convert_huge_entry_range_is_clamped_without_expanding(runner, work_dir, caplog):
+    """Entries past the end of the file are dropped with one warning, computed from the range bounds."""
+    with caplog.at_level('WARNING'):
+        result = runner.invoke(convert, ['test_data.root', '--output', '-', '-e', '0-1000000000000'])
 
-    assert isinstance(result.exception, ValueError)
-    assert "Event 2-1000000000000 is out of range" in str(result.exception)
+    assert result.exit_code == 0, result.exception
+    assert [event['id'] for event in json.loads(result.output)['events']] == [0, 1]
+    warnings = [record.getMessage() for record in caplog.records if record.levelname == 'WARNING']
+    assert warnings == ["Entries provided as: '0-1000000000000': Event 2-1000000000000 is out of range: "
+                        "the file holds 2 events (0..1); converting 0-1"]
 
 
 def test_convert_bad_entry_format_fails_before_reading(runner, work_dir):
@@ -172,3 +177,12 @@ def test_guess_output_name(input_entry, expected_output, output_extension):
 def test_guess_output_name_none_input():
     with pytest.raises(TypeError):
         guess_output_name(None)
+
+
+def test_convert_zip_output_is_a_zip_archive(runner, work_dir):
+    """An output name ending in .zip writes an archive that pyrobird and the frontend read back."""
+    result = runner.invoke(convert, ['test_data.root', '-e', '0-1', '-o', 'reco.v1.firebird.zip'])
+
+    assert result.exit_code == 0, result.exception
+    assert zipfile.is_zipfile('reco.v1.firebird.zip')
+    assert [event['id'] for event in read_dex_json('reco.v1.firebird.zip')['events']] == [0, 1]

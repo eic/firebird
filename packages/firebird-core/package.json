@@ -1,31 +1,70 @@
 {
   "name": "@dexvis/firebird-core",
-  "version": "0.0.1",
-  "description": "Worker-safe core of the Firebird event display: event model, DEX io, painters. Plain TypeScript - no Angular injector, no bootstrap; runs in web workers and node.",
-  "private": true,
+  "version": "0.1.0-beta.1",
+  "description": "Worker-safe core of the Firebird event display: event model, DEX io, loader contracts, painters. Plain TypeScript - no Angular injector, no bootstrap; runs in web workers and node.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eic/firebird.git",
+    "directory": "packages/firebird-core"
+  },
   "type": "module",
   "sideEffects": false,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./data-catalog": "./src/data-catalog.ts",
-    "./loaders": "./src/loaders.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./model": {
+      "types": "./dist/model/index.d.ts",
+      "default": "./dist/model/index.js"
+    },
+    "./loaders": {
+      "types": "./dist/loaders.d.ts",
+      "default": "./dist/loaders.js"
+    },
+    "./data-catalog": {
+      "types": "./dist/data-catalog.d.ts",
+      "default": "./dist/data-catalog.js"
+    }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "vitest run"
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build",
+    "build:check": "tsc --noEmit"
   },
+  "keywords": [
+    "firebird",
+    "event-display",
+    "dex",
+    "particle-physics",
+    "three",
+    "webgpu"
+  ],
   "dependencies": {
     "@dexvis/threejs-tree-editor": "^0.1.0"
   },
   "peerDependencies": {
+    "@angular/core": ">=22.0.0",
     "three": ">=0.180.0"
   },
   "devDependencies": {
+    "@types/node": "^26.6.4",
     "@types/three": "^0.186.0",
     "jsdom": "~30.1.2",
     "three": "^0.186.1",
+    "tsdown": "^0.23.0",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

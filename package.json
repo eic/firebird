@@ -5,7 +5,9 @@
   "description": "Firebird event display monorepo: Angular frontend, dexvis packages, Python backend (pyrobird), DD4Hep plugin",
   "workspaces": [
     "firebird-ng",
+    "packages/epic",
     "packages/firebird-core",
+    "packages/firebird-ng",
     "packages/firebird-example-extension",
     "packages/root2dex",
     "dexvis/root-geo-tree-editor",

@@ -1,5 +1,5 @@
 # Created by: Dmitry Romanov at 4/27/2024
-# This file is part of Firebird Event Display and is licensed under the LGPLv3.
+# This file is part of Firebird Event Display and is licensed under GPL-3.0-or-later.
 # See the LICENSE file in the project root for full license information.
 import fnmatch
 import logging

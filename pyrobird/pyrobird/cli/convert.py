@@ -4,6 +4,7 @@ import re
 from urllib.parse import urlsplit
 
 import click
+from pyrobird.dex_utils import write_dex_json
 from pyrobird.edm4eic import edm4eic_to_dex_dict
 from pyrobird.edm4hep import edm4hep_to_dex_dict, detect_file_type, DEFAULT_HIT_BOX_SIZE
 from pyrobird.entries import parse_entry_ranges, select_entries, EntrySelectionError
@@ -108,7 +109,8 @@ def convert(filename, output_file, entries_str, collections_str, input_type,
     the URL's file name.
 
     Use `-o -` or `--output -` to output the JSON data to stdout instead of a file.
-    This allows the command to be used in pipelines.
+    This allows the command to be used in pipelines. An output name ending in
+    `.zip` writes a zip archive holding the JSON.
 
     Use `-t` or `--type` to select the input data model. The default 'auto' inspects
     the tree: files with reconstructed edm4eic::TrackerHitData are treated as edm4eic,
@@ -162,11 +164,14 @@ def convert(filename, output_file, entries_str, collections_str, input_type,
     if collections_str:
         collections = [x.strip() for x in collections_str.split(',') if x.strip()]
 
-    # Every requested entry must exist in the file
+    # Entries outside the file are dropped with one warning; none left is an error
     try:
-        entries = select_entries(entry_ranges, num_entries)
+        selection = select_entries(entry_ranges, num_entries)
     except EntrySelectionError as ex:
         raise EntrySelectionError(f"Entries provided as: '{entries_str}': {ex}") from None
+    if selection.warning:
+        logging.warning(f"Entries provided as: '{entries_str}': {selection.warning}")
+    entries = selection.entries
 
     # Detect the file type if not given explicitly
     if input_type == "auto":
@@ -190,13 +195,8 @@ def convert(filename, output_file, entries_str, collections_str, input_type,
         fdex_dict = edm4eic_to_dex_dict(tree, entries, origin_info, collections=collections,
                                         mc_step_time=mc_step_time, mc_max_points=mc_max_points)
 
-    # Convert the event data to JSON format
-    json_data = json.dumps(fdex_dict)
-
     if output_file == '-':
-        # Output to stdout
-        print(json_data)
+        print(json.dumps(fdex_dict))
     else:
-        # Write the JSON data to the output file
-        with open(output_file, 'w') as f:
-            f.write(json_data)
+        # .json, or a zip archive when the name ends with .zip
+        write_dex_json(fdex_dict, output_file)

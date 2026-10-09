@@ -5,7 +5,7 @@ import logging
 import sys
 from typing import Dict, List, Any, Set, Union
 
-from pyrobird.dex_utils import load_dex_file
+from pyrobird.dex_utils import load_dex_file, write_dex_json
 from pyrobird.dex import DEX_TYPE, DEX_VERSION
 
 # Configure logging
@@ -41,6 +41,12 @@ def merge(reset_id, ignore, overwrite, output_file, input_files):
 
       - Save merged result to a specific file:
           pyrobird merge -o merged.firebird.json file1.firebird.json file2.firebird.json
+
+      - Save it zip-compressed (an output name ending in .zip):
+          pyrobird merge -o merged.firebird.zip file1.firebird.json file2.firebird.zip
+
+    Inputs can be .json files or .zip archives holding one. The output is
+    compact JSON, like the output of the other commands.
     """
     # Check that we have at least two files
     if len(input_files) < 2:
@@ -62,14 +68,13 @@ def merge(reset_id, ignore, overwrite, output_file, input_files):
     # Save the merged result
     if output_file:
         try:
-            with open(output_file, 'w') as f:
-                json.dump(merged_data, f, indent=2)
+            write_dex_json(merged_data, output_file)
             logger.info(f"Merged data saved to {output_file}")
         except Exception as e:
             raise click.FileError(output_file, f"Error saving merged data: {e}")
     else:
         # Output to stdout
-        print(json.dumps(merged_data, indent=2))
+        print(json.dumps(merged_data))
 
 
 def reset_events_id(dex_files: List[tuple]) -> List[tuple]:

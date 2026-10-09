@@ -12,27 +12,37 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { convertRootToDex } from './convert';
+import { convertRootToDex, type ConvertOptions } from './convert';
 import type { DexDocument } from './dex';
 
 const REPO = resolve(__dirname, '../../..');
 const ROOT_DATA = resolve(REPO, 'pyrobird/tests/unit_tests/data');
 const REFERENCE = resolve(__dirname, '../test-data');
 
-const CASES = [
+/**
+ * pyrobird's default trajectory exclusion list (DEFAULT_TRAJECTORY_EXCLUDED_COLLECTIONS
+ * in pyrobird/edm4hep.py). root2dex excludes nothing unless told, so the
+ * edm4hep case passes the list; without it the Cherenkov hits join the
+ * MC-truth trajectories and the documents differ.
+ */
+const PYROBIRD_TRAJECTORY_EXCLUDED_COLLECTIONS = ['DIRCBarHits', 'DRICHHits', 'PFRICHHits'];
+
+const CASES: Array<{ label: string; root: string; reference: string; model: string; options: ConvertOptions }> = [
   {
     label: 'edm4eic (eicrecon reconstruction)',
     root: 'reco_2024-09_craterlake_2evt.edm4eic.root',
     reference: 'reco_2024-09_craterlake_2evt.pyrobird.json',
     model: 'edm4eic',
+    options: {},
   },
   {
     label: 'edm4hep (ddsim simulation)',
     root: 'k_lambda_10x100_2evt.edm4hep.root',
     reference: 'k_lambda_10x100_2evt.pyrobird.json',
     model: 'edm4hep',
+    options: { trajectoryExcludedCollections: PYROBIRD_TRAJECTORY_EXCLUDED_COLLECTIONS },
   },
-] as const;
+];
 
 describe('root2dex / pyrobird parity', () => {
   for (const testCase of CASES) {
@@ -45,7 +55,7 @@ describe('root2dex / pyrobird parity', () => {
       // The JSON round trip drops undefined optional fields the same way
       // writing the document to a file would
       const actual = JSON.parse(
-        JSON.stringify(await convertRootToDex(rootPath, '0-1')),
+        JSON.stringify(await convertRootToDex(rootPath, '0-1', testCase.options)),
       ) as DexDocument;
 
       expect(actual.type).toBe(expected.type);

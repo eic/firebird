@@ -1,6 +1,8 @@
 {
   "name": "firebird",
   "version": "2026.10.0-beta.1",
+  "private": true,
+  "license": "GPL-3.0-or-later",
   "scripts": {
     "ng": "ng",
     "serve": "ng serve",

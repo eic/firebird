@@ -1,30 +1,25 @@
 import { Routes } from '@angular/router';
+import { firebirdRoutes } from '@dexvis/firebird-ng';
 
+// Every route loads lazily: the display entry of @dexvis/firebird-ng pulls
+// three.js and Angular Material, and a static import here would put them
+// into the initial bundle.
 export const routes: Routes = [
   { path: '', redirectTo: '/display', pathMatch: 'full' },
+  // display, split-window, config
+  ...firebirdRoutes(),
   {
-    path: 'config',
-    loadComponent: () => import('./pages/input-config/input-config.component').then(m => m.InputConfigComponent)
+    path: 'geometry',
+    loadComponent: () => import('@dexvis/firebird-ng/display').then(m => m.SceneTreeComponent)
   },
-  {
-    path: 'display',
-    loadComponent: () => import('./pages/main-display/main-display.component').then(m => m.MainDisplayComponent)
-  },
+  // Developer pages of the flagship
   {
     path: 'playground',
     loadComponent: () => import('./pages/playground/playground.component').then(m => m.PlaygroundComponent)
   },
   {
-    path: 'geometry',
-    loadComponent: () => import('./components/scene-tree/scene-tree.component').then(m => m.SceneTreeComponent)
-  },
-  {
     path: 'shell',
     loadComponent: () => import('./pages/shell-example/shell-example.component').then(m => m.ShellExampleComponent)
-  },
-  {
-    path: 'split-window',
-    loadComponent: () => import('./pages/split-window/split-window.component').then(m => m.SplitWindowComponent)
   },
   {
     path: 'palette',

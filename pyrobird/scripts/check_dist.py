@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# This file is part of Firebird Event Display and is licensed under the LGPLv3.
+# This file is part of Firebird Event Display and is licensed under GPL-3.0-or-later.
 # See the LICENSE file in the project root for full license information.
 """Checks built pyrobird distributions before an upload.
 
@@ -11,6 +11,7 @@ Usage:
 For every wheel and sdist it checks that:
 - the files the application needs at run time are present, including the
   sample event file that the documentation links to;
+- the license and the third-party license notices of the frontend are present;
 - the archive is smaller than PyPI's upload limit (100 MiB unless the
   project was granted more; see --max-bytes).
 
@@ -29,10 +30,12 @@ PYPI_MAX_BYTES = 100 * 1024 * 1024
 
 # Paths relative to the project root (the directory of pyproject.toml)
 REQUIRED_FILES = (
+    "LICENSE",
     "pyrobird/__init__.py",
     "pyrobird/server/__init__.py",
     "pyrobird/data/eic_geo_process_rules.yaml",
     "pyrobird/server/static/index.html",
+    "pyrobird/server/static/3rdpartylicenses.txt",
     "pyrobird/server/static/assets/config.jsonc",
     "pyrobird/server/static/assets/data/example-cherenkov.firebird.json",
 )
@@ -44,8 +47,18 @@ def archive_members(path):
     """Returns member paths of a wheel or sdist, relative to the project root."""
     if path.endswith(".whl"):
         with zipfile.ZipFile(path) as archive:
-            # A wheel holds the package at its root: 'pyrobird/server/...'
-            return {name for name in archive.namelist() if not name.endswith("/")}
+            # A wheel holds the package at its root: 'pyrobird/server/...'. License files
+            # (pyproject license-files) sit under '<name>-<version>.dist-info/licenses/' with
+            # their project-relative path, so 'LICENSE' maps back to 'LICENSE'.
+            members = set()
+            for name in archive.namelist():
+                if name.endswith("/"):
+                    continue
+                top, _, rest = name.partition("/")
+                if top.endswith(".dist-info") and rest.startswith("licenses/"):
+                    name = rest[len("licenses/"):]
+                members.add(name)
+            return members
     if path.endswith((".tar.gz", ".tgz")):
         with tarfile.open(path, "r:gz") as archive:
             # An sdist holds the project under a top directory: 'pyrobird-1.0/pyrobird/...'

@@ -6,7 +6,7 @@ import {
   WARM_COLORS,
   METALLIC_COLORS,
   ALL_COLORS,
-} from '../../theme/cool2-geometry-ruleset';
+} from '@dexvis/firebird-ng/geometry-palette';
 
 interface ColorEntry {
   name: string;

@@ -9,11 +9,26 @@ const DEX_META: DataLoaderMeta = {
 };
 
 describe('matchesFileExtensions', () => {
-  it('matches by path extension and by scheme', () => {
+  it('matches by path extension', () => {
     expect(matchesFileExtensions('events.firebird.zip', DEX_META)).toBe(true);
     expect(matchesFileExtensions('https://host/d/events.firebird.zip?token=abc', DEX_META)).toBe(true);
-    expect(matchesFileExtensions('asset://data/example.whatever', DEX_META)).toBe(true);
     expect(matchesFileExtensions('detector.root', DEX_META)).toBe(false);
+  });
+
+  it('matches by scheme only a name without a file extension', () => {
+    expect(matchesFileExtensions('asset://data/example', DEX_META)).toBe(true);
+    expect(matchesFileExtensions('asset://data/example.firebird.zip', DEX_META)).toBe(true);
+    // A known non-matching extension wins over the scheme
+    expect(matchesFileExtensions('asset://data/example.whatever', DEX_META)).toBe(false);
+    expect(matchesFileExtensions('asset://data/events.edm4eic.root', DEX_META)).toBe(false);
+  });
+
+  it('does not take the host of a URL for a file extension', () => {
+    const xrootd: DataLoaderMeta = { id: 'xrootd', label: 'XRootD', fileExtensions: ['.root'], urlSchemes: ['root://'] };
+    expect(matchesFileExtensions('root://dtn-eic.jlab.org', xrootd)).toBe(true);
+    expect(matchesFileExtensions('root://dtn-eic.jlab.org//work/run', xrootd)).toBe(true);
+    expect(matchesFileExtensions('root://dtn-eic.jlab.org//work/run.root', xrootd)).toBe(true);
+    expect(matchesFileExtensions('root://dtn-eic.jlab.org//work/run.firebird.zip', xrootd)).toBe(false);
   });
 
   it('matches a picked file by its name', () => {

@@ -1,5 +1,5 @@
 # Created by: Dmitry Romanov, 2024
-# This file is part of Firebird Event Display and is licensed under the LGPLv3.
+# This file is part of Firebird Event Display and is licensed under GPL-3.0-or-later.
 # See the LICENSE file in the project root for full license information.
 import datetime
 import os
@@ -279,9 +279,10 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     (http://, https://, root://) needs file access enabled and, when
     PYROBIRD_REMOTE_HOSTS is set, a host from that list.
 
-    Every requested entry must exist in the file; otherwise the request fails
-    with 400 and lists the missing entries. A request may name at most
-    PYROBIRD_CONVERT_MAX_ENTRIES entries.
+    Requested entries the file does not hold are dropped, and the server logs
+    one warning that lists them; a request with no entry in the file fails
+    with 400 and names the file's entry count. A request may name at most
+    PYROBIRD_CONVERT_MAX_ENTRIES entries, counted before the clamp.
 
 
     Parameters
@@ -372,13 +373,16 @@ def open_edm4eic_file(filename=None, file_type="edm4eic", entries="0"):
     tree = file['events']
     total_num_entries = tree.num_entries
 
-    # Every requested entry must exist: the in-browser converter applies the same rule
+    # Entries outside the file are dropped with one warning: the in-browser converter applies the same rule
     try:
-        entries_index_list = select_entries(entry_ranges, total_num_entries, max_entries)
+        selection = select_entries(entry_ranges, total_num_entries, max_entries)
     except EntrySelectionError as e:
         err_msg = f"For entries='{shorten(entries)}': {e}"
         logger.warning(err_msg)
         return {"error": err_msg}, 400
+    if selection.warning:
+        logger.warning(f"For entries='{shorten(entries)}': {selection.warning}")
+    entries_index_list = selection.entries
 
     try:
         # Detect the file type if not given explicitly

@@ -23,11 +23,15 @@ control, and education.
 This is a monorepo with npm workspaces (run `npm install` at the repository
 root, never inside a member):
 
-- **firebird-ng/** - the Angular frontend (TypeScript, three.js WebGPU,
-  signals, zoneless); its extension API in `src/app/firebird/` is
-  `@dexvis/firebird-ng`
+- **firebird-ng/** - the Firebird application (Angular, zoneless): its
+  configuration, routes and developer pages, built from the library below
+- **packages/firebird-ng/** - `@dexvis/firebird-ng`: the Angular library
+  (`provideFirebird()` and its features, the display pages and
+  `<firebird-display>`, the display services, the worker code)
 - **packages/firebird-core/** - `@dexvis/firebird-core`: the worker-safe event
   model, DEX input and output, and painters
+- **packages/epic/** - `@dexvis/firebird-epic`: the ePIC experiment pack,
+  `withEpic()`, which the Firebird app installs
 - **packages/root2dex/** - `@dexvis/root2dex`: EDM4eic/EDM4hep ROOT to DEX
   conversion in the browser, the TypeScript twin of `pyrobird convert`
 - **packages/firebird-example-extension/** - a template for out-of-tree feature
@@ -51,8 +55,16 @@ The supported Node.js major version is in `.nvmrc`.
 npm install                                  # at the repository root
 cd firebird-ng && npm run serve              # http://localhost:4200
 npm run test:headless --workspace=firebird-ng
+npm test -w @dexvis/firebird-ng              # the library's suite
 python build.py full                         # build, all tests, pyrobird package
 ```
 
 `CLAUDE.md` lists every test suite and the verification steps;
 [pyrobird/README.md](pyrobird/README.md) covers the backend.
+
+## License
+
+The Firebird application (`firebird-ng/`), pyrobird and the DD4hep plugin are
+licensed under GPL-3.0-or-later ([LICENSE](LICENSE)); the DD4hep-derived
+sources of the plugin keep their CERN notices. The libraries in `packages/`
+and the dexvis packages are MIT licensed, each with its own `LICENSE` file.

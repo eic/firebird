@@ -25,15 +25,6 @@ export const EDM4HEP_SIM_HIT_TYPE = 'vector<edm4hep::SimTrackerHitData>';
 /** Sim hits have no positionError, so boxes get a fixed visualization size [mm]. */
 export const DEFAULT_HIT_BOX_SIZE = 2.0;
 
-/**
- * Cherenkov/PID collections record photon detections attributed to the emitting
- * charged particle (optical photons are not stored in MCParticles). Connecting
- * them into that particle's trajectory draws zigzags along the photosensor
- * planes, so they are excluded from trajectory building by default (they are
- * still converted as BoxHit pieces).
- */
-export const DEFAULT_TRAJECTORY_EXCLUDED_COLLECTIONS = ['DIRCBarHits', 'DRICHHits', 'PFRICHHits'];
-
 /** Which collection groups to convert. Defaults to all of them. */
 export type Edm4hepCollection = 'tracker_hits' | 'mc_trajectories' | 'mc_particles';
 export const EDM4HEP_DEFAULT_COLLECTIONS: Edm4hepCollection[] = [
@@ -54,6 +45,15 @@ export interface Edm4hepOptions extends McParticlesOptions {
   minHits?: number;
   /** Collection name the sim-hit relations point to. */
   mcBranch?: string;
+  /**
+   * Sim hit collections left out of MC-truth trajectories; they still convert
+   * as BoxHit pieces. Default: none. Use it for Cherenkov/PID collections:
+   * they record photon detections attributed to the emitting charged particle
+   * (optical photons are not stored in MCParticles), and joining them into
+   * that particle's trajectory draws zigzags along the photosensor planes.
+   * `pyrobird convert` applies its own default list (DEFAULT_TRAJECTORY_EXCLUDED_COLLECTIONS
+   * in pyrobird/edm4hep.py); pass the same list to get its output.
+   */
   trajectoryExcludedCollections?: string[];
   onWarning?: (message: string) => void;
 }
@@ -100,8 +100,7 @@ export function edm4hepBranchNames(file: PodioEventFile, options: Edm4hepOptions
   const collections = options.collections?.length
     ? options.collections
     : EDM4HEP_DEFAULT_COLLECTIONS;
-  const excluded =
-    options.trajectoryExcludedCollections ?? DEFAULT_TRAJECTORY_EXCLUDED_COLLECTIONS;
+  const excluded = options.trajectoryExcludedCollections ?? [];
   const mcBranch = options.mcBranch ?? 'MCParticles';
   const hitBranches = file.collectionsOfType(EDM4HEP_SIM_HIT_TYPE);
   const names: string[] = [];
@@ -324,8 +323,7 @@ export async function edm4hepEntryToDex(
   const collections = options.collections?.length
     ? options.collections
     : EDM4HEP_DEFAULT_COLLECTIONS;
-  const excluded =
-    options.trajectoryExcludedCollections ?? DEFAULT_TRAJECTORY_EXCLUDED_COLLECTIONS;
+  const excluded = options.trajectoryExcludedCollections ?? [];
   const boxSize = options.boxSize ?? DEFAULT_HIT_BOX_SIZE;
 
   const bag = await file.readEntry(edm4hepBranchNames(file, options), entry);

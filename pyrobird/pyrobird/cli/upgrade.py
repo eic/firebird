@@ -1,5 +1,5 @@
 # Created by: Dmitry Romanov, 2026
-# This file is part of Firebird Event Display and is licensed under the LGPLv3.
+# This file is part of Firebird Event Display and is licensed under GPL-3.0-or-later.
 # See the LICENSE file in the project root for full license information.
 
 """One-shot upgrade of Firebird DEX files from version 0.04 to 1.0."""

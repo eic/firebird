@@ -1,0 +1,21 @@
+/* ng-packagr build. Paths replace the base paths: the library compiles
+   against the BUILT dependencies, never their sources (sources outside an
+   entry's directory break the build). The plain TypeScript packages resolve
+   through node_modules to their dist; the two Angular libraries build into
+   their workspaces' dist directories. Build those first. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/lib",
+    "declaration": true,
+    "declarationMap": true,
+    "inlineSources": true,
+    "types": [],
+    "paths": {
+      "@dexvis/shell": ["../../dexvis/app-shell-ng/dist/dexvis/shell"],
+      "@dexvis/app-features": ["../../dexvis/app-features-ng/dist/dexvis/app-features"]
+    }
+  },
+  "include": ["src/**/*.ts", "api/src/**/*.ts", "display/src/**/*.ts", "workers/*/src/**/*.ts", "geometry-palette/src/**/*.ts"],
+  "exclude": ["**/*.spec.ts", "src/test-setup.ts"]
+}

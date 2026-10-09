@@ -4,50 +4,5 @@
   "timestamp": "2021-03-29 15:00:00",
   "userConfigs": {
     "geometry.clippingEnabled": false   // Enable clipping of geometry
-  },
-
-  "Configs": [
-    {
-      "ConfigType": "RootPipelineTopRemoveList",
-      "ConfigName": "CentralDetector",
-      "RemoveDetectorNames": [
-        "Lumi",
-        "B1",
-        "B2",
-        "Q2",
-        "ForwardOffM",
-        "Forward",
-        "Backward",
-        "Vacuum",
-        "SweeperMag",
-        "AnalyzerMag",
-        "ZDC",
-        "HcalFarForward",
-        "InnerTrackingSupport"
-      ]
-    },
-    {
-      "ConfigType": "RootPipelineTopRemoveList",
-      "ConfigName": "FarForward",
-      "RemoveDetectorNames": [
-        "Lumi",
-        "B1",
-        "B2",
-        "Q2",
-        "Backward",
-        "Vacuum",
-        "SweeperMag",
-        "AnalyzerMag",
-        "ZDC",
-        "HcalFarForward",
-        "InnerTrackingSupport"
-      ]
-    },
-    {
-      "ConfigType": "RootPipelineTopRemoveList",
-      "ConfigName": "NoRemoveList",
-      "RemoveDetectorNames": [
-      ]
-    }
-  ]
+  }
 }

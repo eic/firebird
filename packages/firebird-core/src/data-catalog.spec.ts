@@ -36,7 +36,7 @@ describe('data catalog helpers', () => {
       null,
       { entries: entries.slice(1), facets: [{ key: 'beam', label: 'Beam energy', values: { '18x275': {} } }], geometrySources: ['g/extra.root'] },
     ]);
-    expect(merged.entries.length).toBe(4);
+    expect(merged.entries?.length).toBe(4);
     expect(merged.facets).toEqual([{ key: 'beam', label: 'Beam energy', values: { '10x100': { label: 'a' }, '18x275': {} } }]);
     expect(catalogGeometrySources(merged)).toEqual(['g/full.root', 'g/tracking.root', 'g/extra.root']);
     expect(catalogEventSources(merged)).toEqual(['d/nc_10x100.zip', 'd/cc_10x100.zip', 'd/nc_18x275.zip']);

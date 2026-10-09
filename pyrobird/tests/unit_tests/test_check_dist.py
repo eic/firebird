@@ -20,8 +20,11 @@ def check_dist():
 
 
 def make_wheel(path, names):
+    """A wheel holding `names`; LICENSE goes where setuptools puts license-files."""
     with zipfile.ZipFile(path, "w") as archive:
         for name in names:
+            if name == "LICENSE":
+                name = "pyrobird-1.0.dist-info/licenses/LICENSE"
             archive.writestr(name, "x")
     return str(path)
 
@@ -51,6 +54,22 @@ def test_missing_sample_fails(check_dist, tmp_path):
     problems = check_dist.check_archive(wheel)
     assert problems == [f"pyrobird-1.0-py3-none-any.whl lacks {sample}"]
     assert check_dist.main([wheel]) == 1
+
+
+@pytest.mark.parametrize("missing", ["LICENSE", "pyrobird/server/static/3rdpartylicenses.txt"])
+def test_missing_license_files_fail(check_dist, tmp_path, missing):
+    names = [name for name in check_dist.REQUIRED_FILES if name != missing]
+    wheel = make_wheel(tmp_path / "pyrobird-1.0-py3-none-any.whl", names)
+    sdist = make_sdist(tmp_path / "pyrobird-1.0.tar.gz", names)
+    assert check_dist.check_archive(wheel) == [f"pyrobird-1.0-py3-none-any.whl lacks {missing}"]
+    assert check_dist.check_archive(sdist) == [f"pyrobird-1.0.tar.gz lacks {missing}"]
+
+
+def test_wheel_license_is_read_from_dist_info(check_dist, tmp_path):
+    wheel = make_wheel(tmp_path / "pyrobird-1.0-py3-none-any.whl", ["LICENSE", "pyrobird/__init__.py"])
+    with zipfile.ZipFile(wheel) as archive:
+        assert "LICENSE" not in archive.namelist()
+    assert check_dist.archive_members(wheel) == {"LICENSE", "pyrobird/__init__.py"}
 
 
 def test_oversized_archive_fails(check_dist, tmp_path):

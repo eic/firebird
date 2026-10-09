@@ -21,7 +21,11 @@
  *     byte-range proxy plugs into without touching this package
  */
 
-import { openFile } from 'jsroot';
+// jsroot declares its subpath modules (jsroot/io, jsroot/tree) in the types
+// of its main entry; the reference loads them without importing the main
+// entry, whose module graph is several times the size of the io entry.
+/// <reference types="jsroot" />
+import { openFile } from 'jsroot/io';
 import { treeProcess, TSelector } from 'jsroot/tree';
 
 /** Anything JSROOT's `openFile` accepts. See the class doc for the list. */

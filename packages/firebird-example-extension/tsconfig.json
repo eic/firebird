@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "experimentalDecorators": true,
+    "lib": ["ES2022", "dom"],
+    "paths": {
+      "@dexvis/firebird-core": ["../firebird-core/src/index.ts"],
+      "@dexvis/firebird-core/model": ["../firebird-core/src/model/index.ts"],
+      "@dexvis/firebird-core/loaders": ["../firebird-core/src/loaders.ts"],
+      "@dexvis/firebird-core/data-catalog": ["../firebird-core/src/data-catalog.ts"],
+      "@dexvis/firebird-ng": ["../firebird-ng/src/public-api.ts"],
+      "@dexvis/firebird-ng/api": ["../firebird-ng/api/src/public-api.ts"],
+      "@dexvis/firebird-ng/display": ["../firebird-ng/display/src/public-api.ts"],
+      "@dexvis/firebird-ng/workers/geometry": ["../firebird-ng/workers/geometry/src/public-api.ts"],
+      "@dexvis/firebird-ng/workers/root-file": ["../firebird-ng/workers/root-file/src/public-api.ts"],
+      "@dexvis/firebird-ng/geometry-palette": ["../firebird-ng/geometry-palette/src/public-api.ts"],
+      "@dexvis/app-features": ["../../dexvis/app-features-ng/projects/app-features/src/public-api.ts"],
+      "@dexvis/root-geo-tree-editor": ["../../dexvis/root-geo-tree-editor/src/index.ts"],
+      "@dexvis/threejs-tree-editor": ["../../dexvis/threejs-tree-editor/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

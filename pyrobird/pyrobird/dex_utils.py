@@ -1,5 +1,5 @@
 # Created by: Dmitry Romanov, 2024
-# This file is part of Firebird Event Display and is licensed under the LGPLv3.
+# This file is part of Firebird Event Display and is licensed under GPL-3.0-or-later.
 # See the LICENSE file in the project root for full license information.
 
 """Utilities for working with Firebird DEX (Data Exchange) format files."""
@@ -71,11 +71,25 @@ def load_dex_file(file_path: str) -> Dict[str, Any]:
     except Exception as e:
         raise click.FileError(file_path, f"Error opening/parsing: {e}")
 
+    # A DEX 0.04 file fails the structure check below; say how to upgrade it
+    if is_dex_v004(dex_data):
+        raise click.FileError(file_path, f"DEX version 0.04 file. Convert it once with: pyrobird upgrade {file_path}")
+
     # Verify the file is a valid Firebird DEX file
     if not is_valid_dex_file(dex_data):
         raise click.FileError(file_path, "Not a valid Firebird DEX file")
 
     return dex_data
+
+
+def is_dex_v004(data: Dict[str, Any]) -> bool:
+    """True for a DEX 0.04 document: version "0.04", or events that hold "groups" instead of "pieces"."""
+    if not isinstance(data, dict):
+        return False
+    if str(data.get("version", "")) == "0.04":
+        return True
+    events = data.get("events")
+    return isinstance(events, list) and any(isinstance(event, dict) and "groups" in event for event in events)
 
 
 def is_valid_dex_file(data: Dict[str, Any]) -> bool:

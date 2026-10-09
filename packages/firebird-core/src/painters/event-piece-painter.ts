@@ -1,7 +1,7 @@
 import { Object3D } from "three";
 import { Signal, signal } from "@angular/core";
 import { EventPiece } from "../model/event-piece";
-import {disposeNode} from '@dexvis/threejs-tree-editor';
+import {disposeHierarchy} from '@dexvis/threejs-tree-editor';
 
 
 /** Define the type for the constructor of EventPiecePainter subclasses */
@@ -239,12 +239,17 @@ export abstract class EventPiecePainter {
    */
   abstract paint(time: number | null): void;
 
-  /** Dispose method to clean up resources */
+  /**
+   * Frees what the painter built and removes its node from the scene. The
+   * base disposes the geometries and materials of the node's whole subtree,
+   * so a painter that only adds objects under its node needs no override.
+   * Override to free resources held outside the node (shared materials,
+   * textures) and call `super.dispose()`.
+   */
   public dispose(): void {
     this.entityObjects = [];
-    // Remove node from the scene
     if (this.parentNode) {
-      disposeNode(this.parentNode);
+      disposeHierarchy(this.parentNode);
     }
   }
 }

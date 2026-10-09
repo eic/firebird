@@ -3,7 +3,10 @@
  * DEX in the browser (or node), using the JSROOT API.
  *
  * The conversion mirrors pyrobird's `pyrobird convert`: the same input entry
- * produces the same DEX document from either implementation.
+ * and options produce the same DEX document from either implementation. One
+ * default differs: pyrobird keeps its own list of Cherenkov collections out of
+ * the EDM4hep MC-truth trajectories, this package keeps none out unless
+ * `trajectoryExcludedCollections` names them.
  *
  * Only the bytes of the requested event are read, so multi-GB files work
  * against a local file, an http(s) URL, or any custom byte-range source - see

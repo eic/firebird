@@ -4,8 +4,13 @@
  * A loader teaches Firebird to open a file format or URL scheme. Loaders are
  * core citizens (plain TS, worker-safe interfaces); the Angular layer collects
  * implementations through the `GEOMETRY_LOADERS` / `EVENT_LOADERS` DI tokens
- * (`withGeometryLoader()` / `withEventLoader()`), and pickers such as the
- * open-geometry/open-dex command handlers select a loader by `canLoad()`.
+ * (`withGeometryLoader()` / `withEventLoader()`).
+ *
+ * A loader returns data and never touches the display: the display picks the
+ * first registered loader whose `canLoad()` claims a source, hands it a
+ * `LoaderContext`, and puts what the loader returns on screen. Failures are
+ * rejections that carry the reason (HTTP status, unsupported version, ...):
+ * the display shows that message to the user.
  *
  * `meta.fileExtensions` and `meta.urlSchemes` are static declarations that
  * drive UI (open-dialog filters, drop zones) without the loader writing UI code.
@@ -35,7 +40,13 @@ export interface DataLoaderMeta {
   label: string;
   /** Extensions this loader claims, with dots: ['.root', '.firebird.json']. */
   fileExtensions: string[];
-  /** Optional URL schemes this loader claims, e.g. ['epic://']. */
+  /**
+   * Optional URL schemes this loader claims, e.g. ['root://']. A scheme
+   * claims only a source whose file name has no extension or one listed in
+   * `fileExtensions`: `root://host//run.root` and `root://host//run` match
+   * ['root://'], `root://host//run.firebird.zip` does not. Another loader's
+   * format therefore never lands here because of its scheme.
+   */
   urlSchemes?: string[];
   /**
    * True when the loader's format supports the interactive open flow: report
@@ -65,10 +76,20 @@ export interface FileContentProbe {
   entries: ContentEntry[];
 }
 
-/** Result of a geometry load. `root` is null when the load was cancelled. */
-export interface LoadedGeometry {
-  root: Object3D | null;
-  cancelled?: boolean;
+/** What the display hands a loader with each load. */
+export interface LoaderContext {
+  /**
+   * Turns a URL alias (`asset://`, a pack's alias such as `exp://`) or a path
+   * the server serves into a URL `fetch()` can read. Absolute http(s) URLs
+   * come back unchanged.
+   */
+  resolveUrl(url: string): string;
+  /**
+   * Aborted when a newer load of the same kind (geometry, or events)
+   * replaces this one. Pass it to `fetch()`, stop work when it fires, and
+   * reject with `signal.reason`; the display drops the result either way.
+   */
+  readonly signal: AbortSignal;
 }
 
 /** What every loader declares, whatever it loads. */
@@ -86,21 +107,35 @@ interface DataLoaderBase {
 
 /**
  * Opens detector geometry from a URL, path, or local file.
- * First registered loader whose `canLoad()` returns true wins.
+ * The first registered loader whose `canLoad()` returns true loads it.
  */
 export interface GeometryDataLoader extends DataLoaderBase {
-  load(source: DataSource): Promise<LoadedGeometry>;
+  /**
+   * Millimeters per length unit of the geometry `load()` returns: 10 for
+   * ROOT TGeo (centimeters). The display scales the geometry container by
+   * it, so detector and event data (millimeters) line up. Default 1.
+   */
+  readonly millimetersPerUnit?: number;
+  /**
+   * Loads the geometry and resolves to its root object; the display adds it
+   * to the scene, replacing the previous geometry. Rejects with the reason
+   * when the source cannot be loaded.
+   */
+  load(source: DataSource, context: LoaderContext): Promise<Object3D>;
 }
 
 /**
- * Opens event data from a URL, path, or local file, producing a DataExchange
- * (the parsed DEX event container). When the source cannot be loaded, reject
- * with the reason (HTTP status, unsupported DEX version, entries outside the
- * file): the display shows it to the user. A null result is reported as a
- * failure without a reason.
+ * Opens event data from a URL, path, or local file.
+ * The first registered loader whose `canLoad()` returns true loads it.
  */
 export interface EventDataLoader extends DataLoaderBase {
-  loadEvents(source: DataSource): Promise<DataExchange | null>;
+  /**
+   * Loads the events and resolves to the parsed DEX container
+   * (`DataExchange.fromDexObj()`); the display shows its first event.
+   * Rejects with the reason (HTTP status, unsupported DEX version, entries
+   * outside the file) when the source cannot be loaded.
+   */
+  loadEvents(source: DataSource, context: LoaderContext): Promise<DataExchange>;
 }
 
 /** The name to match against: the URL itself, or a picked file's name. */
@@ -108,7 +143,26 @@ export function sourceName(source: DataSource): string {
   return typeof source === 'string' ? source : source.name;
 }
 
-/** Shared helper: does the source path/URL end with one of the extensions? */
+/**
+ * True when the last path segment of a URL or path carries a file extension.
+ * The host of a URL is not a path segment: `root://host.org` has none.
+ */
+function hasFileExtension(path: string): boolean {
+  const schemeEnd = path.indexOf('://');
+  const afterScheme = schemeEnd >= 0 ? path.slice(schemeEnd + 3) : path;
+  const pathStart = schemeEnd >= 0 ? afterScheme.indexOf('/') : 0;
+  if (pathStart < 0) return false;
+  const lastSegment = afterScheme.slice(pathStart).split('/').pop() ?? '';
+  return lastSegment.lastIndexOf('.') > 0;
+}
+
+/**
+ * Shared helper: does the loader claim the source by its name? A source
+ * matches when its path ends with one of `meta.fileExtensions`, when it
+ * starts with one of `meta.urlSchemes` and has no file extension, or when a
+ * query parameter value (download-style URLs) ends with one of the
+ * extensions.
+ */
 export function matchesFileExtensions(source: DataSource, meta: DataLoaderMeta): boolean {
   const name = sourceName(source);
   const matchesPath = (path: string) =>
@@ -116,7 +170,10 @@ export function matchesFileExtensions(source: DataSource, meta: DataLoaderMeta):
 
   const [path, query] = name.split('?');
   if (matchesPath(path)) return true;
-  if ((meta.urlSchemes ?? []).some(scheme => name.toLowerCase().startsWith(scheme.toLowerCase()))) {
+  // A scheme never overrides an extension: 'asset://data/x.root' belongs to
+  // a .root loader even when another loader claims every asset:// URL
+  const matchesScheme = (meta.urlSchemes ?? []).some(scheme => path.toLowerCase().startsWith(scheme.toLowerCase()));
+  if (matchesScheme && !hasFileExtension(path)) {
     return true;
   }
 

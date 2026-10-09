@@ -12,6 +12,8 @@ script_path = os.path.dirname(os.path.abspath(__file__))
 # Define the paths
 firebird_ng_path = os.path.abspath(os.path.join(script_path, 'firebird-ng'))
 dist_path = os.path.join(firebird_ng_path, 'dist', 'firebird', 'browser')
+# The production build writes the license notices of the bundled npm packages next to browser/
+third_party_licenses_path = os.path.join(firebird_ng_path, 'dist', 'firebird', '3rdpartylicenses.txt')
 static_path = os.path.join(script_path, 'pyrobird', 'pyrobird', 'server', 'static')
 package_json_path = os.path.join(firebird_ng_path, 'package.json')
 root_package_json_path = os.path.join(script_path, 'package.json')
@@ -100,14 +102,18 @@ def build_ng(is_dry_run):
     _run(["npm", "run", "build"], cwd=firebird_ng_path, prefix="ng")
 
 
-# Workspace packages with their own vitest suites. The Angular app's builder
+# Workspace packages with their own test suites. The Angular app's builder
 # does not see them, so they are run explicitly by their workspace name. Every
-# `test` script here must run once and exit (`vitest run`, never bare `vitest`,
-# which watches). .github/workflows/frontend.yaml runs the same list.
+# `test` script here must run once and exit (`vitest run` or `ng test
+# --watch=false`, never a watching runner). .github/workflows/frontend.yaml
+# runs the same list.
 FRONTEND_PACKAGE_WORKSPACES = [
+    "@dexvis/firebird-ng",
     "@dexvis/app-features",
     "@dexvis/firebird-core",
     "@dexvis/root2dex",
+    "@dexvis/firebird-epic",
+    "@dexvis/firebird-example-extension",
     "@dexvis/threejs-tree-editor",
     "@dexvis/root-geo-tree-editor",
     "@dexvis/viewport-gizmo",
@@ -214,6 +220,14 @@ def copy_frontend(is_dry_run):
         shutil.copytree(dist_path, static_path, dirs_exist_ok=True)
     else:
         print(f"Source directory {dist_path} does not exist.")
+        sys.exit(1)
+
+    # The wheel ships minified third-party code, so it ships their license notices too
+    print(f"Copying '{third_party_licenses_path}' to '{static_path}'")
+    if os.path.exists(third_party_licenses_path):
+        shutil.copy2(third_party_licenses_path, static_path)
+    else:
+        print(f"{third_party_licenses_path} does not exist. Build the frontend with the production configuration.")
         sys.exit(1)
 
 

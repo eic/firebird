@@ -319,21 +319,31 @@ def test_convert_max_entries_configurable(client):
     assert "at most 1" in response.get_json()['error']
 
 
-def test_convert_partly_out_of_range_rejected(client, caplog):
-    """Out-of-range entries reject the request, as in the browser converter; one warning is logged."""
+def test_convert_partly_out_of_range_clamped(client, caplog):
+    """Out-of-range entries are dropped with one warning, as in the browser converter."""
     with caplog.at_level('WARNING', logger='pyrobird.server'):
         response = client.get('/api/v1/convert/edm4eic/0-5?f=reco_2024-09_craterlake_2evt.edm4eic.root')
+    assert response.status_code == 200
+    assert [event['id'] for event in response.get_json()['events']] == [0, 1]
+    warnings = [r.getMessage() for r in caplog.records if r.name == 'pyrobird.server' and r.levelname == 'WARNING']
+    assert warnings == [
+        "For entries='0-5': Event 2-5 is out of range: the file holds 2 events (0..1); converting 0-1"]
+
+
+def test_convert_with_no_entry_in_the_file_rejected(client):
+    response = client.get('/api/v1/convert/edm4eic/50-60?f=reco_2024-09_craterlake_2evt.edm4eic.root')
     assert response.status_code == 400
     assert response.get_json()['error'] == (
-        "For entries='0-5': Event 2-5 is out of range: the file holds 2 events (0..1)")
-    warnings = [r for r in caplog.records if r.name == 'pyrobird.server' and r.levelname == 'WARNING']
+        "For entries='50-60': Event 50-60 is out of range: the file holds 2 events (0..1)")
+
+
+def test_convert_out_of_range_listing_truncated(client, caplog):
+    with caplog.at_level('WARNING', logger='pyrobird.server'):
+        response = client.get('/api/v1/convert/edm4eic/0,3,5,7,9,11,13,15?f=reco_2024-09_craterlake_2evt.edm4eic.root')
+    assert response.status_code == 200
+    warnings = [r.getMessage() for r in caplog.records if r.name == 'pyrobird.server' and r.levelname == 'WARNING']
     assert len(warnings) == 1
-
-
-def test_convert_out_of_range_listing_truncated(client):
-    response = client.get('/api/v1/convert/edm4eic/0,3,5,7,9,11,13,15?f=reco_2024-09_craterlake_2evt.edm4eic.root')
-    assert response.status_code == 400
-    assert "(and 2 more)" in response.get_json()['error']
+    assert "(and 2 more)" in warnings[0]
 
 
 def test_convert_invalid_entry_format(client):

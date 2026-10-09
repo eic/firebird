@@ -1,12 +1,13 @@
-# This file is part of Firebird Event Display and is licensed under the LGPLv3.
+# This file is part of Firebird Event Display and is licensed under GPL-3.0-or-later.
 # See the LICENSE file in the project root for full license information.
 """Entry-number selections such as '3', '1-5' or '1,2-5,8'.
 
 The parser keeps ranges as (start, end) pairs, so a request like '0-20000000'
 costs nothing until its size and bounds are checked. Expand a selection only
-after `select_entries` has validated it.
+through `select_entries`, which checks the size and clamps the ranges to the
+file first.
 """
-from typing import List, Optional, Sequence, Tuple
+from typing import List, NamedTuple, Optional, Sequence, Tuple
 
 EntryRange = Tuple[int, int]
 
@@ -107,13 +108,37 @@ def out_of_range_parts(ranges: Sequence[EntryRange], num_entries: int) -> List[E
     return outside
 
 
-def select_entries(ranges: Sequence[EntryRange], num_entries: int,
-                   max_count: Optional[int] = None) -> List[int]:
-    """Validates ranges against a file and expands them into entry indexes.
+def clamp_ranges(ranges: Sequence[EntryRange], num_entries: int) -> List[EntryRange]:
+    """Returns the parts of `ranges` inside 0..num_entries-1, in the order given, without expanding."""
+    last = num_entries - 1
+    inside = []
+    for start, end in ranges:
+        start, end = max(start, 0), min(end, last)
+        if start <= end:
+            inside.append((start, end))
+    return inside
 
-    Applies one policy, the same one the in-browser converter uses: when any
-    requested entry falls outside 0..num_entries-1, the whole selection is
-    rejected and the message lists the offending entries.
+
+class EntrySelection(NamedTuple):
+    """The entries a selection converts, and the warning about entries the file does not hold."""
+
+    entries: List[int]
+    """Entry indexes in the order requested, repeats included."""
+
+    warning: Optional[str]
+    """One summary of the requested entries outside the file, or None when all exist."""
+
+
+def select_entries(ranges: Sequence[EntryRange], num_entries: int,
+                   max_count: Optional[int] = None) -> EntrySelection:
+    """Checks ranges against a file, clamps them to its entries and expands them.
+
+    Applies one policy, the same one the in-browser converter uses: requested
+    entries outside 0..num_entries-1 are dropped, and one warning lists them
+    with what remains. A selection with no entry in the file is an error that
+    names the file's entry count. The size limit applies to the selection as
+    requested, before clamping, so an oversized request fails before anything
+    is read or expanded.
 
     Parameters
     ----------
@@ -122,18 +147,19 @@ def select_entries(ranges: Sequence[EntryRange], num_entries: int,
     num_entries : int
         Number of entries the file holds.
     max_count : int, optional
-        Upper bound on the number of entries. None means no bound.
+        Upper bound on the number of requested entries. None means no bound.
 
     Returns
     -------
-    list of int
-        The entry indexes in the order requested.
+    EntrySelection
+        The entry indexes in the order requested, and the warning when some
+        requested entries are outside the file.
 
     Raises
     ------
     EntrySelectionError
-        If the selection names more than `max_count` entries, or any entry
-        outside the file.
+        If the selection names more than `max_count` entries, or no entry
+        inside the file.
     """
     count = count_entries(ranges)
     if max_count is not None and count > max_count:
@@ -141,12 +167,17 @@ def select_entries(ranges: Sequence[EntryRange], num_entries: int,
             f"The selection names {count} entries; at most {max_count} are allowed per request.")
 
     outside = out_of_range_parts(ranges, num_entries)
-    if outside:
-        holds = (f"the file holds {num_entries} events (0..{num_entries - 1})"
-                 if num_entries > 0 else "the file holds no events")
+    inside = clamp_ranges(ranges, num_entries)
+    holds = (f"the file holds {num_entries} events (0..{num_entries - 1})"
+             if num_entries > 0 else "the file holds no events")
+    if outside and not inside:
         raise EntrySelectionError(f"Event {format_ranges(outside)} is out of range: {holds}")
 
+    warning = None
+    if outside:
+        warning = f"Event {format_ranges(outside)} is out of range: {holds}; converting {format_ranges(inside)}"
+
     entries: List[int] = []
-    for start, end in ranges:
+    for start, end in inside:
         entries.extend(range(start, end + 1))
-    return entries
+    return EntrySelection(entries, warning)

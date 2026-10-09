@@ -12,8 +12,9 @@ import click
 from click.testing import CliRunner
 
 from pyrobird.cli.screenshot import (get_screenshot_path, capture_screenshot, wait_display_ready, WAIT_JS_CONDITION,
-                                     read_display_state, DisplayState, resolve_capture_url, start_server,
-                                     screenshot, EXIT_OK, EXIT_FAILURE, EXIT_NOT_READY, EXIT_DISPLAY_ERRORS)
+                                     read_display_state, DisplayState, resolve_capture_url, targets_started_server,
+                                     start_server, screenshot, EXIT_OK, EXIT_FAILURE, EXIT_NOT_READY,
+                                     EXIT_DISPLAY_ERRORS)
 
 # Check if playwright is available
 try:
@@ -297,6 +298,19 @@ def test_resolve_capture_url(url, expected):
     assert resolve_capture_url(url, ORIGIN) == expected
 
 
+@pytest.mark.parametrize("url, started", [
+    ('/display?dex=x', True),
+    ('http://localhost:5454/display', True),
+    ('localhost/display', True),
+    ('http://[::1]/display', True),
+    ('http://localhost:4200/display', False),
+    ('https://seeeic.org/display?event=1', False),
+    ('seeeic.org/display', False),
+])
+def test_targets_started_server(url, started):
+    assert targets_started_server(url) is started
+
+
 @pytest.fixture
 def restore_flask_config():
     from pyrobird.server import flask_app
@@ -378,3 +392,18 @@ def test_screenshot_fails_when_frontend_missing(tmp_path, monkeypatch):
     assert result.exit_code == EXIT_FAILURE
     capture.assert_not_called()
     server.shutdown.assert_called_once()
+
+
+def test_screenshot_of_external_url_serves_nothing(tmp_path, monkeypatch):
+    """An external page is captured without a server, so no built frontend is needed."""
+    monkeypatch.chdir(tmp_path)
+    with patch('pyrobird.cli.screenshot.start_server', side_effect=AssertionError('no server expected')) as start, \
+            patch('pyrobird.cli.screenshot.wait_server_serves_frontend',
+                  side_effect=AssertionError('no frontend check expected')), \
+            patch('pyrobird.cli.screenshot.capture_screenshot', return_value=DisplayState(True, [])) as capture:
+        result = CliRunner().invoke(screenshot, ['--url', 'https://seeeic.org/display?event=1',
+                                                 '--commands', 'show-event:2'])
+    assert result.exit_code == EXIT_OK, result.output
+    start.assert_not_called()
+    assert capture.call_args.args[0] == 'https://seeeic.org/display?event=1'
+    assert '--commands is ignored' in result.output

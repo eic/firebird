@@ -34,9 +34,9 @@ export interface ConvertOptions extends Omit<Edm4hepOptions, 'collections'> {
  * Parses entry numbers written as '3', '1-5', or '1,2-5,8' into a list of
  * integers. Arrays of numbers pass through.
  *
- * This expands without bounds; to convert from a file, validate with
+ * This expands without bounds; to convert from a file, select with
  * `parseEntryRanges()` and `selectEntries()` first, which reject oversized
- * and out-of-range selections before expanding.
+ * selections and clamp the ranges to the file before expanding.
  */
 export function parseEntryNumbers(value: string | number | Iterable<number>): number[] {
   if (typeof value === 'number') return [Math.trunc(value)];
@@ -125,10 +125,11 @@ export class Root2DexConverter {
 
 /**
  * Opens `source`, converts `entries` and returns the DEX document. Equivalent
- * to `pyrobird convert <file> -e <entries>`: a selection with any entry
- * outside the file is rejected before anything is converted.
+ * to `pyrobird convert <file> -e <entries>`: requested entries outside the
+ * file are dropped before anything is converted, with one warning through
+ * `options.onWarning` (console.warn without it).
  *
- * @throws EntrySelectionError when an entry is outside the file.
+ * @throws EntrySelectionError when no requested entry is in the file.
  */
 export async function convertRootToDex(
   source: RootSource,
@@ -139,5 +140,9 @@ export async function convertRootToDex(
   const ranges: EntryRange[] = typeof entries === 'string'
     ? parseEntryRanges(entries)
     : (typeof entries === 'number' ? [entries] : entries).map(entry => [Math.trunc(entry), Math.trunc(entry)] as const);
-  return converter.convert(selectEntries(ranges, converter.entryCount));
+  const selection = selectEntries(ranges, converter.entryCount);
+  if (selection.warning) {
+    (options.onWarning ?? console.warn)(selection.warning);
+  }
+  return converter.convert(selection.entries);
 }
