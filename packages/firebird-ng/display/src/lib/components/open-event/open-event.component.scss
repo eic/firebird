@@ -1,0 +1,32 @@
+// Panel chrome matches the other drop-down panels (see geometry-clipping)
+.custom-position-dialog {
+  padding: 45px 24px 24px 24px;
+  border-radius: 18px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+  max-width: 440px;
+  width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.close-round-btn {
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  border-radius: 50%;
+  z-index: 10;
+  border: none;
+  background: none;
+  box-shadow: var(--mat-sys-level2);
+}
+
+.close-round-btn:hover {
+  color: #bec2ff;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}

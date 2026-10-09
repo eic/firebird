@@ -1,0 +1,15 @@
+<button #openBtn mat-icon-button matTooltip="Open geometry and events: presets, physics cases, or your own files" (click)="openDialog()" class="panel-button">
+  <mat-icon>folder_open</mat-icon>
+</button>
+
+<ng-template #dialogTemplate>
+  <button mat-dialog-close aria-label="Close dialog" class="close-round-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <div class="mat-menu custom-position-dialog open-event-panel">
+    <h3 class="panel-title">Open data</h3>
+    <firebird-data-selector applyLabel="Show" (applied)="closeDialog()" (cancelled)="closeDialog()">
+    </firebird-data-selector>
+  </div>
+</ng-template>

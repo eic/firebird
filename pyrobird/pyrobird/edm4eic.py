@@ -5,6 +5,11 @@ import numpy as np
 import json
 import math
 
+from pyrobird.dex import make_dex, PIECE_VERSION
+from pyrobird.entries import parse_entry_ranges
+from pyrobird.mc_particles import (mc_particles_to_trajectories,
+                                   DEFAULT_MC_STEP_TIME, DEFAULT_MC_MAX_POINTS)
+
 """
 We have types: 
     vector<edm4hep::SimTrackerHitData> - dd4hep simulation data     
@@ -72,6 +77,10 @@ def parse_entry_numbers(value):
     - A comma-separated list of integers or ranges, e.g., "1,2-5,8"
     - A list, tuple, or set of integers
 
+    The string grammar is `pyrobird.entries.parse_entry_ranges`. This function
+    expands every range, so validate untrusted input with
+    `pyrobird.entries.select_entries` instead.
+
     Args:
         value (str, list, tuple, set): Input representing the entry numbers.
 
@@ -81,39 +90,17 @@ def parse_entry_numbers(value):
     Raises:
         ValueError: If the input format is invalid or cannot be parsed into integers.
     """
-    try:
-        if isinstance(value, (list, tuple, set)):
-            # Handle list, tuple, or set of integers directly
+    if isinstance(value, (list, tuple, set)):
+        # Handle list, tuple, or set of integers directly
+        try:
             return [int(item) for item in value]
+        except ValueError:
+            raise ValueError(f"Invalid entry format: '{value}'. Expected integers or ranges like '1-5'.") from None
 
-        # Handle range, e.g., "1-5"
-        if '-' in value and ',' not in value:
-            start, end = map(int, value.split('-'))
-            if start > end:
-                raise ValueError(f"Invalid range '{value}': start must be <= end.")
-            return list(range(start, end + 1))
-
-        # Handle comma-separated list, e.g., "1,2,3" or "1,2-5,8"
-        elif ',' in value:
-            entries = []
-            for entry in value.split(','):
-                entry = entry.strip()
-                if '-' in entry:
-                    # Handle range inside comma-separated list
-                    start, end = map(int, entry.split('-'))
-                    if start > end:
-                        raise ValueError(f"Invalid range '{entry}': start must be <= end.")
-                    entries.extend(range(start, end + 1))
-                else:
-                    entries.append(int(entry))
-            return entries
-
-        # Handle single integer as string
-        else:
-            return [int(value)]
-
-    except ValueError as ve:
-        raise ValueError(f"Invalid entry format: '{value}'. Expected integers or ranges like '1-5'.")
+    entries = []
+    for start, end in parse_entry_ranges(value):
+        entries.extend(range(start, end + 1))
+    return entries
 
 
 def tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None):
@@ -143,30 +130,37 @@ def tracker_hits_to_box_hits(tree, branch_name, entry_start, entry_stop=None):
     edep     = get_field_array(f'{branch_name}/{branch_name}.edep')                # 'float[]',
     err_edep = get_field_array(f'{branch_name}/{branch_name}.edepError')           # 'float[]',
 
-    hits = []
+    # Columnar piece: parallel arrays, hit id == array index; pos/dim are flat xyz triplets
+    pos, dim = [], []
     for i in range(len(cell_id)):
-        hit = {
-            "pos": [pos_x[i], pos_y[i], pos_z[i]],
-            "dim": [2 * err_x[i], 2 * err_y[i], 2 * err_z[i]],
-            "t": [time[i], err_time[i]],
-            "ed": [edep[i], err_edep[i]]
-        }
+        # positionError.ii is a variance (sigma^2); box width is +- one sigma
+        dim_x = 2 * math.sqrt(err_x[i]) if err_x[i] > 0 else 0.0
+        dim_y = 2 * math.sqrt(err_y[i]) if err_y[i] > 0 else 0.0
+        dim_z = 2 * math.sqrt(err_z[i]) if err_z[i] > 0 else 0.0
+        pos.extend((pos_x[i], pos_y[i], pos_z[i]))
+        dim.extend((dim_x, dim_y, dim_z))
 
-        hits.append(hit)
-        #hits.append([pos_x[i], pos_y[i], pos_z[i], 2 * err_x[i], 2 * err_y[i], 2 * err_z[i], time[i], err_time[i], edep[i], err_edep[i]])
-
-    group = {
+    piece = {
         "name": branch_name,
         "type": "BoxHit",
+        "version": PIECE_VERSION,
         "origin": {"type": "edm4eic::TrackerHitData", "name": branch_name},
-        "hits": hits,
+        "count": len(cell_id),
+        "columns": {
+            "pos": pos,
+            "dim": dim,
+            "time": time,
+            "timeError": err_time,
+            "edep": edep,
+            "edepError": err_edep,
+        },
     }
-    return group
+    return piece
 
 def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_stop=None):
     """
     Converts vector<edm4eic::TrackSegmentData> + the associated TrackPoints
-    into a Firebird 'TrackerLinePointTrajectory' component.
+    into a Firebird 'PointTrajectory' piece.
 
     Each segment => one 'line' with an array of points from points_begin..points_end.
 
@@ -176,13 +170,17 @@ def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_st
     if entry_stop is None:
         entry_stop = entry_start + 1
 
+    # Columnar piece: track parameters are per-name columns (trajectory id == index),
+    # the ragged per-trajectory point lists stay nested under "points"
     result = {
         "name": branch_name,
         "type": "PointTrajectory",
+        "version": PIECE_VERSION,
         "origin": ["edm4eic::TrackPoint", "edm4eic::TrackSegmentData"],
-        "paramColumns": [],
+        "count": 0,
+        "columns": {},
         "pointColumns": ["x", "y", "z", "t", "dx", "dy", "dz", "dt"],
-        "trajectories": []
+        "points": []
     }
     # -- Grab the arrays for the main TrackSegmentData
     seg_points_begin_index   = ak.flatten(tree[f'{branch_name}/{branch_name}.points_begin'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
@@ -242,14 +240,6 @@ def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_st
         trk_loc_a  = ak.flatten(tree[f'{params_branch}/{params_branch}.loc.a'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
         trk_loc_b  = ak.flatten(tree[f'{params_branch}/{params_branch}.loc.b'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
         trk_time   = ak.flatten(tree[f'{params_branch}/{params_branch}.time'].array(entry_start=entry_start, entry_stop=entry_stop)).to_list()
-        result["paramColumns"] = [
-            "theta",
-            "phi",
-            "q_over_p",
-            "loc_a",
-            "loc_b",
-            "time"
-        ]
     else:
         trk_theta  = []
         trk_phi    = []
@@ -258,13 +248,12 @@ def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_st
         trk_loc_b  = []
         trk_time   = []
 
-    trajectories = []
     n_segments = len(seg_points_begin_index)
 
     if params_exists and n_segments != len(trk_theta):
         print(f"WARNING: len(CentralCKFParameters) != len({branch_name}). Might be a sign of format change or broken tree")
 
-    # Check, we should have the same number of segments and parameters
+    all_points = []
     for seg_index in range(n_segments):
         segment_points = []
         for point_index in range(seg_points_begin_index[seg_index], seg_points_end_index[seg_index]):
@@ -277,35 +266,36 @@ def track_segments_to_line_trajectories(tree, branch_name, entry_start, entry_st
             # pointColumns => [x, y, z, t, dx, dy, dz, dt]
             point_val = [p_x[point_index], p_y[point_index], p_z[point_index], p_t[point_index], dx, dy, dz, dt]
             segment_points.append(point_val)
+        all_points.append(segment_points)
 
-        # Attempt to get track params from the track reference
-        params_list = []
-        if params_exists and seg_index < len(trk_theta):
-            params_list.append(trk_theta[seg_index])
-            params_list.append(trk_phi[seg_index])
-            params_list.append(trk_qoverp[seg_index])
-            params_list.append(trk_loc_a[seg_index])
-            params_list.append(trk_loc_b[seg_index])
-            params_list.append(trk_time [seg_index])
-
-        trajectory = {
-            "points": segment_points,
-            "params": params_list
+    result["count"] = n_segments
+    result["points"] = all_points
+    if params_exists:
+        # trajectory id == index in every column; a missing tail (parameter list
+        # shorter than segments) is padded with None rather than dropped
+        def column(values):
+            return [values[i] if i < len(values) else None for i in range(n_segments)]
+        result["columns"] = {
+            "theta": column(trk_theta),
+            "phi": column(trk_phi),
+            "q_over_p": column(trk_qoverp),
+            "loc_a": column(trk_loc_a),
+            "loc_b": column(trk_loc_b),
+            "time": column(trk_time),
         }
-        trajectories.append(trajectory)
-
-    result["trajectories"] = trajectories
     return result
 
 
-def edm4eic_entry_to_dict(tree, entry_index, custom_name=None, collections=None):
+def edm4eic_entry_to_dict(tree, entry_index, custom_name=None, collections=None,
+                          mc_step_time=DEFAULT_MC_STEP_TIME, mc_max_points=DEFAULT_MC_MAX_POINTS):
     # the result of this function
     components = []
 
     if not collections:
         collections = [
             "tracker_hits",
-            "tracks"
+            "tracks",
+            "mc_particles",
         ]
 
     # Hits:
@@ -325,28 +315,31 @@ def edm4eic_entry_to_dict(tree, entry_index, custom_name=None, collections=None)
             line_comp = track_segments_to_line_trajectories(tree, seg_collection, entry_index, entry_stop=entry_index+1)
             components.append(line_comp)
 
+    # Straight vertex->endpoint lines for every MCParticle (eicrecon files
+    # carry the sim MCParticles collection through to the output)
+    if "mc_particles" in collections:
+        mc_piece = mc_particles_to_trajectories(tree, entry_index,
+                                                step_time=mc_step_time, max_points=mc_max_points)
+        if mc_piece["count"] > 0:
+            components.append(mc_piece)
+
     entry = {
         "id": custom_name if custom_name else entry_index,
-        "groups": components
+        "pieces": components
     }
 
     return entry
 
 
-def edm4eic_to_dex_dict(tree, event_ids, origin_info=None, collections=None):
+def edm4eic_to_dex_dict(tree, event_ids, origin_info=None, collections=None,
+                        mc_step_time=DEFAULT_MC_STEP_TIME, mc_max_points=DEFAULT_MC_MAX_POINTS):
     event_data = []
 
     if isinstance(event_ids, int):
         event_ids = [event_ids]
 
     for entry_id in event_ids:
-        event_data.append(edm4eic_entry_to_dict(tree, entry_id, custom_name=None, collections=collections))
+        event_data.append(edm4eic_entry_to_dict(tree, entry_id, custom_name=None, collections=collections,
+                                                mc_step_time=mc_step_time, mc_max_points=mc_max_points))
 
-    result = {
-        "type": "firebird-dex-json",
-        "version": "0.04",
-        "origin": origin_info,
-        "events": event_data
-    }
-    
-    return result
+    return make_dex(event_data, origin_info)

@@ -1,0 +1,65 @@
+{
+  "name": "@dexvis/firebird-ng",
+  "version": "0.1.0-beta.1",
+  "description": "Angular library of the Firebird event display: provideFirebird() and its with*() features, the display pages and <firebird-display>, the display services, and the code of the geometry and ROOT file workers.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eic/firebird.git",
+    "directory": "packages/firebird-ng"
+  },
+  "keywords": [
+    "angular",
+    "firebird",
+    "event-display",
+    "particle-physics",
+    "three",
+    "webgpu"
+  ],
+  "scripts": {
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.prod.json",
+    "test": "ng test --watch=false"
+  },
+  "peerDependencies": {
+    "@angular/aria": "^22.2.0",
+    "@angular/cdk": "^22.2.0",
+    "@angular/common": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/forms": "^22.2.0",
+    "@angular/material": "^22.2.0",
+    "@angular/router": "^22.2.0",
+    "@dexvis/app-features": "^0.1.0",
+    "@dexvis/firebird-core": "^0.1.0-beta.1",
+    "@dexvis/shell": "^0.1.0",
+    "jsroot": ">=7.11.0",
+    "rxjs": "^7.8.0",
+    "three": ">=0.180.0"
+  },
+  "dependencies": {
+    "@dexvis/root-geo-tree-editor": "^0.2.0",
+    "@dexvis/root2dex": "^0.1.0-beta.1",
+    "@dexvis/threejs-tree-editor": "^0.1.0",
+    "@dexvis/viewport-gizmo": "^0.1.0",
+    "@tweenjs/tween.js": "^25.0.0",
+    "jszip": "^3.10.2",
+    "lil-gui": "^0.21.0",
+    "three-mesh-bvh": "^0.9.16",
+    "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "~22.2.2",
+    "@angular/cli": "~22.2.2",
+    "@angular/compiler": "~22.2.2",
+    "@angular/compiler-cli": "~22.2.2",
+    "@angular/platform-browser": "~22.2.2",
+    "@types/three": "^0.186.0",
+    "jsdom": "~30.1.2",
+    "ng-packagr": "~22.2.4",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.3"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  }
+}

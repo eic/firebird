@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   COOL_COLORS,
@@ -6,7 +6,7 @@ import {
   WARM_COLORS,
   METALLIC_COLORS,
   ALL_COLORS,
-} from '../../theme/cool2-geometry-ruleset';
+} from '@dexvis/firebird-ng/geometry-palette';
 
 interface ColorEntry {
   name: string;
@@ -93,6 +93,7 @@ function processColors(colors: Record<string, number>): ColorEntry[] {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './palette.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./palette.component.scss'],
 })
 export class PaletteComponent {

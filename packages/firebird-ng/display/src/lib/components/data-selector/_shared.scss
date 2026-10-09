@@ -1,0 +1,97 @@
+// Styles shared by the data selector host and its tabs: `@use './shared'`
+// in each component's scss. Values follow the toolbar drop-down panels
+// (see open-event.component.scss) so the control looks the same in the
+// display panel and on the config page.
+
+@mixin tab-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+@mixin section-label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+@mixin chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+
+// A selectable chip; `.selected` marks the choice, `.unavailable` dims a
+// choice that leads to no dataset with the other selections (still clickable)
+@mixin chip {
+  padding: 4px 12px;
+  border: 1px solid var(--mat-sys-outline, rgba(128, 128, 128, 0.6));
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    background: color-mix(in srgb, var(--mat-sys-primary, #4bac84) 12%, transparent);
+  }
+
+  &.selected {
+    border-color: var(--mat-sys-primary, #4bac84);
+    background: color-mix(in srgb, var(--mat-sys-primary, #4bac84) 25%, transparent);
+    font-weight: 500;
+  }
+
+  &.unavailable {
+    opacity: 0.45;
+  }
+}
+
+@mixin text-input {
+  padding: 6px 8px;
+  border: 1px solid var(--mat-sys-outline, rgba(128, 128, 128, 0.6));
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.8rem;
+  color: inherit;
+  outline: none;
+}
+
+@mixin status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+
+  &.error {
+    color: var(--mat-sys-error, #d32f2f);
+  }
+
+  &.note,
+  &.warning,
+  &.ok {
+    opacity: 0.85;
+  }
+}
+
+@mixin description {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  opacity: 0.85;
+
+  a {
+    color: var(--mat-sys-primary, #4bac84);
+  }
+}

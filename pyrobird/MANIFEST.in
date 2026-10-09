@@ -1,4 +1,7 @@
 # MANIFEST.in
+# setuptools reads this file for the sdist, and `uv build` (like `python -m build`)
+# builds the wheel from that sdist: a file excluded here is missing from the wheel
+# too. Check a build with: python scripts/check_dist.py dist/
 
 # pyrobird library
 recursive-include pyrobird *.py
@@ -8,6 +11,7 @@ include pyrobird/data/*.yaml
 
 # Include all files in the static and templates directories
 recursive-include pyrobird/server/static *
-# Exclude unzipped .firebird data dirs (redundant with .zip versions; paths exceed Windows MAX_PATH)
-recursive-exclude pyrobird/server/static/assets/data *.firebird.json
+# Unpacked twin of bkg_frame_nomc.firebird.zip; the zip is the copy that ships.
+# Exclude data files by name: example-cherenkov.firebird.json must ship.
+exclude pyrobird/server/static/assets/data/bkg_frame_nomc.firebird.json
 recursive-include pyrobird/server/templates *

@@ -10,20 +10,22 @@ name = "pyrobird"
 dynamic = ["version"]
 description = "pyrobird is a python backend for Firebird HENP event display"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
+# A copy of the repository's LICENSE: the sdist and the wheel are built from this directory
+license-files = ["LICENSE"]
 authors = [
   { name = "Dmitry Romanov", email = "romanovda@gmail.com" }
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy"
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython"
 ]
 dependencies = [
   "click",
@@ -39,14 +41,19 @@ dependencies = [
 [project.optional-dependencies]
 batch = ["playwright"]
 xrootd = ["fsspec-xrootd", "xrootd"]
-dev = ["build", "twine", "coverage", "pytest"]
+# jsonschema exercises dex-schema/*.schema.json in tests (CI installs .[test])
+test = ["pytest", "jsonschema"]
+dev = ["build", "twine", "coverage", "pytest", "jsonschema"]
 
 [project.scripts]
 fbd = "pyrobird.cli:cli_app"
 pyrobird = "pyrobird.cli:cli_app"
 
 # --- Setuptools configuration ---
-# Package data is declared explicitly (MANIFEST.in is not used).
+# Package data is declared explicitly below. MANIFEST.in still decides what the
+# sdist holds, and `uv build` builds the wheel from the sdist, so a file that
+# MANIFEST.in excludes never reaches the wheel: keep the two in sync and check
+# a build with `python scripts/check_dist.py dist/`.
 # The server/static directory contains the Angular frontend build output
 # and is included as data files, not as Python packages.
 

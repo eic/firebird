@@ -3,61 +3,58 @@ name: Integration Tests Workflow
 on:
   push:
     branches:
-      - main
+      - '**'
   pull_request:
     branches:
       - main
+
+permissions:
+  contents: read
 
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v10.2.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version-file: .nvmrc
+          cache: npm
 
-
-      - name: Debug info before build
+      - name: Install frontend dependencies
+        # npm workspaces: one lockfile at the repo root
         run: |
-          cd firebird-ng
-          ls -l
-          cat package.json
           npm --version
           node --version
-          npm install
-          npm install -g @angular/cli
-          ng build
+          npm ci
 
-      - name: Install the project
-        run: |
-          cd pyrobird
-          uv sync --extra=dev --dev
-          uv run ../build.py all
+      - name: Install pyrobird
+        working-directory: ./pyrobird
+        run: uv sync --locked --extra dev --python ${{ matrix.python-version }}
 
-      # - name: Install Python dependencies and Build Frontend
-      #   run: |
-      #     cd pyrobird          
-      #     python -m pip install -e .[dev,batch]
-      #     cd ..
-      #     python build.py all
+      - name: Build frontend and package
+        # notests: one ng build, copied into pyrobird, then the python package.
+        # The unit suites run in frontend.yaml and pyrobird.yaml.
+        working-directory: ./pyrobird
+        run: uv run --no-sync python ../build.py notests
 
       - name: Run integration tests
-        run: |
-          cd pyrobird
-          uv run tests/integration_tests/run_integration_tests.py
+        working-directory: ./pyrobird
+        run: uv run --no-sync python tests/integration_tests/run_integration_tests.py

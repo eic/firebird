@@ -1,17 +1,49 @@
 # Created by: Dmitry Romanov, 2024
-# This file is part of Firebird Event Display and is licensed under the LGPLv3.
+# This file is part of Firebird Event Display and is licensed under GPL-3.0-or-later.
 # See the LICENSE file in the project root for full license information.
 
 """Utilities for working with Firebird DEX (Data Exchange) format files."""
 
 import json
-from typing import Dict, Any
+import os
+import zipfile
+from typing import Any, Dict, Optional
+
 import click
+
+
+def read_dex_json(file_path: str) -> Dict[str, Any]:
+    """Reads a DEX document from a .json file or from the first .json member of a .zip."""
+    if file_path.lower().endswith(".zip"):
+        with zipfile.ZipFile(file_path) as zf:
+            json_names = [n for n in zf.namelist() if n.lower().endswith(".json")]
+            if not json_names:
+                raise click.FileError(file_path, "zip archive contains no .json file")
+            with zf.open(json_names[0]) as f:
+                return json.load(f)
+    with open(file_path, "r") as f:
+        return json.load(f)
+
+
+def write_dex_json(dex_data: Dict[str, Any], output_file: str, indent: Optional[int] = None) -> None:
+    """Writes a DEX document to a .json file, or zip-compressed when the name ends
+    with .zip (the archive holds one member named like the output with .zip
+    replaced by .json)."""
+    text = json.dumps(dex_data, indent=indent)
+    if output_file.lower().endswith(".zip"):
+        inner_name = os.path.basename(output_file)[:-len(".zip")]
+        if not inner_name.lower().endswith(".json"):
+            inner_name += ".json"
+        with zipfile.ZipFile(output_file, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(inner_name, text)
+        return
+    with open(output_file, "w") as f:
+        f.write(text)
 
 
 def load_dex_file(file_path: str) -> Dict[str, Any]:
     """
-    Load and validate a Firebird DEX JSON file.
+    Load and validate a Firebird DEX JSON file (.json, or a .zip holding one).
 
     Parameters
     ----------
@@ -29,8 +61,9 @@ def load_dex_file(file_path: str) -> Dict[str, Any]:
         If file cannot be loaded or is invalid
     """
     try:
-        with open(file_path, 'r') as f:
-            dex_data = json.load(f)
+        dex_data = read_dex_json(file_path)
+    except click.FileError:
+        raise
     except FileNotFoundError:
         raise click.FileError(file_path, "File not found")
     except json.JSONDecodeError:
@@ -38,11 +71,25 @@ def load_dex_file(file_path: str) -> Dict[str, Any]:
     except Exception as e:
         raise click.FileError(file_path, f"Error opening/parsing: {e}")
 
+    # A DEX 0.04 file fails the structure check below; say how to upgrade it
+    if is_dex_v004(dex_data):
+        raise click.FileError(file_path, f"DEX version 0.04 file. Convert it once with: pyrobird upgrade {file_path}")
+
     # Verify the file is a valid Firebird DEX file
     if not is_valid_dex_file(dex_data):
         raise click.FileError(file_path, "Not a valid Firebird DEX file")
 
     return dex_data
+
+
+def is_dex_v004(data: Dict[str, Any]) -> bool:
+    """True for a DEX 0.04 document: version "0.04", or events that hold "groups" instead of "pieces"."""
+    if not isinstance(data, dict):
+        return False
+    if str(data.get("version", "")) == "0.04":
+        return True
+    events = data.get("events")
+    return isinstance(events, list) and any(isinstance(event, dict) and "groups" in event for event in events)
 
 
 def is_valid_dex_file(data: Dict[str, Any]) -> bool:
@@ -73,16 +120,16 @@ def is_valid_dex_file(data: Dict[str, Any]) -> bool:
 
     # Check each event
     for event in data["events"]:
-        if "id" not in event or "groups" not in event:
+        if "id" not in event or "pieces" not in event:
             return False
 
-        # Check if groups is a list
-        if not isinstance(event["groups"], list):
+        # Check if pieces is a list
+        if not isinstance(event["pieces"], list):
             return False
 
-        # Check each group
-        for group in event["groups"]:
-            if "name" not in group or "type" not in group:
+        # Check each piece
+        for piece in event["pieces"]:
+            if "name" not in piece or "type" not in piece:
                 return False
 
     return True

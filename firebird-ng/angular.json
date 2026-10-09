@@ -17,12 +17,14 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "polyfills": [
-              "zone.js"
-            ],
+            "polyfills": [],
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "externalDependencies": [
+              "@resvg/resvg-js",
+              "canvas"
+            ],
             "assets": [
               {
                 "glob": "favicon.ico",
@@ -82,8 +84,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "2MB",
-                  "maximumError": "5MB"
+                  "maximumWarning": "480kB",
+                  "maximumError": "600kB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -134,6 +136,6 @@
     }
   },
   "cli": {
-    "analytics": "aa6f00cf-04e4-4e98-9d0e-1423cb1a0d51"
+    "analytics": false
   }
 }

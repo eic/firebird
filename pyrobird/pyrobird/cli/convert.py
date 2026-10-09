@@ -1,25 +1,42 @@
 import logging
+import posixpath
+import re
+from urllib.parse import urlsplit
+
 import click
-from pyrobird.edm4eic import edm4eic_to_dex_dict, parse_entry_numbers
+from pyrobird.dex_utils import write_dex_json
+from pyrobird.edm4eic import edm4eic_to_dex_dict
+from pyrobird.edm4hep import edm4hep_to_dex_dict, detect_file_type, DEFAULT_HIT_BOX_SIZE
+from pyrobird.entries import parse_entry_ranges, select_entries, EntrySelectionError
+from pyrobird.mc_particles import DEFAULT_MC_STEP_TIME, DEFAULT_MC_MAX_POINTS
 import os
 import json
+
+# A URL scheme has two or more characters; 'C://' is a Windows drive
+_URL_SCHEME = re.compile(r'^[A-Za-z][A-Za-z0-9+.-]+://')
 
 
 def guess_output_name(input_entry, output_extension='.firebird.json'):
     """
-    Processes the input_entry by removing any network protocol prefixes,
-    replacing or adding the specified output_extension.
+    Derives the output file name from an input file name or URL.
+
+    A local path keeps its directory, so the output lands next to the input:
+    'data/run.root' gives 'data/run.firebird.json'. A URL gives its file name
+    only, so the output lands in the current directory:
+    'root://host//dir/run.root' gives 'run.firebird.json'. The query and the
+    fragment of a URL are dropped.
 
     Parameters:
-    - input_entry (str): The input file name or path.
+    - input_entry (str): The input file name, path or URL.
     - output_extension (str): The extension to replace or append.
 
     Returns:
     - str: The processed file name with the correct extension.
     """
-    # Remove protocol if any (e.g., root://, http://)
-    while '://' in input_entry:
-        input_entry = input_entry.split('://', maxsplit=1)[1]
+    if _URL_SCHEME.match(input_entry):
+        parts = urlsplit(input_entry)
+        # The last path segment, or the host part for 'http://filename'
+        input_entry = posixpath.basename(parts.path.rstrip('/')) or parts.netloc.rsplit('@', 1)[-1]
 
     # Split the filename and extension
     base, ext = os.path.splitext(input_entry)
@@ -44,14 +61,43 @@ def guess_output_name(input_entry, output_extension='.firebird.json'):
 )
 @click.option(
     "-c", "--collections", "collections_str", default="",
-    help="Comma-separated list of collection types to convert. "
-         "For example: 'tracker_hits,tracks'."
+    help="Comma-separated list of collection groups to convert. "
+         "edm4eic: 'tracker_hits,tracks,mc_particles'; "
+         "edm4hep: 'tracker_hits,mc_trajectories,mc_particles'. Empty means all."
 )
-# TODO @click.option("-t", "--type", "input_type", default=None, help="Input file type. Currently only edm4eic supported")
+@click.option(
+    "-t", "--type", "input_type", type=click.Choice(["auto", "edm4eic", "edm4hep"]), default="auto",
+    help="Input file type. 'auto' (default) detects it from branch types; "
+         "eicrecon files carrying both models are detected as edm4eic."
+)
+@click.option(
+    "--hit-box-size", "hit_box_size", type=float, default=DEFAULT_HIT_BOX_SIZE,
+    help=f"[edm4hep] Box size in mm for sim hits, which carry no position error "
+         f"(default: {DEFAULT_HIT_BOX_SIZE})."
+)
+@click.option(
+    "--traj-vertex/--no-traj-vertex", "traj_vertex", default=True,
+    help="[edm4hep] Prepend the MCParticle vertex as the first trajectory point (default: on)."
+)
+@click.option(
+    "--traj-endpoint", "traj_endpoint", is_flag=True, default=False,
+    help="[edm4hep] Append the MCParticle endpoint as the last trajectory point (default: off)."
+)
+@click.option(
+    "--mc-step-time", "mc_step_time", type=float, default=DEFAULT_MC_STEP_TIME,
+    help=f"[mc_particles] Time step in ns of the straight-line interpolation grid "
+         f"(default: {DEFAULT_MC_STEP_TIME})."
+)
+@click.option(
+    "--mc-max-points", "mc_max_points", type=int, default=DEFAULT_MC_MAX_POINTS,
+    help=f"[mc_particles] Maximum points per particle line; longer flights get a "
+         f"coarser grid (default: {DEFAULT_MC_MAX_POINTS})."
+)
 @click.argument("filename", required=True)
-def convert(filename, output_file, entries_str, collections_str):
+def convert(filename, output_file, entries_str, collections_str, input_type,
+            hit_box_size, traj_vertex, traj_endpoint, mc_step_time, mc_max_points):
     """
-    Converts an input EDM4eic ROOT file to a Firebird-compatible JSON file.
+    Converts an input EDM4eic or EDM4hep ROOT file to a Firebird-compatible JSON file.
 
     This command reads the specified input ROOT file, extracts the first event
     from the 'events' tree, and writes it to a JSON file that can be used with
@@ -59,25 +105,39 @@ def convert(filename, output_file, entries_str, collections_str):
 
     If an output file name is not specified, it will be automatically generated
     by replacing or appending the `.firebird.json` extension to the input file
-    name.
+    name. For a URL input the file is written to the current directory under
+    the URL's file name.
 
     Use `-o -` or `--output -` to output the JSON data to stdout instead of a file.
-    This allows the command to be used in pipelines.
+    This allows the command to be used in pipelines. An output name ending in
+    `.zip` writes a zip archive holding the JSON.
 
-    Use `-c` or `--collections` to specify specific collections to convert:
-      - tracker_hits  - edm4eic::TrackerHitData
-      - tracks        - edm4eic::TrackSegmentData with associated tracks
+    Use `-t` or `--type` to select the input data model. The default 'auto' inspects
+    the tree: files with reconstructed edm4eic::TrackerHitData are treated as edm4eic,
+    files with only edm4hep::SimTrackerHitData (e.g. ddsim output) as edm4hep.
 
-    Currently, only EDM4eic format is supported.
+    Use `-c` or `--collections` to specify specific collections to convert.
 
+    For edm4eic:
+      - tracker_hits     - edm4eic::TrackerHitData
+      - tracks           - edm4eic::TrackSegmentData with associated tracks
+      - mc_particles     - straight vertex->endpoint line per MCParticle
+
+    For edm4hep:
+      - tracker_hits     - edm4hep::SimTrackerHitData
+      - mc_trajectories  - MC-truth trajectories connecting sim hits per MCParticle
+      - mc_particles     - straight vertex->endpoint line per MCParticle
 
     **Example usage:**
 
     \b
         convert mydata.root
         convert mydata.root --output output.firebird.json
+        convert root://dtn-eic.jlab.org//volatile/eic/run.edm4eic.root -e 0-4
         convert mydata.root --output - | less
         convert mydata.root --collections=tracks
+        convert sim.edm4hep.root -t edm4hep
+        convert sim.edm4hep.root -t edm4hep --traj-endpoint --hit-box-size=5
     """
     import uproot
 
@@ -87,44 +147,56 @@ def convert(filename, output_file, entries_str, collections_str):
         msg = f"File not found: '{filename}'"
         raise FileNotFoundError(msg)
 
+    # Parse use entries input; ranges stay unexpanded until checked against the file
+    entry_ranges = parse_entry_ranges(entries_str)
+
+    # Decide the output name before the conversion runs
+    if output_file is None:
+        output_file = guess_output_name(filename)
+
     file = uproot.open(filename)
     tree = file['events']
 
     num_entries = tree.num_entries
-
-    # Parse use entries input
-    entries = parse_entry_numbers(entries_str)
 
     # Parse collections string
     collections = None
     if collections_str:
         collections = [x.strip() for x in collections_str.split(',') if x.strip()]
 
-    # Do we have valid entries?
-    for entry_index in entries:
-        if entry_index > num_entries - 1:
-            err_msg = f"Entries provided as: '{entries_str}' " \
-                       f"but entry index={entry_index} is outside of total num_entries={num_entries}"
-            raise ValueError(err_msg)
+    # Entries outside the file are dropped with one warning; none left is an error
+    try:
+        selection = select_entries(entry_ranges, num_entries)
+    except EntrySelectionError as ex:
+        raise EntrySelectionError(f"Entries provided as: '{entries_str}': {ex}") from None
+    if selection.warning:
+        logging.warning(f"Entries provided as: '{entries_str}': {selection.warning}")
+    entries = selection.entries
+
+    # Detect the file type if not given explicitly
+    if input_type == "auto":
+        input_type = detect_file_type(tree)
+        logging.info(f"Detected file type: {input_type}")
 
     # Extract the first event from the tree
     origin_info = {
         "file": filename,
-        "entries_count": num_entries
+        "entries_count": num_entries,
+        "file_type": input_type
     }
 
-    fdex_dict = edm4eic_to_dex_dict(tree, entries, origin_info, collections=collections)
-
-    # Convert the event data to JSON format
-    json_data = json.dumps(fdex_dict)
+    if input_type == "edm4hep":
+        fdex_dict = edm4hep_to_dex_dict(tree, entries, origin_info, collections=collections,
+                                        box_size=hit_box_size,
+                                        prepend_vertex=traj_vertex,
+                                        append_endpoint=traj_endpoint,
+                                        mc_step_time=mc_step_time, mc_max_points=mc_max_points)
+    else:
+        fdex_dict = edm4eic_to_dex_dict(tree, entries, origin_info, collections=collections,
+                                        mc_step_time=mc_step_time, mc_max_points=mc_max_points)
 
     if output_file == '-':
-        # Output to stdout
-        print(json_data)
+        print(json.dumps(fdex_dict))
     else:
-        # Determine the output file name if not provided
-        if output_file is None:
-            output_file = guess_output_name(filename)
-        # Write the JSON data to the output file
-        with open(output_file, 'w') as f:
-            f.write(json_data)
+        # .json, or a zip archive when the name ends with .zip
+        write_dex_json(fdex_dict, output_file)

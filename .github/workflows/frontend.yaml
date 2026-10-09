@@ -3,55 +3,90 @@ name: Frontend CI Workflow
 on:
   push:
     branches:
-      - '*'
+      - '**'
   pull_request:
     branches:
-      - master
+      - main
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  test-and-build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./firebird-ng
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           lfs: false
+          # The dexvis packages are submodules and npm workspace members
+          submodules: recursive
+
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version-file: .nvmrc
+          cache: npm
 
       - name: Install Dependencies
-        run: npm install
+        # npm workspaces: one lockfile at the repo root; `npm ci` fails when it
+        # disagrees with any workspace manifest
+        run: npm ci
 
-      - name: Run Tests
-        run: npm run test:headless
+      # One step per workspace suite. build.py's FRONTEND_PACKAGE_WORKSPACES
+      # lists the same packages; every `test` script runs once and exits.
+      - name: Test firebird-ng
+        run: npm run test:headless --workspace=firebird-ng
 
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./firebird-ng
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: false
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+      - name: Test @dexvis/firebird-ng
+        run: npm test -w @dexvis/firebird-ng
 
-      - name: Install Dependencies
-        run: npm install
+      - name: Test @dexvis/app-features
+        run: npm test -w @dexvis/app-features
+
+      - name: Test @dexvis/firebird-core
+        run: npm test -w @dexvis/firebird-core
+
+      - name: Test @dexvis/root2dex
+        run: npm test -w @dexvis/root2dex
+
+      - name: Test @dexvis/firebird-epic
+        run: npm test -w @dexvis/firebird-epic
+
+      - name: Test @dexvis/firebird-example-extension
+        run: npm test -w @dexvis/firebird-example-extension
+
+      - name: Test @dexvis/threejs-tree-editor
+        run: npm test -w @dexvis/threejs-tree-editor
+
+      - name: Test @dexvis/root-geo-tree-editor
+        run: npm test -w @dexvis/root-geo-tree-editor
+
+      - name: Test @dexvis/viewport-gizmo
+        run: npm test -w @dexvis/viewport-gizmo
+
+      # ng-packagr compiles @dexvis/firebird-ng and the ePIC pack against the
+      # BUILT packages they import, so those build first, in dependency order.
+      # This is the only check that an entry of the library imports another
+      # entry through its package name: the app and the suites compile the
+      # sources together and do not notice a relative import across entries.
+      - name: Build the libraries @dexvis/firebird-ng and @dexvis/firebird-epic
+        run: |
+          npm run build -w @dexvis/root-geo-tree-editor
+          npm run build -w @dexvis/threejs-tree-editor
+          npm run build -w @dexvis/viewport-gizmo
+          npm run build -w @dexvis/root2dex
+          npm run build -w @dexvis/firebird-core
+          npm run build -w @dexvis/app-features
+          (cd dexvis/app-shell-ng && npx ng build app-shell)
+          npm run build -w @dexvis/firebird-ng
+          npm run build -w @dexvis/firebird-epic
 
       - name: Build
+        working-directory: ./firebird-ng
         run: npm run build
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firebird-ng-build
           path: ./firebird-ng/dist/

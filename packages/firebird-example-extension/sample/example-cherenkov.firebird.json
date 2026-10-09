@@ -1,0 +1,108 @@
+{
+  "type": "firebird-dex-json",
+  "version": "1.0",
+  "origin": {
+    "source": "hand-written sample",
+    "by": "@dexvis/firebird-example-extension"
+  },
+  "events": [
+    {
+      "id": "event_0",
+      "pieces": [
+        {
+          "name": "ExampleRings",
+          "type": "example.CherenkovRing",
+          "version": "1.0",
+          "origin": "example",
+          "count": 1,
+          "columns": {
+            "center": [0, 0, 1200],
+            "radius": [600],
+            "nPhotons": [14],
+            "time": [5],
+            "track": [0]
+          },
+          "refs": { "track": "ExampleTracks" }
+        },
+        {
+          "name": "ExampleTracks",
+          "type": "PointTrajectory",
+          "version": "1.0",
+          "origin": "example",
+          "count": 1,
+          "columns": { "theta": [0.35] },
+          "pointColumns": ["x", "y", "z", "t"],
+          "points": [
+            [[0, 0, 0, 0], [200, 100, 600, 4], [400, 180, 1200, 8]]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "event_1",
+      "pieces": [
+        {
+          "name": "ExampleRings",
+          "type": "example.CherenkovRing",
+          "version": "1.0",
+          "origin": "example",
+          "count": 2,
+          "columns": {
+            "center": [0, 0, 1200, 0, 0, -1400],
+            "radius": [450, 800],
+            "nPhotons": [9, 21],
+            "time": [4, 7]
+          }
+        },
+        {
+          "name": "ExampleHits",
+          "type": "BoxHit",
+          "version": "1.0",
+          "origin": "example",
+          "count": 2,
+          "columns": {
+            "pos": [300, 150, 900, -250, 220, -800],
+            "dim": [40, 40, 40, 40, 40, 40],
+            "time": [3, 6],
+            "timeError": [0, 0],
+            "edep": [0.002, 0.001],
+            "edepError": [0, 0]
+          }
+        }
+      ]
+    },
+    {
+      "id": "event_2",
+      "pieces": [
+        {
+          "name": "ExampleRings",
+          "type": "example.CherenkovRing",
+          "version": "1.0",
+          "origin": "example",
+          "count": 4,
+          "columns": {
+            "center": [0, 0, 800, 0, 0, 1600, 0, 0, -900, 0, 0, -1800],
+            "radius": [300, 700, 500, 1100],
+            "nPhotons": [6, 17, 11, 28],
+            "time": [2, 5, 8, 11],
+            "track": [0, 0, 1, -1]
+          },
+          "refs": { "track": "ExampleTracks" }
+        },
+        {
+          "name": "ExampleTracks",
+          "type": "PointTrajectory",
+          "version": "1.0",
+          "origin": "example",
+          "count": 2,
+          "columns": { "theta": [0.42, 2.7] },
+          "pointColumns": ["x", "y", "z", "t"],
+          "points": [
+            [[0, 0, 0, 0], [150, -120, 800, 3], [280, -260, 1600, 6]],
+            [[0, 0, 0, 0], [-180, 90, -900, 4], [-360, 200, -1800, 9]]
+          ]
+        }
+      ]
+    }
+  ]
+}

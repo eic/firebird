@@ -1,0 +1,206 @@
+/**
+ * @file url.service.ts
+ * @description Provides URL resolution services for handling file downloads and conversions in an Angular application.
+ *              The service supports different configurations depending on how the application is served and includes
+ *              protocol aliasing for custom URL schemes.
+ */
+
+import { Injectable, computed, inject } from '@angular/core';
+import { ConfigService, ServerConfigService, URL_ALIASES } from "@dexvis/app-features";
+import type { ServerConfig } from "./server-config";
+import { BACKEND_URL_CONFIG, BACKEND_USE_API_CONFIG } from "../config-keys";
+
+/** Marks a path as relative to the backend's working directory. */
+const LOCAL_PREFIX = 'local://';
+
+/**
+ * @class UrlService
+ * @description This service resolves URLs for downloading and converting files. It handles different scenarios based
+ *              on whether the application is served as a standalone static site, served by a backend like PyroBird, or
+ *              configured to use a specific API endpoint. It also supports protocol aliases and special URL schemes.
+ *
+ * ### Assumptions:
+ * - The application may be served in various configurations:
+ *   - Standalone static site without backend API.
+ *   - Served by a Flask application (e.g., PyroBird) with a backend API.
+ *   - Served by another service with or without a backend API.
+ * - The service needs to resolve URLs for files that may:
+ *   - Be accessible over HTTP/HTTPS.
+ *   - Be local files requiring backend API to serve them.
+ *   - Use custom protocols (e.g., `asset://`, `local://`, or an alias a pack contributes).
+ *
+ * ### Use Cases:
+ * - **Case 1: Downloading Files**
+ *   - **1.1**: Input URL starts with protocol like `root://`, `http://` or `https://`. The URL is used as is.
+ *   - **1.2**: Input URL has no protocol or is a local file. The service checks if a backend is available and constructs the download endpoint URL.
+ * - **Case 2: Converting Files**
+ *   - **2.1 & 2.2**: Input URL is converted using the backend 'convert' endpoint, regardless of the original protocol.
+ *
+ * ### Protocol Aliases:
+ * - `asset://`: Points to assets served from the frontend server.
+ * - `local://`: A path relative to the backend's working directory
+ *   (`pyrobird serve --work-path`). Resolves to a relative path, which the
+ *   download/convert endpoints below turn into a backend request. Needs a
+ *   backend — on a static deployment there is nothing to serve the file.
+ * - Aliases contributed through `withUrlAlias()`: prefix replaced with a base URL.
+ *
+ * ### Examples:
+ * - Download URL:
+ *   - Input: `https://example.com/file.root`
+ *   - Output: `https://example.com/file.root` (Case 1.1)
+ * - Download URL:
+ *   - Input: `/path/to/file.root`
+ *   - Output: `<serverAddress>/api/v1/download?f=%2Fpath%2Fto%2Ffile.root` (if backend is available) (Case 1.2)
+ * - Download URL:
+ *   - Input: `local://file.root`
+ *   - Output: `<serverAddress>/api/v1/download?f=file.root` (if backend is available) (Case 1.2)
+ * - Convert URL:
+ *   - Input: `https://example.com/file.root`, `fileType`, `entries`
+ *   - Output: `<serverAddress>/api/v1/convert/fileType/entries?f=https%3A%2F%2Fexample.com%2Ffile.root`
+ */
+
+@Injectable({
+  providedIn: 'root'
+})
+export class UrlService {
+  private readonly serverConfigService = inject<ServerConfigService<ServerConfig>>(ServerConfigService);
+  private readonly config = inject(ConfigService);
+
+  // The backend chosen on the config page ("Use specific backend", "Base API
+  // URL"). Declared here, by the code that reads them; the page binds to the
+  // same schemas.
+  private readonly useApi = this.config.declare(BACKEND_USE_API_CONFIG);
+  private readonly apiUrl = this.config.declare(BACKEND_URL_CONFIG);
+
+  /**
+   * True when a backend can serve files and conversions: pyrobird serves this
+   * page, or the user configured one (`server.useApi`).
+   */
+  readonly isBackendAvailable = computed(() =>
+    this.serverConfigService.configSignal().servedByPyrobird || this.useApi.valueSignal());
+
+  /**
+   * Base URL of that backend, without a trailing slash; '' when there is none.
+   * The serving pyrobird wins over a configured one.
+   */
+  readonly serverAddress = computed(() => {
+    const server = this.serverConfigService.configSignal();
+    if (server.servedByPyrobird) {
+      return server.apiBaseUrl;
+    }
+    if (this.useApi.valueSignal()) {
+      return this.apiUrl.valueSignal().trim().replace(/\/+$/, '');
+    }
+    return '';
+  });
+
+  // Protocol aliases come from DI (`withUrlAlias()` features); the flagship's
+  // epic:// alias comes from the ePIC pack (`withEpic()` in packages/epic).
+  // One per prefix: a later alias for a prefix replaces the earlier one.
+  private readonly protocolAliases: { [key: string]: string } =
+    Object.fromEntries((inject(URL_ALIASES, { optional: true }) ?? []).map(a => [a.prefix, a.base]));
+
+  /**
+   * Resolves protocol aliases in the URL.
+   *
+   * - Replaces 'asset://' with the base URI of the application and the 'assets' path.
+   * - Replaces any custom protocol aliases defined in the `protocolAliases` map.
+   *
+   * @param url The URL to resolve.
+   * @returns The URL with protocol aliases resolved.
+   */
+  private resolveProtocolAliases(url: string): string {
+    if (url.startsWith('asset://')) {
+      const assetPath = url.substring('asset://'.length);
+      // Assets are served from where the frontend is served.
+      // Ensure there's no double slash
+      const baseUri = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
+      return `${baseUri}assets/${assetPath}`;
+    }
+
+    if (url.startsWith(LOCAL_PREFIX)) {
+      // Files under the backend's work path are not web-served, so the only
+      // way to reach them is the download/convert endpoints. Stripping the
+      // prefix leaves a path with no protocol, which is exactly the input
+      // those endpoints take (Case 1.2 below).
+      return url.substring(LOCAL_PREFIX.length);
+    }
+
+    for (const alias in this.protocolAliases) {
+      if (url.startsWith(alias)) {
+        return url.replace(alias, this.protocolAliases[alias]);
+      }
+    }
+    return url;
+  }
+
+  /**
+   * Checks if a URL is absolute (i.e., starts with a protocol like 'http://').
+   *
+   * @param url The URL to check.
+   * @returns True if the URL is absolute, false otherwise.
+   */
+  private isAbsoluteUrl(url: string): boolean {
+    return /^[a-z][a-z0-9+.-]*:/.test(url);
+  }
+
+  /**
+   * Resolves the URL for downloading a file.
+   *
+   * **Case 1.1**: If the URL is absolute (starts with 'http://' or 'https://'), it is returned as is.
+   *
+   * **Case 1.2**: If the URL has no protocol, it uses the backend download endpoint if available.
+   *               Constructs the URL: `<serverAddress>/api/v1/download?f=<encoded inputUrl>`
+   *
+   * @param inputUrl The input URL to resolve.
+   * @returns The resolved URL for downloading.
+   */
+  public resolveDownloadUrl(inputUrl: string): string {
+    inputUrl = this.resolveProtocolAliases(inputUrl);
+
+    if (this.isAbsoluteUrl(inputUrl)) {
+      // Case 1.1: Leave the URL as is
+      return inputUrl;
+    } else {
+      // Case 1.2: Use the download endpoint if available
+      const serverAddress = this.serverAddress();
+      if (this.isBackendAvailable() && serverAddress) {
+        return `${serverAddress}/api/v1/download?f=${encodeURIComponent(inputUrl)}`;
+      } else {
+        console.warn(
+          `Backend is not available to fetch '${inputUrl}'. Server-side files ` +
+          `(local:// or a plain path) need 'pyrobird serve' or a configured API server.`
+        );
+        return inputUrl;
+      }
+    }
+  }
+
+  /**
+   * Resolves the URL for converting a file using the 'convert' endpoint.
+   *
+   * **Case 2.1 & 2.2**: Constructs the URL using the backend 'convert' endpoint.
+   *                     Constructs the URL: `<serverAddress>/api/v1/convert/<fileType>/<entries>?f=<encoded inputUrl>`
+   *
+   * @param inputUrl The input URL to resolve.
+   * @param fileType The file type for conversion.
+   * @param entries Additional entries for conversion.
+   * @returns The resolved URL for conversion.
+   */
+  public resolveConvertUrl(inputUrl: string, fileType: string, entries: string, collections?: string[]): string {
+    inputUrl = this.resolveProtocolAliases(inputUrl);
+
+    const serverAddress = this.serverAddress();
+    if (this.isBackendAvailable() && serverAddress) {
+      // `collections` matches `pyrobird convert --collections`; absent means all groups
+      const collectionsParam = collections?.length
+        ? `&collections=${encodeURIComponent(collections.join(','))}`
+        : '';
+      return `${serverAddress}/api/v1/convert/${fileType}/${entries}?f=${encodeURIComponent(inputUrl)}${collectionsParam}`;
+    } else {
+      const message = "Backend is not available to convert the file";
+      console.warn(message);
+      throw Error(message);
+    }
+  }
+}

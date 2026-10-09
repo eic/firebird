@@ -1,0 +1,146 @@
+/**
+ * The ThreeExtension contract: the narrow lifecycle interface through which
+ * extensions hook the rendering machinery (scene lifecycle, frame loop).
+ *
+ * Boundary rule: if code turns *data* (event groups, fields, geometry) into
+ * visuals, it is a painter — register it with `withPainter()`. If it hooks
+ * the *machinery* — scene lifecycle, frame loop, input, services — it is a
+ * ThreeExtension.
+ */
+
+import type { Type } from '@angular/core';
+import type * as THREE from 'three';
+import type { WebGPURenderer, ClippingGroup } from 'three/webgpu';
+import type { Event as FbEvent } from '@dexvis/firebird-core';
+import type { GeometrySlice, RenderView, RenderViewOptions } from './views';
+
+/**
+ * Everything an extension needs to work with the scene. Handed to
+ * `onSceneInit` strictly AFTER the async renderer initialization resolved —
+ * extension authors never hand-roll "defer until ready" logic.
+ *
+ * The context hands out real three.js objects, never wrappers. An author who
+ * wants three.js verbatim builds a `Raycaster` from `camera` + pointer math.
+ */
+export interface SceneContext {
+  scene: THREE.Scene;
+  /** Detector geometry container. Clipping applies here — never to sceneEvent. */
+  sceneGeometry: ClippingGroup;
+  /** Event data container. Never clipped. */
+  sceneEvent: THREE.Group;
+  /** Lights, axes, gizmos, measurement markers. */
+  sceneHelpers: THREE.Group;
+  /** The active camera (perspective or orthographic). */
+  camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  renderer: WebGPURenderer;
+  /**
+   * The shared canvas every view draws into. Do not attach pointer input
+   * here: on multi-view pages the view containers sit above the canvas and
+   * receive the events, so the canvas gets none. Listen on a view's
+   * `container` instead (`mainView.container` for the display), and move
+   * the listeners when the view changes containers on page switches
+   * (`ViewOverlay.onViewContainerChange` reports it).
+   */
+  canvas: HTMLCanvasElement;
+  /**
+   * The render views sharing this scene. Live list: multi-view pages add and
+   * remove views at runtime. `views[0]` is always the main view.
+   */
+  readonly views: readonly RenderView[];
+  /**
+   * The main view — the display page's camera/controls. Per-view overlays
+   * (like the navigation cube) attach here via `mainView.addOverlay()`.
+   */
+  readonly mainView: RenderView;
+  /** Adds a view of the shared scene (see RenderViewOptions for the contract). */
+  addView(options: RenderViewOptions): RenderView;
+  /** Removes a view added with addView. The main view cannot be removed. */
+  removeView(view: RenderView): void;
+  /**
+   * The independently clipped geometry copy for projection views, or null
+   * when no view uses one. Create it with `createGeometrySlice()`, pass it
+   * with a `clipPlane` in the `addView` options to give a view its own cut,
+   * and call `rebuildGeometrySlice()` after editing the loaded geometry
+   * (the display rebuilds it after every geometry load).
+   *
+   * @experimental See `GeometrySlice`.
+   */
+  readonly geometrySlice: GeometrySlice | null;
+  /** @experimental See `geometrySlice`. */
+  createGeometrySlice(): GeometrySlice;
+  /** @experimental See `geometrySlice`. */
+  rebuildGeometrySlice(): void;
+  /** @experimental See `geometrySlice`. */
+  removeGeometrySlice(): void;
+  /**
+   * Adds an object to the event data: under `sceneEvent`, on
+   * EVENT_DATA_LAYER with all its descendants (never clipped, drawn in
+   * every view, over geometry in tracks-on-top views), and schedules a
+   * frame. Remove it with `object.removeFromParent()` and `invalidate()`.
+   * Objects added to `sceneEvent` directly keep layer 0 and disappear from
+   * the second pass of tracks-on-top views.
+   */
+  addEventObject(object: THREE.Object3D): void;
+  /**
+   * Signal that you changed renderable state — the next animation frame
+   * renders. The render loop is on-demand by default (config
+   * `rendering.mode`): a mutation without an invalidate() shows up only
+   * when something else triggers a render. Call it after mutating anything
+   * the next frame must show. Cheap and idempotent.
+   */
+  invalidate(): void;
+}
+
+/**
+ * Per-frame context passed to `onFrame` inside the render loop.
+ * Keep `onFrame` cheap: no allocation, no per-frame polling of app state.
+ *
+ * Rule: `onFrame` is for animation only. State changes must travel through
+ * signals/effects, never by polling inside the frame loop. Under the
+ * default on-demand scheduling, `onFrame` runs only on frames that render;
+ * an animation sustains itself by calling `invalidate()` from its update
+ * (start it with one seed `invalidate()`), and the chain ends by itself
+ * when the animation stops updating.
+ */
+export interface FrameContext {
+  /** Milliseconds since the previous RENDERED frame. */
+  deltaTime: number;
+  renderer: WebGPURenderer;
+  camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  /** Same contract as SceneContext.invalidate. */
+  invalidate(): void;
+}
+
+/**
+ * Lifecycle interface for rendering-machinery extensions. All methods are
+ * optional; implement only what you need. Registered with
+ * `withThreeExtension(MyExtension)` — the class is instantiated through DI,
+ * so `inject()` works in its constructor.
+ */
+export interface ThreeExtension {
+  /** Called once, after the async ThreeService.init completed. */
+  onSceneInit?(ctx: SceneContext): void;
+  /**
+   * Called before rendering, on every frame that renders. Keep it cheap. If
+   * it throws, the error is logged and this extension's onFrame is not
+   * called again; rendering and the other extensions continue.
+   */
+  onFrame?(ctx: FrameContext): void;
+  /** Called when a new event (entry) was loaded and painted. */
+  onEventLoaded?(event: FbEvent): void;
+  /**
+   * Called once at application teardown, when the root injector destroys
+   * the rendering service. The scene and the extension outlive display
+   * pages: leaving /display does not call this, and returning does not call
+   * onSceneInit again. Remove listeners and objects here.
+   */
+  onDispose?(): void;
+}
+
+/**
+ * Loader shape for heavy extensions that must not sit in the initial bundle:
+ * `withLazyThreeExtension(() => import('./vr').then(m => m.VrExtension))`.
+ * The bundler splits each lazy extension into its own chunk; the extension
+ * class itself is written identically in both cases.
+ */
+export type LazyThreeExtensionLoader = () => Promise<Type<ThreeExtension>>;

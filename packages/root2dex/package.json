@@ -1,0 +1,57 @@
+{
+  "name": "@dexvis/root2dex",
+  "version": "0.1.0-beta.1",
+  "description": "Converts EDM4eic / EDM4hep podio ROOT files to Firebird DEX using the JSROOT API. Plain worker-safe TypeScript; reads only the bytes of the requested event.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eic/firebird.git",
+    "directory": "packages/root2dex"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./entries": {
+      "types": "./dist/entries.d.ts",
+      "default": "./dist/entries.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build",
+    "build:check": "tsc --noEmit"
+  },
+  "keywords": [
+    "firebird",
+    "dex",
+    "root",
+    "jsroot",
+    "edm4eic",
+    "edm4hep",
+    "podio"
+  ],
+  "peerDependencies": {
+    "jsroot": ">=7.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "jsroot": "7.11.2",
+    "tsdown": "^0.23.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

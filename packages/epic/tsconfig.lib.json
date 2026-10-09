@@ -1,0 +1,23 @@
+/* ng-packagr build. Paths replace the base paths: the pack compiles against
+   the BUILT Firebird and dexvis packages, never their sources. The plain
+   TypeScript packages resolve through node_modules to their dist; the Angular
+   libraries build into their own dist directories. Build those first. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/lib",
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "inlineSources": true,
+    "types": [],
+    "paths": {
+      "@dexvis/firebird-ng": ["../firebird-ng/dist"],
+      "@dexvis/firebird-ng/*": ["../firebird-ng/dist/*"],
+      "@dexvis/shell": ["../../dexvis/app-shell-ng/dist/dexvis/shell"],
+      "@dexvis/app-features": ["../../dexvis/app-features-ng/dist/dexvis/app-features"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["**/*.spec.ts", "src/test-setup.ts"]
+}

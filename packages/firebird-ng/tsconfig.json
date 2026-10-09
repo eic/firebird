@@ -1,0 +1,55 @@
+/* Base config: the specs and the editor compile the library against the
+   sources of its monorepo dependencies, like the flagship app does. The
+   ng-packagr build (tsconfig.lib.json) compiles against their builds. */
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "bundler",
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "ES2022",
+    "useDefineForClassFields": false,
+    "resolveJsonModule": true,
+    "lib": ["ES2022", "dom"],
+    "paths": {
+      "@dexvis/firebird-ng": ["./src/public-api.ts"],
+      "@dexvis/firebird-ng/api": ["./api/src/public-api.ts"],
+      "@dexvis/firebird-ng/display": ["./display/src/public-api.ts"],
+      "@dexvis/firebird-ng/workers/geometry": ["./workers/geometry/src/public-api.ts"],
+      "@dexvis/firebird-ng/workers/root-file": ["./workers/root-file/src/public-api.ts"],
+      "@dexvis/firebird-ng/geometry-palette": ["./geometry-palette/src/public-api.ts"],
+      "@dexvis/firebird-core": ["../firebird-core/src/index.ts"],
+      "@dexvis/firebird-core/model": ["../firebird-core/src/model/index.ts"],
+      "@dexvis/firebird-core/loaders": ["../firebird-core/src/loaders.ts"],
+      "@dexvis/firebird-core/data-catalog": ["../firebird-core/src/data-catalog.ts"],
+      "@dexvis/root2dex": ["../root2dex/src/index.ts"],
+      "@dexvis/root2dex/entries": ["../root2dex/src/entries.ts"],
+      "@dexvis/root-geo-tree-editor": ["../../dexvis/root-geo-tree-editor/src/index.ts"],
+      "@dexvis/threejs-tree-editor": ["../../dexvis/threejs-tree-editor/src/index.ts"],
+      "@dexvis/viewport-gizmo": ["../../dexvis/viewport-gizmo/src/index.ts"],
+      "@dexvis/shell": ["../../dexvis/app-shell-ng/projects/app-shell/src/public-api.ts"],
+      "@dexvis/app-features": ["../../dexvis/app-features-ng/projects/app-features/src/public-api.ts"]
+    }
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true,
+    "extendedDiagnostics": {
+      "checks": {
+        "nullishCoalescingNotNullable": "suppress",
+        "optionalChainNotNullable": "suppress"
+      }
+    }
+  }
+}

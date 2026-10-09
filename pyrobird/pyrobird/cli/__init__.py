@@ -1,5 +1,5 @@
 # Created by: Dmitry Romanov, 2024
-# This file is part of Firebird Event Display and is licensed under the LGPLv3.
+# This file is part of Firebird Event Display and is licensed under GPL-3.0-or-later.
 # See the LICENSE file in the project root for full license information.
 import logging
 
@@ -12,6 +12,7 @@ from pyrobird.cli.convert import convert as convert_cmd
 from pyrobird.cli.screenshot import screenshot as screenshot_cmd
 from pyrobird.cli.merge import merge as merge_cmd
 from pyrobird.cli.smooth import smooth as smooth_cmd
+from pyrobird.cli.upgrade import upgrade as upgrade_cmd
 
 
 def setup_logging(is_verbose):
@@ -60,3 +61,4 @@ cli_app.add_command(convert_cmd)
 cli_app.add_command(screenshot_cmd)
 cli_app.add_command(merge_cmd)
 cli_app.add_command(smooth_cmd)
+cli_app.add_command(upgrade_cmd)

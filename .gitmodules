@@ -1,0 +1,15 @@
+[submodule "dexvis/root-geo-tree-editor"]
+	path = dexvis/root-geo-tree-editor
+	url = https://github.com/dexvis/root-geo-tree-editor.git
+[submodule "dexvis/threejs-tree-editor"]
+	path = dexvis/threejs-tree-editor
+	url = https://github.com/dexvis/threejs-tree-editor.git
+[submodule "dexvis/app-shell-ng"]
+	path = dexvis/app-shell-ng
+	url = https://github.com/dexvis/app-shell-ng.git
+[submodule "dexvis/viewport-gizmo"]
+	path = dexvis/viewport-gizmo
+	url = https://github.com/dexvis/viewport-gizmo.git
+[submodule "dexvis/app-features-ng"]
+	path = dexvis/app-features-ng
+	url = https://github.com/dexvis/app-features-ng.git

@@ -20,6 +20,27 @@
     "useDefineForClassFields": false,
     "resolveJsonModule": true,
     "emitDecoratorMetadata": true,
+    "paths": {
+      "@dexvis/firebird-core": ["../packages/firebird-core/src/index.ts"],
+      "@dexvis/firebird-core/model": ["../packages/firebird-core/src/model/index.ts"],
+      "@dexvis/firebird-core/loaders": ["../packages/firebird-core/src/loaders.ts"],
+      "@dexvis/firebird-core/data-catalog": ["../packages/firebird-core/src/data-catalog.ts"],
+      "@dexvis/firebird-ng": ["../packages/firebird-ng/src/public-api.ts"],
+      "@dexvis/firebird-ng/api": ["../packages/firebird-ng/api/src/public-api.ts"],
+      "@dexvis/firebird-ng/display": ["../packages/firebird-ng/display/src/public-api.ts"],
+      "@dexvis/firebird-ng/workers/geometry": ["../packages/firebird-ng/workers/geometry/src/public-api.ts"],
+      "@dexvis/firebird-ng/workers/root-file": ["../packages/firebird-ng/workers/root-file/src/public-api.ts"],
+      "@dexvis/firebird-ng/geometry-palette": ["../packages/firebird-ng/geometry-palette/src/public-api.ts"],
+      "@dexvis/root2dex": ["../packages/root2dex/src/index.ts"],
+      "@dexvis/root2dex/entries": ["../packages/root2dex/src/entries.ts"],
+      "@dexvis/firebird-epic": ["../packages/epic/src/index.ts"],
+      "@dexvis/firebird-example-extension": ["../packages/firebird-example-extension/src/index.ts"],
+      "@dexvis/root-geo-tree-editor": ["../dexvis/root-geo-tree-editor/src/index.ts"],
+      "@dexvis/threejs-tree-editor": ["../dexvis/threejs-tree-editor/src/index.ts"],
+      "@dexvis/viewport-gizmo": ["../dexvis/viewport-gizmo/src/index.ts"],
+      "@dexvis/shell": ["../dexvis/app-shell-ng/projects/app-shell/src/public-api.ts"],
+      "@dexvis/app-features": ["../dexvis/app-features-ng/projects/app-features/src/public-api.ts"]
+    },
     "lib": [
       "ES2022",
       "dom"

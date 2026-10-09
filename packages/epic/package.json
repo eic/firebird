@@ -1,0 +1,39 @@
+{
+  "name": "@dexvis/firebird-epic",
+  "version": "0.1.0-beta.1",
+  "description": "ePIC experiment pack for the Firebird event display: the epic:// alias, ePIC datasets, TGeo cleanup rules and cut lists, geometry themes and post-processors, camera views and the collision intro, installed with one withEpic() call.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eic/firebird.git",
+    "directory": "packages/epic"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.prod.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=22.0.0",
+    "@dexvis/firebird-core": "^0.1.0-beta.1",
+    "@dexvis/firebird-ng": "^0.1.0-beta.1",
+    "@dexvis/root-geo-tree-editor": "^0.2.0",
+    "three": ">=0.180.0"
+  },
+  "devDependencies": {
+    "@angular/common": "~22.2.2",
+    "@angular/compiler": "~22.2.2",
+    "@angular/compiler-cli": "~22.2.2",
+    "@angular/platform-browser": "~22.2.2",
+    "@types/three": "^0.186.0",
+    "jsdom": "~30.1.2",
+    "ng-packagr": "~22.2.4",
+    "three": "^0.186.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
