@@ -6,6 +6,11 @@
 //  Writes Geant4 trajectories as Firebird-format JSON for event display.
 //  Supports rich-trajectory time extraction, configurable filtering,
 //  and per-point verbose diagnostics.
+//--------------------------------------------------------------------------
+//  Copyright (C) 2024-2026 Firebird contributors.
+//  This file is part of Firebird Event Display and is licensed under
+//  GPL-3.0-or-later. See the LICENSE file in the repository root for full
+//  license information.
 //==========================================================================
 
 // DD4hep / DDG4

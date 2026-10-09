@@ -7,6 +7,11 @@
 // For the licensing terms see $DD4hepINSTALL/LICENSE.
 // For the list of contributors see $DD4hepINSTALL/doc/CREDITS.
 //
+//--------------------------------------------------------------------------
+// Firebird changes: Copyright (C) 2024-2026 Firebird contributors.
+// This file is part of Firebird Event Display and is licensed under
+// GPL-3.0-or-later; the parts derived from DD4hep keep the notice above.
+// See the LICENSE file in the repository root for full license information.
 //==========================================================================
 
 // Framework include files
