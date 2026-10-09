@@ -37,6 +37,9 @@ jobs:
       - name: Test firebird-ng
         run: npm run test:headless --workspace=firebird-ng
 
+      - name: Test @dexvis/firebird-ng
+        run: npm test -w @dexvis/firebird-ng
+
       - name: Test @dexvis/app-features
         run: npm test -w @dexvis/app-features
 
@@ -46,6 +49,12 @@ jobs:
       - name: Test @dexvis/root2dex
         run: npm test -w @dexvis/root2dex
 
+      - name: Test @dexvis/firebird-epic
+        run: npm test -w @dexvis/firebird-epic
+
+      - name: Test @dexvis/firebird-example-extension
+        run: npm test -w @dexvis/firebird-example-extension
+
       - name: Test @dexvis/threejs-tree-editor
         run: npm test -w @dexvis/threejs-tree-editor
 
@@ -54,6 +63,23 @@ jobs:
 
       - name: Test @dexvis/viewport-gizmo
         run: npm test -w @dexvis/viewport-gizmo
+
+      # ng-packagr compiles @dexvis/firebird-ng and the ePIC pack against the
+      # BUILT packages they import, so those build first, in dependency order.
+      # This is the only check that an entry of the library imports another
+      # entry through its package name: the app and the suites compile the
+      # sources together and do not notice a relative import across entries.
+      - name: Build the libraries @dexvis/firebird-ng and @dexvis/firebird-epic
+        run: |
+          npm run build -w @dexvis/root-geo-tree-editor
+          npm run build -w @dexvis/threejs-tree-editor
+          npm run build -w @dexvis/viewport-gizmo
+          npm run build -w @dexvis/root2dex
+          npm run build -w @dexvis/firebird-core
+          npm run build -w @dexvis/app-features
+          (cd dexvis/app-shell-ng && npx ng build app-shell)
+          npm run build -w @dexvis/firebird-ng
+          npm run build -w @dexvis/firebird-epic
 
       - name: Build
         working-directory: ./firebird-ng
